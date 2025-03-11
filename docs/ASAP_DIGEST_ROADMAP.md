@@ -2949,7 +2949,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        }
        if (settings.deliveryMethod === 'email') {
          const params = {
-           Source: 'ASAP Digest <your-verified-ses-email@yourdomain.com>',
+           Source: 'ASAP Digest <admin@asapdigest.com>',
            Destination: { ToAddresses: [settings.email] },
            Message: {
              Body: { Text: { Data: digest.content + (digest.shareLink ? `\nShare this digest: ${settings.baseUrl}${digest.shareLink}` : '') } },
@@ -3071,7 +3071,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        privateKey: 'your-vapid-private-key',
      };
      webpush.setVapidDetails(
-       'mailto:your-email@yourdomain.com',
+       'mailto:admin@asapdigest.com',
        vapidKeys.publicKey,
        vapidKeys.privateKey
      );
@@ -3152,8 +3152,8 @@ Below is the complete, updated development plan for the ASAP Digest project as o
      export async function post({ request }) {
        const { feedback, userId } = await request.json();
        const params = {
-         Source: 'ASAP Digest <your-verified-ses-email@yourdomain.com>',
-         Destination: { ToAddresses: ['admin@yourdomain.com'] },
+         Source: 'ASAP Digest <admin@asapdigest.com>',
+         Destination: { ToAddresses: ['admin@asapdigest.com'] },
          Message: {
            Body: { Text: { Data: `Feedback from User ID ${userId}: ${feedback}` } },
            Subject: { Data: 'ASAP Digest Feedback' },
@@ -3603,7 +3603,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        const { email } = await request.json();
        const code = Math.floor(100000 + Math.random() * 900000).toString().substring(0, 6);
        const params = {
-         Source: 'ASAP Digest <your-verified-ses-email@yourdomain.com>',
+         Source: 'ASAP Digest <admin@asapdigest.com>',
          Destination: { ToAddresses: [email] },
          Message: {
            Body: { Text: { Data: `Your ASAP Digest verification code is ${code}` } },
