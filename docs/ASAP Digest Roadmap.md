@@ -2642,7 +2642,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        }
      </style>
      ```
-- **Purpose**: Implements the profile page with ShadCN components, digest settings, TTS customization, and Lucide Svelte icons.
+- **Purpose**: Implements the profile page with ShadCN-svelte components, digest settings, TTS customization, and Lucide Svelte icons.
 
 
 ### Subtask 3.3: Implement Plans Page with Stripe Integration
@@ -2673,32 +2673,32 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card>
            <CardHeader>
-             <CardTitle class="text-xl font-serif">Basic Plan</CardTitle>
+             <CardTitle class="text-xl font-serif">Spark Plan</CardTitle>
            </CardHeader>
            <CardContent>
-             <p class="text-sm">Basic access to daily digests</p>
+             <p class="text-sm">Spark access to daily digests</p>
              <p class="text-lg font-bold mt-2">7 Day Trial then $15/month</p>
              <Button class="mt-4" disabled><ShoppingCart class="w-4 h-4 mr-2" /> Current Plan</Button>
            </CardContent>
          </Card>
          <Card>
            <CardHeader>
-             <CardTitle class="text-xl font-serif">Pro Plan</CardTitle>
+             <CardTitle class="text-xl font-serif">Pulse Plan</CardTitle>
            </CardHeader>
            <CardContent>
              <p class="text-sm">Advanced analytics and priority support</p>
              <p class="text-lg font-bold mt-2">7 Day Trial then $30/month</p>
-             <Button class="mt-4" on:click={() => createCheckoutSession('pro')}><ShoppingCart class="w-4 h-4 mr-2" /> Upgrade to Pro</Button>
+             <Button class="mt-4" on:click={() => createCheckoutSession('pulse')}><ShoppingCart class="w-4 h-4 mr-2" /> Upgrade to Pulse</Button>
            </CardContent>
          </Card>
          <Card>
            <CardHeader>
-             <CardTitle class="text-xl font-serif">Enterprise Plan</CardTitle>
+             <CardTitle class="text-xl font-serif">Bolt Plan</CardTitle>
            </CardHeader>
            <CardContent>
              <p class="text-sm">Custom integrations and dedicated support</p>
              <p class="text-lg font-bold mt-2">$50/month</p>
-             <Button class="mt-4" on:click={() => createCheckoutSession('enterprise')}><ShoppingCart class="w-4 h-4 mr-2" /> Upgrade to Enterprise</Button>
+             <Button class="mt-4" on:click={() => createCheckoutSession('bolt')}><ShoppingCart class="w-4 h-4 mr-2" /> Upgrade to Bolt</Button>
            </CardContent>
          </Card>
        </div>
@@ -2714,7 +2714,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
      export async function post({ request }) {
        const { plan, userId } = await request.json();
-       const priceId = plan === 'pro' ? 'price_pro_plan_id' : 'price_enterprise_plan_id';
+       const priceId = plan === 'pulse' ? 'price_pulse_plan_id' : 'price_bolt_plan_id';
        const session = await stripe.checkout.sessions.create({
          payment_method_types: ['card'],
          line_items: [{ price: priceId, quantity: 1 }],
@@ -2726,8 +2726,8 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        return new Response(JSON.stringify({ url: session.url }), { status: 200 });
      }
      ```
-     - Replace `your-stripe-secret-key`, `price_pro_plan_id`, and `price_enterprise_plan_id` with your Stripe credentials and Price IDs.
-- **Purpose**: Implements a plans page with subscription options using ShadCN components and Lucide Svelte icons, integrates Stripe for payment processing.
+     - Replace `your-stripe-secret-key`, `price_pulse_plan_id`, and `price_bolt_plan_id` with your Stripe credentials and Price IDs.
+- **Purpose**: Implements a plans page with subscription options using ShadCN-svelte components and Lucide Svelte icons, integrates Stripe for payment processing.
 
 
 ### Subtask 3.4: Implement Admin Area
