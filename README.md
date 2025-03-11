@@ -67,7 +67,3 @@ We continuously work to enhance your experience. Upcoming features include:
 **ASAP Digest** is designed to efficiently deliver fast, personalized daily insights in both text and audio formats. Whether you are using the free version or upgrading to one of our membership tiers—**Spark**, **Pulse**, or **Bolt**—our focus is on providing clear, reliable content that keeps you informed with minimal fuss.
 
 For more details and to start your journey, visit [ASAPDigest.com](https://asapdigest.com).
-
----
-
-*Follow us on [Twitter](https://twitter.com) and [LinkedIn](https://linkedin.com) for updates and community news.* 

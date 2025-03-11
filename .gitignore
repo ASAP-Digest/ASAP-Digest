@@ -18,6 +18,7 @@ wp-content/uploads/*
 /docs/DATA_FLOW.md
 /docs/DEPLOYMENT_CHECKLIST.md
 /docs/ENVIRONMENT.md
+/docs/DATABASE_SCHEMA.md
 
 # ignore everything in the "wp-content" directory, except:
 # mu-plugins, plugins, and themes directories
