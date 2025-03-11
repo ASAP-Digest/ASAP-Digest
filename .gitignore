@@ -107,3 +107,8 @@ wp-content/themes/asapdigest/screenshot.png
 
 # ignore node dependency directories
 /app/node_modules/
+
+# Local development artifacts
+*.local.sql
+*.local.zip
+/scripts/local-test.log
