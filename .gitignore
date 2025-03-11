@@ -14,6 +14,10 @@ wp-content/uploads/*
 
 # ignore vendor directory
 /vendor/
+/docs/API_CREDENTIALS.md
+/docs/DATA_FLOW.md
+/docs/DEPLOYMENT_CHECKLIST.md
+/docs/ENVIRONMENT.md
 
 # ignore everything in the "wp-content" directory, except:
 # mu-plugins, plugins, and themes directories
