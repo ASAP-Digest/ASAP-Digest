@@ -4523,6 +4523,13 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 
 ---
 
+## Q3 2025 - Pricing Model Evolution
+1. Core Tiered Pricing (Launch)
+2. Cost Analytics Backend
+3. Hybrid Billing Beta
+4. Global Usage Controls
+
+
 
 ### Conclusion
 
