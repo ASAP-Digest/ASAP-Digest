@@ -12,7 +12,7 @@ wp-content/plugins/*
 wp-content/themes/*
 wp-content/uploads/*
 
-# ignore vendor directory
+# ignore vendor directory & Specific Documentation files
 /vendor/
 /docs/API_CREDENTIALS.md
 /docs/DATA_FLOW.md

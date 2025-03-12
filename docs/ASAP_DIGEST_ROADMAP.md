@@ -4,15 +4,15 @@
 
 ## General Summary
 
-ASAP Digest is an innovative digital platform engineered to deliver personalized, curated insights at lightning speed—empowering users to literally “devour insights at AI speed.” The comprehensive development roadmap outlines the creation of a robust, hybrid solution that combines a SvelteKit‐based frontend with a WordPress headless CMS backend. This architecture supports dynamic, rapidly updating content while leveraging state‐of‐the‐art technologies like GraphQL, REST APIs, and advanced AI summarization powered by Hugging Face Transformers.
+ASAP Digest is an innovative digital platform engineered to deliver personalized, curated insights at lightning speed—empowering users to literally "devour insights at AI speed." The comprehensive development roadmap outlines the creation of a robust, hybrid solution that combines a SvelteKit-based frontend with a WordPress headless CMS backend. This architecture supports dynamic, rapidly updating content while leveraging state-of-the-art technologies like GraphQL, REST APIs, and advanced AI summarization powered by Hugging Face Transformers.
 
-Key features include a suite of interactive, audio-enhanced widgets (for articles, podcasts, financial bites, X posts, Reddit buzz, and more) that integrate text-to-speech and rich multimedia experiences. A standout component is the daily podcast generation—an AI-driven, multi-host conversation between virtual hosts Alex and Jamie that transforms static digests into engaging, conversational audio experiences. Additional innovative capabilities, such as the unified “Digest Time Machine,” allow users to explore their entire history of digests with contextual data including sentiment analysis, mood tracking, and personal life moments, and even schedule future revisits with push notifications.
+Key features include a suite of interactive, audio-enhanced widgets (for articles, podcasts, financial bites, X posts, Reddit buzz, and more) that integrate text-to-speech and rich multimedia experiences. A standout component is the daily podcast generation—an AI-driven, multi-host conversation between virtual hosts Alex and Jamie that transforms static digests into engaging, conversational audio experiences. Additional innovative capabilities, such as the unified "Digest Time Machine," allow users to explore their entire history of digests with contextual data including sentiment analysis, mood tracking, and personal life moments, and even schedule future revisits with push notifications.
 
-Overall, the project’s roadmap and supporting documents emphasize speed, precision, and personalization. With seamless PWA functionality, secure API integrations (including AWS SES/S3, Stripe, and Twilio), and an architecture designed for scalability and high performance, ASAP Digest is set to revolutionize information consumption—enabling users to quickly and effortlessly consume, reflect on, and share their daily insights in a truly immersive and agile manner.
+Overall, the project's roadmap and supporting documents emphasize speed, precision, and personalization. With seamless PWA functionality, secure API integrations (including AWS SES/S3, Stripe, and Twilio), and an architecture designed for scalability and high performance, ASAP Digest is set to revolutionize information consumption—enabling users to quickly and effortlessly consume, reflect on, and share their daily insights in a truly immersive and agile manner.
 
 ## Condensed Description
 
-ASAP Digest uses AI to rapidly deliver personalized insights via a SvelteKit-WordPress hybrid. Its interactive widgets, AI-driven daily podcast, and “Digest Time Machine” let users quickly consume and revisit curated content.
+ASAP Digest uses AI to rapidly deliver personalized insights via a SvelteKit-WordPress hybrid. Its interactive widgets, AI-driven daily podcast, and "Digest Time Machine" let users quickly consume and revisit curated content.
 
 
 
@@ -83,12 +83,17 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        $digests_table = $wpdb->prefix . 'asap_digests';
        $digests_sql = "CREATE TABLE $digests_table (
          id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+         user_id BIGINT(20) UNSIGNED NOT NULL,
          content TEXT NOT NULL,
+         sentiment_score VARCHAR(20) DEFAULT NULL,
+         life_moment TEXT DEFAULT NULL,
          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
          share_link VARCHAR(255) DEFAULT NULL,
          podcast_url VARCHAR(255) DEFAULT NULL,
          PRIMARY KEY (id),
-         INDEX idx_created_at (created_at)
+         INDEX idx_user_id (user_id),
+         INDEX idx_sentiment (sentiment_score),
+         FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE
        ) $charset_collate;";
        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
        dbDelta($digests_sql);
@@ -614,11 +619,14 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
      // Push notification handling
      self.addEventListener('push', (event) => {
-       const data = event.data.json();
-       self.registration.showNotification(data.title, {
-         body: data.body,
-         icon: '/icons/icon-192x192.png',
-       });
+       // Push API event handling
+       const data = event.data?.json();
+       event.waitUntil(
+         self.registration.showNotification(data.title, {
+           body: data.body,
+           icon: '/icons/icon-192x192.png'
+         })
+       );
      });
 
 
@@ -2807,7 +2815,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
        </DialogContent>
      </Dialog>
      ```
-- **Purpose**: Implements a dialog for adding new widgets with Lucide Svelte icons, using ShadCN’s Dialog component.
+- **Purpose**: Implements a dialog for adding new widgets with Lucide Svelte icons, using ShadCN's Dialog component.
 
 
 ### Subtask 3.6: Implement Settings Screen
@@ -4009,7 +4017,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 This comprehensive plan covers the entire development lifecycle of ASAP Digest, integrating all enhancements discussed. Let me know if you need further adjustments or assistance with any task!
 
 
-Yes, ASAP Digest does have features that align with the concept of an archive or time machine, enabling users to revisit past digests and reflect on their historical content. However, these features can be further enhanced to provide a more comprehensive and user-friendly "time machine" experience. Let’s first review the existing features related to archiving and historical access within the app, and then I’ll propose a refined and consolidated "Digest Time Machine" feature to better meet this need, drawing on the ideas we’ve already discussed and ensuring it integrates seamlessly with the app’s direction.
+Yes, ASAP Digest does have features that align with the concept of an archive or time machine, enabling users to revisit past digests and reflect on their historical content. However, these features can be further enhanced to provide a more comprehensive and user-friendly "time machine" experience. Let's first review the existing features related to archiving and historical access within the app, and then I'll propose a refined and consolidated "Digest Time Machine" feature to better meet this need, drawing on the ideas we've already discussed and ensuring it integrates seamlessly with the app's direction.
 
 
 ---
@@ -4018,7 +4026,7 @@ Yes, ASAP Digest does have features that align with the concept of an archive or
 ### Existing Archive/Time Machine Features in ASAP Digest
 
 
-Based on the app’s current implementation and the ideas we’ve explored, there are a few features that partially fulfill the role of an archive or time machine:
+Based on the app's current implementation and the ideas we've explored, there are a few features that partially fulfill the role of an archive or time machine:
 
 
 1. **Digest Rewind (Idea from "Unique Features")**:
@@ -4044,11 +4052,11 @@ Based on the app’s current implementation and the ideas we’ve explored, ther
          </Card>
        {/each}
        ```
-   - **Limitation**: While this feature provides a basic archive, it focuses more on sentiment trends and lacks deeper personalization or emotional context tied to the user’s life at the time of each digest. It also doesn’t allow users to add personal reflections or schedule future revisits.
+   - **Limitation**: While this feature provides a basic archive, it focuses more on sentiment trends and lacks deeper personalization or emotional context tied to the user's life at the time of each digest. It also doesn't allow users to add personal reflections or schedule future revisits.
 
 
 2. **Time Capsule Digest (Idea from "Think Harder – Groundbreaking Features")**:
-   - **Description**: The "Time Capsule Digest" feature (Idea 1 from the groundbreaking features section) allows users to create a personalized audio "time capsule" of their digests over a chosen period (e.g., a month, a year). It analyzes digest history, sentiment trends, and user-added life moments (e.g., “Started a new job”) to generate a reflective audio narrative narrated by Alex and Jamie. Users can save these capsules, share them, or schedule them to unlock on a future date.
+   - **Description**: The "Time Capsule Digest" feature (Idea 1 from the groundbreaking features section) allows users to create a personalized audio "time capsule" of their digests over a chosen period (e.g., a month, a year). It analyzes digest history, sentiment trends, and user-added life moments (e.g., "Started a new job") to generate a reflective audio narrative narrated by Alex and Jamie. Users can save these capsules, share them, or schedule them to unlock on a future date.
    - **Implementation Details**:
      - Adds a `life_moment` column to `wp_asap_digests` to store user notes.
      - A new page (`src/routes/time-capsule/+page.svelte`) lets users select a date range, add a life moment, and generate the capsule:
@@ -4063,9 +4071,9 @@ Based on the app’s current implementation and the ideas we’ve explored, ther
        ```
      - The backend (`src/lib/timeCapsuleGenerator.js`) generates a reflective narrative with predictive insights:
        ```javascript
-       let script = `Host 1: Welcome to your Time Capsule Digest, a journey through your past with ASAP Digest. I’m Alex.\nHost 2: And I’m Jamie, here to reflect on your moments from ${new Date(digests[0].created_at).toLocaleDateString()} to ${new Date(digests[digests.length - 1].created_at).toLocaleDateString()}.\n\n`;
+       let script = `Host 1: Welcome to your Time Capsule Digest, a journey through your past with ASAP Digest. I'm Alex.\nHost 2: And I'm Jamie, here to reflect on your moments from ${new Date(digests[0].created_at).toLocaleDateString()} to ${new Date(digests[digests.length - 1].created_at).toLocaleDateString()}.\n\n`;
        ```
-   - **Limitation**: This feature is more of a curated, reflective experience rather than a straightforward archive. It requires users to actively create a capsule and doesn’t provide a simple way to browse all past digests at a glance.
+   - **Limitation**: This feature is more of a curated, reflective experience rather than a straightforward archive. It requires users to actively create a capsule and doesn't provide a simple way to browse all past digests at a glance.
 
 
 3. **One-Tap Digest Save (Idea from "Simple but Overlooked Features")**:
@@ -4093,9 +4101,11 @@ Based on the app’s current implementation and the ideas we’ve explored, ther
        ```
    - **Limitation**: This feature only archives digests that the user manually saves, not all digests by default. It also lacks a time machine-like interface for exploring historical data with additional context (e.g., mood, sentiment trends).
 
+### AI Model Specification
+We use Hugging Face's `distilbart-cnn-12-6:v2.4` model for optimal balance of speed and accuracy in digest generation.
 
 4. **Mood History (Idea from "Simple but Overlooked Features")**:
-   - **Description**: The "Digest Mood Tracker" feature (Idea 3 from the simple features section) logs the user’s mood after viewing each digest and correlates it with the digest’s sentiment. The mood history page (`src/routes/mood-history/+page.svelte`) shows past moods alongside digest content, providing a form of emotional archive.
+   - **Description**: The "Digest Mood Tracker" feature (Idea 3 from the simple features section) logs the user's mood after viewing each digest and correlates it with the digest's sentiment. The mood history page (`src/routes/mood-history/+page.svelte`) shows past moods alongside digest content, providing a form of emotional archive.
    - **Implementation Details**:
      - A `wp_asap_moods` table stores mood entries linked to digests:
        ```php
@@ -4124,7 +4134,7 @@ Based on the app’s current implementation and the ideas we’ve explored, ther
          </Card>
        {/each}
        ```
-   - **Limitation**: While this provides a historical view, it’s focused on mood tracking rather than a comprehensive digest archive. It doesn’t include features like audio playback or deeper contextual reflections.
+   - **Limitation**: While this provides a historical view, it's focused on mood tracking rather than a comprehensive digest archive. It doesn't include features like audio playback or deeper contextual reflections.
 
 
 ---
@@ -4132,13 +4142,13 @@ Based on the app’s current implementation and the ideas we’ve explored, ther
 
 ### Assessment of Existing Features
 While ASAP Digest has elements of an archive or time machine through features like Digest Rewind, Time Capsule Digest, One-Tap Digest Save, and Mood History, there are gaps:
-- **Fragmentation**: These features are scattered across different pages (Rewind, Time Capsule, Saved Digests, Mood History) and serve distinct purposes (sentiment trends, reflective capsules, manual saving, mood tracking). There’s no unified "Digest Time Machine" that combines all past digests with rich contextual data (e.g., mood, sentiment, life moments) in one accessible place.
+- **Fragmentation**: These features are scattered across different pages (Rewind, Time Capsule, Saved Digests, Mood History) and serve distinct purposes (sentiment trends, reflective capsules, manual saving, mood tracking). There's no unified "Digest Time Machine" that combines all past digests with rich contextual data (e.g., mood, sentiment, life moments) in one accessible place.
 - **Manual Effort**: Features like One-Tap Digest Save and Time Capsule Digest require users to actively save or create capsules, meaning not all digests are automatically archived for easy access.
 - **Limited Context**: The Rewind and Mood History features provide some context (sentiment, mood), but they lack integration with personal user data (e.g., life moments) or the ability to schedule future revisits.
-- **User Experience**: There’s no single, intuitive interface that feels like a true "time machine," allowing users to browse, reflect, and interact with their entire digest history seamlessly.
+- **User Experience**: There's no single, intuitive interface that feels like a true "time machine," allowing users to browse, reflect, and interact with their entire digest history seamlessly.
 
 
-Given these observations, let’s consolidate and enhance these capabilities into a unified **Digest Time Machine** feature that provides a comprehensive, user-friendly archive experience.
+Given these observations, let's consolidate and enhance these capabilities into a unified **Digest Time Machine** feature that provides a comprehensive, user-friendly archive experience.
 
 
 ---
@@ -4151,12 +4161,12 @@ Given these observations, let’s consolidate and enhance these capabilities int
 The "Digest Time Machine" is a dedicated feature that automatically archives all daily digests (text and podcast audio) in the `wp_asap_digests` table and presents them in a unified, interactive interface. The feature combines the strengths of Digest Rewind, Time Capsule Digest, One-Tap Digest Save, and Mood History, adding new capabilities to create a seamless time machine experience. Users can:
 - Browse all past digests in a timeline view, with filters for mood, sentiment, and life moments.
 - Listen to archived podcast episodes or narrated summaries.
-- View contextual insights (e.g., “You were stressed this day, likely due to negative market news”).
+- View contextual insights (e.g., "You were stressed this day, likely due to negative market news").
 - Add or edit life moments for any past digest.
-- Schedule a digest to "revisit" on a future date, receiving a push notification with an audio reflection by Alex and Jamie (e.g., “It’s been a year since this digest—here’s what’s changed!”).
+- Schedule a digest to "revisit" on a future date, receiving a push notification with an audio reflection by Alex and Jamie (e.g., "It's been a year since this digest—here's what's changed!").
 
 
-This feature makes ASAP Digest a true time machine, preserving users’ daily insights and emotional context, and encouraging long-term engagement by allowing them to reflect on their past and plan future revisits.
+This feature makes ASAP Digest a true time machine, preserving users' daily insights and emotional context, and encouraging long-term engagement by allowing them to reflect on their past and plan future revisits.
 
 
 #### Implementation
@@ -4382,7 +4392,7 @@ This feature makes ASAP Digest a true time machine, preserving users’ daily in
         const digest = await fetch(`https://asapdigest.com/wp-json/asap/v1/digest/${data.digest_id}`, {
           headers: { 'Authorization': `Bearer ${data.token}` },
         }).then(res => res.json());
-        const reflection = `Host 1: It’s been a while! I’m Alex, here with Jamie to revisit your digest from ${new Date(digest.created_at).toLocaleDateString()}.\nHost 2: Here’s what you were focused on: ${digest.content.substring(0, 100)}... How does this feel now?`;
+        const reflection = `Host 1: It's been a while! I'm Alex, here with Jamie to revisit your digest from ${new Date(digest.created_at).toLocaleDateString()}.\nHost 2: Here's what you were focused on: ${digest.content.substring(0, 100)}... How does this feel now?`;
         const audioResponse = await fetch('/api/generate-reflection-audio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -4409,29 +4419,29 @@ This feature makes ASAP Digest a true time machine, preserving users’ daily in
 
 ## Digest Time Machine Value Proposition
 - **Unified Experience**: Consolidates all past digests into a single, intuitive timeline, making it easy to browse and reflect on historical data without navigating multiple pages.
-- **Rich Context**: Integrates mood, sentiment, and life moments, providing a holistic view of each digest’s impact on the user’s life.
+- **Rich Context**: Integrates mood, sentiment, and life moments, providing a holistic view of each digest's impact on the user's life.
 - **Interactive Features**: Allows users to add/edit life moments, listen to archived podcasts, and schedule revisits, fostering deeper engagement with their history.
 - **Emotional Connection**: The audio reflections for scheduled revisits create a nostalgic, personal experience, encouraging users to return to the app over time.
-- **Accessibility**: The audio-first approach (via Alex and Jamie) ensures the feature is accessible to all users, aligning with the app’s core design principles.
+- **Accessibility**: The audio-first approach (via Alex and Jamie) ensures the feature is accessible to all users, aligning with the app's core design principles.
 
 
 #### Why It Fits
-- **Alignment with Direction**: The Digest Time Machine builds on ASAP Digest’s strengths in audio narration (Alex/Jamie), personalization (mood, life moments), and content curation (diverse digests). It enhances the app’s role as a long-term knowledge companion, complementing the daily podcast and digest delivery by preserving and contextualizing historical data.
+- **Alignment with Direction**: The Digest Time Machine builds on ASAP Digest's strengths in audio narration (Alex/Jamie), personalization (mood, life moments), and content curation (diverse digests). It enhances the app's role as a long-term knowledge companion, complementing the daily podcast and digest delivery by preserving and contextualizing historical data.
 - **Leverages Existing Infrastructure**: Uses existing tables (`wp_asap_digests`, `wp_asap_moods`), AI narration, and PWA features (push notifications, service worker), ensuring seamless integration with minimal new development.
-- **Encourages Retention**: By allowing users to reflect on their past and schedule future revisits, the feature fosters long-term engagement, making ASAP Digest a meaningful part of users’ lives over time.
+- **Encourages Retention**: By allowing users to reflect on their past and schedule future revisits, the feature fosters long-term engagement, making ASAP Digest a meaningful part of users' lives over time.
 
 
 ---
 
 
 ### Digest Time Machine Feature Conclusion
-While ASAP Digest already has elements of an archive through features like Digest Rewind, Time Capsule Digest, One-Tap Digest Save, and Mood History, the new **Digest Time Machine** feature consolidates these into a unified, powerful experience that truly feels like a time machine. It automatically archives all digests, provides rich contextual insights (mood, sentiment, life moments), and allows users to interact with their history through audio playback, life moment updates, and scheduled revisits. This feature addresses the gaps in the existing implementations, offering a seamless, emotionally resonant way to explore and reflect on past digests, perfectly aligning with the app’s direction of delivering personalized, audio-driven insights. Let me know if you’d like to refine this further!
+While ASAP Digest already has elements of an archive through features like Digest Rewind, Time Capsule Digest, One-Tap Digest Save, and Mood History, the new **Digest Time Machine** feature consolidates these into a unified, powerful experience that truly feels like a time machine. It automatically archives all digests, provides rich contextual insights (mood, sentiment, life moments), and allows users to interact with their history through audio playback, life moment updates, and scheduled revisits. This feature addresses the gaps in the existing implementations, offering a seamless, emotionally resonant way to explore and reflect on past digests, perfectly aligning with the app's direction of delivering personalized, audio-driven insights. Let me know if you'd like to refine this further!
 
 
 
 ## Daily Podcast Feature Value Proposition
 
-The ASAP Digest app has several compelling features, but one truly unique standout that will likely keep users coming back is the **AI-driven, multi-host daily podcast generation**—a feature inspired by Google’s NotebookLM Audio Overviews but tailored to the app’s digest-focused mission. Let me break down why this feature is unique and how it creates a sticky, engaging experience for users.
+The ASAP Digest app has several compelling features, but one truly unique standout that will likely keep users coming back is the **AI-driven, multi-host daily podcast generation**—a feature inspired by Google's NotebookLM Audio Overviews but tailored to the app's digest-focused mission. Let me break down why this feature is unique and how it creates a sticky, engaging experience for users.
 
 
 ---
@@ -4441,22 +4451,22 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 
 
 1. **Conversational Summaries with Personality**:
-   - Unlike traditional text-to-speech (TTS) implementations that simply narrate content in a monotone voice, ASAP Digest generates a podcast-style conversation between two AI hosts (Alex and Jamie) using `@huggingface/transformers` to create natural, engaging dialogue. This conversational format transforms the daily digest into an immersive listening experience, making users feel like they’re tuning into a real podcast rather than hearing a robotic narration.
-   - The dialogue includes introductions, banter, insights, and conclusions, adding personality and context that make the summaries more relatable and memorable. For example, the script starts with “Host 1: Welcome to the ASAP Digest Daily Podcast for March 09, 2025! I’m your host, Alex. Host 2: And I’m Jamie. Let’s dive into today’s digest!” This human-like interaction sets it apart from standard TTS apps.
+   - Unlike traditional text-to-speech (TTS) implementations that simply narrate content in a monotone voice, ASAP Digest generates a podcast-style conversation between two AI hosts (Alex and Jamie) using `@huggingface/transformers` to create natural, engaging dialogue. This conversational format transforms the daily digest into an immersive listening experience, making users feel like they're tuning into a real podcast rather than hearing a robotic narration.
+   - The dialogue includes introductions, banter, insights, and conclusions, adding personality and context that make the summaries more relatable and memorable. For example, the script starts with "Host 1: Welcome to the ASAP Digest Daily Podcast for March 09, 2025! I'm your host, Alex. Host 2: And I'm Jamie. Let's dive into today's digest!" This human-like interaction sets it apart from standard TTS apps.
 
 
 2. **Dynamic and Personalized Content**:
-   - The podcast is generated daily from the user’s digest, which aggregates content from diverse sources (articles, podcasts, X posts, Reddit, financial data, etc.) based on their preferences set in the profile page (e.g., sources like RSS feeds, X handles, or subreddits). This ensures the podcast is always fresh, relevant, and tailored to the user’s interests.
+   - The podcast is generated daily from the user's digest, which aggregates content from diverse sources (articles, podcasts, X posts, Reddit, financial data, etc.) based on their preferences set in the profile page (e.g., sources like RSS feeds, X handles, or subreddits). This ensures the podcast is always fresh, relevant, and tailored to the user's interests.
    - The integration of user-defined TTS settings (voice, speed, language) from the profile page further personalizes the listening experience, catering to individual preferences and accessibility needs.
 
 
 3. **Seamless Distribution and Accessibility**:
-   - The podcast is automatically generated, stored on AWS S3 for scalability, and made available via an RSS feed, allowing users to subscribe on platforms like Spotify or Apple Podcasts. This makes it incredibly easy for users to integrate ASAP Digest into their daily routine—whether they’re commuting, working out, or cooking, they can listen to their digest as a podcast without needing to open the app.
+   - The podcast is automatically generated, stored on AWS S3 for scalability, and made available via an RSS feed, allowing users to subscribe on platforms like Spotify or Apple Podcasts. This makes it incredibly easy for users to integrate ASAP Digest into their daily routine—whether they're commuting, working out, or cooking, they can listen to their digest as a podcast without needing to open the app.
    - The digest page (`digest/[id]/+page.svelte`) includes a built-in audio player, and users can share the podcast episode directly via the Web Share API, increasing its reach and encouraging habitual use.
 
 
 4. **Enhanced Engagement Through Audio**:
-   - Audio content is inherently more engaging for many users than text, especially for busy individuals who prefer consuming information hands-free. The podcast format leverages this trend, providing a convenient alternative to reading the digest while maintaining the app’s core value of delivering concise, curated insights.
+   - Audio content is inherently more engaging for many users than text, especially for busy individuals who prefer consuming information hands-free. The podcast format leverages this trend, providing a convenient alternative to reading the digest while maintaining the app's core value of delivering concise, curated insights.
    - The use of WaveSurfer.js for waveform visualization during playback (in widgets and the `WaveformOverlay.svelte`) adds a visual element to the audio experience, making it more interactive and appealing.
 
 
@@ -4467,21 +4477,21 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 
 
 1. **Habit Formation Through Convenience**:
-   - The daily podcast aligns with users’ existing habits of listening to podcasts during downtime (e.g., morning commutes, workouts). By offering a seamless, on-the-go way to consume their digest, ASAP Digest becomes a part of their daily routine. The RSS feed integration means users can subscribe and get new episodes automatically, reducing friction and encouraging consistent engagement.
+   - The daily podcast aligns with users' existing habits of listening to podcasts during downtime (e.g., morning commutes, workouts). By offering a seamless, on-the-go way to consume their digest, ASAP Digest becomes a part of their daily routine. The RSS feed integration means users can subscribe and get new episodes automatically, reducing friction and encouraging consistent engagement.
    - The automation of podcast generation (via the `/wp-json/asap/v1/digest` endpoint and scheduled in `asapdigest-core.php`) ensures fresh content every day without user effort, reinforcing the habit loop.
 
 
 2. **Emotional Connection Through Storytelling**:
-   - The conversational format creates an emotional connection by simulating a friendly, human-like interaction between Alex and Jamie. This storytelling approach makes the digest more than just information—it becomes an experience users look forward to, much like a favorite podcast series. For example, hearing “Jamie” ask a thoughtful question about a financial bite or “Alex” share excitement about a trending X post adds a layer of personality that keeps users engaged.
+   - The conversational format creates an emotional connection by simulating a friendly, human-like interaction between Alex and Jamie. This storytelling approach makes the digest more than just information—it becomes an experience users look forward to, much like a favorite podcast series. For example, hearing "Jamie" ask a thoughtful question about a financial bite or "Alex" share excitement about a trending X post adds a layer of personality that keeps users engaged.
 
 
 3. **Unique Value Proposition**:
-   - While other news or digest apps might offer TTS, none combine the multi-host conversational podcast format with user-curated content in such a seamless way. This feature sets ASAP Digest apart from competitors like traditional news aggregators (e.g., Google News) or even NotebookLM, which requires manual input to generate audio overviews. ASAP Digest’s automation and integration with daily digests make it a unique offering in the market.
+   - While other news or digest apps might offer TTS, none combine the multi-host conversational podcast format with user-curated content in such a seamless way. This feature sets ASAP Digest apart from competitors like traditional news aggregators (e.g., Google News) or even NotebookLM, which requires manual input to generate audio overviews. ASAP Digest's automation and integration with daily digests make it a unique offering in the market.
    - The ability to listen to a digest that covers diverse topics (news, social media, markets, events) in a single, cohesive podcast episode provides a holistic snapshot of the day, saving users time and effort compared to piecing together information from multiple sources.
 
 
 4. **Social and Shareable Nature**:
-   - The podcast’s shareability (via the digest page’s share button with Lucide Svelte’s `Share2` icon) encourages users to spread the word, creating a viral loop. For example, a user might share a particularly insightful episode with friends on X or Reddit, driving new users to the app and reinforcing the original user’s engagement through social validation.
+   - The podcast's shareability (via the digest page's share button with Lucide Svelte's `Share2` icon) encourages users to spread the word, creating a viral loop. For example, a user might share a particularly insightful episode with friends on X or Reddit, driving new users to the app and reinforcing the original user's engagement through social validation.
    - The RSS feed subscription model also fosters a sense of community, as users can discuss episodes with others who subscribe, further embedding ASAP Digest into their social habits.
 
 
@@ -4495,9 +4505,9 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 ### Supporting Features That Amplify Its Impact
 
 
-- **Global "Read Aloud" Mode**: The homepage’s "Read Aloud" mode (`+page.svelte`) allows users to listen to all visible widget summaries sequentially, providing a mini-podcast-like experience within the app. This complements the daily podcast by offering instant audio access to individual summaries, encouraging users to explore content in audio format even before the podcast is generated.
+- **Global "Read Aloud" Mode**: The homepage's "Read Aloud" mode (`+page.svelte`) allows users to listen to all visible widget summaries sequentially, providing a mini-podcast-like experience within the app. This complements the daily podcast by offering instant audio access to individual summaries, encouraging users to explore content in audio format even before the podcast is generated.
 - **Waveform Visualization**: The integration of WaveSurfer.js in widgets and the waveform overlay adds a visual element to the audio experience, making it more engaging and interactive, which can hook users into using the audio features regularly.
-- **Personalization**: The profile page’s settings for sources, delivery methods (email/SMS), and TTS preferences ensure the podcast is tailored to each user, increasing its relevance and stickiness.
+- **Personalization**: The profile page's settings for sources, delivery methods (email/SMS), and TTS preferences ensure the podcast is tailored to each user, increasing its relevance and stickiness.
 
 
 ---
@@ -4507,8 +4517,8 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 
 
 - **Future Enhancements**: The podcast feature can be expanded with more advanced AI voices (e.g., integrating Google Cloud Text-to-Speech for natural intonation) or by adding user feedback mechanisms (e.g., a `ad_asap_podcast_feedback` table to collect ratings and comments). These improvements can further personalize the experience and keep users invested.
-- **Gamification**: Introducing badges or rewards for listening to daily podcasts (tracked via the `ad_asap_progress` table) could incentivize consistent usage. For example, a “Podcast Streak” badge for listening 7 days in a row could motivate users to return daily.
-- **Social Integration**: Direct publishing to platforms like Spotify (similar to NotebookLM’s Spotify Wrapped collaboration) or adding in-app comments on podcast episodes could create a community around the daily podcasts, encouraging users to engage more deeply.
+- **Gamification**: Introducing badges or rewards for listening to daily podcasts (tracked via the `ad_asap_progress` table) could incentivize consistent usage. For example, a "Podcast Streak" badge for listening 7 days in a row could motivate users to return daily.
+- **Social Integration**: Direct publishing to platforms like Spotify (similar to NotebookLM's Spotify Wrapped collaboration) or adding in-app comments on podcast episodes could create a community around the daily podcasts, encouraging users to engage more deeply.
 
 
 ---
@@ -4517,4 +4527,4 @@ The ASAP Digest app has several compelling features, but one truly unique stando
 ### Conclusion
 
 
-The AI-driven daily podcast feature stands out as a truly unique aspect of ASAP Digest because it transforms a static digest into an engaging, conversational audio experience that fits seamlessly into users’ lives. By combining personalization, automation, and shareability with a human-like podcast format, it creates a compelling reason for users to return daily—whether to catch up on their curated news in a convenient audio format, share episodes with friends, or simply enjoy the friendly banter of Alex and Jamie. This feature not only differentiates ASAP Digest from other news apps but also fosters habit formation, emotional connection, and accessibility, ensuring users keep coming back for more.
+The AI-driven daily podcast feature stands out as a truly unique aspect of ASAP Digest because it transforms a static digest into an engaging, conversational audio experience that fits seamlessly into users' lives. By combining personalization, automation, and shareability with a human-like podcast format, it creates a compelling reason for users to return daily—whether to catch up on their curated news in a convenient audio format, share episodes with friends, or simply enjoy the friendly banter of Alex and Jamie. This feature not only differentiates ASAP Digest from other news apps but also fosters habit formation, emotional connection, and accessibility, ensuring users keep coming back for more.
