@@ -16,10 +16,11 @@ wp-content/uploads/*
 /vendor/
 /docs/API_CREDENTIALS.md
 /docs/DATA_FLOW.md
+/docs/DATABASE_SCHEMA.md
 /docs/DEPLOYMENT_CHECKLIST.md
 /docs/ENVIRONMENT.md
-/docs/DATABASE_SCHEMA.md
 /docs/FUTURE_PLANS.md
+
 
 # ignore everything in the "wp-content" directory, except:
 # mu-plugins, plugins, and themes directories
@@ -71,8 +72,11 @@ asapdigest.code-workspace
 *.tar
 *.zip
 
-# Ignore local environment files
+# Ignore environment files
 .env
+app/.env
+app/.env.local
+wp-config-local.php
 
 # -------------------------
 # BEGIN Whitelisted Files
@@ -84,6 +88,7 @@ asapdigest.code-workspace
 !.editorconfig
 !.phpcs.xml.dist
 !.env.example
+!app/.env.example
 !README.md
 !CHANGELOG.md
 !composer.json
@@ -113,3 +118,46 @@ wp-content/themes/asapdigest/screenshot.png
 *.local.sql
 *.local.zip
 /scripts/local-test.log
+
+# Add new patterns
+## Lockfiles
+!pnpm-lock.yaml
+
+## Build artifacts
+/app/.svelte-kit
+/app/build
+
+## Generated docs
+/docs-generated/
+
+## Security
+.env.local
+wp-config-local.php
+
+## Development
+*.tmp
+*.swp
+
+# Additional patterns for long-term vision
+/.cache-loader
+/.svelte-kit
+/build
+
+# Redis cache files
+*.rdb
+dump.rdb
+
+# JSDoc generated files
+/jsdoc/
+
+# Hybrid billing logs and metrics
+/metrics/
+/usage-logs/
+
+# Generated service worker
+/app/static/service-worker.js
+/app/static/workbox-*.js
+
+# Development database dumps
+*.sqlite
+*.sql.gz
