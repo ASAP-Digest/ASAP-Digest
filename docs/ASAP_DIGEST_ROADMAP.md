@@ -53,7 +53,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 ### Subtask 1.2: Configure WordPress as a Headless CMS
 - **Action**: Set up a WordPress instance with necessary plugins to act as a headless CMS.
 - **Steps**:
-  1. Install a local WordPress instance using LocalWP, XAMPP, or a cloud provider (e.g., WP Engine, Kinsta).
+  1. Install a local WordPress instance using LocalWP.
      - Ensure the database uses MariaDB.
   2. Log into the WordPress admin dashboard (e.g., `https://asapdigest/wp-admin`).
   3. Navigate to "Settings" > "Permalinks" and set to "Post name" for clean URLs.
@@ -439,7 +439,27 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
        return new WP_REST_Response($rss, 200, ['Content-Type' => 'application/rss+xml']);
      }
-     ```
+
+    // WordPress SMS Scheduling System ### SMS Integration Core
+    add_action('admin_init', function() {
+      add_settings_field(
+        'sms_digest_time', 
+        'Default SMS Send Time',
+        'sms_time_callback',
+        'asapdigest-settings'
+      );
+    });
+
+    // Cron System for Digest Delivery
+    add_filter('cron_schedules', function($schedules) {
+      $schedules['five_min_sms'] = [
+        'interval' => 300,
+        'display' => __('Every 5 Minutes for SMS')
+      ];
+      return $schedules;
+    });
+   ```
+
   4. In the WordPress admin, navigate to "Custom Fields" > "Add New" to create field groups:
      - **Article**: `summary` (Text), `source` (Text), `timestamp` (Date), `image` (Image).
      - **Podcast**: `summary` (Text), `episode` (Number), `duration` (Number).
@@ -3363,13 +3383,35 @@ Below is the complete, updated development plan for the ASAP Digest project as o
          if (data.success) alert('Settings backed up successfully!');
        }
      </script>
-     <!-- ... existing form content ... -->
+   
+   
      <div class="space-y-2 mt-4">
        <Button on:click={backupSettings}><Upload class="w-4 h-4 mr-2" /> Backup Settings</Button>
      </div>
-     <!-- ... existing content ... -->
+    
      ```
-- **Purpose**: Adds cloud backup to AWS S3 for user settings.
+  - **Purpose**: Adds cloud backup to AWS S3 for user settings.
+
+  3. SvelteKit Settings UI Addition:
+    ```markdown
+    ### SMS Preference Interface
+    ```svelte
+    <!-- SMS Time Selection -->
+    <TimePicker
+      bind:value={preferredTime}
+      min="06:00"
+      max="22:00"
+      step="900" <!-- 15 minute increments -->
+    />
+
+    <!-- MMS Content Toggle -->
+    <Toggle
+      label="Receive MMS Preview" 
+      bind:checked={wantMMS}
+    />
+    ```
+
+
 
 
 ### Subtask 3.17: Implement Performance Metrics Dashboard
