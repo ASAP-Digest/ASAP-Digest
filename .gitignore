@@ -74,8 +74,11 @@ asapdigest.code-workspace
 
 # Ignore environment files
 .env
+app/.env.example
 app/.env
 app/.env.local
+app/.env.production
+wp-config.php
 wp-config-local.php
 
 # -------------------------

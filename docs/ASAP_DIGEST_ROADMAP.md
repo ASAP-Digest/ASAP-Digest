@@ -3550,27 +3550,30 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 ## Task 4: Implement Authentication Features
 
 
-### Subtask 4.1: Implement SMS Verification with Twilio
-- **Action**: Add SMS verification for signup and account recovery using Twilio.
+### Subtask 4.1: Implement SMS Verification with Plivo
+- **Action**: Add SMS verification using Plivo
 - **Steps**:
-  1. Create `src/routes/api/send-sms-verification/+server.js`:
+  1. Update `src/routes/api/send-sms-verification/+server.js`:
      ```javascript
-     import twilio from 'twilio';
+     import plivo from 'plivo';
 
+     const client = new plivo.Client(
+       process.env.PLIVO_AUTH_ID,
+       process.env.PLIVO_AUTH_TOKEN
+     );
 
-      const client = twilio('your-twilio-account-sid', 'your-twilio-auth-token');
-
-
-      export async function post({ request }) {
-        const { phoneNumber } = await request.json();
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        await client.messages.create({
-          body: `Your ASAP Digest verification code is ${code}`,
-          from: 'your-twilio-phone-number',
-          to: phoneNumber,
-        });
-        return new Response(JSON.stringify({ code, phoneNumber }), { status: 200 });
-      }
+     export async function post({ request }) {
+       const { phoneNumber } = await request.json();
+       const code = Math.floor(100000 + Math.random() * 900000).toString();
+       
+       await client.messages.create(
+         process.env.PLIVO_PHONE_NUMBER,
+         [phoneNumber],
+         `Your ASAP Digest verification code: ${code}`
+       );
+       
+       return new Response(JSON.stringify({ code, phoneNumber }), { status: 200 });
+     }
      ```
   2. Create `src/routes/api/verify-sms/+server.js`:
      ```javascript
