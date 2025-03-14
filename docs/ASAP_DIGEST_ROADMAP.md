@@ -24,9 +24,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 ```markdown
 # Development Plan for ASAP Digest
 
-
 ## Task 1: Configure Core Infrastructure for ASAP Digest
-
 
 ### Subtask 1.1: Set Up SvelteKit Project
 - **Action**: Initialize a new SvelteKit project to serve as the frontend for ASAP Digest.
@@ -3736,7 +3734,6 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
 ## Task 6: Implement Daily Podcast Generation
 
-
 ### Subtask 6.1: Create a Podcast Generation Script
 - **Action**: Develop a script to transform the daily digest into a podcast-style conversation.
 - **Steps**:
@@ -4032,7 +4029,7 @@ Yes, ASAP Digest does have features that align with the concept of an archive or
 Based on the app's current implementation and the ideas we've explored, there are a few features that partially fulfill the role of an archive or time machine:
 
 
-1. **Digest Rewind (Idea from "Unique Features")**:
+1. **Digest Rewind**:
    - **Description**: In the "Digest Rewind" feature (Idea 1 from the unique features section), the app allows users to explore their past digests through an interactive timeline. It leverages the `wp_asap_digests` table to fetch historical digests, including their content, podcast URLs, and sentiment scores. Users can revisit past digests, listen to archived podcast episodes, and see sentiment trends over time.
    - **Implementation Details**:
      - A new page (`src/routes/rewind/+page.svelte`) displays a timeline of past digests with sentiment trends visualized using `svelte-chartjs`.
@@ -4058,7 +4055,7 @@ Based on the app's current implementation and the ideas we've explored, there ar
    - **Limitation**: While this feature provides a basic archive, it focuses more on sentiment trends and lacks deeper personalization or emotional context tied to the user's life at the time of each digest. It also doesn't allow users to add personal reflections or schedule future revisits.
 
 
-2. **Time Capsule Digest (Idea from "Think Harder – Groundbreaking Features")**:
+2. **Time Capsule Digest**:
    - **Description**: The "Time Capsule Digest" feature (Idea 1 from the groundbreaking features section) allows users to create a personalized audio "time capsule" of their digests over a chosen period (e.g., a month, a year). It analyzes digest history, sentiment trends, and user-added life moments (e.g., "Started a new job") to generate a reflective audio narrative narrated by Alex and Jamie. Users can save these capsules, share them, or schedule them to unlock on a future date.
    - **Implementation Details**:
      - Adds a `life_moment` column to `wp_asap_digests` to store user notes.
@@ -4079,7 +4076,7 @@ Based on the app's current implementation and the ideas we've explored, there ar
    - **Limitation**: This feature is more of a curated, reflective experience rather than a straightforward archive. It requires users to actively create a capsule and doesn't provide a simple way to browse all past digests at a glance.
 
 
-3. **One-Tap Digest Save (Idea from "Simple but Overlooked Features")**:
+3. **One-Tap Digest Save**:
    - **Description**: The "One-Tap Digest Save" feature (Idea 1 from the simple features section) allows users to save their daily digest with a single tap, storing both the text and podcast audio locally and syncing to the cloud (AWS S3). Users can add voice notes to tag saved digests, and a dedicated page (`src/routes/saved-digests/+page.svelte`) displays all saved digests.
    - **Implementation Details**:
      - Adds an `is_saved` column to `wp_asap_digests` and a save button to the digest page:
@@ -4107,7 +4104,7 @@ Based on the app's current implementation and the ideas we've explored, there ar
 ### AI Model Specification
 We use Hugging Face's `distilbart-cnn-12-6:v2.4` model for optimal balance of speed and accuracy in digest generation.
 
-4. **Mood History (Idea from "Simple but Overlooked Features")**:
+4. **Mood History**:
    - **Description**: The "Digest Mood Tracker" feature (Idea 3 from the simple features section) logs the user's mood after viewing each digest and correlates it with the digest's sentiment. The mood history page (`src/routes/mood-history/+page.svelte`) shows past moods alongside digest content, providing a form of emotional archive.
    - **Implementation Details**:
      - A `wp_asap_moods` table stores mood entries linked to digests:
