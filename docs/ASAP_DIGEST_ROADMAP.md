@@ -55,7 +55,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install a local WordPress instance using LocalWP.
      - Ensure the database uses MariaDB.
-  2. Log into the WordPress admin dashboard (e.g., `https://asapdigest/wp-admin`).
+  2. Log into the WordPress admin dashboard (e.g., `https://asapdigest.local/wp-admin`).
   3. Navigate to "Settings" > "Permalinks" and set to "Post name" for clean URLs.
 - **Purpose**: Configures WordPress as a headless CMS with MariaDB, preparing it for GraphQL and REST API usage.
 
@@ -479,7 +479,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Run the following command to install dependencies:
      ```bash
-     npm install @better-auth/svelte @huggingface/transformers @urql/svelte graphql svelte-dnd-action svelte-chartjs chart.js wavesurfer.js @stripe/stripe-js @aws-sdk/client-ses @aws-sdk/client-s3 twilio @shadcn/svelte workbox-window web-push @google-analytics/ga4 lucide-svelte
+     pnpm install @better-auth/svelte @huggingface/transformers @urql/svelte graphql svelte-dnd-action svelte-chartjs chart.js wavesurfer.js @stripe/stripe-js @aws-sdk/client-ses @aws-sdk/client-s3 twilio @shadcn/svelte workbox-window web-push @google-analytics/ga4 lucide-svelte
      ```
   2. Initialize ShadCN in the project:
      ```bash
