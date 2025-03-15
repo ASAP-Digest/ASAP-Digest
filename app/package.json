@@ -27,9 +27,15 @@
 		]
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.758.0",
 		"@huggingface/transformers": "^3.4.0",
+		"@stripe/stripe-js": "^6.0.0",
 		"@urql/svelte": "^4.2.3",
 		"better-auth": "^1.2.3",
-		"svelte-dnd-action": "^0.9.60"
+		"lucide-svelte": "^0.482.0",
+		"svelte-chart": "^1.0.0",
+		"svelte-dnd-action": "^0.9.60",
+		"web-push": "^3.6.7",
+		"workbox-window": "^7.3.0"
 	}
 }
