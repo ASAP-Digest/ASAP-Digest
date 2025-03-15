@@ -1,12 +1,10 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
-import { Workbox } from 'workbox-window';
 
 export const swUpdateAvailable = writable(false);
 export const isOnline = writable(true);
 
-let wb: Workbox;
-let registration: ServiceWorkerRegistration;
+let registration: ServiceWorkerRegistration | null = null;
 
 export function registerServiceWorker() {
   if (!browser || !('serviceWorker' in navigator)) {
@@ -19,23 +17,45 @@ export function registerServiceWorker() {
   window.addEventListener('offline', () => isOnline.set(false));
 
   // Register the service worker
-  wb = new Workbox('/service-worker.js');
+  navigator.serviceWorker.register('/service-worker.js')
+    .then((reg) => {
+      registration = reg;
 
-  // Add update found event listener
-  wb.addEventListener('updatefound', () => {
-    swUpdateAvailable.set(true);
-  });
+      // Check for updates
+      const installingWorker = reg.installing;
+      if (installingWorker) {
+        installingWorker.addEventListener('statechange', () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            swUpdateAvailable.set(true);
+          }
+        });
+      }
 
-  // Start the service worker
-  wb.register().then((reg) => {
-    registration = reg;
+      // Listen for new workers
+      reg.onupdatefound = () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.onstatechange = () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              swUpdateAvailable.set(true);
+            }
+          };
+        }
+      };
+    })
+    .catch((error) => {
+      console.error('Service worker registration failed:', error);
+    });
+
+  // Add controller change listener for refreshing the page after update
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
   });
 
   return {
     updateServiceWorker: async () => {
-      if (wb) {
-        await wb.messageSkipWaiting();
-        window.location.reload();
+      if (registration && registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
     },
     swRegistration: () => registration

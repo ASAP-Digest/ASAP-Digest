@@ -1,75 +1,107 @@
-import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { NetworkFirst, CacheFirst } from 'workbox-strategies';
-import { setCacheNameDetails } from 'workbox-core';
-import { BackgroundSyncPlugin } from 'workbox-background-sync';
+// Basic service worker implementation without external dependencies
+const CACHE_NAME = 'asapdigest-cache-v1';
+const OFFLINE_PAGE = '/offline.html';
 
-setCacheNameDetails({
-    prefix: 'asapdigest',
-    precache: 'precache',
-    runtime: 'runtime',
-});
+// Files to cache initially
+const INITIAL_CACHED_RESOURCES = [
+    '/',
+    '/offline.html',
+    '/favicon.png',
+    '/manifest.json',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png'
+];
 
-precacheAndRoute(self.__WB_MANIFEST);
-
-// Cache API responses (e.g., GraphQL queries)
-registerRoute(
-    ({ url }) => url.pathname.startsWith('/graphql'),
-    new NetworkFirst({
-        cacheName: 'api-cache',
-        plugins: [
-            {
-                cacheWillUpdate: async ({ request, response }) => {
-                    return response && response.status === 200 ? response : null;
-                },
-            },
-        ],
-    })
-);
-
-// Cache static assets
-registerRoute(
-    ({ request }) => request.destination === 'image' || request.destination === 'script' || request.destination === 'style',
-    new CacheFirst({
-        cacheName: 'static-assets',
-    })
-);
-
-// Background sync for API requests
-const bgSyncPlugin = new BackgroundSyncPlugin('failed-requests', {
-    maxRetentionTime: 24 * 60, // Retry for up to 24 hours
-});
-
-// Register background sync for form submissions
-registerRoute(
-    ({ url }) => url.pathname.startsWith('/api/'),
-    new NetworkFirst({
-        plugins: [bgSyncPlugin],
-    }),
-    'POST'
-);
-
-// Push event handler for notifications
-self.addEventListener('push', (event) => {
-    const data = event.data.json();
-    const options = {
-        body: data.body,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png',
-        data: {
-            url: data.url || '/',
-        },
-    };
-
+// Install event handler
+self.addEventListener('install', (event) => {
     event.waitUntil(
-        self.registration.showNotification(data.title, options)
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                return cache.addAll(INITIAL_CACHED_RESOURCES);
+            })
+            .then(() => {
+                return self.skipWaiting();
+            })
     );
 });
 
-// Click event handler for notifications
+// Activate event handler
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            return self.clients.claim();
+        })
+    );
+});
+
+// Fetch event handler with network-first strategy
+self.addEventListener('fetch', (event) => {
+    // Skip non-GET requests
+    if (event.request.method !== 'GET') return;
+
+    // Skip cross-origin requests
+    if (!event.request.url.startsWith(self.location.origin)) return;
+
+    event.respondWith(
+        fetch(event.request)
+            .then((response) => {
+                // Cache successful responses
+                if (response && response.status === 200) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                }
+                return response;
+            })
+            .catch(() => {
+                // If network fails, try cache
+                return caches.match(event.request)
+                    .then((cacheResponse) => {
+                        // Return cached response or offline page
+                        return cacheResponse || caches.match(OFFLINE_PAGE);
+                    });
+            })
+    );
+});
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
+    try {
+        const data = event.data.json();
+
+        const options = {
+            body: data.body || 'New update from ASAP Digest',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            data: {
+                url: data.url || '/'
+            }
+        };
+
+        event.waitUntil(
+            self.registration.showNotification(data.title || 'ASAP Digest', options)
+        );
+    } catch (error) {
+        console.error('Error processing push notification:', error);
+    }
+});
+
+// Click handler for notifications
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+
     event.waitUntil(
-        clients.openWindow(event.notification.data.url)
+        clients.openWindow(event.notification.data?.url || '/')
     );
 }); 

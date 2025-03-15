@@ -10,12 +10,18 @@
         const { updateServiceWorker } = registerServiceWorker();
         updateSW = updateServiceWorker;
     });
+    
+    function handleUpdate() {
+        if (updateSW) {
+            updateSW();
+        }
+    }
 </script>
 
 {#if $swUpdateAvailable}
   <div class="update-banner">
     <p>New version available!</p>
-    <button on:click={() => updateSW && updateSW()}>Update</button>
+    <button onclick={handleUpdate}>Update</button>
   </div>
 {/if}
 

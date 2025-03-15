@@ -31,7 +31,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Run the following command to create a new SvelteKit project:
      ```bash
-     npm create svelte@latest asapdigest
+     pnpm create svelte@latest asapdigest
      ```
      - Select: SvelteKit with TypeScript: No, ESLint: Yes, Prettier: Yes, Playwright: Yes.
   2. Navigate to the project directory:
@@ -40,11 +40,11 @@ Below is the complete, updated development plan for the ASAP Digest project as o
      ```
   3. Install dependencies:
      ```bash
-     npm install
+     pnpm install
      ```
   4. Start the development server:
      ```bash
-     npm run dev
+     pnpm run dev
      ```
      - Verify the default app at `http://localhost:5173`.
 - **Purpose**: Establishes the foundation for the frontend application using SvelteKit with linting and testing tools.
@@ -479,7 +479,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Run the following command to install dependencies:
      ```bash
-     pnpm install @better-auth/svelte @huggingface/transformers @urql/svelte graphql svelte-dnd-action svelte-chartjs chart.js wavesurfer.js @stripe/stripe-js @aws-sdk/client-ses @aws-sdk/client-s3 twilio @shadcn/svelte workbox-window web-push @google-analytics/ga4 lucide-svelte
+     pnpm i install @better-auth/svelte @huggingface/transformers @urql/svelte graphql svelte-dnd-action svelte-chartjs chart.js wavesurfer.js @stripe/stripe-js @aws-sdk/client-ses @aws-sdk/client-s3 twilio @shadcn/svelte workbox-window web-push @google-analytics/ga4 lucide-svelte
      ```
   2. Initialize ShadCN in the project:
      ```bash
@@ -555,7 +555,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install Workbox CLI globally:
      ```bash
-     npm install -g workbox-cli
+     pnpm install -g workbox-cli
      ```
   2. Create `src/service-worker.js`:
      ```javascript
@@ -3314,7 +3314,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install `svelte-social-share`:
      ```bash
-     npm install svelte-social-share
+     pnpm i svelte-social-share
      ```
   2. Update `src/lib/ArticleWidget.svelte` to include social sharing:
      ```svelte
@@ -3756,7 +3756,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 ### Subtask 5.8: Optimize Performance
 - **Action**: Improve app performance based on testing feedback.
 - **Steps**:
-  1. Analyze build output (`npm run build`) to identify large assets.
+  1. Analyze build output (`pnpm run build`) to identify large assets.
   2. Optimize images and lazy-load non-critical resources.
   3. Implement code splitting for large components if needed.
 - **Purpose**: Enhances app performance for better user experience.
@@ -3767,7 +3767,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Build the project:
      ```bash
-     npm run build
+     pnpm run build
      ```
   2. Deploy to Vercel, Netlify, or another provider, updating environment variables (e.g., API keys).
   3. Test the live URL and monitor logs.
@@ -3781,7 +3781,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install a natural language generation library:
      ```bash
-     npm install @huggingface/transformers
+     pnpm i @huggingface/transformers
      ```
   2. Create `src/lib/podcastGenerator.js`:
      ```javascript
@@ -3964,7 +3964,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install AWS SDK:
      ```bash
-     npm install @aws-sdk/client-s3
+     pnpm i @aws-sdk/client-s3
      ```
   2. Update `src/routes/api/generate-podcast/+server.js` as shown in Subtask 6.2 (already includes S3 upload logic).
   3. Update `wp-content/plugins/asapdigest-core/asapdigest-core.php` with `asap_update_podcast_url` as shown in Subtask 1.3.
@@ -4017,7 +4017,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 - **Steps**:
   1. Install Lucide Svelte:
      ```bash
-     npm install lucide-svelte
+     pnpm i lucide-svelte
      ```
   2. Verify in `package.json`.
 - **Purpose**: Adds Lucide Svelte for modern icons.
@@ -4051,7 +4051,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 ### Subtask 10.2: Optimize Icon Usage
 - **Action**: Ensure icons are tree-shaken and styled.
 - **Steps**:
-  1. Verify bundle size with `npm run build`.
+  1. Verify bundle size with `pnpm run build`.
   2. Apply consistent Tailwind classes.
   3. Update `src/app.css` with icon styling.
 - **Purpose**: Optimizes icon performance and consistency.
