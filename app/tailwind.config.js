@@ -58,9 +58,6 @@ const config = {
 				sans: [...fontFamily.sans]
 			}
 		}
-	},
-	plugins: {
-		'border-border': { 'border-color': 'hsl(var(--border))' }
 	}
 };
 
