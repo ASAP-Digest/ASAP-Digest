@@ -9,8 +9,19 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
-	}
+		"moduleResolution": "bundler",
+		"target": "ESNext",
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true
+	},
+	"include": [
+		".svelte-kit/ambient.d.ts",
+		".svelte-kit/types/**/$types.d.ts",
+		"src/**/*.js",
+		"src/**/*.ts",
+		"src/**/*.svelte",
+		"src/**/*.d.ts"
+	]
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
 	//

@@ -1,17 +1,20 @@
 <script>
   import "../app.css";
+  import Navigation from "$lib/components/layout/Navigation.svelte";
+  import Footer from "$lib/components/layout/Footer.svelte";
+  import PerformanceMonitor from "$lib/components/ui/PerformanceMonitor.svelte";
 </script>
 
 <div class="min-h-screen bg-background text-foreground flex flex-col">
-  <header class="bg-primary text-primary-foreground p-4 shadow-md">
-    <h1 class="text-xl font-bold">ASAP Digest</h1>
-  </header>
+  <Navigation />
   
-  <main class="flex-1 container mx-auto p-4">
+  <main class="flex-1 container mx-auto px-4 py-4">
     <slot />
   </main>
   
-  <footer class="bg-muted text-muted-foreground p-4 text-center">
-    <p class="text-sm">© 2024 ASAP Digest</p>
-  </footer>
+  <Footer />
+  
+  {#if import.meta.env.DEV}
+    <PerformanceMonitor />
+  {/if}
 </div>
