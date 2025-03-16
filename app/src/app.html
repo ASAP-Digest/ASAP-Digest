@@ -7,17 +7,67 @@
 		<link rel="manifest" href="/manifest.json" />
 		<meta name="theme-color" content="#00ffff" />
 		<title>ASAP Digest</title>
-		<!-- Google Analytics -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+		
+		<!-- Preconnect to critical domains -->
+		<link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+		<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+		
+		<!-- DNS prefetch for other domains -->
+		<link rel="dns-prefetch" href="https://www.google-analytics.com" />
+		
+		<!-- Google Analytics - async and deferred -->
+		<script async defer src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
 		<script>
 		window.dataLayer = window.dataLayer || [];
 		function gtag(){dataLayer.push(arguments);}
 		gtag('js', new Date());
-		gtag('config', 'G-XXXXXXXXXX');
+		gtag('config', 'G-XXXXXXXXXX', { 'send_page_view': false });
+		// We'll send page views manually after the page is fully loaded
 		</script>
+		
+		<!-- Service Worker Registration is now handled by SvelteKit -->
+		
+		<!-- Performance optimizations -->
+		<link rel="preload" as="font" href="/fonts/main-font.woff2" type="font/woff2" crossorigin />
+		
+		<!-- Add resource hints for critical assets -->
+		<link rel="prefetch" href="/icons/icon-192x192.png" />
+		
+		<!-- Handle Vite preload errors -->
+		<script>
+			// Reload page on Vite preload errors (handles pnpm nested dependency issues)
+			window.addEventListener('vite:preloadError', (event) => {
+				console.log('Vite preload error occurred, reloading page...');
+				window.location.reload();
+			});
+			
+			// Prevent service worker registration errors from showing in console
+			window.addEventListener('error', function(event) {
+				if (event.message && event.message.includes('Service Worker')) {
+					event.preventDefault();
+				}
+			});
+		</script>
+		
 		%sveltekit.head%
 	</head>
-	<body>
+	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		
+		<!-- Deferred analytics page view -->
+		<script>
+			// Send page view after the page is fully loaded
+			window.addEventListener('load', () => {
+				setTimeout(() => {
+					if (window.gtag) {
+						gtag('event', 'page_view', {
+							page_title: document.title,
+							page_location: window.location.href,
+							page_path: window.location.pathname
+						});
+					}
+				}, 100);
+			});
+		</script>
 	</body>
 </html>

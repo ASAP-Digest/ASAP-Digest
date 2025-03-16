@@ -2,7 +2,7 @@
   import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from 'lucide-svelte';
   
   // Mock notification data
-  const notifications = [
+  let notifications = [
     { 
       id: 1, 
       type: 'digest', 
@@ -59,20 +59,19 @@
   
   // Mark notification as read
   function markAsRead(id) {
-    notifications.forEach(notification => {
+    notifications = notifications.map(notification => {
       if (notification.id === id) {
-        notification.read = true;
+        return { ...notification, read: true };
       }
+      return notification;
     });
-    notifications = notifications; // Trigger reactivity
   }
   
   // Mark all as read
   function markAllAsRead() {
-    notifications.forEach(notification => {
-      notification.read = true;
+    notifications = notifications.map(notification => {
+      return { ...notification, read: true };
     });
-    notifications = notifications; // Trigger reactivity
   }
   
   // Get icon for notification type

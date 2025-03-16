@@ -1,0 +1,20 @@
+# robots.txt for ASAP Digest
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /account/
+Disallow: /api/
+Disallow: /private/
+
+# Disallow development-specific paths
+Disallow: /__dev/
+Disallow: /__error
+Disallow: /dev-*
+
+# Sitemap location
+Sitemap: https://asapdigest.com/sitemap.xml
+
+# Crawl delay to prevent server overload
+Crawl-delay: 1 

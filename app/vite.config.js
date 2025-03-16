@@ -1,31 +1,42 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [
+		tailwindcss(),
+		sveltekit()
+	],
+	server: {
+		fs: {
+			strict: false,
+			allow: ['..', '../..', '../../node_modules', '.', './node_modules']
+		},
+		hmr: {
+			clientPort: 5173,
+			overlay: false
+		}
+	},
 	build: {
 		target: 'esnext',
-		minify: 'esbuild',
-		cssMinify: true,
 		rollupOptions: {
 			output: {
 				manualChunks: {
-					'lucide-icons': ['lucide-svelte'],
-					'svelte-core': ['svelte', 'svelte/internal', 'svelte/store'],
+					'svelte': ['svelte'],
+					'tailwind': ['tailwindcss']
 				}
 			}
 		}
 	},
-	server: {
-		fs: {
-			strict: false
-		},
-		hmr: {
-			overlay: false
-		}
+	resolve: {
+		preserveSymlinks: true,
+		dedupe: ['svelte', '@sveltejs/kit']
 	},
 	optimizeDeps: {
-		include: ['lucide-svelte'],
-		exclude: []
+		exclude: ['@sveltejs/kit'],
+		include: ['tailwindcss']
+	},
+	ssr: {
+		noExternal: ['esm-env']
 	}
 });

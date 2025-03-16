@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { page } from '$app/stores';
   import { Home, Search, Calendar, User, Bell, Menu, X } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
@@ -25,7 +25,11 @@
   ];
   
   // Check if a nav item is active
-  function isActive(path: string) {
+  /**
+   * @param {string} path
+   * @returns {boolean}
+   */
+  function isActive(path) {
     if (path === '/') {
       return $page.url.pathname === '/';
     }
