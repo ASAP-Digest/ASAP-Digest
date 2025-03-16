@@ -22,8 +22,7 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: {
-					'svelte': ['svelte'],
-					'tailwind': ['tailwindcss']
+					'svelte': ['svelte']
 				}
 			}
 		}

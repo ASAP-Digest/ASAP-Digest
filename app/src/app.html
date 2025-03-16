@@ -35,18 +35,23 @@
 		
 		<!-- Handle Vite preload errors -->
 		<script>
-			// Reload page on Vite preload errors (handles pnpm nested dependency issues)
+			// Handle module loading errors by reloading the page
 			window.addEventListener('vite:preloadError', (event) => {
-				console.log('Vite preload error occurred, reloading page...');
-				window.location.reload();
+				console.warn('Module loading failed, reloading page:', event.detail.message);
+				// Wait a moment before reloading to avoid infinite reload loops
+				setTimeout(() => window.location.reload(), 1000);
 			});
-			
+
 			// Prevent service worker registration errors from showing in console
-			window.addEventListener('error', function(event) {
-				if (event.message && event.message.includes('Service Worker')) {
-					event.preventDefault();
-				}
-			});
+			const originalServiceWorkerRegister = navigator.serviceWorker?.register;
+			if (originalServiceWorkerRegister) {
+				navigator.serviceWorker.register = function(...args) {
+					return originalServiceWorkerRegister.apply(this, args).catch(err => {
+						console.debug('Service worker registration suppressed:', err.message);
+						return Promise.resolve(null); // Return resolved promise to prevent errors
+					});
+				};
+			}
 		</script>
 		
 		%sveltekit.head%

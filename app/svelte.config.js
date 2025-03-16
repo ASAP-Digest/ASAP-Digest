@@ -1,9 +1,9 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	kit: {
-		// Using adapter-auto for compatibility with SvelteKit 2
+		// Using adapter-node for Node.js server deployment
 		adapter: adapter(),
 
 		// Performance optimizations
