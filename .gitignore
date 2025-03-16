@@ -20,6 +20,14 @@ wp-content/uploads/*
 /docs/DEPLOYMENT_CHECKLIST.md
 /docs/ENVIRONMENT.md
 /docs/FUTURE_PLANS.md
+/docs/ROADMAP_TASKS.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_1.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_2.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_3.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_4.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_5.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_6.md
+/docs/ASAP_DIGEST_ROADMAP_LLM_7.md
 
 
 # ignore everything in the "wp-content" directory, except:

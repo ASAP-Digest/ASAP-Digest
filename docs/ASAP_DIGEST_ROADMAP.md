@@ -1,6 +1,22 @@
-﻿## ASAP DIGEST BUILD 
+﻿# ASAP DIGEST BUILD 
 
-### ⚡️ ASAP Digest - Devour Insights at AI Speed
+<!-- 
+IMPORTANT REMINDER FOR LLM ASSISTANTS:
+This roadmap file has been split into smaller, more manageable files for LLM processing.
+PLEASE USE THE FOLLOWING FILES INSTEAD OF THIS ONE:
+- ASAP_DIGEST_ROADMAP_LLM_1.md - Project overview and initial setup
+- ASAP_DIGEST_ROADMAP_LLM_2.md - Frontend dependencies and core infrastructure
+- ASAP_DIGEST_ROADMAP_LLM_3.md - Widget implementations (Podcast, Key Term, Financial)
+- ASAP_DIGEST_ROADMAP_LLM_4.md - Widget implementations (X Post, Reddit, Event, Polymarket)
+- ASAP_DIGEST_ROADMAP_LLM_5.md - Main dashboard, profile settings, plans page and admin area
+- ASAP_DIGEST_ROADMAP_LLM_6.md - Additional features (digest, push notifications, feedback)
+- ASAP_DIGEST_ROADMAP_LLM_7.md - Performance metrics, multi-device sync, authentication and testing
+
+These files contain the same information but in a format that is easier for LLMs to process.
+Always check task status in ROADMAP_TASKS.md before beginning new work.
+-->
+
+## ASAP Digest - Devour Insights at AI Speed
 
 ## General Summary
 
