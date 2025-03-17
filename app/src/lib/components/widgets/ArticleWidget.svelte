@@ -63,7 +63,7 @@
 	});
 </script>
 
-<Card class="article-widget overflow-hidden h-full">
+<Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1">
 	<CardHeader class="pb-4">
 		{#if imageUrl}
 			<div class="h-32 overflow-hidden rounded-md mb-3">
@@ -104,23 +104,12 @@
 		</Button>
 		
 		<div class="flex gap-2">
-			<Button variant="ghost" size="sm" onclick={handleTextToSpeech}>
+			<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="p-0 h-9 w-9 flex items-center justify-center">
 				<Volume2 size={16} />
 			</Button>
-			<Button variant="ghost" size="sm" onclick={handleShare}>
+			<Button variant="ghost" size="sm" onclick={handleShare} class="p-0 h-9 w-9 flex items-center justify-center">
 				<Share2 size={16} />
 			</Button>
 		</div>
 	</CardFooter>
-</Card>
-
-<style>
-	.article-widget {
-		transition: transform 0.2s ease, box-shadow 0.2s ease;
-	}
-	
-	.article-widget:hover {
-		transform: translateY(-3px);
-		box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-	}
-</style> 
+</Card> 

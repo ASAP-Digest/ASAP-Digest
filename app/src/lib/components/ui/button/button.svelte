@@ -2,22 +2,21 @@
 	import { tv } from "tailwind-variants";
 
 	export const buttonVariants = tv({
-		base: "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+		base: "inline-flex items-center justify-center rounded-md whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
 		variants: {
 			variant: {
-				default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow",
-				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-				outline:
-					"border-gray-200 bg-background hover:bg-accent hover:text-accent-foreground shadow-sm",
-				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
+				default: "bg-primary text-primary-foreground hover:bg-primary/90",
+				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+				outline: "border border-border bg-background hover:bg-accent hover:text-accent-foreground",
+				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
 				ghost: "hover:bg-accent hover:text-accent-foreground",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 			size: {
-				default: "h-9 px-4 py-2",
-				sm: "h-8 rounded-md px-3 text-xs",
-				lg: "h-10 rounded-md px-8",
-				icon: "h-9 w-9",
+				default: "h-10 px-4 py-2",
+				sm: "h-9 rounded-md px-3",
+				lg: "h-11 rounded-md px-8",
+				icon: "h-10 w-10",
 			},
 		},
 		defaultVariants: {
@@ -30,26 +29,32 @@
 <script>
 	import { cn } from "$lib/utils.js";
 
+	/**
+	 * @typedef {"default" | "destructive" | "outline" | "secondary" | "ghost" | "link"} ButtonVariant
+	 * @typedef {"default" | "sm" | "lg" | "icon"} ButtonSize
+	 * @typedef {"button" | "submit" | "reset"} ButtonType
+	 */
+
 	let {
-		class: className,
-		variant = "default",
-		size = "default",
+		class: className = '',
+		variant = /** @type {ButtonVariant} */ ("default"),
+		size = /** @type {ButtonSize} */ ("default"),
 		ref = $bindable(null),
 		href = undefined,
-		type = "button",
+		type = /** @type {ButtonType} */ ("button"),
 		children,
 		...restProps
 	} = $props();
 </script>
 
 {#if href}
-	<a bind:this={ref} class={cn(buttonVariants({ variant, size }), className)} {href} {...restProps}>
+	<a bind:this={ref} class={cn(buttonVariants({ variant, size, className }))} {href} {...restProps}>
 		{@render children?.()}
 	</a>
 {:else}
 	<button
 		bind:this={ref}
-		class={cn(buttonVariants({ variant, size }), className)}
+		class={cn(buttonVariants({ variant, size, className }))}
 		{type}
 		{...restProps}
 	>
