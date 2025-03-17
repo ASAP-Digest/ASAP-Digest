@@ -161,7 +161,7 @@
     </div>
   </section>
 
-  <section class="container mx-auto px-4 py-8">
+  <section>
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold">Today's Articles</h2>
       <a href="/articles" class="text-primary flex items-center gap-1 text-sm">
@@ -194,7 +194,7 @@
   </section>
   
   <!-- Podcasts Section -->
-  <section class="container mx-auto px-4 py-8">
+  <section>
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold">Featured Podcasts</h2>
       <a href="/podcasts" class="text-primary flex items-center gap-1 text-sm">

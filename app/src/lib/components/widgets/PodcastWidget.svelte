@@ -147,8 +147,8 @@
 			if (navigator.share) {
 				await navigator.share(shareData);
 				// Track analytics if available
-				if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-					window.gtag('event', 'share', { event_category: 'Podcast', event_label: title });
+				if (typeof window !== 'undefined' && 'gtag' in window && typeof window['gtag'] === 'function') {
+					window['gtag']('event', 'share', { event_category: 'Podcast', event_label: title });
 				}
 			} else {
 				await navigator.clipboard.writeText(`${title}: ${summary} - ${window.location.href}`);
@@ -163,7 +163,7 @@
 <Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 bg-white/80 border-2 border-cyan-400">
 	{#if isLoading}
 		<div class="p-4 flex items-center justify-center h-48">
-			<div class="w-8 h-8 border-t-2 border-b-2 border-primary rounded-full animate-spin"></div>
+			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
 		</div>
 	{:else if error}
 		<div class="p-4 text-center text-red-500">
@@ -174,25 +174,25 @@
 			<CardTitle class="text-lg font-serif flex items-center">
 				<Mic class="mr-2 w-6 h-6" />{title}
 			</CardTitle>
-			<CardDescription class="flex items-center gap-2 text-xs text-gray-500">
+			<CardDescription class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
 				<span>Episode {episode}</span>
 			</CardDescription>
 		</CardHeader>
 		
 		<CardContent class="pb-4">
-			<p class="text-sm text-gray-700 {expanded ? '' : 'line-clamp-3'}">
+			<p class="text-sm text-[hsl(var(--foreground))] {expanded ? '' : 'line-clamp-3'}">
 				{summary || (isOffline ? 'Offline content unavailable' : 'Loading...')}
 			</p>
 			
 			<div class="flex justify-between items-center mt-4">
-				<span class="text-sm text-gray-500">{duration} mins</span>
+				<span class="text-sm text-[hsl(var(--muted-foreground))]">{duration} mins</span>
 				
 				<div class="flex gap-2">
 					<Button 
 						variant="outline" 
 						size="sm" 
 						on:click={toggleAudio}
-						class={audioPlaying ? 'bg-blue-600 text-white' : ''}
+						class={audioPlaying ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : ''}
 						aria-label={audioPlaying ? 'Pause audio' : 'Play audio'}
 					>
 						{#if audioPlaying}
@@ -229,7 +229,7 @@
 			{/if}
 			
 			{#if expanded}
-				<div class="mt-4 p-3 bg-gray-100 rounded-md">
+				<div class="mt-4 p-3 bg-[hsl(var(--muted))] rounded-md">
 					<p class="text-sm">{summary}</p>
 					<a href="#" class="text-cyan-600 hover:text-cyan-800 text-sm mt-2 inline-block">
 						Listen to Full Podcast

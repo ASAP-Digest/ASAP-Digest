@@ -6,7 +6,7 @@
 
 <div
 	bind:this={ref}
-	class={cn("bg-card text-card-foreground rounded-xl border border-border shadow", className)}
+	class={cn("bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] rounded-xl border border-[hsl(var(--border))] shadow", className)}
 	{...restProps}
 >
 	{@render children?.()}

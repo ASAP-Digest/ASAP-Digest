@@ -22,13 +22,46 @@
     // Initialize image optimization
     const imageObserver = initImageOptimization();
     
+    // Debug helper for Tailwind classes
+    console.debug('Checking for layout issues...');
+    const checkStyles = () => {
+      /** @type {Array<{element: Element, class: string}>} */
+      const missingClasses = [];
+      document.querySelectorAll('[class]').forEach(el => {
+        const classes = Array.from(el.classList);
+        classes.forEach(cls => {
+          // Check if any class has 'text-' or 'bg-' but doesn't use the new syntax for theme colors
+          if ((cls.startsWith('text-') || cls.startsWith('bg-') || cls.startsWith('border-')) && 
+              (cls.includes('primary') || cls.includes('secondary') || cls.includes('background') || 
+               cls.includes('foreground') || cls.includes('muted') || cls.includes('accent')) && 
+              !cls.includes('[hsl(var(')) {
+            missingClasses.push({ element: el, class: cls });
+          }
+        });
+      });
+      
+      if (missingClasses.length > 0) {
+        console.warn('Found potentially problematic Tailwind classes:', missingClasses);
+        console.info('Consider updating to Tailwind 4 syntax, e.g.:', { 
+          'text-primary': 'text-[hsl(var(--primary))]',
+          'bg-background': 'bg-[hsl(var(--background))]',
+          'border-border': 'border-[hsl(var(--border))]'
+        });
+      } else {
+        console.debug('No problematic Tailwind classes detected');
+      }
+    };
+    
+    // Run check after a short delay to allow all components to mount
+    setTimeout(checkStyles, 1000);
+    
     // Add intersection observer for lazy loading images
     const lazyImages = document.querySelectorAll('img[loading="lazy"]');
     if ('IntersectionObserver' in window) {
       const lazyImageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            const img = entry.target;
+            const img = /** @type {HTMLImageElement} */ (entry.target);
             if (img.dataset.src) {
               img.src = img.dataset.src;
             }

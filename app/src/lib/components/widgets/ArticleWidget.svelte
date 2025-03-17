@@ -79,7 +79,7 @@
 <Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1">
 	{#if isLoading}
 		<div class="p-4 flex items-center justify-center h-64">
-			<div class="w-8 h-8 border-t-2 border-b-2 border-primary rounded-full animate-spin"></div>
+			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
 		</div>
 	{:else if error}
 		<div class="p-4 text-center text-red-500">
