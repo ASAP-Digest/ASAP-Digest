@@ -10,7 +10,6 @@
 		
 		<!-- Preconnect to critical domains -->
 		<link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-		<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
 		
 		<!-- DNS prefetch for other domains -->
 		<link rel="dns-prefetch" href="https://www.google-analytics.com" />
@@ -27,11 +26,12 @@
 		
 		<!-- Service Worker Registration is now handled by SvelteKit -->
 		
-		<!-- Performance optimizations -->
-		<link rel="preload" as="font" href="/fonts/main-font.woff2" type="font/woff2" crossorigin />
-		
-		<!-- Add resource hints for critical assets -->
-		<link rel="prefetch" href="/icons/icon-192x192.png" />
+		<!-- System font strategy - no external font loading -->
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+			}
+		</style>
 		
 		<!-- Handle Vite preload errors -->
 		<script>
