@@ -1,8 +1,28 @@
 <script>
   import { Calendar, Bookmark, Share2, ArrowUpRight } from 'lucide-svelte';
   import ArticleWidget from '$lib/components/widgets/ArticleWidget.svelte';
+  import { fetchArticles } from '$lib/api/wordpress.js';
+  import { onMount } from 'svelte';
   
-  // Sample article data to test the widget
+  /**
+   * State for articles
+   * @type {Array<import('$lib/api/wordpress.js').ArticleProps>}
+   */
+  let articles = [];
+  
+  /**
+   * Loading state for articles
+   * @type {boolean}
+   */
+  let isLoading = true;
+  
+  /**
+   * Error state for articles
+   * @type {string|null}
+   */
+  let error = null;
+  
+  // Sample article data as fallback
   const sampleArticles = [
     {
       id: 'article-1',
@@ -35,6 +55,35 @@
       tags: ['DeFi', 'Crypto', 'Finance']
     }
   ];
+  
+  /**
+   * Fetch articles from the WordPress API
+   */
+  async function loadArticles() {
+    isLoading = true;
+    error = null;
+    
+    try {
+      const fetchedArticles = await fetchArticles({ perPage: 9 });
+      
+      if (fetchedArticles && fetchedArticles.length > 0) {
+        articles = fetchedArticles;
+      } else {
+        // If no articles are returned, use sample articles as fallback
+        articles = sampleArticles;
+        console.warn('No articles returned from API, using sample data');
+      }
+    } catch (err) {
+      console.error('Failed to fetch articles:', err);
+      error = err.message || 'Failed to load articles';
+      articles = sampleArticles; // Use sample articles as fallback
+    } finally {
+      isLoading = false;
+    }
+  }
+  
+  // Load articles on component mount
+  onMount(loadArticles);
 </script>
 
 <div class="space-y-8">
@@ -87,13 +136,35 @@
   </section>
 
   <section class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6">Today's Digest</h1>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each sampleArticles as article}
-        <ArticleWidget {...article} />
-      {/each}
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold">Today's Articles</h2>
+      <a href="/articles" class="text-primary flex items-center gap-1 text-sm">
+        <span>View All</span>
+        <ArrowUpRight size={16} />
+      </a>
     </div>
+    
+    {#if isLoading}
+      <div class="flex justify-center items-center p-12">
+        <div class="w-12 h-12 border-t-4 border-primary border-solid rounded-full animate-spin"></div>
+      </div>
+    {:else if error}
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+        <p>Error loading articles: {error}</p>
+        <p class="text-sm mt-1">Showing sample articles instead.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {#each sampleArticles as article}
+          <ArticleWidget {...article} />
+        {/each}
+      </div>
+    {:else}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {#each articles as article}
+          <ArticleWidget {...article} />
+        {/each}
+      </div>
+    {/if}
   </section>
 </div>
 

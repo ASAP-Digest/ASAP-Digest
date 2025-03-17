@@ -2,6 +2,7 @@
 	import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { BookOpen, Share2, Volume2 } from 'lucide-svelte';
+	import { onMount } from 'svelte';
 	
 	/**
 	 * @typedef {Object} ArticleProps
@@ -29,6 +30,18 @@
 		date = new Date().toLocaleDateString(),
 		tags = []
 	} = $props();
+	
+	/**
+	 * Loading state for the article
+	 * @type {boolean}
+	 */
+	let isLoading = false;
+	
+	/**
+	 * Error state for the article
+	 * @type {string|null}
+	 */
+	let error = null;
 	
 	/**
 	 * Handles click on the read more button
@@ -64,52 +77,62 @@
 </script>
 
 <Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1">
-	<CardHeader class="pb-4">
-		{#if imageUrl}
-			<div class="h-32 overflow-hidden rounded-md mb-3">
-				<img src={imageUrl} alt={title} class="w-full h-full object-cover" />
-			</div>
-		{/if}
-		<CardTitle class="text-lg font-semibold line-clamp-2">{title}</CardTitle>
-		<CardDescription class="flex items-center gap-2 text-xs text-gray-500">
-			<span>{source}</span>
-			<span class="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
-			<span>{date}</span>
-		</CardDescription>
-	</CardHeader>
-	
-	<CardContent class="pb-4">
-		<p class="text-sm text-gray-700">{excerpt}</p>
-		
-		{#if tags.length > 0}
-			<div class="flex flex-wrap gap-2 mt-3">
-				{#each tags as tag}
-					<span class="text-xs px-2 py-1 bg-gray-100 rounded-md text-gray-700">
-						{tag}
-					</span>
-				{/each}
-			</div>
-		{/if}
-	</CardContent>
-	
-	<CardFooter class="flex justify-between pt-0">
-		<Button 
-			variant="outline" 
-			size="sm" 
-			onclick={handleReadMore}
-			class="flex gap-1"
-		>
-			<BookOpen size={16} />
-			<span>Read</span>
-		</Button>
-		
-		<div class="flex gap-2">
-			<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="p-0 h-9 w-9 flex items-center justify-center">
-				<Volume2 size={16} />
-			</Button>
-			<Button variant="ghost" size="sm" onclick={handleShare} class="p-0 h-9 w-9 flex items-center justify-center">
-				<Share2 size={16} />
-			</Button>
+	{#if isLoading}
+		<div class="p-4 flex items-center justify-center h-64">
+			<div class="w-8 h-8 border-t-2 border-b-2 border-primary rounded-full animate-spin"></div>
 		</div>
-	</CardFooter>
+	{:else if error}
+		<div class="p-4 text-center text-red-500">
+			<p>Error loading article: {error}</p>
+		</div>
+	{:else}
+		<CardHeader class="pb-4">
+			{#if imageUrl}
+				<div class="h-32 overflow-hidden rounded-md mb-3">
+					<img src={imageUrl} alt={title} class="w-full h-full object-cover" />
+				</div>
+			{/if}
+			<CardTitle class="text-lg font-semibold line-clamp-2">{title}</CardTitle>
+			<CardDescription class="flex items-center gap-2 text-xs text-gray-500">
+				<span>{source}</span>
+				<span class="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
+				<span>{date}</span>
+			</CardDescription>
+		</CardHeader>
+		
+		<CardContent class="pb-4">
+			<p class="text-sm text-gray-700">{excerpt}</p>
+			
+			{#if tags.length > 0}
+				<div class="flex flex-wrap gap-2 mt-3">
+					{#each tags as tag}
+						<span class="text-xs px-2 py-1 bg-gray-100 rounded-md text-gray-700">
+							{tag}
+						</span>
+					{/each}
+				</div>
+			{/if}
+		</CardContent>
+		
+		<CardFooter class="flex justify-between pt-0">
+			<Button 
+				variant="outline" 
+				size="sm" 
+				onclick={handleReadMore}
+				class="flex gap-1"
+			>
+				<BookOpen size={16} />
+				<span>Read</span>
+			</Button>
+			
+			<div class="flex gap-2">
+				<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="p-0 h-9 w-9 flex items-center justify-center">
+					<Volume2 size={16} />
+				</Button>
+				<Button variant="ghost" size="sm" onclick={handleShare} class="p-0 h-9 w-9 flex items-center justify-center">
+					<Share2 size={16} />
+				</Button>
+			</div>
+		</CardFooter>
+	{/if}
 </Card> 
