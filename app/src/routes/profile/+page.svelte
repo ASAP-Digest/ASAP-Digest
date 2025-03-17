@@ -50,7 +50,7 @@
 <div class="max-w-4xl mx-auto">
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
     <!-- User header -->
-    <div class="bg-primary/10 p-6 flex flex-col md:flex-row items-center gap-6">
+    <div class="bg-[hsl(var(--primary))]/10 p-6 flex flex-col md:flex-row items-center gap-6">
       <img 
         src={user.avatar} 
         alt={user.name} 
@@ -68,28 +68,28 @@
     <!-- Tabs -->
     <div class="flex border-b border-gray-200 dark:border-gray-700">
       <button 
-        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
+        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'profile' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('profile')}
       >
         <User size={18} />
         <span>Profile</span>
       </button>
       <button 
-        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'preferences' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
+        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'preferences' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('preferences')}
       >
         <Settings size={18} />
         <span>Preferences</span>
       </button>
       <button 
-        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'notifications' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
+        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'notifications' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('notifications')}
       >
         <Bell size={18} />
         <span>Notifications</span>
       </button>
       <button 
-        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'digests' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
+        class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'digests' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('digests')}
       >
         <BookOpen size={18} />
@@ -153,7 +153,7 @@
             </div>
             <button 
               onclick={toggleDarkMode}
-              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.darkMode ? 'bg-primary' : ''}"
+              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.darkMode ? 'bg-[hsl(var(--primary))]' : ''}"
             >
               <span 
                 class="block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform {user.preferences.darkMode ? 'translate-x-4' : 'translate-x-0'}"
@@ -191,7 +191,7 @@
             </div>
             <button 
               onclick={toggleNotifications}
-              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.notifications ? 'bg-primary' : ''}"
+              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.notifications ? 'bg-[hsl(var(--primary))]' : ''}"
             >
               <span 
                 class="block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform {user.preferences.notifications ? 'translate-x-4' : 'translate-x-0'}"
@@ -207,7 +207,7 @@
             </div>
             <button 
               onclick={toggleEmailDigest}
-              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.emailDigest ? 'bg-primary' : ''}"
+              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.emailDigest ? 'bg-[hsl(var(--primary))]' : ''}"
             >
               <span 
                 class="block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform {user.preferences.emailDigest ? 'translate-x-4' : 'translate-x-0'}"

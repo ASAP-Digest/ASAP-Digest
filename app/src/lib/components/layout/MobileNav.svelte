@@ -19,7 +19,7 @@
   <button 
     type="button"
     aria-label={isOpen ? "Close menu" : "Open menu"}
-    class="fixed bottom-4 right-4 z-50 bg-primary text-primary-foreground rounded-full p-3 shadow-lg"
+    class="fixed bottom-4 right-4 z-50 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full p-3 shadow-lg"
     onclick={toggleMenu}
   >
     {#if isOpen}

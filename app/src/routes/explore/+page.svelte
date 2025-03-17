@@ -19,7 +19,7 @@
       </div>
       
       <div class="mt-4 flex flex-wrap gap-2">
-        <button class="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
+        <button class="flex items-center gap-1 bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] px-3 py-1 rounded-full text-sm">
           Articles
         </button>
         <button class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full text-sm">

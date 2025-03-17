@@ -112,104 +112,58 @@
   onMount(loadArticles);
 </script>
 
-<div class="space-y-8">
-  <section class="bg-primary/10 rounded-lg p-6 md:p-8">
-    <h1 class="text-2xl md:text-3xl font-bold mb-4">Welcome to ASAP Digest</h1>
-    <p class="text-lg mb-6">Your daily curated feed of essential AI, tech, and finance updates.</p>
-    <div class="flex flex-col sm:flex-row gap-4">
-      <a href="/today" class="btn bg-primary text-white hover:bg-primary/90 px-4 py-2 rounded-md flex items-center gap-2">
-        <Calendar size={18} />
-        <span>Today's Digest</span>
-      </a>
-      <a href="/auth/login" class="btn bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-4 py-2 rounded-md flex items-center gap-2">
-        <Bookmark size={18} />
-        <span>Personalize Your Feed</span>
-      </a>
-    </div>
-  </section>
+<main class="container mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Today's ASAP Digest</h1>
 
-  <section>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold">Latest Digests</h2>
-      <a href="/archive" class="text-primary flex items-center gap-1 text-sm">
-        <span>View All</span>
-        <ArrowUpRight size={16} />
-      </a>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Articles Section -->
+    <div class="col-span-1 md:col-span-2 space-y-6">
+      <h2 class="text-xl font-semibold text-[hsl(var(--foreground))] mb-4">Top Articles</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ArticleWidget 
+          id="article-1"
+          title="AI Development Accelerates"
+          excerpt="New breakthroughs in artificial intelligence are changing the landscape of technology development."
+          source="TechInsider"
+          sourceUrl="https://techinsider.com/ai-development"
+          date="Today"
+          tags={['AI', 'Technology']}
+        />
+        <ArticleWidget 
+          id="article-2"
+          title="Market Update: Crypto Trends"
+          excerpt="Bitcoin reaches new heights as institutional adoption continues to grow."
+          source="CryptoNews"
+          sourceUrl="https://cryptonews.com/bitcoin-trends"
+          date="Yesterday"
+          tags={['Crypto', 'Markets']}
+        />
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each Array(6) as _, i}
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div class="p-4">
-            <div class="flex justify-between items-start mb-3">
-              <span class="text-sm text-gray-500 dark:text-gray-400">{new Date().toLocaleDateString()}</span>
-              <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <Share2 size={16} />
-              </button>
-            </div>
-            <h3 class="font-medium mb-2">Daily Digest #{i + 1}</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-            </p>
-            <a href={`/digest/${i + 1}`} class="text-primary text-sm flex items-center gap-1">
-              Read More
-              <ArrowUpRight size={14} />
-            </a>
-          </div>
-        </div>
-      {/each}
+    <!-- Podcast Section -->
+    <div class="col-span-1 md:col-span-2 space-y-6">
+      <h2 class="text-xl font-semibold text-[hsl(var(--foreground))] mb-4">Featured Podcasts</h2>
+      <div class="grid grid-cols-1 gap-6">
+        <PodcastWidget 
+          id="podcast-1"
+          title="The AI Revolution"
+          summary="Exploring the latest developments in artificial intelligence and their implications for society."
+          episode={42}
+          duration={25}
+        />
+      </div>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold">Today's Articles</h2>
-      <a href="/articles" class="text-primary flex items-center gap-1 text-sm">
-        <span>View All</span>
-        <ArrowUpRight size={16} />
-      </a>
-    </div>
-    
-    {#if isLoading}
-      <div class="flex justify-center items-center p-12">
-        <div class="w-12 h-12 border-t-4 border-primary border-solid rounded-full animate-spin"></div>
-      </div>
-    {:else if error}
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-        <p>Error loading articles: {error}</p>
-        <p class="text-sm mt-1">Showing sample articles instead.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each sampleArticles as article}
-          <ArticleWidget {...article} />
-        {/each}
-      </div>
-    {:else}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each articles as article}
-          <ArticleWidget {...article} />
-        {/each}
-      </div>
-    {/if}
-  </section>
-  
-  <!-- Podcasts Section -->
-  <section>
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold">Featured Podcasts</h2>
-      <a href="/podcasts" class="text-primary flex items-center gap-1 text-sm">
-        <span>View All</span>
-        <ArrowUpRight size={16} />
-      </a>
-    </div>
-    
+  <!-- More Sections with proper spacing -->
+  <div class="mt-10 space-y-6">
+    <h2 class="text-xl font-semibold text-[hsl(var(--foreground))] mb-4">From Your Interests</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {#each samplePodcasts as podcast}
-        <PodcastWidget {...podcast} />
-      {/each}
+      <!-- More widgets can go here -->
     </div>
-  </section>
-</div>
+  </div>
+</main>
 
 <style>
   .btn {

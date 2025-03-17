@@ -65,19 +65,19 @@
           <input 
             type="checkbox" 
             bind:checked={rememberMe}
-            class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            class="w-4 h-4 text-[hsl(var(--primary))] border-gray-300 rounded focus:ring-[hsl(var(--primary))]"
           />
           <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
         </label>
         
-        <a href="/auth/reset-password" class="text-sm text-primary hover:underline">
+        <a href="/auth/reset-password" class="text-sm text-[hsl(var(--primary))] hover:underline">
           Forgot password?
         </a>
       </div>
       
       <button 
         type="submit" 
-        class="w-full flex items-center justify-center gap-2 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
+        class="w-full flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-white py-2 px-4 rounded-md hover:bg-[hsl(var(--primary))]/90 transition-colors"
       >
         <span>Sign In</span>
         <ArrowRight size={16} />
@@ -87,7 +87,7 @@
     <div class="mt-6 text-center">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         Don't have an account? 
-        <a href="/auth/register" class="text-primary hover:underline">
+        <a href="/auth/register" class="text-[hsl(var(--primary))] hover:underline">
           Sign up
         </a>
       </p>

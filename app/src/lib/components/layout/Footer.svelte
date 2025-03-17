@@ -7,13 +7,13 @@
         </p>
       </div>
       <div class="flex space-x-4">
-        <a href="/privacy" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
+        <a href="/privacy" class="text-sm text-gray-600 dark:text-gray-400 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]">
           Privacy Policy
         </a>
-        <a href="/terms" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
+        <a href="/terms" class="text-sm text-gray-600 dark:text-gray-400 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]">
           Terms of Service
         </a>
-        <a href="/contact" class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary">
+        <a href="/contact" class="text-sm text-gray-600 dark:text-gray-400 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]">
           Contact
         </a>
       </div>

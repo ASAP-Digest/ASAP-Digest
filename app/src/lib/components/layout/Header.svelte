@@ -8,28 +8,28 @@
     <div class="flex items-center">
       <a href="/" class="text-xl font-bold flex items-center gap-2">
         <img src="/logo.svg" alt="ASAP Digest" width="32" height="32" loading="lazy" onerror={() => {}} />
-        <span class="text-primary">ASAP</span>Digest
+        <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
       </a>
     </div>
     
     <nav class="hidden md:flex items-center space-x-6">
       <a 
         href="/" 
-        class="flex items-center gap-2 {$page.url.pathname === '/' ? 'text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary'}"
+        class="flex items-center gap-2 {$page.url.pathname === '/' ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]'}"
       >
         <Home size={18} />
         <span>Home</span>
       </a>
       <a 
         href="/profile" 
-        class="flex items-center gap-2 {$page.url.pathname === '/profile' ? 'text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary'}"
+        class="flex items-center gap-2 {$page.url.pathname === '/profile' ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]'}"
       >
         <User size={18} />
         <span>Profile</span>
       </a>
       <a 
         href="/auth/login" 
-        class="flex items-center gap-2 {$page.url.pathname === '/auth/login' ? 'text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary'}"
+        class="flex items-center gap-2 {$page.url.pathname === '/auth/login' ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]'}"
       >
         <LogIn size={18} />
         <span>Login</span>

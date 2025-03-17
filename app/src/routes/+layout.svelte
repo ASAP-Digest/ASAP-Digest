@@ -202,7 +202,7 @@
   let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
 </script>
 
-<div class="min-h-screen bg-background text-foreground flex flex-col">
+<div class="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] flex flex-col">
   {#if !isAuthRoute}
     <Navigation />
     <MobileNav />

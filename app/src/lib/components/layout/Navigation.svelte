@@ -41,7 +41,7 @@
 <nav class="hidden lg:flex w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-10">
   <div class="container mx-auto px-4 py-3 flex justify-between items-center">
     <a href="/" class="text-xl font-bold flex items-center gap-2">
-      <span class="text-primary">ASAP</span>Digest
+      <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
     </a>
     
     <div class="flex items-center space-x-6">
@@ -49,7 +49,7 @@
         <a 
           href={item.path} 
           data-sveltekit-preload-data="hover"
-          class="flex items-center gap-2 {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary'}"
+          class="flex items-center gap-2 {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))]'}"
         >
           <item.icon size={18} />
           <span>{item.name}</span>
@@ -63,7 +63,7 @@
 <div class="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-20">
   <div class="container mx-auto px-4 py-3 flex justify-between items-center">
     <a href="/" class="text-xl font-bold flex items-center gap-2">
-      <span class="text-primary">ASAP</span>Digest
+      <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
     </a>
     
     <button onclick={toggleMobileMenu} class="text-gray-600 dark:text-gray-300">
@@ -90,7 +90,7 @@
               href={item.path} 
               data-sveltekit-preload-data="hover"
               onclick={closeMenu}
-              class="flex items-center gap-4 text-lg {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300'}"
+              class="flex items-center gap-4 text-lg {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
             >
               <item.icon size={24} />
               <span>{item.name}</span>
@@ -109,7 +109,7 @@
       <a 
         href={item.path} 
         data-sveltekit-preload-data="hover"
-        class="flex flex-col items-center justify-center {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300'}"
+        class="flex flex-col items-center justify-center {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
       >
         <item.icon size={20} />
         <span class="text-xs mt-1">{item.name}</span>
