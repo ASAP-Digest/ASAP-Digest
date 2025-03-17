@@ -31,25 +31,25 @@
 	 * Loading state for the podcast
 	 * @type {boolean}
 	 */
-	let isLoading = true;
+	let isLoading = $state(true);
 	
 	/**
 	 * Error state for the podcast
 	 * @type {string|null}
 	 */
-	let error = null;
+	let error = $state(null);
 	
 	/**
 	 * Expanded state for the podcast
 	 * @type {boolean}
 	 */
-	let expanded = false;
+	let expanded = $state(false);
 	
 	/**
 	 * Audio playing state
 	 * @type {boolean}
 	 */
-	let audioPlaying = false;
+	let audioPlaying = $state(false);
 	
 	/**
 	 * Text to speech reference
@@ -61,7 +61,7 @@
 	 * Offline state detection
 	 * @type {boolean}
 	 */
-	let isOffline = false;
+	let isOffline = $state(false);
 	
 	/**
 	 * Reduced motion preference
@@ -231,7 +231,7 @@
 			{#if expanded}
 				<div class="mt-4 p-3 bg-[hsl(var(--muted))] rounded-md">
 					<p class="text-sm">{summary}</p>
-					<a href="#" class="text-cyan-600 hover:text-cyan-800 text-sm mt-2 inline-block">
+					<a href="/podcasts" class="text-cyan-600 hover:text-cyan-800 text-sm mt-2 inline-block">
 						Listen to Full Podcast
 					</a>
 				</div>

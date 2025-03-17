@@ -35,13 +35,13 @@
 	 * Loading state for the article
 	 * @type {boolean}
 	 */
-	let isLoading = false;
+	let isLoading = $state(false);
 	
 	/**
 	 * Error state for the article
 	 * @type {string|null}
 	 */
-	let error = null;
+	let error = $state(null);
 	
 	/**
 	 * Handles click on the read more button

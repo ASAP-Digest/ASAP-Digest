@@ -9,19 +9,19 @@
    * State for articles
    * @type {Array<import('$lib/api/wordpress.js').ArticleProps>}
    */
-  let articles = [];
+  let articles = $state([]);
   
   /**
    * Loading state for articles
    * @type {boolean}
    */
-  let isLoading = true;
+  let isLoading = $state(true);
   
   /**
    * Error state for articles
    * @type {string|null}
    */
-  let error = null;
+  let error = $state(null);
   
   // Sample article data as fallback
   const sampleArticles = [
@@ -101,7 +101,7 @@
       }
     } catch (err) {
       console.error('Failed to fetch articles:', err);
-      error = err.message || 'Failed to load articles';
+      error = err instanceof Error ? err.message : String(err);
       articles = sampleArticles; // Use sample articles as fallback
     } finally {
       isLoading = false;

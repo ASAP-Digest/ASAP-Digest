@@ -24,7 +24,43 @@
 		// We'll send page views manually after the page is fully loaded
 		</script>
 		
-		<!-- Service Worker Registration is now handled by SvelteKit -->
+		<!-- Service Worker Registration -->
+		<script>
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', () => {
+					navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+						.then(registration => {
+							console.log('Service Worker registered with scope:', registration.scope);
+							
+							// Check for updates
+							registration.addEventListener('updatefound', () => {
+								const newWorker = registration.installing;
+								console.log('New service worker state:', newWorker.state);
+								
+								newWorker.addEventListener('statechange', () => {
+									console.log('Service worker state changed to:', newWorker.state);
+									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+										// New content is available, show update notification if desired
+										if (window.confirm('New content is available. Reload to update?')) {
+											// Tell the service worker to skip waiting
+											newWorker.postMessage({ type: 'SKIP_WAITING' });
+											window.location.reload();
+										}
+									}
+								});
+							});
+						})
+						.catch(error => {
+							console.debug('Service worker registration failed:', error);
+						});
+					
+					// Handle service worker updates
+					navigator.serviceWorker.addEventListener('controllerchange', () => {
+						console.log('Service worker controller changed');
+					});
+				});
+			}
+		</script>
 		
 		<!-- System font strategy - no external font loading -->
 		<style>
@@ -41,17 +77,6 @@
 				// Wait a moment before reloading to avoid infinite reload loops
 				setTimeout(() => window.location.reload(), 1000);
 			});
-
-			// Prevent service worker registration errors from showing in console
-			const originalServiceWorkerRegister = navigator.serviceWorker?.register;
-			if (originalServiceWorkerRegister) {
-				navigator.serviceWorker.register = function(...args) {
-					return originalServiceWorkerRegister.apply(this, args).catch(err => {
-						console.debug('Service worker registration suppressed:', err.message);
-						return Promise.resolve(null); // Return resolved promise to prevent errors
-					});
-				};
-			}
 		</script>
 		
 		%sveltekit.head%

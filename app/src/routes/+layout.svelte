@@ -6,6 +6,9 @@
   import PerformanceMonitor from "$lib/components/ui/PerformanceMonitor.svelte";
   import { initPerformanceMonitoring } from "$lib/utils/performance";
   import { initImageOptimization } from "$lib/utils/imageOptimizer";
+  import { page } from '$app/stores';
+  import MobileNav from '$lib/components/MobileNav.svelte';
+  import InstallPrompt from '$lib/components/pwa/InstallPrompt.svelte';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -141,16 +144,29 @@
       linkObserver?.disconnect();
     };
   });
+
+  /**
+   * Determines if the current route is an auth route
+   */
+  let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
 </script>
 
 <div class="min-h-screen bg-background text-foreground flex flex-col">
-  <Navigation />
+  {#if !isAuthRoute}
+    <Navigation />
+    <MobileNav />
+  {/if}
   
   <main class="flex-1 container mx-auto px-4 py-4">
     {@render children?.()}
   </main>
   
-  <Footer />
+  {#if !isAuthRoute}
+    <Footer />
+  {/if}
+  
+  <!-- PWA installation prompt - always available regardless of route -->
+  <InstallPrompt />
   
   {#if import.meta.env.DEV}
     <PerformanceMonitor />
