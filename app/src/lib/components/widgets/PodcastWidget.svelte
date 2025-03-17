@@ -191,7 +191,7 @@
 					<Button 
 						variant="outline" 
 						size="sm" 
-						on:click={toggleAudio}
+						onclick={toggleAudio}
 						class={audioPlaying ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : ''}
 						aria-label={audioPlaying ? 'Pause audio' : 'Play audio'}
 					>
@@ -205,7 +205,7 @@
 					<Button 
 						variant="outline" 
 						size="sm" 
-						on:click={toggleExpand}
+						onclick={toggleExpand}
 						class={expanded ? 'rotate-180' : ''}
 						aria-label={expanded ? 'Collapse podcast' : 'Expand podcast'}
 					>
@@ -215,7 +215,7 @@
 					<Button 
 						variant="outline" 
 						size="sm" 
-						on:click={sharePodcast}
+						onclick={sharePodcast}
 						aria-label="Share podcast"
 					>
 						<Share2 class="w-4 h-4" />

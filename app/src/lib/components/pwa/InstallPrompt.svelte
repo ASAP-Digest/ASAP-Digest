@@ -4,6 +4,14 @@
 	import { Download, X } from 'lucide-svelte';
 	
 	/**
+	 * Define the BeforeInstallPromptEvent interface missing from standard TS defs
+	 * @typedef {Object} BeforeInstallPromptEvent
+	 * @extends {Event}
+	 * @property {() => Promise<void>} prompt
+	 * @property {Promise<{outcome: 'accepted'|'dismissed'}>} userChoice
+	 */
+	
+	/**
 	 * Flag to track if the component has been shown before
 	 * @type {boolean}
 	 */
@@ -208,7 +216,7 @@
 				<button 
 					aria-label="Close prompt" 
 					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-					on:click={dismiss}
+					onclick={dismiss}
 				>
 					<X class="w-5 h-5" />
 				</button>
@@ -220,7 +228,7 @@
 						To install, tap the share icon and then "Add to Home Screen"
 					</p>
 				{:else if promptable}
-					<Button class="w-full" on:click={handleInstall}>
+					<Button class="w-full" onclick={handleInstall}>
 						<Download class="w-4 h-4 mr-2" />
 						Install App
 					</Button>
