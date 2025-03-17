@@ -1,6 +1,7 @@
 <script>
   import { Calendar, Bookmark, Share2, ArrowUpRight } from 'lucide-svelte';
   import ArticleWidget from '$lib/components/widgets/ArticleWidget.svelte';
+  import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   import { fetchArticles } from '$lib/api/wordpress.js';
   import { onMount } from 'svelte';
   
@@ -53,6 +54,31 @@
       imageUrl: 'https://images.unsplash.com/photo-1639762681057-408e52192e55?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=928&q=80',
       date: '2025-03-13',
       tags: ['DeFi', 'Crypto', 'Finance']
+    }
+  ];
+  
+  // Sample podcast data as placeholder
+  const samplePodcasts = [
+    {
+      id: 'podcast-1',
+      title: 'The Future of AI',
+      summary: 'In this episode, we explore how artificial intelligence will shape the future of various industries and our daily lives. Experts discuss emerging trends and potential challenges.',
+      episode: 12,
+      duration: 28
+    },
+    {
+      id: 'podcast-2',
+      title: 'Crypto Market Analysis',
+      summary: 'Our financial experts break down the latest developments in cryptocurrency markets, regulatory changes, and what investors should know about the evolving digital asset landscape.',
+      episode: 11,
+      duration: 32
+    },
+    {
+      id: 'podcast-3',
+      title: 'Tech Startup Ecosystem',
+      summary: 'We dive into the current state of the tech startup ecosystem, funding trends, and how new companies are navigating challenging economic conditions while pursuing innovation.',
+      episode: 10,
+      duration: 25
     }
   ];
   
@@ -165,6 +191,23 @@
         {/each}
       </div>
     {/if}
+  </section>
+  
+  <!-- Podcasts Section -->
+  <section class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold">Featured Podcasts</h2>
+      <a href="/podcasts" class="text-primary flex items-center gap-1 text-sm">
+        <span>View All</span>
+        <ArrowUpRight size={16} />
+      </a>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {#each samplePodcasts as podcast}
+        <PodcastWidget {...podcast} />
+      {/each}
+    </div>
   </section>
 </div>
 
