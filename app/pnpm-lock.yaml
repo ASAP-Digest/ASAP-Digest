@@ -39,6 +39,9 @@ importers:
         specifier: ^7.3.0
         version: 7.3.0
     devDependencies:
+      '@lucide/svelte':
+        specifier: ^0.482.0
+        version: 0.482.0(svelte@5.23.0)
       '@sveltejs/adapter-auto':
         specifier: ^4.0.0
         version: 4.0.0(@sveltejs/kit@2.19.2(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.23.0)(vite@6.2.2(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.2)))(svelte@5.23.0)(vite@6.2.2(@types/node@22.13.10)(jiti@2.4.2)(lightningcss@1.29.2)))
@@ -586,6 +589,11 @@ packages:
 
   '@levischuck/tiny-cbor@0.2.11':
     resolution: {integrity: sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow==}
+
+  '@lucide/svelte@0.482.0':
+    resolution: {integrity: sha512-n2ycHU9cNcleRDwwpEHBJ6pYzVhHIaL3a+9dQa8kns9hB2g05bY+v2p2KP8v0pZwtNhYTHk/F2o2uZ1bVtQGhw==}
+    peerDependencies:
+      svelte: ^5
 
   '@noble/ciphers@0.6.0':
     resolution: {integrity: sha512-mIbq/R9QXk5/cTfESb1OKtyFnk7oc1Om/8onA1158K9/OZUQFDEVy55jVTato+xmp3XX6F6Qh0zz0Nc1AxAlRQ==}
@@ -2584,6 +2592,10 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.0
 
   '@levischuck/tiny-cbor@0.2.11': {}
+
+  '@lucide/svelte@0.482.0(svelte@5.23.0)':
+    dependencies:
+      svelte: 5.23.0
 
   '@noble/ciphers@0.6.0': {}
 

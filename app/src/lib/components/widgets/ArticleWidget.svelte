@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { BookOpen, Share2, Volume2 } from 'lucide-svelte';
 	import { onMount } from 'svelte';
+	import { WIDGET_SPACING } from '$lib/styles/spacing.js';
 	
 	/**
 	 * @typedef {Object} ArticleProps
@@ -76,17 +77,17 @@
 	});
 </script>
 
-<Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1">
+<Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1 {WIDGET_SPACING.wrapper}">
 	{#if isLoading}
-		<div class="p-4 flex items-center justify-center h-64">
+		<div class="flex items-center justify-center h-64">
 			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
 		</div>
 	{:else if error}
-		<div class="p-4 text-center text-red-500">
+		<div class="text-center text-red-500 {WIDGET_SPACING.content}">
 			<p>Error loading article: {error}</p>
 		</div>
 	{:else}
-		<CardHeader class="pb-4">
+		<CardHeader class="pb-0 {WIDGET_SPACING.header}">
 			{#if imageUrl}
 				<div class="h-32 overflow-hidden rounded-md mb-3">
 					<img src={imageUrl} alt={title} class="w-full h-full object-cover" />
@@ -99,38 +100,27 @@
 				<span>{date}</span>
 			</CardDescription>
 		</CardHeader>
-		
-		<CardContent class="pb-4">
-			<p class="text-sm text-gray-700">{excerpt}</p>
-			
-			{#if tags.length > 0}
-				<div class="flex flex-wrap gap-2 mt-3">
+		<CardContent class={WIDGET_SPACING.content}>
+			<p class="text-sm text-[hsl(var(--muted-foreground))] line-clamp-3 mb-4">{excerpt}</p>
+			{#if tags && tags.length > 0}
+				<div class="flex flex-wrap gap-2 mb-2">
 					{#each tags as tag}
-						<span class="text-xs px-2 py-1 bg-gray-100 rounded-md text-gray-700">
-							{tag}
-						</span>
+						<span class="text-xs bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] px-2 py-1 rounded-md">{tag}</span>
 					{/each}
 				</div>
 			{/if}
 		</CardContent>
-		
-		<CardFooter class="flex justify-between pt-0">
-			<Button 
-				variant="outline" 
-				size="sm" 
-				onclick={handleReadMore}
-				class="flex gap-1"
-			>
-				<BookOpen size={16} />
+		<CardFooter class="flex justify-between pt-4 border-t {WIDGET_SPACING.footer}">
+			<Button variant="outline" size="sm" onclick={handleReadMore} class="flex items-center">
+				<BookOpen class="h-4 w-4 mr-2" />
 				<span>Read</span>
 			</Button>
-			
 			<div class="flex gap-2">
-				<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="p-0 h-9 w-9 flex items-center justify-center">
-					<Volume2 size={16} />
+				<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="flex items-center">
+					<Volume2 class="h-4 w-4" />
 				</Button>
-				<Button variant="ghost" size="sm" onclick={handleShare} class="p-0 h-9 w-9 flex items-center justify-center">
-					<Share2 size={16} />
+				<Button variant="ghost" size="sm" onclick={handleShare} class="flex items-center">
+					<Share2 class="h-4 w-4" />
 				</Button>
 			</div>
 		</CardFooter>

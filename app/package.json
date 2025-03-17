@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "VITE_APP_ENV=development vite",
 		"build": "vite build",
+		"dev:pwa": "vite run dev --port 5173",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
@@ -13,6 +14,7 @@
 		"build:prod": "NODE_ENV=production VITE_APP_ENV=production vite build"
 	},
 	"devDependencies": {
+		"@lucide/svelte": "^0.482.0",
 		"@sveltejs/adapter-auto": "^4.0.0",
 		"@sveltejs/adapter-node": "^5.2.12",
 		"@sveltejs/kit": "^2.19.2",

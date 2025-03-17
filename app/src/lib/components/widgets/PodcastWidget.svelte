@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Mic, Play, Pause, ChevronDown, Share2 } from 'lucide-svelte';
 	import { onMount, createEventDispatcher } from 'svelte';
+	import { WIDGET_SPACING } from '$lib/styles/spacing.js';
 	
 	/**
 	 * @typedef {Object} PodcastProps
@@ -160,83 +161,77 @@
 	}
 </script>
 
-<Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 bg-white/80 border-2 border-cyan-400">
+<Card class="overflow-hidden border-cyan-500 hover:shadow-lg transition-shadow duration-200 {WIDGET_SPACING.wrapper}">
 	{#if isLoading}
-		<div class="p-4 flex items-center justify-center h-48">
+		<div class="flex items-center justify-center h-36">
 			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
 		</div>
 	{:else if error}
-		<div class="p-4 text-center text-red-500">
+		<div class="text-center text-red-500 {WIDGET_SPACING.content}">
 			<p>Error loading podcast: {error}</p>
 		</div>
 	{:else}
-		<CardHeader class="pb-4">
-			<CardTitle class="text-lg font-serif flex items-center">
-				<Mic class="mr-2 w-6 h-6" />{title}
-			</CardTitle>
-			<CardDescription class="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-				<span>Episode {episode}</span>
-			</CardDescription>
+		<CardHeader class={WIDGET_SPACING.header + " pb-0"}>
+			<div class="flex items-start justify-between">
+				<div>
+					<div class="flex items-center gap-2">
+						<Mic class="h-5 w-5 text-[hsl(var(--primary))]" />
+						<CardTitle class="text-lg font-semibold">{title}</CardTitle>
+					</div>
+					<CardDescription class="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+						Episode {episode} • {duration} min
+					</CardDescription>
+				</div>
+				<Button 
+					variant="ghost" 
+					size="sm" 
+					class="rounded-full p-1 h-8 w-8" 
+					onclick={() => expanded = !expanded}
+					aria-label={expanded ? "Collapse podcast" : "Expand podcast"}
+				>
+					<ChevronDown class="h-5 w-5" style={expanded ? "transform: rotate(180deg)" : ""} />
+				</Button>
+			</div>
 		</CardHeader>
 		
-		<CardContent class="pb-4">
-			<p class="text-sm text-[hsl(var(--foreground))] {expanded ? '' : 'line-clamp-3'}">
-				{summary || (isOffline ? 'Offline content unavailable' : 'Loading...')}
-			</p>
-			
-			<div class="flex justify-between items-center mt-4">
-				<span class="text-sm text-[hsl(var(--muted-foreground))]">{duration} mins</span>
-				
-				<div class="flex gap-2">
-					<Button 
-						variant="outline" 
-						size="sm" 
-						onclick={toggleAudio}
-						class={audioPlaying ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : ''}
-						aria-label={audioPlaying ? 'Pause audio' : 'Play audio'}
-					>
-						{#if audioPlaying}
-							<Pause class="w-4 h-4" />
-						{:else}
-							<Play class="w-4 h-4" />
-						{/if}
-					</Button>
-					
-					<Button 
-						variant="outline" 
-						size="sm" 
-						onclick={toggleExpand}
-						class={expanded ? 'rotate-180' : ''}
-						aria-label={expanded ? 'Collapse podcast' : 'Expand podcast'}
-					>
-						<ChevronDown class="w-4 h-4" />
-					</Button>
-					
-					<Button 
-						variant="outline" 
-						size="sm" 
-						onclick={sharePodcast}
-						aria-label="Share podcast"
-					>
-						<Share2 class="w-4 h-4" />
-					</Button>
-				</div>
-			</div>
-			
-			{#if audioPlaying}
-				<!-- Will add TextToSpeech component in the future -->
-				<!-- <TextToSpeech bind:this={textToSpeech} text={summary} autoPlay={false} /> -->
-			{/if}
-			
+		<CardContent class={WIDGET_SPACING.content}>
 			{#if expanded}
-				<div class="mt-4 p-3 bg-[hsl(var(--muted))] rounded-md">
-					<p class="text-sm">{summary}</p>
-					<a href="/podcasts" class="text-cyan-600 hover:text-cyan-800 text-sm mt-2 inline-block">
-						Listen to Full Podcast
-					</a>
-				</div>
+				<p class="text-sm text-[hsl(var(--muted-foreground))] mb-4">{summary}</p>
 			{/if}
+			
+			<div class="flex items-center justify-between mt-2">
+				<div class="flex-1 h-1 bg-[hsl(var(--muted))] rounded-full mr-4">
+					<div class="h-full w-0 bg-[hsl(var(--primary))] rounded-full"></div>
+				</div>
+				<span class="text-xs text-[hsl(var(--muted-foreground))]">0:00</span>
+			</div>
 		</CardContent>
+		
+		<CardFooter class="flex justify-between pt-3 border-t {WIDGET_SPACING.footer}">
+			<Button 
+				variant="outline" 
+				size="sm" 
+				onclick={toggleAudio}
+				class="flex items-center"
+			>
+				{#if audioPlaying}
+					<Pause class="h-4 w-4 mr-2" />
+					<span>Pause</span>
+				{:else}
+					<Play class="h-4 w-4 mr-2" />
+					<span>Play</span>
+				{/if}
+			</Button>
+			
+			<Button 
+				variant="ghost" 
+				size="sm" 
+				onclick={sharePodcast}
+				class="flex items-center"
+			>
+				<Share2 class="h-4 w-4" />
+			</Button>
+		</CardFooter>
 	{/if}
 </Card>
 
