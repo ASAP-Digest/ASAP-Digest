@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { getPerformanceMetrics, clearPerformanceMetrics, THRESHOLDS } from '$lib/utils/performance';
   
-  let metrics = {};
-  let isOpen = false;
+  let metrics = $state({});
+  let isOpen = $state(false);
   let interval;
   
   // Update metrics periodically
@@ -49,7 +49,7 @@
 <div class="performance-monitor">
   <button 
     class="toggle-button" 
-    on:click={togglePanel}
+    onclick={togglePanel}
     class:open={isOpen}
   >
     {isOpen ? 'Hide' : 'Show'} Performance
@@ -59,7 +59,7 @@
     <div class="metrics-panel">
       <div class="panel-header">
         <h3>Performance Metrics</h3>
-        <button class="reset-button" on:click={resetMetrics}>Reset</button>
+        <button class="reset-button" onclick={resetMetrics}>Reset</button>
       </div>
       
       {#if Object.keys(metrics).length === 0}

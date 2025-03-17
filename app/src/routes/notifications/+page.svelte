@@ -2,7 +2,7 @@
   import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from 'lucide-svelte';
   
   // Mock notification data
-  let notifications = [
+  let notifications = $state([
     { 
       id: 1, 
       type: 'digest', 
@@ -35,7 +35,7 @@
       date: new Date(Date.now() - 172800000), // 2 days ago
       read: true
     }
-  ];
+  ]);
   
   // Format relative time
   function formatRelativeTime(date) {
@@ -98,7 +98,7 @@
       
       <div class="flex items-center gap-4">
         <button 
-          on:click={markAllAsRead}
+          onclick={markAllAsRead}
           class="text-sm text-primary hover:underline flex items-center gap-1"
         >
           <Check size={16} />
@@ -119,10 +119,11 @@
     {:else}
       <div class="space-y-4">
         {#each notifications as notification}
+          {@const SvelteComponent = getIcon(notification.type)}
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 {notification.read ? '' : 'border-l-4 border-l-primary'}">
             <div class="flex items-start gap-3">
               <div class="mt-1 {notification.read ? 'text-gray-500' : 'text-primary'}">
-                <svelte:component this={getIcon(notification.type)} size={20} />
+                <SvelteComponent size={20} />
               </div>
               
               <div class="flex-1">
@@ -134,7 +135,7 @@
                   
                   {#if !notification.read}
                     <button 
-                      on:click={() => markAsRead(notification.id)} 
+                      onclick={() => markAsRead(notification.id)} 
                       class="text-gray-400 hover:text-gray-600"
                     >
                       <X size={16} />

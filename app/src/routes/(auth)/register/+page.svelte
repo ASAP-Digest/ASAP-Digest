@@ -1,11 +1,13 @@
 <script>
+  import { preventDefault } from 'svelte/legacy';
+
   import { UserPlus, Mail, Lock, User, ArrowRight } from 'lucide-svelte';
   
-  let name = '';
-  let email = '';
-  let password = '';
-  let confirmPassword = '';
-  let acceptTerms = false;
+  let name = $state('');
+  let email = $state('');
+  let password = $state('');
+  let confirmPassword = $state('');
+  let acceptTerms = $state(false);
   
   function handleSubmit() {
     // TODO: Implement registration functionality
@@ -25,7 +27,7 @@
       </p>
     </div>
     
-    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
       <div class="space-y-2">
         <label for="name" class="text-sm font-medium">Full Name</label>
         <div class="relative">

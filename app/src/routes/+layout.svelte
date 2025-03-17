@@ -6,6 +6,13 @@
   import PerformanceMonitor from "$lib/components/ui/PerformanceMonitor.svelte";
   import { initPerformanceMonitoring } from "$lib/utils/performance";
   import { initImageOptimization } from "$lib/utils/imageOptimizer";
+  /**
+   * @typedef {Object} Props
+   * @property {import('svelte').Snippet} [children]
+   */
+
+  /** @type {Props} */
+  let { children } = $props();
   
   // Initialize performance monitoring and optimizations on mount
   onMount(() => {
@@ -107,7 +114,7 @@
   <Navigation />
   
   <main class="flex-1 container mx-auto px-4 py-4">
-    <slot />
+    {@render children?.()}
   </main>
   
   <Footer />

@@ -3,7 +3,7 @@
   import { Home, Search, Calendar, User, Bell, Menu, X } from 'lucide-svelte';
   import { slide } from 'svelte/transition';
   
-  let mobileMenuOpen = false;
+  let mobileMenuOpen = $state(false);
   
   // Toggle mobile menu
   function toggleMobileMenu() {
@@ -51,7 +51,7 @@
           data-sveltekit-preload-data="hover"
           class="flex items-center gap-2 {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary'}"
         >
-          <svelte:component this={item.icon} size={18} />
+          <item.icon size={18} />
           <span>{item.name}</span>
         </a>
       {/each}
@@ -66,7 +66,7 @@
       <span class="text-primary">ASAP</span>Digest
     </a>
     
-    <button on:click={toggleMobileMenu} class="text-gray-600 dark:text-gray-300">
+    <button onclick={toggleMobileMenu} class="text-gray-600 dark:text-gray-300">
       {#if mobileMenuOpen}
         <X size={24} />
       {:else}
@@ -89,10 +89,10 @@
             <a 
               href={item.path} 
               data-sveltekit-preload-data="hover"
-              on:click={closeMenu}
+              onclick={closeMenu}
               class="flex items-center gap-4 text-lg {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300'}"
             >
-              <svelte:component this={item.icon} size={24} />
+              <item.icon size={24} />
               <span>{item.name}</span>
             </a>
           </li>
@@ -111,7 +111,7 @@
         data-sveltekit-preload-data="hover"
         class="flex flex-col items-center justify-center {isActive(item.path) ? 'text-primary' : 'text-gray-600 dark:text-gray-300'}"
       >
-        <svelte:component this={item.icon} size={20} />
+        <item.icon size={20} />
         <span class="text-xs mt-1">{item.name}</span>
       </a>
     {/each}

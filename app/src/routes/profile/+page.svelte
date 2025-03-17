@@ -1,8 +1,10 @@
 <script>
+  import { preventDefault } from 'svelte/legacy';
+
   import { User, Bell, Settings, BookOpen, Share2, Moon, Sun, LogOut } from 'lucide-svelte';
   
   // Mock user data
-  let user = {
+  let user = $state({
     name: 'John Doe',
     email: 'john@example.com',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
@@ -13,10 +15,10 @@
       emailDigest: true,
       categories: ['AI', 'Web3', 'Finance', 'Tech']
     }
-  };
+  });
   
   // Tab management
-  let activeTab = 'profile';
+  let activeTab = $state('profile');
   
   function setActiveTab(tab) {
     activeTab = tab;
@@ -67,28 +69,28 @@
     <div class="flex border-b border-gray-200 dark:border-gray-700">
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
-        on:click={() => setActiveTab('profile')}
+        onclick={() => setActiveTab('profile')}
       >
         <User size={18} />
         <span>Profile</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'preferences' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
-        on:click={() => setActiveTab('preferences')}
+        onclick={() => setActiveTab('preferences')}
       >
         <Settings size={18} />
         <span>Preferences</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'notifications' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
-        on:click={() => setActiveTab('notifications')}
+        onclick={() => setActiveTab('notifications')}
       >
         <Bell size={18} />
         <span>Notifications</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'digests' ? 'text-primary border-b-2 border-primary' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
-        on:click={() => setActiveTab('digests')}
+        onclick={() => setActiveTab('digests')}
       >
         <BookOpen size={18} />
         <span>My Digests</span>
@@ -99,7 +101,7 @@
     <div class="p-6">
       <!-- Profile Tab -->
       {#if activeTab === 'profile'}
-        <form on:submit|preventDefault={saveProfile} class="space-y-6">
+        <form onsubmit={preventDefault(saveProfile)} class="space-y-6">
           <div class="space-y-2">
             <label for="name" class="text-sm font-medium">Name</label>
             <input 
@@ -150,7 +152,7 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">Enable dark theme for your application</p>
             </div>
             <button 
-              on:click={toggleDarkMode}
+              onclick={toggleDarkMode}
               class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.darkMode ? 'bg-primary' : ''}"
             >
               <span 
@@ -188,7 +190,7 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">Receive notifications when new digests are available</p>
             </div>
             <button 
-              on:click={toggleNotifications}
+              onclick={toggleNotifications}
               class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.notifications ? 'bg-primary' : ''}"
             >
               <span 
@@ -204,7 +206,7 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">Receive daily digest summaries via email</p>
             </div>
             <button 
-              on:click={toggleEmailDigest}
+              onclick={toggleEmailDigest}
               class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.emailDigest ? 'bg-primary' : ''}"
             >
               <span 

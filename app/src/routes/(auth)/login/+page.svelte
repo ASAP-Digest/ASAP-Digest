@@ -1,9 +1,11 @@
 <script>
+  import { preventDefault } from 'svelte/legacy';
+
   import { LogIn, Mail, Lock, ArrowRight } from 'lucide-svelte';
   
-  let email = '';
-  let password = '';
-  let rememberMe = false;
+  let email = $state('');
+  let password = $state('');
+  let rememberMe = $state(false);
   
   function handleSubmit() {
     // TODO: Implement login functionality
@@ -23,7 +25,7 @@
       </p>
     </div>
     
-    <form on:submit|preventDefault={handleSubmit} class="space-y-4">
+    <form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
       <div class="space-y-2">
         <label for="email" class="text-sm font-medium">Email</label>
         <div class="relative">

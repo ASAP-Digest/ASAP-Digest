@@ -5,7 +5,7 @@
   // Mock data - this would come from an API in a real application
   const digestId = $page.params.id;
   
-  let digest = {
+  let digest = $state({
     id: digestId,
     date: new Date().toLocaleDateString(),
     title: `Daily Digest #${digestId}`,
@@ -67,7 +67,7 @@
         change: '+5% (24h)'
       }
     ]
-  };
+  });
   
   // Toggle audio playback
   function togglePlayback() {
@@ -117,7 +117,7 @@
     
     <div class="flex space-x-4">
       <button 
-        on:click={toggleBookmark}
+        onclick={toggleBookmark}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
         {#if digest.isSaved}
@@ -130,7 +130,7 @@
       </button>
       
       <button 
-        on:click={shareDigest}
+        onclick={shareDigest}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
         <Share2 size={18} />
@@ -161,7 +161,7 @@
       
       <div class="flex flex-col sm:flex-row gap-4">
         <button 
-          on:click={togglePlayback}
+          onclick={togglePlayback}
           class="flex items-center justify-center gap-2 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
         >
           {#if digest.isPlaying}
@@ -174,7 +174,7 @@
         </button>
         
         <button 
-          on:click={downloadAudio}
+          onclick={downloadAudio}
           class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
           <Download size={18} />
@@ -255,7 +255,7 @@
       <div class="py-4 text-center">
         <button 
           class="px-4 py-2 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
-          on:click={() => {
+          onclick={() => {
             digest.content = [...digest.content]; // Trigger reactivity
           }}
         >
@@ -268,7 +268,7 @@
   <!-- Pagination -->
   <div class="mt-8 flex justify-between">
     <button 
-      on:click={goToPreviousDigest}
+      onclick={goToPreviousDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       disabled={parseInt(digestId) <= 1}
     >
@@ -277,7 +277,7 @@
     </button>
     
     <button 
-      on:click={goToNextDigest}
+      onclick={goToNextDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
     >
       <span>Next Digest</span>

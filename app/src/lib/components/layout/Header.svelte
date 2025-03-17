@@ -7,7 +7,7 @@
   <div class="container mx-auto px-4 py-4 flex justify-between items-center">
     <div class="flex items-center">
       <a href="/" class="text-xl font-bold flex items-center gap-2">
-        <img src="/logo.svg" alt="ASAP Digest" width="32" height="32" loading="lazy" on:error={() => {}} />
+        <img src="/logo.svg" alt="ASAP Digest" width="32" height="32" loading="lazy" onerror={() => {}} />
         <span class="text-primary">ASAP</span>Digest
       </a>
     </div>
