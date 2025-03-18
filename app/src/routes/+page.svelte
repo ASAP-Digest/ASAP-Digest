@@ -1,214 +1,118 @@
 <script>
-  import { Calendar, Bookmark, Share2, ArrowUpRight } from 'lucide-svelte';
   import ArticleWidget from '$lib/components/widgets/ArticleWidget.svelte';
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
-  import { fetchArticles } from '$lib/api/wordpress.js';
-  import { onMount } from 'svelte';
-  import { GAP, GRID_SPACING } from '$lib/styles/spacing.js';
   
-  // Widget management state
-  let leftColumnWidgets = [
-    { id: 'left-1', type: 'article' },
-    { id: 'left-2', type: 'podcast' }
+  // Widget data for each section
+  const newsWidgets = [
+    { id: 'news-1', type: 'article', title: 'AI Transforms Healthcare', excerpt: 'New research shows how artificial intelligence is revolutionizing diagnostics and treatment planning.', source: 'Tech Health Journal', date: '2024-03-18', tags: ['AI', 'Healthcare', 'Research'], sourceUrl: 'https://example.com/article' },
+    { id: 'news-2', type: 'podcast', title: 'AI in Healthcare', episode: 'Episode 42', duration: 28, summary: 'Discussing the latest AI breakthroughs in medical diagnostics and treatment planning.' }
   ];
   
-  let centerColumnWidgets = [
-    { id: 'center-1', type: 'article' },
-    { id: 'center-2', type: 'podcast' }
+  const financeWidgets = [
+    { id: 'finance-1', type: 'article', title: 'Market Update: Crypto Trends', excerpt: 'Bitcoin reaches new heights as institutional adoption continues to grow.', source: 'Crypto Financial News', date: '2024-03-18', tags: ['Crypto', 'Bitcoin', 'Finance'], sourceUrl: 'https://example.com/crypto' },
+    { id: 'finance-2', type: 'podcast', title: 'Crypto Market Analysis', episode: 'Episode 43', duration: 32, summary: 'Analyzing the latest trends in cryptocurrency markets and institutional adoption.' }
   ];
   
-  let rightColumnWidgets = [
-    { id: 'right-1', type: 'article' },
-    { id: 'right-2', type: 'podcast' }
+  const personalWidgets = [
+    { id: 'personal-1', type: 'article', title: 'Personalized Topic', excerpt: 'Content based on your interests and reading history.', source: 'ASAP Digest', date: '2024-03-18', tags: ['Personalized', 'Interests'], sourceUrl: 'https://example.com/personalized' },
+    { id: 'personal-2', type: 'podcast', title: 'Topics You Follow', episode: 'Daily Update', duration: 15, summary: 'Audio updates on topics you have expressed interest in.' }
   ];
-  
-  // Drag and drop state
-  let draggedWidget = null;
-  let dragSource = null;
-  
-  function handleDragStart(index, source) {
-    if (source === 'left') {
-      draggedWidget = leftColumnWidgets[index];
-    } else if (source === 'center') {
-      draggedWidget = centerColumnWidgets[index];
-    } else if (source === 'right') {
-      draggedWidget = rightColumnWidgets[index];
-    }
-    dragSource = source;
-  }
-  
-  function handleDragOver(target, index) {
-    // Implement drag over logic
-    // This could update a visual indicator of where the widget would be dropped
-  }
-  
-  function handleDrop() {
-    if (!draggedWidget || !dragSource) return;
-    
-    // Handle moving widgets between columns
-    // This is a placeholder for the actual implementation
-    console.log(`Moving widget from ${dragSource} to target`);
-    
-    // Reset drag state
-    draggedWidget = null;
-    dragSource = null;
-  }
 </script>
 
-<div class="grid-layout">
-  <h1 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-8 col-span-full">Today's ASAP Digest</h1>
-
-  <!-- Three-column draggable widget layout using the standardized grid system -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 col-span-full">
-    <!-- Left Column -->
-    <div 
-      class="flex flex-col gap-8" 
-      role="region"
-      aria-label="Latest News Column"
-      ondragover={(e) => {
-        e.preventDefault();
-        handleDragOver('left', leftColumnWidgets.length);
-      }}
-      ondrop={(e) => {
-        e.preventDefault();
-        handleDrop();
-      }}
-    >
-      <h2 class="text-xl font-semibold text-[hsl(var(--foreground))]">Latest News</h2>
-      
-      {#each leftColumnWidgets as widget, index}
-        <div 
-          class="cursor-move mb-8" 
-          role="listitem"
-          draggable="true"
-          ondragstart={() => handleDragStart(index, 'left')}
-          ondragover={(e) => {
-            e.preventDefault();
-            handleDragOver('left', index);
-          }}
-        >
+<!-- Main layout container -->
+<div class="container mx-auto p-[1.5rem]">
+  <!-- Grid with proper Tailwind 4 responsive columns -->
+  <div class="grid w-full gap-[2rem]
+    grid-cols-4 
+    sm:grid-cols-6 
+    md:grid-cols-6 
+    lg:grid-cols-12 
+    xl:grid-cols-12 
+    2xl:grid-cols-12"
+  >
+    <!-- News Section - Takes full width on mobile (4 cols), 3/6 cols on sm/md, 4/12 cols on lg+ -->
+    <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
+      <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Latest News</h2>
+      {#each newsWidgets as widget}
+        <div class="w-full">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id="article-1"
-              title="AI Transforms Healthcare"
-              excerpt="New research shows how artificial intelligence is revolutionizing diagnostics and treatment planning."
-              source="TechNews"
-              sourceUrl="https://technews.com/ai-healthcare"
-              date="Today"
-              tags={['AI', 'Healthcare']}
+              id={widget.id}
+              title={widget.title}
+              excerpt={widget.excerpt}
+              source={widget.source}
+              date={widget.date}
+              tags={widget.tags}
+              sourceUrl={widget.sourceUrl}
             />
           {:else if widget.type === 'podcast'}
-            <PodcastWidget 
-              id="podcast-1"
-              title="AI in Healthcare"
-              summary="In this episode, we discuss the latest advancements in AI-powered healthcare solutions and their potential impact on patient outcomes."
-              episode={42}
-              duration={28}
+            <PodcastWidget
+              id={widget.id}
+              title={widget.title}
+              episode={widget.episode}
+              duration={widget.duration}
+              summary={widget.summary}
             />
           {/if}
         </div>
       {/each}
-    </div>
+    </section>
     
-    <!-- Center Column -->
-    <div 
-      class="flex flex-col gap-8" 
-      role="region"
-      aria-label="Financial Updates Column"
-      ondragover={(e) => {
-        e.preventDefault();
-        handleDragOver('center', centerColumnWidgets.length);
-      }}
-      ondrop={(e) => {
-        e.preventDefault();
-        handleDrop();
-      }}
-    >
-      <h2 class="text-xl font-semibold text-[hsl(var(--foreground))]">Financial Updates</h2>
-      
-      {#each centerColumnWidgets as widget, index}
-        <div 
-          class="cursor-move mb-8" 
-          role="listitem"
-          draggable="true"
-          ondragstart={() => handleDragStart(index, 'center')}
-          ondragover={(e) => {
-            e.preventDefault();
-            handleDragOver('center', index);
-          }}
-        >
+    <!-- Finance Section -->
+    <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
+      <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Financial Updates</h2>
+      {#each financeWidgets as widget}
+        <div class="w-full">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id="article-2"
-              title="Market Update: Crypto Trends"
-              excerpt="Bitcoin reaches new heights as institutional adoption continues to grow."
-              source="CryptoNews"
-              sourceUrl="https://cryptonews.com/bitcoin-trends"
-              date="Yesterday"
-              tags={['Crypto', 'Markets']}
+              id={widget.id}
+              title={widget.title}
+              excerpt={widget.excerpt}
+              source={widget.source}
+              date={widget.date}
+              tags={widget.tags}
+              sourceUrl={widget.sourceUrl}
             />
           {:else if widget.type === 'podcast'}
-            <PodcastWidget 
-              id="podcast-2"
-              title="Crypto Market Analysis"
-              summary="Our experts break down the latest trends in cryptocurrency markets and provide insights on where things might be heading."
-              episode={43}
-              duration={32}
+            <PodcastWidget
+              id={widget.id}
+              title={widget.title}
+              episode={widget.episode}
+              duration={widget.duration}
+              summary={widget.summary}
             />
           {/if}
         </div>
       {/each}
-    </div>
+    </section>
     
-    <!-- Right Column -->
-    <div 
-      class="flex flex-col gap-8" 
-      role="region"
-      aria-label="Your Interests Column"
-      ondragover={(e) => {
-        e.preventDefault();
-        handleDragOver('right', rightColumnWidgets.length);
-      }}
-      ondrop={(e) => {
-        e.preventDefault();
-        handleDrop();
-      }}
-    >
-      <h2 class="text-xl font-semibold text-[hsl(var(--foreground))]">Your Interests</h2>
-      
-      {#each rightColumnWidgets as widget, index}
-        <div 
-          class="cursor-move mb-8" 
-          role="listitem"
-          draggable="true"
-          ondragstart={() => handleDragStart(index, 'right')}
-          ondragover={(e) => {
-            e.preventDefault();
-            handleDragOver('right', index);
-          }}
-        >
+    <!-- Personalized Section -->
+    <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
+      <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Your Interests</h2>
+      {#each personalWidgets as widget}
+        <div class="w-full">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id="article-3"
-              title="The Rise of Decentralized Finance"
-              excerpt="DeFi platforms are creating a new financial ecosystem that operates without traditional intermediaries."
-              source="DeFiNews"
-              sourceUrl="https://definews.com/rise-of-defi"
-              date="3 days ago"
-              tags={['DeFi', 'Blockchain']}
+              id={widget.id}
+              title={widget.title}
+              excerpt={widget.excerpt}
+              source={widget.source}
+              date={widget.date}
+              tags={widget.tags}
+              sourceUrl={widget.sourceUrl}
             />
           {:else if widget.type === 'podcast'}
-            <PodcastWidget 
-              id="podcast-3"
-              title="Tech Startup Ecosystem"
-              summary="We dive into the current state of the tech startup ecosystem, funding trends, and how new companies are navigating challenging economic conditions."
-              episode={41}
-              duration={25}
+            <PodcastWidget
+              id={widget.id}
+              title={widget.title}
+              episode={widget.episode}
+              duration={widget.duration}
+              summary={widget.summary}
             />
           {/if}
         </div>
       {/each}
-    </div>
+    </section>
   </div>
 </div>
 

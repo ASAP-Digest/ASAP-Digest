@@ -288,46 +288,35 @@
   onMount(initializeLayout);
 </script>
 
-{#if !isAuthRoute}
-<div>
-  <SidebarProvider class="w-full" style="">
-    <div class="grid-layout flex min-h-screen">
-      <!-- Sidebar for desktop -->
-      <div class="hidden md:block w-64 z-50 fixed top-[0] bottom-[0] left-[0] border-r border-[hsl(var(--border))]">
-        <MainSidebar />
-      </div>
-      
-      <!-- Mobile sidebar sheet -->
-      <Sheet.Root open={sheetOpen} onOpenChange={handleSheetOpenChange}>
-        <div class="md:ml-64">
-          <!-- Top navigation -->
-          <Navigation />
-          
-          <div class="flex-1 flex flex-col">
-            <div class="container mx-auto p-6 sm:p-8 max-w-[1440px]">
-              <!-- Main content area with consistent grid -->
-              <main class="grid-layout py-6 gap-8">
-                {@render children?.()}
-              </main>
-            </div>
-          </div>
-        </div>
-        
-        <Sheet.Content side="left" class="p-0" portalProps={{}}>
-          <div class="w-64 p-0 md:hidden">
-            <MainSidebar />
-          </div>
-        </Sheet.Content>
-      </Sheet.Root>
+<div class="relative flex min-h-screen flex-col">
+  <!-- Main layout structure -->
+  {#if !isAuthRoute}
+    <!-- Sidebar -->
+    <div class="fixed left-0 top-0 z-20 h-full">
+      <MainSidebar />
     </div>
-  </SidebarProvider>
+    
+    <!-- Main content area with proper margin to prevent overlap -->
+    <div class="flex min-h-screen flex-col md:ml-[var(--sidebar-width)]">
+      <header class="sticky top-0 z-10 w-full bg-[hsl(var(--background))] border-b border-[hsl(var(--border))]">
+        <Navigation />
+      </header>
+      
+      <main class="flex-1 pt-[4.5rem] px-[1.5rem]">
+        <slot />
+      </main>
+      
+      <Footer />
+    </div>
+  {:else}
+    <!-- Auth layout without sidebar -->
+    <div class="flex min-h-screen flex-col">
+      <main class="flex-1">
+        <slot />
+      </main>
+    </div>
+  {/if}
 </div>
-{:else}
-  <!-- Auth routes don't have the sidebar/navigation -->
-  <main class="container mx-auto px-4 py-6">
-    {@render children?.()}
-  </main>
-{/if}
 
 <style>
   /* Add CSS for lazy-loaded images */
