@@ -25,6 +25,7 @@
    * Determines if the current route is an auth route
    */
   let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
+  console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute);
   
   // Hook into sidebar state for mobile sheet
   let sheetOpen = $state(false);
@@ -277,7 +278,7 @@
 
 <SidebarProvider>
   <div class="flex min-h-screen">
-    <MainSidebar />
+    <MainSidebar class="hidden md:block w-64 z-50" />
     
     <div class="flex-1 flex flex-col">
       <header class="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] py-3 px-4">

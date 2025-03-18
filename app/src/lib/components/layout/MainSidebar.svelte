@@ -1,7 +1,18 @@
 <script>
   import { page } from '$app/stores';
   import { Home, FileText, Headphones, Settings, User } from 'lucide-svelte';
-  import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+  // Import individual components directly
+  import Root from '$lib/components/ui/sidebar/sidebar.svelte';
+  import Header from '$lib/components/ui/sidebar/sidebar-header.svelte';
+  import Content from '$lib/components/ui/sidebar/sidebar-content.svelte';
+  import Group from '$lib/components/ui/sidebar/sidebar-group.svelte';
+  import GroupLabel from '$lib/components/ui/sidebar/sidebar-group-label.svelte';
+  import GroupContent from '$lib/components/ui/sidebar/sidebar-group-content.svelte';
+  import Menu from '$lib/components/ui/sidebar/sidebar-menu.svelte';
+  import MenuItem from '$lib/components/ui/sidebar/sidebar-menu-item.svelte';
+  import MenuButton from '$lib/components/ui/sidebar/sidebar-menu-button.svelte';
+  import Separator from '$lib/components/ui/sidebar/sidebar-separator.svelte';
+  import Footer from '$lib/components/ui/sidebar/sidebar-footer.svelte';
   import { onMount } from 'svelte';
   
   // Make path a derived state that updates when page changes
@@ -43,90 +54,78 @@
       get active() { return path.startsWith('/settings') }
     }
   ];
-
-  /** @type {(params: { props: Record<string, any> }) => any} */
-  function childHandler({ props }) {
-    return null; // This is just for type definition, not actually used
-  }
   
   onMount(() => {
     console.log('MainSidebar mounted');
     console.log('Current path:', path);
     console.log('Main nav items:', mainNavItems);
-    
-    // Debug sidebar components
-    try {
-      console.log('Sidebar components loaded:', Object.keys(Sidebar));
-    } catch (error) {
-      console.error('Error with sidebar components:', error);
-    }
   });
 </script>
 
-<Sidebar.Root class="h-full border-r border-[hsl(var(--sidebar-border))]">
-  <Sidebar.Header class="px-2">
+<Root class="h-full border-r border-[hsl(var(--sidebar-border))]">
+  <Header class="px-2">
     <div class="flex items-center justify-between p-4">
       <div class="flex items-center gap-2">
         <span class="font-semibold text-lg">ASAP Digest</span>
       </div>
     </div>
-  </Sidebar.Header>
+  </Header>
   
-  <Sidebar.Content class="px-2">
-    <Sidebar.Group class="pb-4">
-      <Sidebar.GroupLabel class="px-2">Main</Sidebar.GroupLabel>
-      <Sidebar.GroupContent class="space-y-1">
-        <Sidebar.Menu class="space-y-1">
+  <Content class="px-2">
+    <Group class="pb-4">
+      <GroupLabel class="px-2">Main</GroupLabel>
+      <GroupContent class="space-y-1">
+        <Menu class="space-y-1">
           {#each mainNavItems as item (item.label)}
-            <Sidebar.MenuItem class="px-0">
-              <Sidebar.MenuButton 
+            <MenuItem class="px-0">
+              <MenuButton 
                 class="w-full justify-start" 
                 isActive={item.active}
                 tooltipContent={item.label}
                 tooltipContentProps={{}}>
-                {#snippet child({ props })} <!-- props has proper typing via childHandler -->
+                {#snippet child({ props = /** @type {Record<string, any>} */ ({}) })}
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
                     <span>{item.label}</span>
                   </a>
                 {/snippet}
-              </Sidebar.MenuButton>
-            </Sidebar.MenuItem>
+              </MenuButton>
+            </MenuItem>
           {/each}
-        </Sidebar.Menu>
-      </Sidebar.GroupContent>
-    </Sidebar.Group>
+        </Menu>
+      </GroupContent>
+    </Group>
     
-    <Sidebar.Separator class="my-2" />
+    <Separator class="my-2" />
     
-    <Sidebar.Group class="pb-4">
-      <Sidebar.GroupLabel class="px-2">Account</Sidebar.GroupLabel>
-      <Sidebar.GroupContent class="space-y-1">
-        <Sidebar.Menu class="space-y-1">
+    <Group class="pb-4">
+      <GroupLabel class="px-2">Account</GroupLabel>
+      <GroupContent class="space-y-1">
+        <Menu class="space-y-1">
           {#each secondaryNavItems as item (item.label)}
-            <Sidebar.MenuItem class="px-0">
-              <Sidebar.MenuButton 
+            <MenuItem class="px-0">
+              <MenuButton 
                 class="w-full justify-start" 
                 isActive={item.active}
                 tooltipContent={item.label}
                 tooltipContentProps={{}}>
-                {#snippet child({ props })} <!-- props has proper typing via childHandler -->
+                {#snippet child({ props = /** @type {Record<string, any>} */ ({}) })}
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
                     <span>{item.label}</span>
                   </a>
                 {/snippet}
-              </Sidebar.MenuButton>
-            </Sidebar.MenuItem>
+              </MenuButton>
+            </MenuItem>
           {/each}
-        </Sidebar.Menu>
-      </Sidebar.GroupContent>
-    </Sidebar.Group>
-  </Sidebar.Content>
+        </Menu>
+      </GroupContent>
+    </Group>
+  </Content>
   
-  <Sidebar.Footer class="px-4 py-2">
+  <Footer class="px-4 py-2">
     <div class="p-2 text-sm">
       <p>ASAP Digest v1.0</p>
     </div>
-  </Sidebar.Footer>
-</Sidebar.Root> 
+  </Footer>
+</Root> 
