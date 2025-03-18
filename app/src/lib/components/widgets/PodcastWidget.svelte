@@ -161,13 +161,13 @@
 	}
 </script>
 
-<Card class="overflow-hidden border-cyan-500 hover:shadow-lg transition-shadow duration-200 {WIDGET_SPACING.wrapper}">
+<Card class="overflow-hidden border-[#0891b2] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),_0_4px_6px_-2px_rgba(0,0,0,0.05)] transition-shadow duration-200 {WIDGET_SPACING.wrapper}">
 	{#if isLoading}
-		<div class="flex items-center justify-center h-36">
-			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
+		<div class="flex items-center justify-center h-[9rem]">
+			<div class="w-[2rem] h-[2rem] border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
 		</div>
 	{:else if error}
-		<div class="text-center text-red-500 {WIDGET_SPACING.content}">
+		<div class="text-center text-[#ef4444] {WIDGET_SPACING.content}">
 			<p>Error loading podcast: {error}</p>
 		</div>
 	{:else}
@@ -175,39 +175,39 @@
 			<div class="flex items-start justify-between">
 				<div>
 					<div class="flex items-center gap-2">
-						<Mic class="h-5 w-5 text-[hsl(var(--primary))]" />
+						<Mic class="h-[1.25rem] w-[1.25rem] text-[hsl(var(--primary))]" />
 						<CardTitle class="text-lg font-semibold">{title}</CardTitle>
 					</div>
-					<CardDescription class="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+					<CardDescription class="text-xs text-[hsl(var(--muted-foreground))] mt-[0.25rem]">
 						Episode {episode} • {duration} min
 					</CardDescription>
 				</div>
 				<Button 
 					variant="ghost" 
 					size="sm" 
-					class="rounded-full p-1 h-8 w-8" 
+					class="rounded-full p-[0.25rem] h-[2rem] w-[2rem]" 
 					onclick={() => expanded = !expanded}
 					aria-label={expanded ? "Collapse podcast" : "Expand podcast"}
 				>
-					<ChevronDown class="h-5 w-5" style={expanded ? "transform: rotate(180deg)" : ""} />
+					<ChevronDown class="h-[1.25rem] w-[1.25rem]" style={expanded ? "transform: rotate(180deg)" : ""} />
 				</Button>
 			</div>
 		</CardHeader>
 		
 		<CardContent class={WIDGET_SPACING.content}>
 			{#if expanded}
-				<p class="text-sm text-[hsl(var(--muted-foreground))] mb-4">{summary}</p>
+				<p class="text-sm text-[hsl(var(--muted-foreground))] mb-[1rem]">{summary}</p>
 			{/if}
 			
-			<div class="flex items-center justify-between mt-2">
-				<div class="flex-1 h-1 bg-[hsl(var(--muted))] rounded-full mr-4">
+			<div class="flex items-center justify-between mt-[0.5rem]">
+				<div class="flex-1 h-[0.25rem] bg-[hsl(var(--muted))] rounded-full mr-[1rem]">
 					<div class="h-full w-0 bg-[hsl(var(--primary))] rounded-full"></div>
 				</div>
 				<span class="text-xs text-[hsl(var(--muted-foreground))]">0:00</span>
 			</div>
 		</CardContent>
 		
-		<CardFooter class="flex justify-between pt-3 border-t {WIDGET_SPACING.footer}">
+		<CardFooter class="flex justify-between pt-[0.75rem] border-t {WIDGET_SPACING.footer}">
 			<Button 
 				variant="outline" 
 				size="sm" 
@@ -215,10 +215,10 @@
 				class="flex items-center"
 			>
 				{#if audioPlaying}
-					<Pause class="h-4 w-4 mr-2" />
+					<Pause class="h-[1rem] w-[1rem] mr-[0.5rem]" />
 					<span>Pause</span>
 				{:else}
-					<Play class="h-4 w-4 mr-2" />
+					<Play class="h-[1rem] w-[1rem] mr-[0.5rem]" />
 					<span>Play</span>
 				{/if}
 			</Button>
@@ -229,13 +229,14 @@
 				onclick={sharePodcast}
 				class="flex items-center"
 			>
-				<Share2 class="h-4 w-4" />
+				<Share2 class="h-[1rem] w-[1rem]" />
 			</Button>
 		</CardFooter>
 	{/if}
 </Card>
 
 <style>
+	/* Add animation to utility classes instead of custom CSS */
 	@keyframes pulse-slow {
 		0% { border-color: rgba(0, 255, 255, 1); }
 		50% { border-color: rgba(0, 255, 255, 0.6); }

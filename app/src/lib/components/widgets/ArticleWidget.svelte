@@ -82,18 +82,18 @@
 <BaseWidget title="Article" icon={Newspaper} loading={isLoading}>
 	<div class="text-sm">
 		<h3 class="font-medium text-base">{title}</h3>
-		<p class="mt-1 line-clamp-3">{excerpt || "Loading..."}</p>
-		<div class="flex justify-between items-center mt-2">
+		<p class="mt-[0.25rem] line-clamp-3">{excerpt || "Loading..."}</p>
+		<div class="flex justify-between items-center mt-[0.5rem]">
 			<Button variant="outline" size="sm" onclick={handleReadMore} class="flex items-center">
-				<BookOpen class="h-4 w-4 mr-2" />
+				<BookOpen class="h-[1rem] w-[1rem] mr-[0.5rem]" />
 				<span>Read</span>
 			</Button>
-			<div class="flex gap-2">
+			<div class="flex gap-[0.5rem]">
 				<Button variant="ghost" size="sm" onclick={handleTextToSpeech} class="flex items-center">
-					<Volume2 class="h-4 w-4" />
+					<Volume2 class="h-[1rem] w-[1rem]" />
 				</Button>
 				<Button variant="ghost" size="sm" onclick={handleShare} class="flex items-center">
-					<Share2 class="h-4 w-4" />
+					<Share2 class="h-[1rem] w-[1rem]" />
 				</Button>
 			</div>
 		</div>

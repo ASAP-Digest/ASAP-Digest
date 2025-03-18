@@ -25,7 +25,11 @@
    * Determines if the current route is an auth route
    */
   let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
-  console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute);
+  
+  // Use an effect to log state changes (creates proper closure)
+  $effect(() => {
+    console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute);
+  });
   
   // Hook into sidebar state for mobile sheet
   let sheetOpen = $state(false);
@@ -37,6 +41,10 @@
   }
   
   // Close sidebar when sheet closes
+  /**
+   * Handles changes to the sheet's open state and syncs with sidebar
+   * @param {boolean} open - Whether the sheet is open
+   */
   function handleSheetOpenChange(open) {
     try {
       const sidebar = useSidebar();
@@ -150,6 +158,7 @@
     
     // Add intersection observer for lazy loading images
     const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+    /** @type {IntersectionObserver|null} */
     let lazyImageObserver = null;
     
     if ('IntersectionObserver' in window) {
@@ -167,20 +176,21 @@
               img.sizes = img.dataset.sizes;
             }
             img.classList.remove('lazy');
-            lazyImageObserver.unobserve(img);
+            lazyImageObserver?.unobserve(img);
           }
         });
       });
       
-      lazyImages.forEach(img => lazyImageObserver.observe(img));
+      lazyImages.forEach(img => lazyImageObserver?.observe(img));
     } else {
       // Fallback for browsers that don't support IntersectionObserver
       lazyImages.forEach(img => {
-        if (img.dataset.src) {
-          img.src = img.dataset.src;
+        const imgElement = /** @type {HTMLImageElement} */ (img);
+        if (imgElement.dataset.src) {
+          imgElement.src = imgElement.dataset.src;
         }
-        if (img.dataset.srcset) {
-          img.srcset = img.dataset.srcset;
+        if (imgElement.dataset.srcset) {
+          imgElement.srcset = imgElement.dataset.srcset;
         }
       });
     }
@@ -210,22 +220,24 @@
     window.addEventListener('online', () => {
       document.body.classList.remove('offline');
       // Notify user they're back online
-      if (document.getElementById('offline-notification')) {
-        document.getElementById('offline-notification').style.display = 'none';
+      const offlineNotification = document.getElementById('offline-notification');
+      if (offlineNotification) {
+        offlineNotification.style.display = 'none';
       }
     });
     
     window.addEventListener('offline', () => {
       document.body.classList.add('offline');
       // Notify user they're offline
-      if (!document.getElementById('offline-notification')) {
+      let offlineNotification = document.getElementById('offline-notification');
+      if (!offlineNotification) {
         const notification = document.createElement('div');
         notification.id = 'offline-notification';
         notification.innerHTML = 'You are currently offline. Some features may be limited.';
         notification.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#ffcc00;color:#000;text-align:center;padding:10px;z-index:9999;';
         document.body.appendChild(notification);
       } else {
-        document.getElementById('offline-notification').style.display = 'block';
+        offlineNotification.style.display = 'block';
       }
     });
     
@@ -234,7 +246,7 @@
       console.log('Checking for problematic shadcn-svelte classes...');
       
       document.querySelectorAll('[class]').forEach(el => {
-        const classStr = el.getAttribute('class');
+        const classStr = el.getAttribute('class') || '';
         const problematicClasses = findProblematicClasses(classStr);
         
         if (problematicClasses.length > 0) {
@@ -253,7 +265,7 @@
     try {
       const sidebar = useSidebar();
       if (sidebar && sidebar.subscribe) {
-        sidebarUnsubscribe = sidebar.subscribe((state) => {
+        sidebarUnsubscribe = sidebar.subscribe((/** @type {any} */ state) => {
           if (state) {
             sheetOpen = state.isOpen;
           }
@@ -276,70 +288,65 @@
   onMount(initializeLayout);
 </script>
 
-<SidebarProvider>
-  <div class="flex min-h-screen">
-    <MainSidebar class="hidden md:block w-64 z-50" />
-    
-    <div class="flex-1 flex flex-col">
-      <header class="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] py-3 px-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <!-- Sidebar toggle button -->
-            <SidebarTrigger class="md:hidden text-[hsl(var(--foreground))]">
-              <span class="sr-only">Toggle sidebar</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                <line x1="4" x2="20" y1="12" y2="12" />
-                <line x1="4" x2="20" y1="6" y2="6" />
-                <line x1="4" x2="20" y1="18" y2="18" />
-              </svg>
-            </SidebarTrigger>
-            
-            <a href="/" class="font-semibold text-xl text-[hsl(var(--foreground))]">ASAP Digest</a>
-          </div>
+{#if !isAuthRoute}
+<div>
+  <SidebarProvider class="w-full" style="">
+    <div class="grid-layout flex min-h-screen">
+      <!-- Sidebar for desktop -->
+      <div class="hidden md:block w-64 z-50 fixed top-[0] bottom-[0] left-[0] border-r border-[hsl(var(--border))]">
+        <MainSidebar />
+      </div>
+      
+      <!-- Mobile sidebar sheet -->
+      <Sheet.Root open={sheetOpen} onOpenChange={handleSheetOpenChange}>
+        <div class="md:ml-64">
+          <!-- Top navigation -->
+          <Navigation />
           
-          <div class="flex items-center gap-4">
-            <a href="/profile" class="text-[hsl(var(--foreground))]">
-              <span class="sr-only">Profile</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </a>
+          <div class="flex-1 flex flex-col">
+            <div class="container mx-auto p-6 sm:p-8 max-w-[1440px]">
+              <!-- Main content area with consistent grid -->
+              <main class="grid-layout py-6 gap-8">
+                {@render children?.()}
+              </main>
+            </div>
           </div>
         </div>
-      </header>
-      
-      <main class="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-[1440px]">
-        {@render children?.()}
-      </main>
+        
+        <Sheet.Content side="left" class="p-0" portalProps={{}}>
+          <div class="w-64 p-0 md:hidden">
+            <MainSidebar />
+          </div>
+        </Sheet.Content>
+      </Sheet.Root>
     </div>
-  </div>
-</SidebarProvider>
+  </SidebarProvider>
+</div>
+{:else}
+  <!-- Auth routes don't have the sidebar/navigation -->
+  <main class="container mx-auto px-4 py-6">
+    {@render children?.()}
+  </main>
+{/if}
 
 <style>
   /* Add CSS for lazy-loaded images */
   :global(img.lazy) {
-    opacity: 0;
-    transition: opacity 0.3s;
+    @apply opacity-0 transition-opacity duration-300;
   }
   
   :global(img:not(.lazy)) {
-    opacity: 1;
+    @apply opacity-100;
   }
   
-  /* Add CSS for offline mode */
+  /* Add CSS for offline mode - use CSS variables from Tailwind */
   :global(body.offline) {
-    --offline-indicator: #ffcc00;
+    --offline-indicator: hsl(var(--warning, 48 96% 53%));
   }
   
   :global(body.offline::before) {
     content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
+    @apply fixed top-[0] left-[0] right-[0] h-[0.25rem] z-[9999];
     background-color: var(--offline-indicator);
-    z-index: 9999;
   }
 </style>

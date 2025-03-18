@@ -7,6 +7,6 @@
 
 <SheetPrimitive.Title
 	bind:ref
-	class={cn("text-foreground text-lg font-semibold", className)}
+	class={cn("text-[hsl(var(--foreground))] text-lg font-semibold", className)}
 	{...restProps}
 />

@@ -162,7 +162,7 @@
       <div class="flex flex-col sm:flex-row gap-4">
         <button 
           onclick={togglePlayback}
-          class="flex items-center justify-center gap-2 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
+          class="flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
         >
           {#if digest.isPlaying}
             <Pause size={18} />
@@ -254,7 +254,7 @@
     {#if digest.content.length > 3}
       <div class="py-4 text-center">
         <button 
-          class="px-4 py-2 bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+          class="px-4 py-2 bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] rounded-md hover:bg-[hsl(var(--primary)/0.2)] transition-colors"
           onclick={() => {
             digest.content = [...digest.content]; // Trigger reactivity
           }}

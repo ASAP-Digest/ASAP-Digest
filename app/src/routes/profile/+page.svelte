@@ -135,7 +135,7 @@
           <div class="flex justify-end">
             <button 
               type="submit" 
-              class="bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
+              class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
             >
               Save Changes
             </button>

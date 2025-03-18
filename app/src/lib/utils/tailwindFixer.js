@@ -1,4 +1,19 @@
 /**
+ * ⚠️ IMPORTANT: ONLY USE TAILWIND 4 SYNTAX ⚠️
+ * 
+ * This utility helps convert Tailwind 3 to Tailwind 4 syntax
+ * You MUST use Tailwind 4 syntax for all new code! This tool is only
+ * to help migrate legacy code. Follow these rules for all new code:
+ * 
+ * - NEVER use direct color names (text-red-500, bg-blue-400)
+ * - NEVER use semantic names without HSL vars (bg-primary, text-foreground)
+ * - ALWAYS use HSL variables: bg-[hsl(var(--primary))], text-[hsl(var(--foreground))]
+ * - For fixed sizes, always use arbitrary values: h-[0.25rem] not h-1
+ *
+ * @see docs/TAILWIND4_GUIDELINES.md for full documentation
+ */
+
+/**
  * Utility functions to help with Tailwind 4 class migration and validation
  */
 

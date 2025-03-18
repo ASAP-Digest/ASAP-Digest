@@ -10,7 +10,7 @@
 </script>
 
 <div class="space-y-8">
-  <section class="bg-primary/10 rounded-lg p-6">
+  <section class="bg-[hsl(var(--primary)/0.1)] rounded-lg p-6">
     <div class="flex items-center gap-2 mb-2 text-sm text-gray-600 dark:text-gray-400">
       <Calendar size={16} />
       <span>{today}</span>
@@ -20,7 +20,7 @@
     <p class="text-lg mb-6">Your curated summary of essential updates across AI, tech, and finance.</p>
     
     <div class="flex flex-col sm:flex-row gap-4">
-      <button class="bg-primary text-white hover:bg-primary/90 px-4 py-2 rounded-md flex items-center justify-center gap-2">
+      <button class="bg-[hsl(var(--primary))] text-white hover:bg-[hsl(var(--primary)/0.9)] px-4 py-2 rounded-md flex items-center justify-center gap-2">
         <Play size={18} />
         <span>Listen Now</span>
       </button>
@@ -45,7 +45,7 @@
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
               {type}
             </div>
-            <button class="text-gray-400 hover:text-primary">
+            <button class="text-gray-400 hover:text-[hsl(var(--primary))]">
               <Bookmark size={16} />
             </button>
           </div>

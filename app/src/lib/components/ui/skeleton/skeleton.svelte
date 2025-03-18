@@ -6,6 +6,6 @@
 
 <div
 	bind:this={ref}
-	class={cn("bg-primary/10 animate-pulse rounded-md", className)}
+	class={cn("bg-[hsl(var(--primary)/0.1)] animate-pulse rounded-md", className)}
 	{...restProps}
 ></div>

@@ -4,6 +4,7 @@
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   import { fetchArticles } from '$lib/api/wordpress.js';
   import { onMount } from 'svelte';
+  import { GAP, GRID_SPACING } from '$lib/styles/spacing.js';
   
   // Widget management state
   let leftColumnWidgets = [
@@ -54,14 +55,14 @@
   }
 </script>
 
-<main class="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
-  <h1 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-6">Today's ASAP Digest</h1>
+<div class="grid-layout">
+  <h1 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-8 col-span-full">Today's ASAP Digest</h1>
 
-  <!-- Three-column draggable widget layout -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+  <!-- Three-column draggable widget layout using the standardized grid system -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 col-span-full">
     <!-- Left Column -->
     <div 
-      class="col-span-1 flex flex-col gap-6" 
+      class="flex flex-col gap-8" 
       role="region"
       aria-label="Latest News Column"
       ondragover={(e) => {
@@ -77,7 +78,7 @@
       
       {#each leftColumnWidgets as widget, index}
         <div 
-          class="cursor-move" 
+          class="cursor-move mb-8" 
           role="listitem"
           draggable="true"
           ondragstart={() => handleDragStart(index, 'left')}
@@ -111,7 +112,7 @@
     
     <!-- Center Column -->
     <div 
-      class="col-span-1 flex flex-col gap-6" 
+      class="flex flex-col gap-8" 
       role="region"
       aria-label="Financial Updates Column"
       ondragover={(e) => {
@@ -127,7 +128,7 @@
       
       {#each centerColumnWidgets as widget, index}
         <div 
-          class="cursor-move" 
+          class="cursor-move mb-8" 
           role="listitem"
           draggable="true"
           ondragstart={() => handleDragStart(index, 'center')}
@@ -161,7 +162,7 @@
     
     <!-- Right Column -->
     <div 
-      class="col-span-1 flex flex-col gap-6" 
+      class="flex flex-col gap-8" 
       role="region"
       aria-label="Your Interests Column"
       ondragover={(e) => {
@@ -177,7 +178,7 @@
       
       {#each rightColumnWidgets as widget, index}
         <div 
-          class="cursor-move" 
+          class="cursor-move mb-8" 
           role="listitem"
           draggable="true"
           ondragstart={() => handleDragStart(index, 'right')}
@@ -209,7 +210,7 @@
       {/each}
     </div>
   </div>
-</main>
+</div>
 
 <style>
   /* Styling for draggable elements */
@@ -220,5 +221,18 @@
   .cursor-move:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Enhance grid layout for better visualization */
+  :global(.grid-layout) {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 1.5rem;
+    row-gap: 1.5rem;
+    width: 100%;
+  }
+  
+  :global(.col-span-full) {
+    grid-column: 1 / -1;
   }
 </style>

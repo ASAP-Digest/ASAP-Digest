@@ -115,7 +115,7 @@
       
       <button 
         type="submit" 
-        class="w-full flex items-center justify-center gap-2 bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors"
+        class="w-full flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
       >
         <span>Create Account</span>
         <ArrowRight size={16} />

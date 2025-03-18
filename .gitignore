@@ -21,6 +21,7 @@ wp-content/uploads/*
 /docs/ENVIRONMENT.md
 /docs/FUTURE_PLANS.md
 /docs/ROADMAP_TASKS.md
+/docs/TAILWIND4_GUIDELINES.md
 /docs/ASAP_DIGEST_ROADMAP_LLM_1.md
 /docs/ASAP_DIGEST_ROADMAP_LLM_2.md
 /docs/ASAP_DIGEST_ROADMAP_LLM_3.md
@@ -28,6 +29,7 @@ wp-content/uploads/*
 /docs/ASAP_DIGEST_ROADMAP_LLM_5.md
 /docs/ASAP_DIGEST_ROADMAP_LLM_6.md
 /docs/ASAP_DIGEST_ROADMAP_LLM_7.md
+app/src/lib/components/ui/README.md
 
 
 # ignore everything in the "wp-content" directory, except:
