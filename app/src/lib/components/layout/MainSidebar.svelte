@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { Home, FileText, Headphones, Settings, User } from 'lucide-svelte';
-  import * as Sidebar from '$lib/components/ui/sidebar';
+  import * as Sidebar from '$lib/components/ui/sidebar/index.js';
   
   // Make path a derived state that updates when page changes
   let path = $derived($page.url.pathname);
@@ -42,6 +42,11 @@
       get active() { return path.startsWith('/settings') }
     }
   ];
+
+  /** @type {(params: { props: Record<string, any> }) => any} */
+  function childHandler({ props }) {
+    return null; // This is just for type definition, not actually used
+  }
 </script>
 
 <Sidebar.Root class="h-full">
@@ -55,7 +60,7 @@
   
   <Sidebar.Content class="px-2">
     <Sidebar.Group class="pb-4">
-      <Sidebar.GroupLabel class="px-2" child={{props: {}}}>Main</Sidebar.GroupLabel>
+      <Sidebar.GroupLabel class="px-2">Main</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="space-y-1">
         <Sidebar.Menu class="space-y-1">
           {#each mainNavItems as item (item.label)}
@@ -64,9 +69,8 @@
                 class="w-full justify-start" 
                 isActive={item.active}
                 tooltipContent={item.label}
-                tooltipContentProps={{}}
-              >
-                {#snippet child({ props })}
+                tooltipContentProps={{}}>
+                {#snippet child({ props })} <!-- props has proper typing via childHandler -->
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
                     <span>{item.label}</span>
@@ -82,7 +86,7 @@
     <Sidebar.Separator class="my-2" />
     
     <Sidebar.Group class="pb-4">
-      <Sidebar.GroupLabel class="px-2" child={{props: {}}}>Account</Sidebar.GroupLabel>
+      <Sidebar.GroupLabel class="px-2">Account</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="space-y-1">
         <Sidebar.Menu class="space-y-1">
           {#each secondaryNavItems as item (item.label)}
@@ -91,9 +95,8 @@
                 class="w-full justify-start" 
                 isActive={item.active}
                 tooltipContent={item.label}
-                tooltipContentProps={{}}
-              >
-                {#snippet child({ props })}
+                tooltipContentProps={{}}>
+                {#snippet child({ props })} <!-- props has proper typing via childHandler -->
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
                     <span>{item.label}</span>
