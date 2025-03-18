@@ -4,6 +4,8 @@
 	import { BookOpen, Share2, Volume2 } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { WIDGET_SPACING } from '$lib/styles/spacing.js';
+	import BaseWidget from './BaseWidget.svelte';
+	import { Newspaper } from 'lucide-svelte';
 	
 	/**
 	 * @typedef {Object} ArticleProps
@@ -77,40 +79,11 @@
 	});
 </script>
 
-<Card class="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 hover:-translate-y-1 {WIDGET_SPACING.wrapper}">
-	{#if isLoading}
-		<div class="flex items-center justify-center h-64">
-			<div class="w-8 h-8 border-t-2 border-b-2 border-[hsl(var(--primary))] rounded-full animate-spin"></div>
-		</div>
-	{:else if error}
-		<div class="text-center text-red-500 {WIDGET_SPACING.content}">
-			<p>Error loading article: {error}</p>
-		</div>
-	{:else}
-		<CardHeader class="pb-0 {WIDGET_SPACING.header}">
-			{#if imageUrl}
-				<div class="h-32 overflow-hidden rounded-md mb-3">
-					<img src={imageUrl} alt={title} class="w-full h-full object-cover" />
-				</div>
-			{/if}
-			<CardTitle class="text-lg font-semibold line-clamp-2">{title}</CardTitle>
-			<CardDescription class="flex items-center gap-2 text-xs text-gray-500">
-				<span>{source}</span>
-				<span class="inline-block w-1 h-1 rounded-full bg-gray-400"></span>
-				<span>{date}</span>
-			</CardDescription>
-		</CardHeader>
-		<CardContent class={WIDGET_SPACING.content}>
-			<p class="text-sm text-[hsl(var(--muted-foreground))] line-clamp-3 mb-4">{excerpt}</p>
-			{#if tags && tags.length > 0}
-				<div class="flex flex-wrap gap-2 mb-2">
-					{#each tags as tag}
-						<span class="text-xs bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] px-2 py-1 rounded-md">{tag}</span>
-					{/each}
-				</div>
-			{/if}
-		</CardContent>
-		<CardFooter class="flex justify-between pt-4 border-t {WIDGET_SPACING.footer}">
+<BaseWidget title="Article" icon={Newspaper} loading={isLoading}>
+	<div class="text-sm">
+		<h3 class="font-medium text-base">{title}</h3>
+		<p class="mt-1 line-clamp-3">{excerpt || "Loading..."}</p>
+		<div class="flex justify-between items-center mt-2">
 			<Button variant="outline" size="sm" onclick={handleReadMore} class="flex items-center">
 				<BookOpen class="h-4 w-4 mr-2" />
 				<span>Read</span>
@@ -123,6 +96,6 @@
 					<Share2 class="h-4 w-4" />
 				</Button>
 			</div>
-		</CardFooter>
-	{/if}
-</Card> 
+		</div>
+	</div>
+</BaseWidget> 

@@ -7,11 +7,22 @@ const config = {
 	content: ["./src/**/*.{html,js,svelte,ts}"],
 	safelist: ["dark"],
 	theme: {
+		screens: {
+			"mobile": "478px",
+			"mobile-landscape": "767px",
+			"tablet": "991px",
+			"desktop": "1440px",
+			"sm": "640px",
+			"md": "768px",
+			"lg": "1024px",
+			"xl": "1280px",
+			"2xl": "1536px",
+		},
 		container: {
 			center: true,
-			padding: "2rem",
+			padding: "10px",
 			screens: {
-				"2xl": "1400px"
+				"2xl": "1440px"
 			}
 		},
 		extend: {
@@ -58,7 +69,10 @@ const config = {
 					"accent-foreground": "hsl(var(--sidebar-accent-foreground))",
 					border: "hsl(var(--sidebar-border))",
 					ring: "hsl(var(--sidebar-ring))",
-        		},
+				},
+			},
+			spacing: {
+				"gutter": "10px",
 			},
 			borderRadius: {
 				xl: "calc(var(--radius) + 4px)",
@@ -84,10 +98,10 @@ const config = {
 				},
 			},
 			animation: {
-        		"accordion-down": "accordion-down 0.2s ease-out",
-        		"accordion-up": "accordion-up 0.2s ease-out",
-       			"caret-blink": "caret-blink 1.25s ease-out infinite",
-      		},
+				"accordion-down": "accordion-down 0.2s ease-out",
+				"accordion-up": "accordion-up 0.2s ease-out",
+				"caret-blink": "caret-blink 1.25s ease-out infinite",
+			},
 		},
 	},
 	plugins: [tailwindcssAnimate],

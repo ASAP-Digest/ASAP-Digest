@@ -9,7 +9,6 @@
   import { page } from '$app/stores';
   import MobileNav from '$lib/components/layout/MobileNav.svelte';
   import InstallPrompt from '$lib/components/pwa/InstallPrompt.svelte';
-  import { LAYOUT_SPACING } from '$lib/styles/spacing.js';
   import MainSidebar from '$lib/components/layout/MainSidebar.svelte';
   import { SidebarProvider, SidebarTrigger, useSidebar } from '$lib/components/ui/sidebar';
   import * as Sheet from '$lib/components/ui/sheet';
@@ -22,9 +21,43 @@
   /** @type {Props} */
   let { children } = $props();
   
-  // Initialize performance monitoring and optimizations on mount
-  onMount(() => {
-    // Initialize performance monitoring in production and development
+  /**
+   * Determines if the current route is an auth route
+   */
+  let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
+  
+  // Hook into sidebar state for mobile sheet
+  let sheetOpen = $state(false);
+  
+  // Create a function to sync sidebar and sheet states
+  function handleSidebarToggle() {
+    const sidebar = useSidebar();
+    sheetOpen = sidebar.isOpen;
+  }
+  
+  // Close sidebar when sheet closes
+  function handleSheetOpenChange(open) {
+    try {
+      const sidebar = useSidebar();
+      if (sidebar) {
+        if (!open && sidebar.isOpen) {
+          sidebar.close();
+        } else if (open && !sidebar.isOpen) {
+          sidebar.open();
+        }
+      }
+      sheetOpen = open;
+    } catch (error) {
+      console.error("Error handling sheet open change:", error);
+      sheetOpen = open;
+    }
+  }
+
+  // Initialization function for all layout behaviors
+  function initializeLayout() {
+    console.log("Initializing layout...");
+    
+    // Initialize performance monitoring
     initPerformanceMonitoring();
     
     // Initialize image optimization
@@ -116,8 +149,10 @@
     
     // Add intersection observer for lazy loading images
     const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+    let lazyImageObserver = null;
+    
     if ('IntersectionObserver' in window) {
-      const lazyImageObserver = new IntersectionObserver((entries) => {
+      lazyImageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             const img = /** @type {HTMLImageElement} */ (entry.target);
@@ -212,121 +247,71 @@
       });
     }
     
-    return () => {
-      // Clean up observers when component unmounts
-      imageObserver?.disconnect();
-      lazyImageObserver?.disconnect();
-      linkObserver?.disconnect();
-    };
-  });
-
-  /**
-   * Determines if the current route is an auth route
-   */
-  let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
-  
-  // Hook into sidebar state for mobile sheet
-  let sheetOpen = $state(false);
-  
-  // Create a function to sync sidebar and sheet states
-  function handleSidebarToggle() {
-    const sidebar = useSidebar();
-    sheetOpen = sidebar.isOpen;
-  }
-  
-  // Update sheet when sidebar changes
-  onMount(() => {
+    // Handle sidebar subscription
+    let sidebarUnsubscribe = null;
     try {
       const sidebar = useSidebar();
-      // Watch for changes
       if (sidebar && sidebar.subscribe) {
-        const unsubscribe = sidebar.subscribe((state) => {
+        sidebarUnsubscribe = sidebar.subscribe((state) => {
           if (state) {
             sheetOpen = state.isOpen;
           }
         });
-        
-        return unsubscribe;
       }
     } catch (error) {
       console.error("Error setting up sidebar subscription:", error);
     }
     
-    return () => {};
-  });
-  
-  // Close sidebar when sheet closes
-  function handleSheetOpenChange(open) {
-    try {
-      const sidebar = useSidebar();
-      if (sidebar) {
-        if (!open && sidebar.isOpen) {
-          sidebar.close();
-        } else if (open && !sidebar.isOpen) {
-          sidebar.open();
-        }
-      }
-      sheetOpen = open;
-    } catch (error) {
-      console.error("Error handling sheet open change:", error);
-      sheetOpen = open;
-    }
+    // Cleanup function
+    return () => {
+      imageObserver?.disconnect();
+      lazyImageObserver?.disconnect();
+      linkObserver?.disconnect();
+      if (sidebarUnsubscribe) sidebarUnsubscribe();
+    };
   }
+  
+  // Use a single onMount with the initialization function
+  onMount(initializeLayout);
 </script>
 
 <SidebarProvider>
-  <div class="grid md:grid-cols-[250px_1fr] grid-cols-[0_1fr] min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-    <!-- Desktop Sidebar -->
-    <aside class="hidden md:block h-screen">
-      <MainSidebar />
-    </aside>
-
-    <!-- Main content -->
-    <div class="flex flex-col">
-      <!-- Header navigation with proper spacing -->
-      <header class="sticky top-0 z-50 w-full border-b bg-[hsl(var(--background))] backdrop-blur supports-[backdrop-filter]:bg-[hsl(var(--background))]/60">
-        <div class="flex items-center">
-          <div class="md:hidden ml-4">
-            <SidebarTrigger class="h-10 w-10" />
+  <div class="flex min-h-screen">
+    <MainSidebar />
+    
+    <div class="flex-1 flex flex-col">
+      <header class="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] py-3 px-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <!-- Sidebar toggle button -->
+            <SidebarTrigger class="md:hidden text-[hsl(var(--foreground))]">
+              <span class="sr-only">Toggle sidebar</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </svg>
+            </SidebarTrigger>
+            
+            <a href="/" class="font-semibold text-xl text-[hsl(var(--foreground))]">ASAP Digest</a>
           </div>
-          <Navigation />
+          
+          <div class="flex items-center gap-4">
+            <a href="/profile" class="text-[hsl(var(--foreground))]">
+              <span class="sr-only">Profile</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </a>
+          </div>
         </div>
       </header>
-
-      <!-- Main content with minimum viewport height and proper spacing from header/footer -->
-      <main class="flex-grow pt-4 pb-16 md:pb-8 px-4 md:px-6 lg:px-8">
+      
+      <main class="container mx-auto px-4 py-6 sm:px-6 lg:px-8 max-w-[1440px]">
         {@render children?.()}
       </main>
-
-      <!-- Sticky mobile navigation for small screens only with proper spacing -->
-      <div class="md:hidden fixed bottom-0 left-0 right-0 z-50">
-        <MobileNav />
-      </div>
-
-      <!-- Footer with proper top spacing -->
-      <footer class="border-t mt-auto py-8 {LAYOUT_SPACING.container}">
-        <Footer />
-      </footer>
     </div>
-
-    <!-- Mobile Sidebar Sheet -->
-    <Sheet.Root open={sheetOpen} onOpenChange={handleSheetOpenChange}>
-      <Sheet.Content side="left" class="p-0 max-w-[280px]">
-        <MainSidebar />
-      </Sheet.Content>
-    </Sheet.Root>
-
-    <!-- Install prompt with proper spacing -->
-    <div class="fixed bottom-20 md:bottom-8 right-4 z-40">
-      <InstallPrompt />
-    </div>
-
-    <!-- Performance monitor - only shown in dev mode -->
-    {#if import.meta.env.DEV}
-      <div class="fixed bottom-4 left-4 z-50 bg-[hsl(var(--card))] p-4 rounded shadow-lg text-xs opacity-80 hover:opacity-100">
-        <PerformanceMonitor />
-      </div>
-    {/if}
   </div>
 </SidebarProvider>
 

@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { Home, FileText, Headphones, Settings, User } from 'lucide-svelte';
   import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+  import { onMount } from 'svelte';
   
   // Make path a derived state that updates when page changes
   let path = $derived($page.url.pathname);
@@ -47,9 +48,22 @@
   function childHandler({ props }) {
     return null; // This is just for type definition, not actually used
   }
+  
+  onMount(() => {
+    console.log('MainSidebar mounted');
+    console.log('Current path:', path);
+    console.log('Main nav items:', mainNavItems);
+    
+    // Debug sidebar components
+    try {
+      console.log('Sidebar components loaded:', Object.keys(Sidebar));
+    } catch (error) {
+      console.error('Error with sidebar components:', error);
+    }
+  });
 </script>
 
-<Sidebar.Root class="h-full">
+<Sidebar.Root class="h-full border-r border-[hsl(var(--sidebar-border))]">
   <Sidebar.Header class="px-2">
     <div class="flex items-center justify-between p-4">
       <div class="flex items-center gap-2">
