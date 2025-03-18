@@ -13,6 +13,7 @@
   import MainSidebar from '$lib/components/layout/MainSidebar.svelte';
   import { SidebarProvider, SidebarTrigger, useSidebar } from '$lib/components/ui/sidebar';
   import * as Sheet from '$lib/components/ui/sheet';
+  import { findProblematicClasses } from '$lib/utils/tailwindFixer';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -191,6 +192,25 @@
         document.getElementById('offline-notification').style.display = 'block';
       }
     });
+    
+    // Only run in development mode
+    if (import.meta.env.DEV) {
+      console.log('Checking for problematic shadcn-svelte classes...');
+      
+      document.querySelectorAll('[class]').forEach(el => {
+        const classStr = el.getAttribute('class');
+        const problematicClasses = findProblematicClasses(classStr);
+        
+        if (problematicClasses.length > 0) {
+          console.warn(
+            'Problematic shadcn-svelte classes found:',
+            problematicClasses,
+            '\nElement:',
+            el
+          );
+        }
+      });
+    }
     
     return () => {
       // Clean up observers when component unmounts

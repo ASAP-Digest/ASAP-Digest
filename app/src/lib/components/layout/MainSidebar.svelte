@@ -3,43 +3,43 @@
   import { Home, FileText, Headphones, Settings, User } from 'lucide-svelte';
   import * as Sidebar from '$lib/components/ui/sidebar';
   
-  // Get active route
-  const path = $derived($page.url.pathname);
+  // Make path a derived state that updates when page changes
+  let path = $derived($page.url.pathname);
   
-  // Menu items
-  const mainItems = [
+  // Create navigation items with reactive closures for 'active' property
+  const mainNavItems = [
     {
-      title: "Home",
+      label: "Home",
       url: "/",
       icon: Home,
-      active: path === '/'
+      get active() { return path === '/' }
     },
     {
-      title: "Articles",
+      label: "Articles",
       url: "/articles",
       icon: FileText,
-      active: path.startsWith('/articles')
+      get active() { return path.startsWith('/articles') }
     },
     {
-      title: "Podcasts",
+      label: "Podcasts",
       url: "/podcasts",
       icon: Headphones,
-      active: path.startsWith('/podcasts')
+      get active() { return path.startsWith('/podcasts') }
     }
   ];
   
-  const accountItems = [
+  const secondaryNavItems = [
     {
-      title: "Profile",
+      label: "Profile",
       url: "/profile",
       icon: User,
-      active: path.startsWith('/profile')
+      get active() { return path.startsWith('/profile') }
     },
     {
-      title: "Settings",
+      label: "Settings",
       url: "/settings",
       icon: Settings,
-      active: path.startsWith('/settings')
+      get active() { return path.startsWith('/settings') }
     }
   ];
 </script>
@@ -58,18 +58,18 @@
       <Sidebar.GroupLabel class="px-2" child={{props: {}}}>Main</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="space-y-1">
         <Sidebar.Menu class="space-y-1">
-          {#each mainItems as item (item.title)}
+          {#each mainNavItems as item (item.label)}
             <Sidebar.MenuItem class="px-0">
               <Sidebar.MenuButton 
                 class="w-full justify-start" 
                 isActive={item.active}
-                tooltipContent={item.title}
+                tooltipContent={item.label}
                 tooltipContentProps={{}}
               >
                 {#snippet child({ props })}
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
-                    <span>{item.title}</span>
+                    <span>{item.label}</span>
                   </a>
                 {/snippet}
               </Sidebar.MenuButton>
@@ -85,18 +85,18 @@
       <Sidebar.GroupLabel class="px-2" child={{props: {}}}>Account</Sidebar.GroupLabel>
       <Sidebar.GroupContent class="space-y-1">
         <Sidebar.Menu class="space-y-1">
-          {#each accountItems as item (item.title)}
+          {#each secondaryNavItems as item (item.label)}
             <Sidebar.MenuItem class="px-0">
               <Sidebar.MenuButton 
                 class="w-full justify-start" 
                 isActive={item.active}
-                tooltipContent={item.title}
+                tooltipContent={item.label}
                 tooltipContentProps={{}}
               >
                 {#snippet child({ props })}
                   <a href={item.url} {...props}>
                     <item.icon size={18} />
-                    <span>{item.title}</span>
+                    <span>{item.label}</span>
                   </a>
                 {/snippet}
               </Sidebar.MenuButton>
