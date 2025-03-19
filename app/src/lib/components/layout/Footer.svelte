@@ -7,7 +7,7 @@
     <div class="flex flex-col md:flex-row justify-between items-center">
       <div class="mb-4 md:mb-0">
         <p class="text-sm text-gray-600 dark:text-gray-400">
-          &copy; {new Date().getFullYear()} ASAP Digest. All rights reserved.
+          &copy; {new Date().getFullYear()} ⚡️ ASAP Digest. All rights reserved.
         </p>
       </div>
       <div class="flex space-x-4">

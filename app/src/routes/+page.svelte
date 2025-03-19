@@ -76,13 +76,13 @@
     widgetElements.forEach(element => {
       element.setAttribute('draggable', 'true');
       
-      // Use type casting for event listeners
-      element.addEventListener('dragstart', /** @param {Event} e */ e => handleDragStart(/** @type {DragEvent} */ (e)));
-      element.addEventListener('dragend', /** @param {Event} e */ e => handleDragEnd(/** @type {DragEvent} */ (e)));
-      element.addEventListener('dragover', /** @param {Event} e */ e => handleDragOver(/** @type {DragEvent} */ (e)));
-      element.addEventListener('dragenter', /** @param {Event} e */ e => handleDragEnter(/** @type {DragEvent} */ (e)));
-      element.addEventListener('dragleave', /** @param {Event} e */ e => handleDragLeave(/** @type {DragEvent} */ (e)));
-      element.addEventListener('drop', /** @param {Event} e */ e => handleDrop(/** @type {DragEvent} */ (e)));
+      // Add event listeners with proper typing
+      element.addEventListener('dragstart', (e) => handleDragStart(/** @type {DragEvent} */ e));
+      element.addEventListener('dragend', (e) => handleDragEnd(/** @type {DragEvent} */ e));
+      element.addEventListener('dragover', (e) => handleDragOver(/** @type {DragEvent} */ e));
+      element.addEventListener('dragenter', (e) => handleDragEnter(/** @type {DragEvent} */ e));
+      element.addEventListener('dragleave', (e) => handleDragLeave(/** @type {DragEvent} */ e));
+      element.addEventListener('drop', (e) => handleDrop(/** @type {DragEvent} */ e));
     });
   }
   
@@ -93,13 +93,13 @@
     const widgetElements = document.querySelectorAll('.draggable-widget');
     
     widgetElements.forEach(element => {
-      // Use type casting for event listeners removal
-      element.removeEventListener('dragstart', /** @param {Event} e */ e => handleDragStart(/** @type {DragEvent} */ (e)));
-      element.removeEventListener('dragend', /** @param {Event} e */ e => handleDragEnd(/** @type {DragEvent} */ (e)));
-      element.removeEventListener('dragover', /** @param {Event} e */ e => handleDragOver(/** @type {DragEvent} */ (e)));
-      element.removeEventListener('dragenter', /** @param {Event} e */ e => handleDragEnter(/** @type {DragEvent} */ (e)));
-      element.removeEventListener('dragleave', /** @param {Event} e */ e => handleDragLeave(/** @type {DragEvent} */ (e)));
-      element.removeEventListener('drop', /** @param {Event} e */ e => handleDrop(/** @type {DragEvent} */ (e)));
+      // Remove event listeners
+      element.removeEventListener('dragstart', (e) => handleDragStart(/** @type {DragEvent} */ e));
+      element.removeEventListener('dragend', (e) => handleDragEnd(/** @type {DragEvent} */ e));
+      element.removeEventListener('dragover', (e) => handleDragOver(/** @type {DragEvent} */ e));
+      element.removeEventListener('dragenter', (e) => handleDragEnter(/** @type {DragEvent} */ e));
+      element.removeEventListener('dragleave', (e) => handleDragLeave(/** @type {DragEvent} */ e));
+      element.removeEventListener('drop', (e) => handleDrop(/** @type {DragEvent} */ e));
     });
   }
   
@@ -283,10 +283,10 @@
 </script>
 
 <!-- Main layout container -->
-<div class="w-full max-w-[1440px] mx-auto p-4 md:p-6">
+<div class="w-full max-w-[1440px] mx-auto p-[1rem] md:p-[1.5rem]">
   <!-- Section Headers -->
-  <div class="mb-6 space-y-2">
-    <h1 class="text-2xl md:text-3xl font-bold text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
+  <div class="mb-[1.5rem] space-y-[0.5rem]">
+    <h1 class="text-[1.5rem] md:text-[1.875rem] font-bold text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
     <p class="text-[hsl(var(--muted-foreground))]">Customized content based on your interests</p>
   </div>
 
@@ -295,7 +295,7 @@
     - Tablet (sm/md): 2 columns of 3 grids (6 total) 
     - Desktop (lg+): 4 columns of 3 grids (12 total)
   -->
-  <div class="grid w-full gap-4 md:gap-6
+  <div class="grid w-full gap-[1rem] md:gap-[1.5rem]
     grid-cols-4  /* Mobile: 4 column grid system (2 columns of 2 grid units) */
     sm:grid-cols-6  /* Tablet: 6 column grid system (2 columns of 3 grid units) */
     md:grid-cols-6 
@@ -304,8 +304,8 @@
     2xl:grid-cols-12"
   >
     <!-- News Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-2">
-      <h2 class="text-xl font-bold text-[hsl(var(--foreground))]">Latest News</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[0.5rem]">
+      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Latest News</h2>
     </div>
     
     <!-- News Widgets -->
@@ -329,7 +329,7 @@
             <PodcastWidget
               id={widget.id || ''}
               title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+              episode={typeof widget.episode === 'number' ? widget.episode : 1}
               duration={typeof widget.duration === 'number' ? widget.duration : 0}
               summary={widget.summary || ''}
             />
@@ -338,8 +338,8 @@
       {/each}
     
     <!-- Finance Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
-      <h2 class="text-xl font-bold text-[hsl(var(--foreground))]">Financial Updates</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
+      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Financial Updates</h2>
     </div>
     
     <!-- Finance Widgets -->
@@ -363,7 +363,7 @@
             <PodcastWidget
               id={widget.id || ''}
               title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+              episode={typeof widget.episode === 'number' ? widget.episode : 1}
               duration={typeof widget.duration === 'number' ? widget.duration : 0}
               summary={widget.summary || ''}
             />
@@ -372,8 +372,8 @@
       {/each}
     
     <!-- Personalized Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
-      <h2 class="text-xl font-bold text-[hsl(var(--foreground))]">Your Interests</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
+      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Your Interests</h2>
     </div>
     
     <!-- Personalized Widgets -->
@@ -397,7 +397,7 @@
             <PodcastWidget
               id={widget.id || ''}
               title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+              episode={typeof widget.episode === 'number' ? widget.episode : 1}
               duration={typeof widget.duration === 'number' ? widget.duration : 0}
               summary={widget.summary || ''}
             />

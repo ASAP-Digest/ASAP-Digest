@@ -88,68 +88,68 @@
   }
 </script>
 
-<div class="space-y-8">
+<div class="space-y-[2rem]">
   <section>
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold flex items-center gap-2">
+    <div class="flex justify-between items-center mb-[1.5rem]">
+      <h1 class="text-[1.5rem] font-bold flex items-center gap-[0.5rem]">
         <Bell size={20} />
         <span>Notifications</span>
       </h1>
       
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-[1rem]">
         <button 
           onclick={markAllAsRead}
-          class="text-sm text-primary hover:underline flex items-center gap-1"
+          class="text-[0.875rem] text-[hsl(var(--primary))] hover:underline flex items-center gap-[0.25rem]"
         >
           <Check size={16} />
           <span>Mark all as read</span>
         </button>
         
-        <a href="/profile" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+        <a href="/profile" class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
           <Settings size={18} />
         </a>
       </div>
     </div>
     
     {#if notifications.length === 0}
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center border border-gray-200 dark:border-gray-700">
-        <Bell size={32} class="mx-auto mb-3 text-gray-400" />
-        <p class="text-gray-600 dark:text-gray-400">You don't have any notifications yet.</p>
+      <div class="bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-md p-[1.5rem] text-center border border-[hsl(var(--border))]">
+        <Bell size={32} class="mx-auto mb-[0.75rem] text-[hsl(var(--muted-foreground))]" />
+        <p class="text-[hsl(var(--muted-foreground))]">You don't have any notifications yet.</p>
       </div>
     {:else}
-      <div class="space-y-4">
+      <div class="space-y-[1rem]">
         {#each notifications as notification}
           {@const SvelteComponent = getIcon(notification.type)}
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 {notification.read ? '' : 'border-l-4 border-l-primary'}">
-            <div class="flex items-start gap-3">
-              <div class="mt-1 {notification.read ? 'text-gray-500' : 'text-primary'}">
+          <div class="bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-[0_1px_2px_0_rgba(0,0,0,0.05)] p-[1rem] border border-[hsl(var(--border))] {notification.read ? '' : 'border-l-4 border-l-[hsl(var(--primary))]'}">
+            <div class="flex items-start gap-[0.75rem]">
+              <div class="mt-[0.25rem] {notification.read ? 'text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--primary))]'}">
                 <SvelteComponent size={20} />
               </div>
               
               <div class="flex-1">
                 <div class="flex justify-between items-start">
                   <div>
-                    <h3 class="font-medium {notification.read ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-gray-100'}">{notification.title}</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{notification.message}</p>
+                    <h3 class="font-medium {notification.read ? 'text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--foreground))]'}">{notification.title}</h3>
+                    <p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mt-[0.25rem]">{notification.message}</p>
                   </div>
                   
                   {#if !notification.read}
                     <button 
                       onclick={() => markAsRead(notification.id)} 
-                      class="text-gray-400 hover:text-gray-600"
+                      class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
                     >
                       <X size={16} />
                     </button>
                   {/if}
                 </div>
                 
-                <div class="flex justify-between items-center mt-3">
-                  <div class="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
+                <div class="flex justify-between items-center mt-[0.75rem]">
+                  <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] flex items-center gap-[0.25rem]">
                     <Clock size={14} />
                     <span>{formatRelativeTime(notification.date)}</span>
                   </div>
                   
-                  <a href="/" class="text-primary hover:underline text-sm flex items-center gap-1">
+                  <a href="/" class="text-[hsl(var(--primary))] hover:underline text-[0.875rem] flex items-center gap-[0.25rem]">
                     <span>View</span>
                     <ArrowUpRight size={14} />
                   </a>

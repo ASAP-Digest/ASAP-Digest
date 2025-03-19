@@ -11,241 +11,218 @@
 	 * @property {Promise<{outcome: 'accepted'|'dismissed'}>} userChoice
 	 */
 	
-	/**
-	 * Flag to track if the component has been shown before
-	 * @type {boolean}
-	 */
-	let shown = $state(false);
+	// State variables
+	/** @type {boolean} */
+	let hasShownPrompt = $state(false);
+	
+	/** @type {boolean} */
+	let isAppInstalled = $state(false);
+	
+	/** @type {boolean} */
+	let isPromptVisible = $state(false);
+	
+	/** @type {boolean} */
+	let isApple = $state(false);
+	
+	/** @type {boolean} */
+	let isChrome = $state(false);
+	
+	/** @type {boolean} */
+	let isSafari = $state(false);
+	
+	/** @type {boolean} */
+	let isFirefox = $state(false);
+	
+	/** @type {'ios'|'android'|'desktop'|null} */
+	let deviceOS = $state(null);
+	
+	// Reference to the beforeinstallprompt event
+	/** @type {any} */
+	let deferredPrompt = $state(null);
 	
 	/**
-	 * Flag to track if the PWA is already installed
-	 * @type {boolean}
+	 * Check if app is already installed
+	 * @returns {boolean} - Whether app is installed
 	 */
-	let installed = $state(false);
-	
-	/**
-	 * Flag to track if the promptable event is available
-	 * @type {boolean}
-	 */
-	let promptable = $state(false);
-	
-	/**
-	 * Flag to track if the prompt is currently visible
-	 * @type {boolean}
-	 */
-	let visible = $state(false);
-	
-	/**
-	 * Browser/OS information for customized installation instructions
-	 * @type {{name: string, os: string}}
-	 */
-	let browser = $state({ name: 'unknown', os: 'unknown' });
-	
-	/**
-	 * Store the install prompt event
-	 * @type {BeforeInstallPromptEvent|null}
-	 */
-	let deferredPrompt = null;
-	
-	// Check if PWA is already installed
-	function checkInstalled() {
-		// Check if in standalone mode or display-mode is standalone
-		if (window.matchMedia('(display-mode: standalone)').matches || 
-			window.navigator.standalone === true) {
-			installed = true;
-			return true;
-		}
-		return false;
+	function checkIfAppInstalled() {
+		if (typeof window === 'undefined') return false;
+		
+		// Check display-mode
+		const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+		
+		// Check for iOS specific properties
+		// @ts-ignore - Navigator.standalone is a non-standard Safari property
+		const isIOSInstalled = 
+			(navigator.standalone === true) || 
+			window.matchMedia('(display-mode: standalone)').matches;
+		
+		// Check localStorage to prevent repeated prompts
+		const appInstalled = localStorage.getItem('appInstalled') === 'true';
+		
+		return isStandalone || isIOSInstalled || appInstalled;
 	}
 	
-	// Detect browser and OS for customized instructions
-	function detectBrowser() {
-		const userAgent = navigator.userAgent;
+	/**
+	 * Detect browser and OS
+	 */
+	function detectBrowserAndOS() {
+		if (typeof window === 'undefined') return;
+		
+		const ua = navigator.userAgent;
+		
+		// Detect browsers
+		isChrome = /Chrome/.test(ua) && !/Edge|Edg/.test(ua);
+		isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+		isFirefox = /Firefox/.test(ua);
 		
 		// Detect OS
-		if (/iphone|ipad|ipod/i.test(userAgent)) {
-			browser.os = 'ios';
-		} else if (/android/i.test(userAgent)) {
-			browser.os = 'android';
-		} else if (/windows/i.test(userAgent)) {
-			browser.os = 'windows';
-		} else if (/mac/i.test(userAgent)) {
-			browser.os = 'mac';
-		} else if (/linux/i.test(userAgent)) {
-			browser.os = 'linux';
-		}
-		
-		// Detect browser
-		if (/CriOS/i.test(userAgent)) {
-			browser.name = 'chrome'; // Chrome on iOS
-		} else if (/chrome|chromium|crios/i.test(userAgent)) {
-			browser.name = 'chrome';
-		} else if (/firefox|fxios/i.test(userAgent)) {
-			browser.name = 'firefox';
-		} else if (/safari/i.test(userAgent) && !/chrome|chromium|crios/i.test(userAgent)) {
-			browser.name = 'safari';
-		} else if (/edg/i.test(userAgent)) {
-			browser.name = 'edge';
-		} else if (/opera|opr/i.test(userAgent)) {
-			browser.name = 'opera';
+		if (/iPad|iPhone|iPod/.test(ua)) {
+			deviceOS = 'ios';
+		} else if (/Android/.test(ua)) {
+			deviceOS = 'android';
+		} else {
+			deviceOS = 'desktop';
 		}
 	}
 	
 	/**
-	 * Handle installation request
+	 * Handle install button click
+	 * @param {MouseEvent} event - Mouse event object 
 	 */
-	function handleInstall() {
-		// Skip if already installed
-		if (installed) return;
+	function handleInstall(event) {
+		console.log('Install button clicked');
 		
-		// If we have the prompt event, use it
+		// Hide prompt
+		isPromptVisible = false;
+		
+		// Mark as shown in session and localStorage
+		hasShownPrompt = true;
+		localStorage.setItem('installPromptShown', 'true');
+		
+		// Use native install prompt if available
 		if (deferredPrompt) {
+			// @ts-ignore - BeforeInstallPromptEvent is a non-standard API
 			deferredPrompt.prompt();
 			
-			deferredPrompt.userChoice.then((choiceResult) => {
+			// @ts-ignore - BeforeInstallPromptEvent is a non-standard API
+			deferredPrompt.userChoice.then(/** @param {any} choiceResult */ (choiceResult) => {
 				if (choiceResult.outcome === 'accepted') {
 					console.log('User accepted the install prompt');
-					// Record analytics if available
-					if (typeof window !== 'undefined' && 'gtag' in window && typeof window['gtag'] === 'function') {
-						window['gtag']('event', 'pwa_install', { event_category: 'PWA', event_label: 'Prompt Accepted' });
-					}
-					installed = true;
+					localStorage.setItem('appInstalled', 'true');
+					isAppInstalled = true;
 				} else {
 					console.log('User dismissed the install prompt');
-					// Record analytics if available
-					if (typeof window !== 'undefined' && 'gtag' in window && typeof window['gtag'] === 'function') {
-						window['gtag']('event', 'pwa_install', { event_category: 'PWA', event_label: 'Prompt Dismissed' });
-					}
 				}
 				
+				// Clear the saved prompt
 				deferredPrompt = null;
-				visible = false;
-				shown = true;
-				
-				// Store in localStorage that we've shown the prompt
-				try {
-					localStorage.setItem('pwa-prompt-shown', 'true');
-				} catch (e) {
-					console.debug('Unable to save prompt state to localStorage');
-				}
 			});
-		} else {
-			// No prompt available, show manual instructions
-			visible = true;
 		}
 	}
 	
 	/**
-	 * Dismiss the prompt
+	 * Close the install prompt
+	 * @param {MouseEvent} event - Mouse event object
 	 */
-	function dismiss() {
-		visible = false;
-		shown = true;
-		
-		// Store in localStorage that we've shown the prompt
-		try {
-			localStorage.setItem('pwa-prompt-shown', 'true');
-		} catch (e) {
-			console.debug('Unable to save prompt state to localStorage');
-		}
+	function closePrompt(event) {
+		isPromptVisible = false;
+		hasShownPrompt = true;
+		localStorage.setItem('installPromptShown', 'true');
 	}
 	
+	// Initialize on mount
 	onMount(() => {
-		// Check if already installed
-		if (checkInstalled()) {
-			return;
-		}
+		// Detect browser and OS
+		detectBrowserAndOS();
 		
-		// Detect browser/OS
-		detectBrowser();
+		// Check if app is installed
+		isAppInstalled = checkIfAppInstalled();
 		
-		// Check if we've shown the prompt before
-		try {
-			shown = localStorage.getItem('pwa-prompt-shown') === 'true';
-		} catch (e) {
-			console.debug('Unable to access localStorage for prompt state');
-		}
+		// Check if prompt has been shown this session or in localStorage
+		const promptShown = localStorage.getItem('installPromptShown') === 'true';
+		hasShownPrompt = promptShown;
 		
-		// Listen for beforeinstallprompt event
+		// Add beforeinstallprompt listener
 		window.addEventListener('beforeinstallprompt', (e) => {
-			// Prevent Chrome 67 and earlier from automatically showing the prompt
+			// Prevent Chrome 67+ from automatically showing the prompt
 			e.preventDefault();
 			
-			// Store the event for later use
+			// Stash the event so it can be triggered later
 			deferredPrompt = e;
-			promptable = true;
 			
-			// Only show after user has interacted with the site
-			if (!shown) {
-				// Wait a bit for better UX
+			// Update UI to show install button/banner
+			if (!hasShownPrompt && !isAppInstalled) {
+				// Show the prompt after a short delay
 				setTimeout(() => {
-					if (!installed && !shown) {
-						visible = true;
-					}
+					isPromptVisible = true;
 				}, 3000);
 			}
 		});
 		
-		// Listen for appinstalled event
+		// Track when the app is installed
 		window.addEventListener('appinstalled', () => {
+			// Log app installed
 			console.log('PWA was installed');
-			installed = true;
-			visible = false;
 			
-			// Record analytics if available
-			if (typeof window !== 'undefined' && 'gtag' in window && typeof window['gtag'] === 'function') {
-				window['gtag']('event', 'pwa_install', { event_category: 'PWA', event_label: 'Installed' });
-			}
+			// Update state
+			isAppInstalled = true;
+			isPromptVisible = false;
+			
+			// Save to localStorage
+			localStorage.setItem('appInstalled', 'true');
 		});
+		
+		// Check if we need to show the prompt (not installed and not shown yet)
+		if (!isAppInstalled && !hasShownPrompt) {
+			// Show prompt after a delay
+			setTimeout(() => {
+				isPromptVisible = true;
+			}, 3000);
+		}
 	});
 </script>
 
-{#if visible && !installed}
-	<div class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-auto px-4">
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4">
-			<div class="flex justify-between items-start">
-				<div class="flex items-center">
-					<img src="/icons/icon-72x72.png" alt="ASAP Digest Logo" class="w-10 h-10 mr-3" />
-					<div>
-						<h3 class="font-medium text-sm">Install ASAP Digest</h3>
-						<p class="text-xs text-gray-600 dark:text-gray-400">
-							Get the best experience with our app
-						</p>
-					</div>
-				</div>
-				<button 
-					aria-label="Close prompt" 
-					class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-					onclick={dismiss}
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
+{#if isPromptVisible}
+	<div class="fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] p-[1rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
+		<div class="flex justify-between items-start mb-[0.75rem]">
+			<h3 class="text-[1rem] font-semibold flex items-center gap-[0.5rem]">
+				<Download size={18} />
+				<span>Install ASAP Digest</span>
+			</h3>
 			
-			<div class="mt-3">
-				{#if browser.os === 'ios'}
-					<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-						To install, tap the share icon and then "Add to Home Screen"
-					</p>
-				{:else if promptable}
-					<Button class="w-full" onclick={handleInstall}>
-						<Download class="w-4 h-4 mr-2" />
-						Install App
-					</Button>
-				{:else}
-					<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-						{#if browser.name === 'chrome' || browser.name === 'edge'}
-							Tap the menu (⋮) and select "Install App" or "Add to Home screen"
-						{:else if browser.name === 'firefox'}
-							Tap the menu (⋮) and select "Install"
-						{:else if browser.name === 'safari'}
-							Tap the share icon and select "Add to Home Screen"
-						{:else}
-							Install this app on your device for the best experience
-						{/if}
-					</p>
-				{/if}
-			</div>
+			<button 
+				onclick={closePrompt}
+				class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+				aria-label="Close installation prompt"
+			>
+				<X size={18} />
+			</button>
 		</div>
+		
+		<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-[1rem]">
+			{#if deviceOS === 'ios'}
+				Add ASAP Digest to your Home Screen for a better experience. Tap <span class="inline-block w-[1rem] h-[1rem] bg-[#1677ff] text-white text-center leading-[1rem] rounded-[0.25rem] mx-[0.25rem]">+</span> in your Safari browser and then "Add to Home Screen".
+			{:else if deviceOS === 'android'}
+				Install ASAP Digest as an app on your device for a better experience with offline access.
+			{:else}
+				Install ASAP Digest for offline access and a better experience.
+			{/if}
+		</p>
+		
+		{#if deferredPrompt || deviceOS === 'desktop'}
+			<button 
+				onclick={handleInstall}
+				class="w-full py-[0.5rem] px-[1rem] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-[0.375rem] flex items-center justify-center gap-[0.5rem]"
+			>
+				<Download size={16} />
+				<span>Install Now</span>
+			</button>
+		{:else if deviceOS === 'ios'}
+			<div class="flex items-center justify-center text-[0.875rem] text-[hsl(var(--muted-foreground))]">
+				<span>Tap</span>
+				<svg class="w-[1.25rem] h-[1.25rem] mx-[0.25rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+				<span>then "Add to Home Screen"</span>
+			</div>
+		{/if}
 	</div>
 {/if} 

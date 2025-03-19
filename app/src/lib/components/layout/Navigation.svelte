@@ -43,7 +43,7 @@
   <div class="flex justify-between items-center">
     <!-- Logo -->
     <a href="/" class="text-xl font-bold">
-      <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
+      <span class="text-[hsl(var(--primary))]">⚡️ ASAP</span>Digest
     </a>
     
     <!-- Desktop navigation -->
@@ -113,7 +113,9 @@
 {/if}
 
 <!-- Mobile Navigation - Bottom bar -->
-<div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20">
+<!-- 
+DISABLED: This mobile navigation has been replaced by MainSidebar.svelte to prevent overlapping issues
+<div class="mobile-navigation lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-20">
   <div class="grid grid-cols-5 h-16">
     {#each navItems as item}
       <a 
@@ -127,8 +129,9 @@
     {/each}
   </div>
 </div>
+-->
 
 <!-- Spacer for fixed navigation bars -->
 <div class="h-14 lg:h-14"></div>
-<!-- Bottom spacer for mobile -->
-<div class="h-16 lg:h-0"></div> 
+<!-- Bottom spacer for mobile - Disabled as it's no longer needed with the sidebar -->
+<!-- <div class="h-16 lg:h-0"></div> --> 

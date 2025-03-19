@@ -1,71 +1,79 @@
 <script>
-  import { Card } from '$lib/components/ui/card';
-  import { CardHeader } from '$lib/components/ui/card';
-  import { CardTitle } from '$lib/components/ui/card';
-  import { CardContent } from '$lib/components/ui/card';
+  import { Card, CardContent, CardHeader, CardTitle } from "$lib/components/ui/card";
+  import { Skeleton } from "$lib/components/ui/skeleton";
   import { fade } from 'svelte/transition';
   import { WIDGET_SPACING } from '$lib/styles/spacing.js';
   
-  export let title = '';
-  export let icon = null;
-  export let loading = false;
-  export let variant = 'default'; // 'default', 'compact', or 'expanded'
+  /** @type {string} */
+  export let title = "";
   
-  // Get appropriate spacing based on variant
+  /** @type {import('lucide-svelte').LucideIcon | null} */
+  export let icon = null;
+  
+  /** @type {boolean} */
+  export let loading = false;
+  
+  /** @type {'default' | 'compact' | 'expanded'} */
+  export let variant = 'default';
+  
   $: spacing = getVariantSpacing(variant);
   
   /**
-   * Returns specific spacing values based on widget variant
-   * @param {'default'|'compact'|'expanded'} variant - Widget variant
-   * @returns {Object} - Spacing values
+   * Get spacing values based on widget variant
+   * @param {'default' | 'compact' | 'expanded'} variant - Widget variant
+   * @returns {{padding: string, gap: string}} Spacing values
    */
   function getVariantSpacing(variant) {
     switch(variant) {
       case 'compact':
         return {
-          padding: 'p-3',
-          margin: 'm-0',
-          gap: 'gap-2'
+          padding: 'p-[0.75rem]',
+          gap: 'gap-[0.5rem]'
         };
       case 'expanded':
         return {
-          padding: 'p-6',
-          margin: 'm-0',
-          gap: 'gap-6'
+          padding: 'p-[1.5rem]',
+          gap: 'gap-[1rem]'
         };
+      case 'default':
       default:
         return {
-          padding: 'p-4 md:p-5',
-          margin: 'm-0',
-          gap: 'gap-4'
+          padding: 'p-[1rem]',
+          gap: 'gap-[0.75rem]'
         };
     }
   }
 </script>
 
-<div in:fade={{ duration: 200 }} class="widget w-full">
-  <Card class="shadow-md w-full border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-    <CardHeader class={`pb-0 ${spacing.padding}`}>
-      <CardTitle class="flex items-center text-lg text-[hsl(var(--card-foreground))]">
+<Card class="h-full">
+  {#if title}
+    <CardHeader class="{spacing.padding} pb-0">
+      <CardTitle class="flex items-center {spacing.gap}">
         {#if icon}
-          <svelte:component this={icon} class="mr-2 w-5 h-5" />
+          <svelte:component this={icon} class="text-primary" size={20} />
         {/if}
-        {title}
+        {#if loading}
+          <Skeleton class="h-[1.5rem] w-[8rem]" />
+        {:else}
+          {title}
+        {/if}
       </CardTitle>
     </CardHeader>
-    <CardContent class={`pt-4 ${spacing.padding}`}>
-      {#if loading}
-        <div class="flex justify-center p-4">
-          <div class="animate-spin h-6 w-6 border-2 border-[hsl(var(--primary))] rounded-full border-t-transparent"></div>
+  {/if}
+  <CardContent class="{spacing.padding} {spacing.gap} flex flex-col">
+    {#if loading}
+      <slot name="loading">
+        <div class="space-y-[0.5rem]">
+          <Skeleton class="h-[4rem] w-full" />
+          <Skeleton class="h-[1rem] w-3/4" />
+          <Skeleton class="h-[1rem] w-1/2" />
         </div>
-      {:else}
-        <div class={spacing.gap}>
-          <slot />
-        </div>
-      {/if}
-    </CardContent>
-  </Card>
-</div>
+      </slot>
+    {:else}
+      <slot />
+    {/if}
+  </CardContent>
+</Card>
 
 <style>
   /* Local styling for widgets */

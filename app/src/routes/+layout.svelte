@@ -1,19 +1,15 @@
 <script>
   import "../app.css";
   import { onMount } from 'svelte';
-  import Navigation from "$lib/components/layout/Navigation.svelte";
   import Footer from "$lib/components/layout/Footer.svelte";
   import PerformanceMonitor from "$lib/components/ui/PerformanceMonitor.svelte";
   import { initPerformanceMonitoring } from "$lib/utils/performance";
   import { initImageOptimization } from "$lib/utils/imageOptimizer";
   import { page } from '$app/stores';
-  import MobileNav from '$lib/components/layout/MobileNav.svelte';
   import InstallPrompt from '$lib/components/pwa/InstallPrompt.svelte';
   import MainSidebar from '$lib/components/layout/MainSidebar.svelte';
-  import { SidebarProvider, SidebarTrigger, useSidebar } from '$lib/components/ui/sidebar';
-  import * as Sheet from '$lib/components/ui/sheet';
+  import { SidebarProvider } from '$lib/components/ui/sidebar';
   import { findProblematicClasses } from '$lib/utils/tailwindFixer';
-  import { setSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -32,46 +28,82 @@
     console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute);
   });
   
-  // Hook into sidebar state for mobile sheet
-  let sheetOpen = $state(false);
+  // Track sidebar state
+  let isSidebarCollapsed = $state(false);
   
-  // Create a function to sync sidebar and sheet states
-  function handleSidebarToggle() {
-    const sidebar = useSidebar();
-    sheetOpen = sidebar.isOpen;
-  }
-  
-  // Close sidebar when sheet closes
   /**
-   * Handles changes to the sheet's open state and syncs with sidebar
-   * @param {boolean} open - Whether the sheet is open
+   * Toggle sidebar collapsed state
+   * @param {MouseEvent} e - Mouse event
    */
-  function handleSheetOpenChange(open) {
-    try {
-      const sidebar = useSidebar();
-      if (sidebar) {
-        if (!open && sidebar.isOpen) {
-          sidebar.close();
-        } else if (open && !sidebar.isOpen) {
-          sidebar.open();
-        }
-      }
-      sheetOpen = open;
-    } catch (error) {
-      console.error("Error handling sheet open change:", error);
-      sheetOpen = open;
+  function toggleSidebar(e) {
+    isSidebarCollapsed = !isSidebarCollapsed;
+    // Add class to body to allow for CSS transitions
+    if (isSidebarCollapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
     }
+    
+    // Open sidebar on mobile specifically
+    if (isMobile) {
+      if (!isSidebarCollapsed) {
+        document.body.classList.add('sidebar-open');
+      } else {
+        document.body.classList.remove('sidebar-open');
+      }
+    }
+    
+    // Save preference
+    if (localStorage) {
+      localStorage.setItem('sidebar-collapsed', String(isSidebarCollapsed));
+    }
+    
+    console.log(`[Layout] Sidebar toggled to ${isSidebarCollapsed ? 'collapsed' : 'expanded'}`);
   }
+
+  // Track if we're on mobile
+  let isMobile = $state(false);
+  
+  // Setup responsive behavior
+  onMount(() => {
+    const checkMobile = () => {
+      isMobile = window.innerWidth < 1024; // lg breakpoint
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Re-check on resize
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  });
 
   // Initialization function for all layout behaviors
   function initializeLayout() {
-    console.log("Initializing layout...");
+    console.log("[Layout] Starting layout initialization...");
     
     // Initialize performance monitoring
     initPerformanceMonitoring();
     
     // Initialize image optimization
     const imageObserver = initImageOptimization();
+    
+    // Debug check for sidebar visibility right after initialization
+    setTimeout(() => {
+      console.log("[Layout] Checking sidebar visibility after initialization");
+      const sidebar = document.querySelector('.sidebar-area');
+      console.log("[Layout] Sidebar element found:", !!sidebar);
+      console.log("[Layout] Sidebar parent element:", sidebar?.parentElement);
+      
+      if (sidebar) {
+        console.log("[Layout] Sidebar display:", window.getComputedStyle(sidebar).display);
+        console.log("[Layout] Sidebar visibility:", window.getComputedStyle(sidebar).visibility);
+        console.log("[Layout] Sidebar width:", window.getComputedStyle(sidebar).width);
+      }
+    }, 500);
     
     // Debug helper for Tailwind classes
     console.debug('Checking for layout issues...');
@@ -260,74 +292,51 @@
         }
       });
     }
-    
-    // Handle sidebar subscription
-    let sidebarUnsubscribe = null;
-    try {
-      const sidebar = useSidebar();
-      if (sidebar && sidebar.subscribe) {
-        sidebarUnsubscribe = sidebar.subscribe((/** @type {any} */ state) => {
-          if (state) {
-            sheetOpen = state.isOpen;
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error setting up sidebar subscription:", error);
-    }
-    
-    // Cleanup function
-    return () => {
-      imageObserver?.disconnect();
-      lazyImageObserver?.disconnect();
-      linkObserver?.disconnect();
-      if (sidebarUnsubscribe) sidebarUnsubscribe();
-    };
   }
   
-  // Use a single onMount with the initialization function
-  onMount(initializeLayout);
-
-  // Set up sidebar state (expanded by default, but can be toggled)
-  let sidebarOpen = $state(true);
-  // Track if sidebar is collapsed to icon-only mode
-  let sidebarCollapsed = $state(false);
-  
-  /**
-   * Updates the sidebar open state
-   * @param {boolean} open - Whether the sidebar should be open
-   */
-  const setOpen = (open) => {
-    sidebarOpen = open;
-  };
-  
-  /**
-   * Toggles the sidebar between full and collapsed (icon-only) modes
-   */
-  const toggleSidebarCollapse = () => {
-    sidebarCollapsed = !sidebarCollapsed;
-  };
-  
-  // Compute the sidebar width variable based on collapsed state
-  let sidebarWidthVar = $derived(sidebarCollapsed ? '--sidebar-width-collapsed' : '--sidebar-width');
-  
-  // Track sidebar initialization
-  let sidebarInitialized = $state(false);
-  
-  // Initialize sidebar state during component mount
+  // Initialize on mount
   onMount(() => {
-    if (typeof document !== 'undefined') {
-      setSidebar({
-        open: () => sidebarOpen,
-        setOpen
-      });
-      sidebarInitialized = true;
-    }
+    console.log("[Layout] Component mounted");
     
-    return () => {
-      // Clean up if needed
-      sidebarInitialized = false;
-    };
+    // Force sidebar to be visible on initial load
+    document.body.classList.remove('sidebar-collapsed');
+    console.log("[Layout] Removed sidebar-collapsed class from body");
+    
+    // Run full layout initialization
+    initializeLayout();
+    
+    // Add resize observer to track sidebar size changes
+    setTimeout(() => {
+      const sidebar = document.querySelector('.sidebar-area');
+      if (sidebar && 'ResizeObserver' in window) {
+        console.log("[Layout] Setting up ResizeObserver for sidebar");
+        
+        const resizeObserver = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            console.log("[Layout] Sidebar size changed:", {
+              width: entry.contentRect.width,
+              height: entry.contentRect.height,
+              time: new Date().toISOString()
+            });
+          }
+        });
+        
+        resizeObserver.observe(sidebar);
+        console.log("[Layout] ResizeObserver attached to sidebar");
+      }
+    }, 200);
+    
+    // Additional check after a little delay
+    setTimeout(() => {
+      console.log("[Layout] Running visibility check 1 second after mounting");
+      const contentGrid = document.querySelector('.content-grid');
+      console.log("[Layout] Content grid template columns:", 
+        contentGrid ? window.getComputedStyle(contentGrid).gridTemplateColumns : 'not found');
+        
+      // Full dump of all sidebar-related elements
+      console.log("[Layout] All elements with sidebar in class:", 
+        document.querySelectorAll('[class*="sidebar"]').length);
+    }, 1000);
   });
 </script>
 
@@ -352,166 +361,216 @@
     background-color: var(--offline-indicator);
   }
   
-  /* Define sidebar width */
-  :global(:root) {
-    --sidebar-width: 240px;
-    --sidebar-width-collapsed: 64px;
+  /* Prevent horizontal overflow */
+  :global(html, body) {
+    @apply overflow-x-hidden;
+    width: 100%;
+    max-width: 100vw;
   }
   
-  /* Grid layout areas */
-  .grid-layout {
+  /* App Shell Layout */
+  .app-shell {
     display: grid;
     min-height: 100vh;
-    /* Mobile: Stack everything vertically */
-    grid-template-columns: 1fr;
-    grid-template-areas:
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: 
       "header"
-      "main"
+      "content"
       "footer";
   }
   
-  /* Desktop layout - show sidebar */
-  @media (min-width: 768px) {
-    .grid-layout {
-      grid-template-columns: var(--sidebar-width-var) 1fr;
-      grid-template-areas:
-        "header header"
-        "sidebar main"
-        "footer footer";
-    }
-  }
-  
-  /* Grid area assignments */
-  .grid-area-header {
+  /* Header area */
+  .header-area {
     grid-area: header;
+    border-bottom: 1px solid hsl(var(--border)/0.8);
+    background-color: hsl(var(--background));
+    height: 64px; /* Fixed header height */
+    width: 100%;
   }
   
-  .grid-area-sidebar {
-    grid-area: sidebar;
-    display: none; /* Hidden on mobile */
+  /* Content wrapper for max-width control */
+  .content-wrapper {
+    grid-area: content;
+    width: 100%;
+    max-width: 1440px; /* Match our largest breakpoint */
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Inner content grid for sidebar and main */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr; /* Fixed width for sidebar */
+    min-height: 100%;
+    width: 100%;
+  }
+  
+  /* When sidebar is collapsed, adjust the grid */
+  .sidebar-collapsed .content-grid {
+    grid-template-columns: 64px 1fr;
+  }
+  
+  /* Sidebar area */
+  .sidebar-area {
+    width: 240px; /* Expanded state */
     transition: width 0.3s ease;
+    background-color: hsl(var(--sidebar-background));
+    border-right: 1px solid hsl(var(--sidebar-border)/0.8);
+    z-index: 10;
+    display: flex; /* Ensure the sidebar fills its container */
+    flex-direction: column;
+    overflow: hidden; /* Prevent content from overflowing during transition */
+    position: relative; /* Ensure proper stacking */
+    box-shadow: 1px 0 5px rgba(0, 0, 0, 0.05); /* Add subtle shadow for depth */
   }
   
-  .grid-area-main {
-    grid-area: main;
+  /* Collapsed sidebar */
+  .sidebar-collapsed .sidebar-area {
+    width: 64px;
   }
   
-  .grid-area-footer {
+  /* Main content area */
+  .main-area {
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  
+  /* Footer area */
+  .footer-area {
     grid-area: footer;
+    border-top: 1px solid hsl(var(--border)/0.8);
+    background-color: hsl(var(--background));
   }
   
-  /* Show sidebar on desktop */
-  @media (min-width: 768px) {
-    .grid-area-sidebar {
+  /* Mobile layout adjustments */
+  @media (max-width: 1023px) {
+    /* Hide sidebar on mobile */
+    .sidebar-area {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 50;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      width: 240px !important; /* Override any other width settings */
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Show sidebar when open */
+    .sidebar-open .sidebar-area {
+      transform: translateX(0);
+    }
+    
+    /* Mobile trigger button */
+    .mobile-menu-trigger {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 60;
       display: block;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      background-color: hsl(var(--background));
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     }
   }
   
-  /* Sidebar collapsed and expanded states */
-  .sidebar-collapsed :global(.sidebar-label),
-  .sidebar-collapsed :global(.sidebar-text) {
-    display: none;
-  }
-  
-  .sidebar-collapsed :global(.sidebar-icon) {
-    margin: 0 auto;
-  }
-  
-  .sidebar-expanded {
-    width: 100%;
-  }
-  
-  .sidebar-collapsed {
-    width: 100%;
-    overflow: hidden;
+  /* Desktop specific styles */
+  @media (min-width: 1024px) {
+    .sidebar-area {
+      position: relative;
+      transform: none !important; /* Ensure sidebar is always visible on desktop */
+      display: flex !important;
+    }
+    
+    .mobile-menu-trigger {
+      display: none;
+    }
   }
 </style>
 
-<!-- Main Grid Layout -->
-<div class="grid-layout" style="--sidebar-width-var: var({sidebarWidthVar})">
-  {#if !isAuthRoute}
+<!-- Skip layout for auth routes -->
+{#if isAuthRoute}
+  {@render children?.()}
+{:else}
+  <div class={`app-shell ${isMobile && !isSidebarCollapsed ? 'sidebar-open' : ''}`}>
     <!-- Header -->
-    <header class="grid-area-header w-full bg-[hsl(var(--background))] border-b border-[hsl(var(--border))] shadow-sm">
-      <Navigation />
+    <header class="header-area">
+      <div class="container mx-auto h-full flex items-center justify-between px-[2rem]">
+        <div class="flex items-center gap-[0.75rem]">
+          <!-- Logo -->
+          <span class="text-[1.25rem] font-[600]">
+            <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
+          </span>
+        </div>
+        
+        <!-- Header actions (search, etc) -->
+        <div class="flex items-center gap-[1rem]">
+          <!-- Search input could go here -->
+          <button class="p-[0.5rem] rounded-[0.375rem] bg-[hsl(var(--muted)/0.1)]" aria-label="Search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+        </div>
+      </div>
     </header>
     
-    <!-- Sidebar - desktop view -->
-    <aside class="grid-area-sidebar border-r border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      {#if sidebarInitialized}
-        <div class="flex flex-col h-full">
-          <!-- Sidebar collapse toggle button -->
-          <button 
-            class="self-end p-2 m-2 rounded-md hover:bg-[hsl(var(--accent))] focus:outline-none"
-            onclick={toggleSidebarCollapse}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-              {#if sidebarCollapsed}
-                <!-- Expand icon (chevron-right) -->
-                <polyline points="9 18 15 12 9 6"></polyline>
-              {:else}
-                <!-- Collapse icon (chevron-left) -->
-                <polyline points="15 18 9 12 15 6"></polyline>
-              {/if}
-            </svg>
-          </button>
-          
-          <!-- Sidebar content with class based on collapsed state -->
-          <div class={sidebarCollapsed ? "sidebar-collapsed" : "sidebar-expanded"}>
+    <!-- Content wrapper with max-width -->
+    <div class="content-wrapper">
+      <!-- Content grid for sidebar and main -->
+      <div class="content-grid">
+        <!-- Sidebar -->
+        <aside class="sidebar-area">
+          <SidebarProvider class="w-full h-full flex" style="--sidebar-width: 240px; --sidebar-width-icon: 64px;">
             <MainSidebar />
+          </SidebarProvider>
+        </aside>
+        
+        <!-- Main content area -->
+        <main class="main-area">
+          <!-- PWA install prompt -->
+          <InstallPrompt />
+          
+          <!-- Main content -->
+          <div class="min-h-screen">
+            {@render children?.()}
           </div>
-        </div>
-      {/if}
-    </aside>
-    
-    <!-- Mobile sidebar trigger - positioned on top of main area for mobile only -->
-    <div class="md:hidden fixed left-4 top-4">
-      {#if sidebarInitialized}
-        <button 
-          class="flex h-10 w-10 items-center justify-center rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-sm"
-          onclick={() => {
-            const sidebar = useSidebar();
-            sidebar.toggle();
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
-            <path d="M4 6h16"></path>
-            <path d="M4 12h16"></path>
-            <path d="M4 18h16"></path>
-          </svg>
-          <span class="sr-only">Toggle sidebar</span>
-        </button>
-      {/if}
+        </main>
+      </div>
     </div>
     
-    <!-- Mobile sheet for sidebar -->
-    <Sheet.Root bind:open={sheetOpen} onOpenChange={handleSheetOpenChange}>
-      <Sheet.Content 
-        side="left" 
-        class="w-[var(--sidebar-width)] p-0 border-r border-[hsl(var(--border))]"
-        portalProps={{}}
+    <!-- Mobile sidebar trigger -->
+    {#if isMobile}
+      <button 
+        type="button"
+        class="mobile-menu-trigger"
+        aria-label="Toggle sidebar"
+        onclick={(e) => toggleSidebar(e)}
       >
-        {#if sidebarInitialized}
-          <MainSidebar />
+        {#if isSidebarCollapsed}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        {:else}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         {/if}
-      </Sheet.Content>
-    </Sheet.Root>
-    
-    <!-- Main content -->
-    <main class="grid-area-main w-full overflow-x-hidden">
-      {@render children?.()}
-    </main>
+      </button>
+    {/if}
     
     <!-- Footer -->
-    <footer class="grid-area-footer w-full border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-      <Footer />
+    <footer class="footer-area">
+      <div class="container mx-auto py-[1rem] px-[1rem]">
+        <Footer />
+      </div>
     </footer>
-  {:else}
-    <!-- Auth layout (simpler) -->
-    <div class="flex flex-col min-h-screen">
-      <main class="flex-1">
-        {@render children?.()}
-      </main>
-    </div>
+  </div>
+  
+  <!-- Performance monitor (dev only) - Positioned outside app-shell -->
+  {#if import.meta.env.DEV}
+    <PerformanceMonitor />
   {/if}
-</div>
+{/if}

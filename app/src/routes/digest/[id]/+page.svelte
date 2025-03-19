@@ -187,7 +187,7 @@
   <!-- Digest content -->
   <div class="space-y-6">
     {#each digest.content.slice(0, 3) as item}
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-[0_1px_2px_0_rgba(0,0,0,0.05)] overflow-hidden border border-gray-200 dark:border-gray-700 p-4">
         <div class="flex items-start justify-between">
           <div>
             <div class="mb-2">

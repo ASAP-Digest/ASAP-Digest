@@ -13,13 +13,8 @@
 	import { useSidebar } from "./context.svelte.js";
 	import Trigger from "./sidebar-trigger.svelte";
 
-	let {
-		ref = $bindable(null),
-		class: className,
-		collapsible = "default",
-		children,
-		...restProps
-	} = $props();
+	/** @type {import('svelte/elements').SvelteHTMLElements['div']['standard']} */
+	let { ref = $bindable(null), class: className, collapsible = "default", children, ...restProps } = $props();
 
 	// Safely get the sidebar context
 	const sidebar = useSidebar();
@@ -59,7 +54,7 @@
 	<div
 		class={cn(
 			sidebarClass,
-			isMobile ? "peer hidden md:block" : "peer hidden md:block"
+			"block"
 		)}
 		data-sidebar="sidebar"
 		data-state={sidebarState}
