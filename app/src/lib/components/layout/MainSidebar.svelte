@@ -14,7 +14,8 @@
     LogOut,
     ChevronDown,
     Languages,
-    CreditCard as CreditCardIcon
+    CreditCard as CreditCardIcon,
+    Bug
   } from 'lucide-svelte';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
@@ -30,11 +31,101 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   
+  // Reference to the avatar dropdown element for positioning with proper type
+  /** @type {HTMLDivElement | null} */
+  let avatarDropdownElement = $state(null);
+  
   // Make path a derived state that updates when page changes
   let path = $derived($page.url.pathname);
   
   // Add state for sidebar collapsed
   let collapsed = $state(false);
+  
+  // Debug info for sidebar elements
+  let icons = $state([]);
+  let elements = $state([]);
+  let debugActive = $state(false);
+  let debugCollapsedState = $state(false);
+  
+  // Toggle debug mode
+  function toggleDebug() {
+    debugActive = !debugActive;
+    if (debugActive) {
+      gatherDebugInfo();
+    }
+  }
+  
+  // Collect debug information about the sidebar elements
+  function gatherDebugInfo() {
+    if (!debugActive) return;
+    
+    // Debug icons
+    icons = [];
+    const iconElements = document.querySelectorAll('.sidebar-icon');
+    iconElements.forEach((el, index) => {
+      const styles = window.getComputedStyle(el);
+      const svgEl = el.querySelector('svg');
+      const svgStyles = svgEl ? window.getComputedStyle(svgEl) : null;
+      
+      icons.push({
+        index,
+        width: styles.width,
+        height: styles.height,
+        minWidth: styles.minWidth,
+        minHeight: styles.minHeight,
+        display: styles.display,
+        opacity: styles.opacity,
+        visibility: styles.visibility,
+        classes: el.getAttribute('class'),
+        svgWidth: svgStyles?.width,
+        svgHeight: svgStyles?.height,
+        svgDisplay: svgStyles?.display,
+        svgVisibility: svgStyles?.visibility,
+        svgOpacity: svgStyles?.opacity
+      });
+    });
+    
+    // Debug general sidebar elements
+    elements = [];
+    const sidebar = document.querySelector('.sidebar-wrapper');
+    const sidebarRoot = document.querySelector('[data-sidebar="sidebar"]');
+    
+    if (sidebar) {
+      const styles = window.getComputedStyle(sidebar);
+      elements.push({
+        element: 'sidebar-wrapper',
+        width: styles.width,
+        minWidth: styles.minWidth,
+        maxWidth: styles.maxWidth,
+        display: styles.display,
+        opacity: styles.opacity,
+        visibility: styles.visibility,
+        classes: sidebar.getAttribute('class'),
+        collapsed: document.body.classList.contains('sidebar-collapsed')
+      });
+    }
+    
+    if (sidebarRoot) {
+      const styles = window.getComputedStyle(sidebarRoot);
+      elements.push({
+        element: 'data-sidebar="sidebar"',
+        width: styles.width,
+        minWidth: styles.minWidth,
+        maxWidth: styles.maxWidth,
+        display: styles.display,
+        opacity: styles.opacity,
+        visibility: styles.visibility,
+        classes: sidebarRoot.getAttribute('class')
+      });
+    }
+    
+    // Debug collapse state
+    debugCollapsedState = document.body.classList.contains('sidebar-collapsed');
+    
+    console.table(icons);
+    console.table(elements);
+    console.log('[SidebarDebug] Collapsed state:', debugCollapsedState);
+  }
   
   // Toggle sidebar collapsed state
   function toggleSidebar() {
@@ -48,9 +139,81 @@
     // Add class to document body for layout adjustments
     if (collapsed) {
       document.body.classList.add('sidebar-collapsed');
+      
+      // Apply data-collapsed attribute to all sidebar components
+      setTimeout(() => {
+        // Set data-collapsed on all key sidebar elements
+        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
+          el.setAttribute('data-collapsed', 'true');
+        });
+        
+        // Apply inline styles to SVG elements when collapsed
+        const svgElements = document.querySelectorAll('svg');
+        svgElements.forEach(svg => {
+          svg.style.cssText = 'width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 20px !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
+        });
+        
+        // Apply inline styles to menu items
+        const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
+        menuItems.forEach(item => {
+          item.style.cssText = 'min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; padding: 4px 0 !important; z-index: 30 !important; position: relative !important; overflow: visible !important;';
+        });
+      }, 50);
     } else {
       document.body.classList.remove('sidebar-collapsed');
+      
+      // Remove data-collapsed attribute from all sidebar components
+      setTimeout(() => {
+        // Remove data-collapsed from all key sidebar elements
+        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
+          el.removeAttribute('data-collapsed');
+        });
+        
+        // Remove inline styles when expanded
+        const svgElements = document.querySelectorAll('svg');
+        svgElements.forEach(svg => {
+          svg.style.cssText = '';
+        });
+        
+        const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
+        menuItems.forEach(item => {
+          item.style.cssText = '';
+        });
+      }, 50);
     }
+    
+    // Save state to localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('sidebar-collapsed', String(collapsed));
+    }
+    
+    // Gather debug info after a short delay to allow DOM updates
+    setTimeout(gatherDebugInfo, 100);
+  }
+  
+  // New logging function to inspect sidebar element classes
+  function inspectSidebarElements() {
+    // Get all sidebar elements
+    const allSidebarElements = document.querySelectorAll('[data-sidebar]');
+    console.group('[SidebarDebug] Sidebar element inspection (collapsed=' + collapsed + ')');
+    
+    allSidebarElements.forEach((el) => {
+      const dataName = el.getAttribute('data-sidebar');
+      const styles = window.getComputedStyle(el);
+      console.log(`[SidebarDebug] Element: [data-sidebar="${dataName}"]`, {
+        width: styles.width,
+        display: styles.display,
+        opacity: styles.opacity,
+        visibility: styles.visibility,
+        computedClasses: styles
+      });
+    });
+    
+    // Inspect all menu items
+    const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
+    console.log('[SidebarDebug] MenuItems:', menuItems.length);
+    
+    console.groupEnd();
   }
   
   // Initialize collapsed state from localStorage if available
@@ -61,54 +224,71 @@
       if (storedState === 'true') {
         collapsed = true;
         document.body.classList.add('sidebar-collapsed');
+        
+        // Initialize data-collapsed attributes
+        setTimeout(() => {
+          document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
+            el.setAttribute('data-collapsed', 'true');
+          });
+        }, 0);
       }
     }
     
     // Check if body already has sidebar-collapsed class from parent
     if (typeof document !== 'undefined' && document.body.classList.contains('sidebar-collapsed') && !collapsed) {
       collapsed = true;
+      
+      // Initialize data-collapsed attributes
+      setTimeout(() => {
+        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
+          el.setAttribute('data-collapsed', 'true');
+        });
+      }, 0);
     }
     
     console.log('[MainSidebar] Component mounted');
     console.log('[MainSidebar] Current path:', path);
     console.log('[MainSidebar] Initial collapsed state:', collapsed);
     
-    // Add DOM visibility check
-    setTimeout(() => {
-      const rootElement = document.querySelector('.sidebar-collapsed');
-      console.log('[MainSidebar] Sidebar collapsed element exists:', !!rootElement);
-      
-      const sidebarRoot = document.querySelector('.h-full.border-r');
-      if (sidebarRoot) {
-        console.log('[MainSidebar] Root element visible in DOM');
-        console.log('[MainSidebar] Classes:', sidebarRoot.className);
-        
-        const styles = window.getComputedStyle(sidebarRoot);
-        console.log('[MainSidebar] Background:', styles.backgroundColor);
-        console.log('[MainSidebar] Border:', styles.borderRight);
-        console.log('[MainSidebar] Display:', styles.display);
-        console.log('[MainSidebar] Width:', styles.width);
-        
-        // Log parent elements to check for visibility issues
-        let parent = sidebarRoot.parentElement;
-        console.log('[MainSidebar] Parent element:', parent);
-        if (parent) {
-          console.log('[MainSidebar] Parent display:', window.getComputedStyle(parent).display);
-          console.log('[MainSidebar] Parent visibility:', window.getComputedStyle(parent).visibility);
-          console.log('[MainSidebar] Parent width:', window.getComputedStyle(parent).width);
-          
-          // Check grandparent
-          const grandparent = parent.parentElement;
-          if (grandparent) {
-            console.log('[MainSidebar] Grandparent element:', grandparent);
-            console.log('[MainSidebar] Grandparent display:', window.getComputedStyle(grandparent).display);
-            console.log('[MainSidebar] Grandparent width:', window.getComputedStyle(grandparent).width);
-          }
-        }
-      } else {
-        console.warn('[MainSidebar] Root element NOT found in DOM!');
+    // Add a visibility guard element to ensure icons stay visible when collapsed
+    const visibilityGuard = document.createElement('style');
+    visibilityGuard.id = 'sidebar-visibility-guard';
+    visibilityGuard.textContent = `
+      /* Critical icons visibility overrides */
+      body.sidebar-collapsed [data-sidebar="sidebar"] svg,
+      body.sidebar-collapsed svg.lucide,
+      body.sidebar-collapsed svg.lucide-icon {
+        width: 20px !important;
+        height: 20px !important;
+        min-width: 20px !important;
+        min-height: 20px !important;
+        max-width: none !important;
+        max-height: none !important;
+        position: static !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 1000 !important;
+        overflow: visible !important;
+        pointer-events: auto !important;
+        flex-shrink: 0 !important;
       }
-    }, 100);
+      
+      body.sidebar-collapsed [data-sidebar="menu-button"],
+      body.sidebar-collapsed [data-sidebar="menu-item"] a,
+      body.sidebar-collapsed [data-sidebar="menu-item"] button {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        position: relative !important;
+        padding: 8px !important;
+        overflow: visible !important;
+        z-index: 999 !important;
+      }
+    `;
+    document.head.appendChild(visibilityGuard);
     
     // Listen for sidebar toggle events from the layout
     /**
@@ -119,13 +299,47 @@
       if (collapsed !== event.detail.collapsed) {
         collapsed = event.detail.collapsed;
         console.log('[MainSidebar] State updated from parent:', collapsed ? 'collapsed' : 'expanded');
+        
+        // Gather debug info when sidebar state is updated from parent
+        setTimeout(gatherDebugInfo, 100);
       }
     };
     
     document.addEventListener('sidebarToggle', handleSidebarToggle as EventListener);
     
+    // Set up handlers for dropdown positioning
+    const handleResize = () => {
+      if (isAvatarDropdownOpen) {
+        positionDropdown();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Close dropdown when clicking outside
+    /**
+     * @param {MouseEvent} event - The mouse event
+     */
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (isAvatarDropdownOpen && avatarDropdownElement && 
+         !avatarDropdownElement.contains(event.target as Node) && 
+         !(event.target as Element).closest('.avatar-container')) {
+        isAvatarDropdownOpen = false;
+      }
+    };
+    
+    document.addEventListener('click', handleOutsideClick as EventListener);
+    
+    // Call initial debug info gathering after a delay to ensure DOM is ready
+    setTimeout(() => {
+      inspectSidebarElements();
+      gatherDebugInfo();
+    }, 500);
+    
     return () => {
       document.removeEventListener('sidebarToggle', handleSidebarToggle as EventListener);
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('click', handleOutsideClick as EventListener);
     };
   });
   
@@ -160,8 +374,41 @@
       url: "/plans",
       icon: CreditCard,
       get active() { return path.startsWith('/plans') }
+    },
+    {
+      label: "Debug", // Add Debug item
+      url: "#debug",
+      icon: Bug,
+      get active() { return debugActive }
     }
   ];
+  
+  // Add observer for element visibility
+  let visibilityObserver = $state(null);
+  onMount(() => {
+    // Create a visibility observer to monitor sidebar elements
+    visibilityObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.target.classList.contains('sidebar-icon')) {
+          const visible = entry.isIntersecting;
+          console.log(`[SidebarDebug] Icon visibility changed: ${visible ? 'visible' : 'hidden'}`, 
+            entry.target, entry.boundingClientRect);
+        }
+      });
+    }, { threshold: [0, 0.5, 1] });
+    
+    // Observe all sidebar icons
+    document.querySelectorAll('.sidebar-icon').forEach(icon => {
+      visibilityObserver.observe(icon);
+    });
+    
+    // Cleanup on unmount
+    return () => {
+      if (visibilityObserver) {
+        visibilityObserver.disconnect();
+      }
+    };
+  });
   
   // User data mock - would come from authentication in a real app
   const user = {
@@ -174,6 +421,110 @@
   // Avatar dropdown open state
   let isAvatarDropdownOpen = $state(false);
   
+  // Function to position the dropdown properly avoiding edge collisions
+  function positionDropdown() {
+    if (!isAvatarDropdownOpen || !avatarDropdownElement) return;
+    
+    const avatarButton = document.querySelector('.avatar-container');
+    if (!avatarButton) return;
+    
+    const avatarRect = avatarButton.getBoundingClientRect();
+    const dropdownRect = avatarDropdownElement.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+    
+    // Reset any previous positioning
+    avatarDropdownElement.style.top = '';
+    avatarDropdownElement.style.left = '';
+    avatarDropdownElement.style.bottom = '';
+    avatarDropdownElement.style.right = '';
+    
+    if (isSidebarCollapsed) {
+      // When collapsed:
+      // Horizontal positioning - position to the right of the avatar
+      const rightSpace = viewportWidth - avatarRect.right;
+      
+      if (rightSpace >= dropdownRect.width + 7) {
+        // If there's enough space to the right, position there
+        avatarDropdownElement.style.left = `${avatarRect.right + 7}px`;
+      } else if (avatarRect.left >= dropdownRect.width + 7) {
+        // If there's enough space to the left, position there
+        avatarDropdownElement.style.right = `${viewportWidth - avatarRect.left + 7}px`;
+      } else {
+        // If no space left or right, position centered but ensure it's within viewport
+        const leftPosition = Math.max(10, Math.min(viewportWidth - dropdownRect.width - 10, 
+                                                 avatarRect.left - (dropdownRect.width - avatarRect.width) / 2));
+        avatarDropdownElement.style.left = `${leftPosition}px`;
+      }
+      
+      // Vertical positioning - position dropdown 7px above top right corner of avatar
+      const preferredVerticalPosition = "above"; // Prefer above as per requirements
+      
+      if (preferredVerticalPosition === "above" && avatarRect.top >= dropdownRect.height + 7) {
+        // Position 7px above the avatar (preferred placement)
+        avatarDropdownElement.style.bottom = `${viewportHeight - avatarRect.top + 7}px`;
+      } else if (viewportHeight - avatarRect.bottom >= dropdownRect.height + 7) {
+        // Not enough space above, position below the avatar
+        avatarDropdownElement.style.top = `${avatarRect.bottom + 7}px`;
+      } else {
+        // Not enough space above or below, center vertically
+        avatarDropdownElement.style.top = `${Math.max(7, Math.min(viewportHeight - dropdownRect.height - 7, 
+                                         (viewportHeight - dropdownRect.height) / 2))}px`;
+      }
+    } else {
+      // When expanded:
+      // Horizontal positioning - position relative to sidebar content
+      if (avatarRect.left + dropdownRect.width > viewportWidth - 7) {
+        // Not enough space to the right, position left
+        avatarDropdownElement.style.right = `${viewportWidth - avatarRect.left + 7}px`;
+      } else {
+        // Enough space to the right
+        avatarDropdownElement.style.left = `${avatarRect.left}px`;
+      }
+      
+      // Vertical positioning - prefer above the avatar as per requirement
+      const preferredVerticalPosition = "above"; // Prefer above as per requirements
+      
+      if (preferredVerticalPosition === "above" && avatarRect.top >= dropdownRect.height + 7) {
+        // Position 7px above the avatar (preferred placement)
+        avatarDropdownElement.style.bottom = `${viewportHeight - avatarRect.top + 7}px`;
+      } else if (viewportHeight - avatarRect.bottom >= dropdownRect.height + 7) {
+        // Not enough space above, position below the avatar
+        avatarDropdownElement.style.top = `${avatarRect.bottom + 7}px`;
+      } else {
+        // Not enough space above or below, center vertically
+        avatarDropdownElement.style.top = `${Math.max(7, Math.min(viewportHeight - dropdownRect.height - 7, 
+                                         (viewportHeight - dropdownRect.height) / 2))}px`;
+      }
+    }
+    
+    // Add a small delay and reposition again to account for any layout shifts
+    setTimeout(() => {
+      // Ensure the dropdown is still visible and available
+      if (!avatarDropdownElement) return;
+      
+      // Ensure the dropdown is fully within the viewport
+      const updatedRect = avatarDropdownElement.getBoundingClientRect();
+      
+      // Fix horizontal overflow
+      if (updatedRect.right > viewportWidth - 7) {
+        avatarDropdownElement.style.left = `${viewportWidth - updatedRect.width - 7}px`;
+      }
+      if (updatedRect.left < 7) {
+        avatarDropdownElement.style.left = '7px';
+      }
+      
+      // Fix vertical overflow
+      if (updatedRect.bottom > viewportHeight - 7) {
+        avatarDropdownElement.style.top = `${viewportHeight - updatedRect.height - 7}px`;
+      }
+      if (updatedRect.top < 7) {
+        avatarDropdownElement.style.top = '7px';
+      }
+    }, 10);
+  }
+  
   // Toggle avatar dropdown
   /**
    * @param {MouseEvent} event - The mouse event
@@ -181,6 +532,12 @@
   function toggleAvatarDropdown(event: MouseEvent) {
     event.stopPropagation();
     isAvatarDropdownOpen = !isAvatarDropdownOpen;
+    
+    // If opening, position the dropdown
+    if (isAvatarDropdownOpen) {
+      // Use setTimeout to ensure DOM update first
+      setTimeout(positionDropdown, 0);
+    }
   }
   
   // Error handler for avatar image
@@ -198,232 +555,748 @@
 </script>
 
 <style>
-  /* All sidebar elements should transition smoothly */
-  .sidebar-wrapper *,
-  .sidebar-wrapper *::before,
-  .sidebar-wrapper *::after {
-    transition-property: width, height, margin, padding, transform, border-radius;
-    transition-duration: 0.3s;
-    transition-timing-function: ease-in-out;
-  }
-
-  /* Sidebar collapse/expand styling */
-  :global(body.sidebar-collapsed) .sidebar-content-collapsible {
-    display: none;
-  }
-  
-  /* Logo centering when collapsed */
-  :global(body.sidebar-collapsed) .sidebar-label:not(.sidebar-content-collapsible) {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    padding: 0;
-    margin: 0;
-    font-size: 1rem;
-  }
-  
-  /* Fix icon visibility and centering in collapsed state */
-  .sidebar-icon {
+  /* Complete overhaul of sidebar collapse styles */
+  .sidebar-wrapper {
     position: relative;
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+    height: 100%;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Collapsed state dimensions based on shadcn pattern */
+  :global(body.sidebar-collapsed) .sidebar-wrapper,
+  :global(body.sidebar-collapsed) *[data-testid="sidebar"] {
+    width: 64px !important; 
+    min-width: 64px !important;
+    max-width: 64px !important;
+  }
+  
+  /* Reset all width calculations for shadcn components */
+  :global(body.sidebar-collapsed) [data-sidebar="sidebar"],
+  :global(body.sidebar-collapsed) *[data-sidebar="sidebar"] {
+    width: 64px !important;
+    min-width: 64px !important;
+    max-width: 64px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Fix menu items when collapsed */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
+    width: 100% !important;
+    padding: 0.75rem 0 !important; /* Increased from 0.5rem for better touch targets */
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  
+  /* Force hide all content that should be hidden in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-content-collapsible {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+  
+  /* Base sidebar icon styles with fixed dimensions */
+  .sidebar-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
     margin-right: 0.75rem;
-    flex-shrink: 0; /* Prevent icon from shrinking */
-    transition: all 0.3s ease-in-out;
+    flex-shrink: 0;
+    position: relative;
+    transition: margin 0.3s ease-in-out;
   }
   
-  :global(body.sidebar-collapsed) .sidebar-wrapper .sidebar-icon {
-    @apply flex justify-center items-center w-full h-full;
-    margin: 0;
-    padding: 0.375rem;
-    min-width: 1.5rem;
-    min-height: 1.5rem;
-    max-width: none !important;
+  /* Icon SVG sizing - ensure proper display */
+  .sidebar-icon svg {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease-in-out;
   }
   
-  /* Adjust avatar to square when collapsed with higher specificity */
+  /* Ensure icons are centered and visible in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-icon {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* Fix icon sizing and position in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* Always keep toggle button visible with higher z-index */
+  .sidebar-toggle,
+  :global(.sidebar-toggle),
+  :global([role="button"].sidebar-toggle),
+  :global(button.sidebar-toggle) {
+    position: absolute !important;
+    right: -11px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 9999 !important;
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    background-color: hsl(var(--background)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease-in-out !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  
+  /* Fix focus style for toggle button */
+  .sidebar-toggle:focus-visible,
+  :global(.sidebar-toggle:focus-visible) {
+    outline: 2px solid hsl(var(--primary)) !important;
+    outline-offset: 2px !important;
+  }
+  
+  /* Hover effect for toggle */
+  .sidebar-toggle:hover,
+  :global(.sidebar-toggle:hover) {
+    background-color: hsl(var(--muted)) !important;
+    transform: translateY(-50%) scale(1.05) !important;
+  }
+  
+  /* Active state for toggle */
+  .sidebar-toggle:active,
+  :global(.sidebar-toggle:active) {
+    transform: translateY(-50%) scale(0.95) !important;
+  }
+  
+  /* Target direct ShadCn containers for proper layout */
+  :global(body.sidebar-collapsed) [data-sidebar="header"],
+  :global(body.sidebar-collapsed) [data-sidebar="content"],
+  :global(body.sidebar-collapsed) [data-sidebar="footer"] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    width: 64px !important;
+  }
+  
+  /* Remove padding from content in collapsed state */
+  :global(body.sidebar-collapsed) [data-sidebar="content"] {
+    padding: 0 !important;
+  }
+  
+  /* Logo centering in collapsed state */
+  .header-logo {
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+    transition: margin 0.3s ease-in-out;
+  }
+  
+  :global(body.sidebar-collapsed) .header-logo {
+    margin: 0 auto;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  /* Hide collapsible content in collapsed state */
+  .sidebar-content-collapsible {
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+    visibility: visible;
+  }
+  
+  /* ShadCn menu adjustments for collapsed mode */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    align-items: center !important;
+  }
+  
+  /* Override any gap classes when collapsed */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
+    gap: 0 !important;
+  }
+  
+  /* Center elements in collapsed mode */
+  :global(body.sidebar-collapsed) [data-sidebar="group"] {
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  /* Avatar styling with fixed dimensions */
   .avatar {
-    @apply relative overflow-hidden border border-[hsl(var(--border))];
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 9999px; /* Full rounded */
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    border-radius: 9999px;
+    overflow: hidden;
+    border: 1px solid hsl(var(--border));
+    flex-shrink: 0;
     transition: all 0.3s ease-in-out;
   }
   
+  /* Ensure avatar content is properly sized */
+  .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  /* Avatar transformation in collapsed state */
   :global(body.sidebar-collapsed) .avatar {
     width: 2rem !important;
     height: 2rem !important;
-    border-radius: 0.375rem !important; /* Square with slightly rounded corners */
-    transform: scale(0.9);
-    transition: all 0.3s ease-in-out;
-    margin: 0 auto;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    border-radius: 0.375rem !important; /* Square corners when collapsed */
   }
   
-  /* Menu hover effect */
-  .menu-item-hover {
+  /* Avatar container alignment */
+  .avatar-container {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    cursor: pointer;
     border-radius: 0.375rem;
-    transition: background-color 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out, padding 0.3s ease-in-out;
+    width: 100%;
   }
   
-  .menu-item-hover:hover {
+  :global(body.sidebar-collapsed) .avatar-container {
+    padding: 0.5rem 0;
+    justify-content: center;
+    width: 100%;
+  }
+  
+  /* Hover effect for avatar container */
+  .avatar-container:hover {
+    background-color: hsl(var(--muted)/0.2);
+  }
+  
+  /* Dropdown menu positioning */
+  .avatar-dropdown {
+    position: fixed;
+    z-index: 9999;
+    width: 16rem;
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.375rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Group label display in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-group-label {
+    display: none !important;
+  }
+  
+  /* Recent digests visibility in collapsed state */
+  :global(body.sidebar-collapsed) .recent-digests {
+    display: none !important;
+  }
+  
+  /* Basic menu item styling */
+  .sidebar-menu-item a,
+  [data-sidebar="menu-item"] a {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 1.625rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Menu hover effects */
+  .menu-item-hover:hover,
+  [data-sidebar="menu-item"] a:hover {
     background-color: hsl(var(--muted)/0.3);
   }
   
-  .menu-item-hover.active {
+  .menu-item-hover.active,
+  [data-sidebar="menu-item"] a.active {
     background-color: hsl(var(--primary)/0.1);
     color: hsl(var(--primary));
     font-weight: 600;
   }
   
-  /* Avatar styling */
-  .avatar-dropdown {
-    position: absolute;
-    z-index: 50;
-    /* Position 7px above avatar as requested */
-    bottom: calc(100% + 7px);
-    right: 0;
-    width: 16rem;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
-    @apply bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-[0.375rem] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] p-[0.5rem];
-    @apply dark:bg-[hsl(var(--muted))] dark:border-[hsl(var(--muted-foreground)/0.5)];
-  }
-  
-  /* When sidebar is collapsed, place dropdown next to the sidebar */
-  :global(body.sidebar-collapsed) .avatar-dropdown {
-    right: auto;
-    left: 100%;
-    bottom: auto;
-    top: 0;
-    margin-left: 7px;
-  }
-  
-  .avatar-container {
-    @apply relative flex items-center cursor-pointer select-none p-[0.5rem] rounded-[0.375rem];
-    @apply hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200;
-  }
-  
-  /* Avatar container is centered when collapsed */
-  :global(body.sidebar-collapsed) .avatar-container {
-    justify-content: center;
-    width: 100%;
-    padding: 0.5rem 0;
-  }
-  
-  .avatar-text {
-    @apply text-[0.875rem] font-[500] text-center text-[hsl(var(--foreground))] dark:text-[hsl(var(--foreground)/0.8)];
-  }
-  
-  .dropdown-item {
-    @apply flex items-center gap-[0.5rem] p-[0.5rem] rounded-[0.375rem] text-[0.875rem] text-[hsl(var(--foreground))] dark:text-[hsl(var(--foreground)/0.8)];
-    @apply hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200;
-  }
-  
-  .upgrade-button {
-    @apply mt-[0.5rem] w-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-[0.5rem] px-[1rem] rounded-[0.375rem];
-    @apply hover:bg-[hsl(var(--primary)/0.9)] transition-colors duration-200;
-  }
-
-  /* Sidebar responsive sizing */
-  .sidebar-wrapper {
-    width: 240px;
-    min-width: 240px;
-    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out;
-  }
-  
-  :global(body.sidebar-collapsed) .sidebar-wrapper {
-    width: 64px !important;
-    min-width: 64px !important;
-  }
-  
-  /* Sidebar label transition */
-  .sidebar-label {
-    transition: opacity 0.3s ease-in-out;
-  }
-  
-  /* Keep trigger button visible with absolute positioning */
-  .sidebar-toggle {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 30;
-    background-color: hsl(var(--sidebar-background));
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-radius: 0.25rem;
-    @apply p-[0.25rem] hover:bg-[hsl(var(--muted)/0.2)] transition-colors;
-  }
-  
-  /* When collapsed, position button on the edge */
-  :global(body.sidebar-collapsed) .sidebar-toggle {
-    right: -12px;
-    background-color: hsl(var(--background));
-    border: 1px solid hsl(var(--border));
-    border-radius: 50%;
-  }
-  
-  /* Ensure sufficient padding in sidebar items when collapsed */
+  /* Collapsed state menu item adjustments */
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
   :global(body.sidebar-collapsed) .sidebar-menu-item a {
     justify-content: center !important;
-    padding: 0.5rem 0 !important;
+    padding: 0.75rem 0 !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure text is completely hidden in collapsed state */
+  :global(body.sidebar-collapsed) span:not(.sidebar-icon span) {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    overflow: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  /* Complete overhaul of ul elements */
+  :global(body.sidebar-collapsed) ul,
+  :global(body.sidebar-collapsed) li {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  
+  /* Dropdown styles */
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s;
+    font-size: 0.875rem;
     width: 100%;
   }
   
-  /* Fix for header structure when collapsed */
-  :global(body.sidebar-collapsed) .sidebar-header-content {
-    justify-content: center;
-    padding: 0 !important;
+  .dropdown-item:hover {
+    background-color: hsl(var(--muted)/0.3);
   }
   
-  /* Fix for Recent Digests section when collapsed */
-  :global(body.sidebar-collapsed) .sidebar-group-label {
-    display: none;
+  /* Upgrade button styling */
+  .upgrade-button {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    text-align: center;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    transition: opacity 0.2s;
+  }
+  
+  .upgrade-button:hover {
+    opacity: 0.9;
+  }
+
+  /* Fix icon sizing and position in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-icon,
+  :global(body.sidebar-collapsed) [class*="sidebar-icon"] {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Fix icon SVG sizing and position in collapsed state */
+  :global(body.sidebar-collapsed) .sidebar-icon svg,
+  :global(body.sidebar-collapsed) [class*="sidebar-icon"] svg {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    flex-shrink: 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  /* Override hidden span when in sidebar-icon */
+  :global(body.sidebar-collapsed) .sidebar-icon span,
+  :global(body.sidebar-collapsed) [class*="sidebar-icon"] span {
+    display: none !important;
+  }
+
+  /* When body has sidebar-collapsed, force all spans to none EXCEPT inside sidebar-icon */
+  :global(body.sidebar-collapsed) span:not(.sidebar-icon span):not([class*="sidebar-icon"] span) {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    overflow: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Collapsed state menu item adjustments */
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
+  :global(body.sidebar-collapsed) .sidebar-menu-item a {
+    justify-content: center !important;
+    padding: 0.75rem 0 !important;
+    gap: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Fix for Svelte 5 scoped classes */
+  :global(body.sidebar-collapsed) [class*="s-"] .sidebar-icon,
+  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    margin: 0 auto !important;
+  }
+
+  :global(body.sidebar-collapsed) [class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure menu items show correctly */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  /* Avatar transformation in collapsed state */
+  :global(body.sidebar-collapsed) .avatar,
+  :global(body.sidebar-collapsed) [class*="avatar"] {
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    border-radius: 0.375rem !important; /* Square corners when collapsed */
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+
+  /* Create a new emergency fix section for Svelte 5 scoped classes */
+  /* EMERGENCY FIXES FOR COLLAPSED STATE */
+  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon,
+  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon,
+  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon,
+  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"],
+  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon svg {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 24px !important;
+    height: 24px !important;
+    position: static !important;
+    margin: 0 auto !important;
+  }
+
+  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon svg,
+  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    display: block !important;
+  }
+
+  /* Force display of all svg icons in collapsed state */
+  :global(body.sidebar-collapsed) svg {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Special fix for the specific classes in the DOM */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .s-Ye0sG_sAbYc3,
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a.s-Ye0sG_sAbYc3 {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 100% !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon.s-Ye0sG_sAbYc3,
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .s-Ye0sG_sAbYc3 .sidebar-icon {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    position: static !important;
+    margin: 0 auto !important;
+  }
+
+  /* Direct path to the icon svgs based on DOM structure */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon svg,
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon .lucide,
+  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon .lucide-icon {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Direct target for Lucide components and their child elements */
+  :global(body.sidebar-collapsed) .lucide,
+  :global(body.sidebar-collapsed) .lucide-icon,
+  :global(body.sidebar-collapsed) .lucide *,
+  :global(body.sidebar-collapsed) .lucide-icon * {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Fix for any remaining SVG elements */
+  :global(body.sidebar-collapsed) path,
+  :global(body.sidebar-collapsed) circle,
+  :global(body.sidebar-collapsed) rect,
+  :global(body.sidebar-collapsed) line,
+  :global(body.sidebar-collapsed) polyline {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Target icons directly based on their source SVG components */
+  :global(body.sidebar-collapsed) [data-lucide] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Enhanced forced display of icons in collapsed state */
+  @keyframes forceIconShow {
+    0%, 100% { opacity: 1; visibility: visible; }
+  }
+
+  /* Target all SVG icons with ultimate specificity */
+  :global(body.sidebar-collapsed) svg,
+  :global(body.sidebar-collapsed) .lucide,
+  :global(body.sidebar-collapsed) .lucide-icon,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-button"] svg,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] svg {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    pointer-events: auto !important;
+    position: static !important;
+    z-index: 50 !important;
+    overflow: visible !important;
+    animation: forceIconShow 0.1s forwards !important;
+  }
+
+  /* Ultimate override - for Svelte 5 scoped classes */
+  :global(body.sidebar-collapsed) [class*="s-"] svg,
+  :global(body.sidebar-collapsed) svg[class*="s-"],
+  :global(body.sidebar-collapsed) [data-sidebar] [class*="s-"] svg,
+  :global(body.sidebar-collapsed) [data-sidebar] svg[class*="s-"] {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    flex-shrink: 0 !important;
+    z-index: 50 !important;
+    position: static !important;
+    transform: none !important;
+    animation: forceIconShow 0.1s forwards !important;
+  }
+
+  /* Force icon containers to show */
+  :global(body.sidebar-collapsed) .sidebar-icon,
+  :global(body.sidebar-collapsed) [class*="sidebar-icon"],
+  :global(body.sidebar-collapsed) [data-sidebar="menu-button"],
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] > a,
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] > button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 6px !important;
+    position: relative !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 40 !important;
+    overflow: visible !important;
+    transform: none !important;
+    animation: forceIconShow 0.1s forwards !important;
+  }
+
+  /* Force parent containers to properly size */
+  :global(body.sidebar-collapsed) [data-sidebar="menu"],
+  :global(body.sidebar-collapsed) [data-sidebar="menu-item"],
+  :global(body.sidebar-collapsed) ul,
+  :global(body.sidebar-collapsed) li {
+    min-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    padding: 4px 0 !important;
+    z-index: 30 !important;
+    position: relative !important;
+    overflow: visible !important;
+  }
+
+  /* Add direct inline style to SVG elements via attribute when sidebar collapses */
+  @media screen {
+    :global(body.sidebar-collapsed) svg {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      display: block;
+      visibility: visible;
+      opacity: 1;
+    }
   }
 </style>
 
-<div class="sidebar-wrapper" data-testid="sidebar" class:collapsed={collapsed}>
-  <Root class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
+<div 
+  class="sidebar-wrapper" 
+  data-testid="sidebar" 
+  class:collapsed={collapsed} 
+  style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : 'width: 240px; min-width: 240px; max-width: 240px;'}
+>
+  <Root 
+    class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
+    style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : ''}
+  >
     <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)] relative">
-      <div class="flex items-center sidebar-header-content justify-between px-[0.5rem]">
-        <a href="/" class="flex items-center gap-[0.75rem]">
-          <!-- Removed SVG heartbeat icon, keeping only the text -->
-          <span class="font-[600] text-[1.125rem] sidebar-label">⚡️ ASAP</span>
+      <div class="flex items-center justify-between px-[0.5rem]">
+        <a href="/" class="header-logo">
+          <span class="font-[600] text-[1.125rem]">⚡️ ASAP</span>
         </a>
-        <!-- Collapse toggle button -->
-        <button 
-          type="button" 
-          onclick={toggleSidebar} 
-          class="sidebar-toggle"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {#if collapsed}
-            <ChevronRight size={18} />
-          {:else}
-            <ChevronLeft size={18} />
-          {/if}
-        </button>
       </div>
+      <!-- Enhanced toggle button with stronger styling -->
+      <button 
+        type="button" 
+        onclick={toggleSidebar} 
+        class="sidebar-toggle"
+        id="sidebar-toggle-button"
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        style="z-index: 9999 !important; display: flex !important; visibility: visible !important; opacity: 1 !important;"
+      >
+        {#if collapsed}
+          <ChevronRight size={16} class="opacity-100" />
+        {:else}
+          <ChevronLeft size={16} class="opacity-100" />
+        {/if}
+      </button>
     </Header>
     
-    <Content class="px-[0.5rem] overflow-y-auto">
+    <Content 
+      class="overflow-y-auto" 
+      collapsed={collapsed}
+      style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : ''}>
       <Group class="pb-[1rem] pt-[1rem]">
-        <Menu class="space-y-[0.75rem]">
+        <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
           {#each mainNavItems as item (item.label)}
             <MenuItem class="px-0 sidebar-menu-item">
               <a 
                 href={item.url} 
-                class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[0.75rem] w-full justify-start py-[0.625rem] px-[0.75rem]"
+                class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[0.75rem] w-full"
                 data-sveltekit-preload-data="hover"
+                style={collapsed ? 'justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important;' : ''}
               >
-                <div class="sidebar-icon">
+                <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
                   {#if item.icon}
-                    <item.icon size={20} />
+                    <item.icon size={20} style="display: block !important; visibility: visible !important; opacity: 1 !important;" />
                   {/if}
                 </div>
-                <span class="sidebar-label sidebar-content-collapsible font-[600]">{item.label}</span>
+                <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
               </a>
             </MenuItem>
           {/each}
@@ -432,8 +1305,8 @@
       
       <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-[1px]" />
 
-      <Group class="pb-[1rem]">
-        <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)] sidebar-label sidebar-content-collapsible" child={() => "Recent Digests"}>
+      <Group class="pb-[1rem] recent-digests">
+        <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)]" child={() => "Recent Digests"}>
           Recent Digests
         </GroupLabel>
         <GroupContent class="space-y-[0.75rem] sidebar-content-collapsible">
@@ -469,7 +1342,7 @@
         </button>
         
         {#if isAvatarDropdownOpen}
-          <div class="avatar-dropdown">
+          <div class="avatar-dropdown" bind:this={avatarDropdownElement}>
             <div class="p-[0.5rem] border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
               <div class="font-semibold">{user.name}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>

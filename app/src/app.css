@@ -145,6 +145,114 @@
 
 /* Additional custom styles here */
 
+/* Unified data-attribute based approach for sidebar collapsed state */
+[data-sidebar="content"][data-collapsed="true"] {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
+}
+
+[data-sidebar="menu"][data-collapsed="true"] {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-sidebar="menu"][data-collapsed="true"] [data-sidebar="menu-item"] {
+  width: 100% !important;
+  padding: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+[data-sidebar="menu"][data-collapsed="true"] a,
+[data-sidebar="menu"][data-collapsed="true"] button {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  width: 100% !important;
+}
+
+/* Fix for sidebar icons in collapsed state */
+[data-sidebar="menu"][data-collapsed="true"] .sidebar-icon {
+  margin: 0 auto !important;
+  padding: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+}
+
+[data-sidebar="menu"][data-collapsed="true"] .sidebar-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Universal sidebar icon fix */
+body.sidebar-collapsed svg,
+body.sidebar-collapsed .lucide,
+body.sidebar-collapsed [data-sidebar] svg,
+body.sidebar-collapsed .sidebar-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0 !important;
+  z-index: 50 !important;
+  position: static !important;
+  overflow: visible !important;
+  box-sizing: content-box !important;
+}
+
+/* SVG containers */
+body.sidebar-collapsed [data-sidebar="menu-button"],
+body.sidebar-collapsed [data-sidebar="menu-item"] > a,
+body.sidebar-collapsed a.sidebar-icon,
+body.sidebar-collapsed button.sidebar-icon,
+body.sidebar-collapsed div.sidebar-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0.5rem !important;
+  position: relative !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 40 !important;
+  overflow: visible !important;
+}
+
+/* Tooltip z-index fix for collapsed sidebar */
+body.sidebar-collapsed [role="tooltip"],
+body.sidebar-collapsed [data-role="tooltip"],
+body.sidebar-collapsed [data-radix-popper-content-wrapper],
+body.sidebar-collapsed [data-state="open"] {
+  z-index: 9999 !important;
+}
+
 @layer utilities {
   /* Grid layout utilities */
   .grid-layout {

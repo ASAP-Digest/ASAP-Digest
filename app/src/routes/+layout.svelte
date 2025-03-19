@@ -407,6 +407,7 @@
       "header"
       "content"
       "footer";
+    transition: all 0.3s ease-in-out;
   }
   
   /* Header area */
@@ -433,41 +434,43 @@
   /* Content grid for sidebar and main */
   .content-grid {
     display: grid;
-    grid-template-columns: 240px 1fr; /* Fixed width for sidebar */
-    min-height: 100%;
+    grid-template-columns: 240px 1fr;
     width: 100%;
+    min-height: 100%;
     transition: grid-template-columns 0.3s ease-in-out;
   }
   
-  /* When sidebar is collapsed, adjust the grid */
+  /* When sidebar is collapsed, adjust grid properly */
   :global(body.sidebar-collapsed) .content-grid {
     grid-template-columns: 64px 1fr;
   }
   
   /* Sidebar area */
   .sidebar-area {
-    width: 240px; /* Expanded state */
-    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+    position: relative;
+    transition: all 0.3s ease-in-out;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background-color: hsl(var(--sidebar-background));
     border-right: 1px solid hsl(var(--sidebar-border)/0.8);
-    z-index: 10;
-    display: flex; /* Ensure the sidebar fills its container */
-    flex-direction: column;
-    overflow: hidden; /* Prevent content from overflowing during transition */
-    position: relative; /* Ensure proper stacking */
-    box-shadow: 1px 0 5px rgba(0, 0, 0, 0.05); /* Add subtle shadow for depth */
   }
   
   /* Collapsed sidebar */
   :global(body.sidebar-collapsed) .sidebar-area {
-    width: 64px;
-    min-width: 64px;
+    width: 64px !important;
+    min-width: 64px !important;
+    max-width: 64px !important;
   }
   
   /* Main content area */
   .main-area {
-    overflow-y: auto;
     padding: 1rem;
+    overflow-y: auto;
     width: 100%;
     transition: all 0.3s ease-in-out;
   }
@@ -499,12 +502,12 @@
       transform: translateX(0);
     }
     
-    /* Mobile trigger button */
+    /* Mobile trigger button - ensure high z-index */
     .mobile-menu-trigger {
       position: fixed;
       top: 1rem;
       left: 1rem;
-      z-index: 60;
+      z-index: 999;
       display: block;
       padding: 0.5rem;
       border-radius: 0.375rem;
@@ -514,6 +517,7 @@
     
     :global(body.sidebar-collapsed) .main-area {
       margin-left: 0; /* Don't adjust margin on mobile */
+      width: 100%; /* Full width on mobile */
     }
   }
   

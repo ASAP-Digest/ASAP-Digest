@@ -1,6 +1,8 @@
 <script>
 	import { Tooltip as TooltipPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils.js";
+	import { fly } from "svelte/transition";
+	import { cubicOut } from "svelte/easing";
 
 	let { ref = $bindable(null), class: className, sideOffset = 4, ...restProps } = $props();
 </script>
@@ -10,6 +12,7 @@
 	{sideOffset}
 	class={cn(
 		"bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 overflow-hidden rounded-md px-3 py-1.5 text-xs",
+		"body-sidebar-collapsed:z-[9999]",
 		className
 	)}
 	{...restProps}
