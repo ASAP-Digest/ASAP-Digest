@@ -303,7 +303,7 @@
       </header>
       
       <main class="flex-1 pt-[4.5rem] px-[1.5rem]">
-        <slot />
+        {@render children?.()}
       </main>
       
       <Footer />
@@ -312,7 +312,7 @@
     <!-- Auth layout without sidebar -->
     <div class="flex min-h-screen flex-col">
       <main class="flex-1">
-        <slot />
+        {@render children?.()}
       </main>
     </div>
   {/if}

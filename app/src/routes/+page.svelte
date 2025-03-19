@@ -2,7 +2,7 @@
   import ArticleWidget from '$lib/components/widgets/ArticleWidget.svelte';
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   
-  // Widget data for each section
+  // Widget data for each section with properly typed fields
   const newsWidgets = [
     { id: 'news-1', type: 'article', title: 'AI Transforms Healthcare', excerpt: 'New research shows how artificial intelligence is revolutionizing diagnostics and treatment planning.', source: 'Tech Health Journal', date: '2024-03-18', tags: ['AI', 'Healthcare', 'Research'], sourceUrl: 'https://example.com/article' },
     { id: 'news-2', type: 'podcast', title: 'AI in Healthcare', episode: 'Episode 42', duration: 28, summary: 'Discussing the latest AI breakthroughs in medical diagnostics and treatment planning.' }
@@ -34,24 +34,24 @@
     <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
       <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Latest News</h2>
       {#each newsWidgets as widget}
-        <div class="w-full">
+        <div class="w-full cursor-move">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id={widget.id}
-              title={widget.title}
-              excerpt={widget.excerpt}
-              source={widget.source}
-              date={widget.date}
-              tags={widget.tags}
-              sourceUrl={widget.sourceUrl}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
             />
           {:else if widget.type === 'podcast'}
             <PodcastWidget
-              id={widget.id}
-              title={widget.title}
-              episode={widget.episode}
-              duration={widget.duration}
-              summary={widget.summary}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              episode={widget.episode || ''}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
             />
           {/if}
         </div>
@@ -62,24 +62,24 @@
     <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
       <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Financial Updates</h2>
       {#each financeWidgets as widget}
-        <div class="w-full">
+        <div class="w-full cursor-move">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id={widget.id}
-              title={widget.title}
-              excerpt={widget.excerpt}
-              source={widget.source}
-              date={widget.date}
-              tags={widget.tags}
-              sourceUrl={widget.sourceUrl}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
             />
           {:else if widget.type === 'podcast'}
             <PodcastWidget
-              id={widget.id}
-              title={widget.title}
-              episode={widget.episode}
-              duration={widget.duration}
-              summary={widget.summary}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              episode={widget.episode || ''}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
             />
           {/if}
         </div>
@@ -90,24 +90,24 @@
     <section class="col-span-4 sm:col-span-3 lg:col-span-4 flex flex-col gap-[1.5rem]">
       <h2 class="text-[1.5rem] font-bold text-[hsl(var(--foreground))]">Your Interests</h2>
       {#each personalWidgets as widget}
-        <div class="w-full">
+        <div class="w-full cursor-move">
           {#if widget.type === 'article'}
             <ArticleWidget 
-              id={widget.id}
-              title={widget.title}
-              excerpt={widget.excerpt}
-              source={widget.source}
-              date={widget.date}
-              tags={widget.tags}
-              sourceUrl={widget.sourceUrl}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
             />
           {:else if widget.type === 'podcast'}
             <PodcastWidget
-              id={widget.id}
-              title={widget.title}
-              episode={widget.episode}
-              duration={widget.duration}
-              summary={widget.summary}
+              id={widget.id || ''}
+              title={widget.title || ''}
+              episode={widget.episode || ''}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
             />
           {/if}
         </div>
