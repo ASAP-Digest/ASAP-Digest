@@ -44,7 +44,90 @@
     // Dispatch custom event for parent components
     const event = new CustomEvent('sidebarToggle', { detail: { collapsed } });
     document.dispatchEvent(event);
+    
+    // Add class to document body for layout adjustments
+    if (collapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+    }
   }
+  
+  // Initialize collapsed state from localStorage if available
+  onMount(() => {
+    // Check if there's a stored preference in localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const storedState = localStorage.getItem('sidebar-collapsed');
+      if (storedState === 'true') {
+        collapsed = true;
+        document.body.classList.add('sidebar-collapsed');
+      }
+    }
+    
+    // Check if body already has sidebar-collapsed class from parent
+    if (typeof document !== 'undefined' && document.body.classList.contains('sidebar-collapsed') && !collapsed) {
+      collapsed = true;
+    }
+    
+    console.log('[MainSidebar] Component mounted');
+    console.log('[MainSidebar] Current path:', path);
+    console.log('[MainSidebar] Initial collapsed state:', collapsed);
+    
+    // Add DOM visibility check
+    setTimeout(() => {
+      const rootElement = document.querySelector('.sidebar-collapsed');
+      console.log('[MainSidebar] Sidebar collapsed element exists:', !!rootElement);
+      
+      const sidebarRoot = document.querySelector('.h-full.border-r');
+      if (sidebarRoot) {
+        console.log('[MainSidebar] Root element visible in DOM');
+        console.log('[MainSidebar] Classes:', sidebarRoot.className);
+        
+        const styles = window.getComputedStyle(sidebarRoot);
+        console.log('[MainSidebar] Background:', styles.backgroundColor);
+        console.log('[MainSidebar] Border:', styles.borderRight);
+        console.log('[MainSidebar] Display:', styles.display);
+        console.log('[MainSidebar] Width:', styles.width);
+        
+        // Log parent elements to check for visibility issues
+        let parent = sidebarRoot.parentElement;
+        console.log('[MainSidebar] Parent element:', parent);
+        if (parent) {
+          console.log('[MainSidebar] Parent display:', window.getComputedStyle(parent).display);
+          console.log('[MainSidebar] Parent visibility:', window.getComputedStyle(parent).visibility);
+          console.log('[MainSidebar] Parent width:', window.getComputedStyle(parent).width);
+          
+          // Check grandparent
+          const grandparent = parent.parentElement;
+          if (grandparent) {
+            console.log('[MainSidebar] Grandparent element:', grandparent);
+            console.log('[MainSidebar] Grandparent display:', window.getComputedStyle(grandparent).display);
+            console.log('[MainSidebar] Grandparent width:', window.getComputedStyle(grandparent).width);
+          }
+        }
+      } else {
+        console.warn('[MainSidebar] Root element NOT found in DOM!');
+      }
+    }, 100);
+    
+    // Listen for sidebar toggle events from the layout
+    /**
+     * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
+     */
+    const handleSidebarToggle = (event: CustomEvent<{collapsed: boolean}>) => {
+      // Only update if the value is different to prevent infinite loops
+      if (collapsed !== event.detail.collapsed) {
+        collapsed = event.detail.collapsed;
+        console.log('[MainSidebar] State updated from parent:', collapsed ? 'collapsed' : 'expanded');
+      }
+    };
+    
+    document.addEventListener('sidebarToggle', handleSidebarToggle as EventListener);
+    
+    return () => {
+      document.removeEventListener('sidebarToggle', handleSidebarToggle as EventListener);
+    };
+  });
   
   // Main navigation items with reactive closures for 'active' property
   const mainNavItems = [
@@ -112,130 +195,57 @@
       imgElement.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
     }
   }
-
-  onMount(() => {
-    console.log('[MainSidebar] Component mounted');
-    console.log('[MainSidebar] Current path:', path);
-    console.log('[MainSidebar] Initial collapsed state:', collapsed);
-    
-    // Add DOM visibility check
-    setTimeout(() => {
-      const rootElement = document.querySelector('.sidebar-collapsed');
-      console.log('[MainSidebar] Sidebar collapsed element exists:', !!rootElement);
-      
-      const sidebarRoot = document.querySelector('.h-full.border-r');
-      if (sidebarRoot) {
-        console.log('[MainSidebar] Root element visible in DOM');
-        console.log('[MainSidebar] Classes:', sidebarRoot.className);
-        
-        const styles = window.getComputedStyle(sidebarRoot);
-        console.log('[MainSidebar] Background:', styles.backgroundColor);
-        console.log('[MainSidebar] Border:', styles.borderRight);
-        console.log('[MainSidebar] Display:', styles.display);
-        console.log('[MainSidebar] Width:', styles.width);
-        
-        // Log parent elements to check for visibility issues
-        let parent = sidebarRoot.parentElement;
-        console.log('[MainSidebar] Parent element:', parent);
-        if (parent) {
-          console.log('[MainSidebar] Parent display:', window.getComputedStyle(parent).display);
-          console.log('[MainSidebar] Parent visibility:', window.getComputedStyle(parent).visibility);
-          console.log('[MainSidebar] Parent width:', window.getComputedStyle(parent).width);
-          
-          // Check grandparent
-          const grandparent = parent.parentElement;
-          if (grandparent) {
-            console.log('[MainSidebar] Grandparent element:', grandparent);
-            console.log('[MainSidebar] Grandparent display:', window.getComputedStyle(grandparent).display);
-            console.log('[MainSidebar] Grandparent width:', window.getComputedStyle(grandparent).width);
-          }
-        }
-      } else {
-        console.warn('[MainSidebar] Root element NOT found in DOM!');
-      }
-    }, 100);
-    
-    // Listen for sidebar toggle events from the layout
-    /**
-     * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
-     */
-    const handleSidebarToggle = (event: CustomEvent<{collapsed: boolean}>) => {
-      // Only update if the value is different to prevent infinite loops
-      if (collapsed !== event.detail.collapsed) {
-        collapsed = event.detail.collapsed;
-        console.log('[MainSidebar] State updated from parent:', collapsed ? 'collapsed' : 'expanded');
-      }
-    };
-    
-    document.addEventListener('sidebarToggle', handleSidebarToggle as EventListener);
-    
-    return () => {
-      document.removeEventListener('sidebarToggle', handleSidebarToggle as EventListener);
-    };
-  });
 </script>
 
 <style>
-  /* Enhance transitions for collapse state */
-  :global(.sidebar-icon) {
-    @apply transition-all duration-200;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    @apply text-[hsl(var(--primary))] flex items-center justify-center;
-    @apply min-w-[24px] min-h-[24px];
+  /* Sidebar collapse/expand styling */
+  :global(body.sidebar-collapsed) .sidebar-content-collapsible {
+    display: none;
   }
   
-  :global(.sidebar-label) {
-    @apply transition-opacity duration-200 whitespace-nowrap overflow-hidden;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    @apply text-[hsl(var(--foreground))];
+  :global(body.sidebar-collapsed) .sidebar-icon {
+    margin-right: 0;
   }
   
-  /* Balance icon sizing when collapsed */
-  :global(.sidebar-collapsed .sidebar-icon) {
-    @apply mx-auto h-[1.25rem] w-[1.25rem] text-[hsl(var(--primary))];
+  /* Adjust avatar to square when collapsed */
+  :global(body.sidebar-collapsed) .avatar {
+    width: 2rem !important;
+    height: 2rem !important;
+    border-radius: 0.375rem !important; /* Square with slightly rounded corners */
+    transform: scale(0.9);
   }
   
-  /* Fix alignment in menu items */
-  :global(.sidebar-menu-item a) {
-    @apply flex items-center gap-[0.75rem];
+  /* Menu hover effect */
+  .menu-item-hover {
+    border-radius: 0.375rem;
+    transition: background-color 0.2s ease-in-out;
   }
   
-  /* Enhanced visibility for active items in collapsed mode */
-  :global(.sidebar-collapsed .sidebar-menu-item a.active .sidebar-icon) {
-    @apply text-[hsl(var(--primary))] font-[700];
+  .menu-item-hover:hover {
+    background-color: hsl(var(--muted)/0.3);
   }
   
-  /* Add hover effects to menu items */
-  :global(.menu-item-hover) {
-    @apply rounded-[0.375rem] transition-colors duration-200;
-    @apply hover:bg-[hsl(var(--primary)/0.1)] hover:text-[hsl(var(--primary))];
-    @apply active:bg-[hsl(var(--primary)/0.2)];
+  .menu-item-hover.active {
+    background-color: hsl(var(--primary)/0.1);
+    color: hsl(var(--primary));
+    font-weight: 600;
   }
   
-  /* Style active menu items */
-  :global(.sidebar-menu-item a.active) {
-    @apply bg-[hsl(var(--primary)/0.15)] font-[600];
-    @apply text-[hsl(var(--primary))];
-  }
-  
-  /* Collapse toggle button */
-  .sidebar-toggle {
-    @apply p-[0.5rem] rounded-[0.375rem] transition-colors;
-    @apply hover:bg-[hsl(var(--primary)/0.15)] hover:text-[hsl(var(--primary))];
-    @apply focus:outline-none border border-[hsl(var(--border)/0.5)];
-    @apply text-[hsl(var(--foreground))];
-    @apply shadow-[0_1px_2px_0_rgba(0,0,0,0.05)];
-  }
-  
-  /* Hide content in collapsed state */
-  :global(.sidebar-collapsed .sidebar-content-collapsible) {
-    @apply hidden;
-  }
-  
-  /* Avatar dropdown */
+  /* Avatar styling */
   .avatar-dropdown {
     @apply fixed z-50 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-[0.375rem] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] p-[0.5rem] w-[16rem];
     @apply dark:bg-[hsl(var(--muted))] dark:border-[hsl(var(--muted-foreground)/0.5)];
+    max-height: calc(100vh - 120px); /* Prevent dropdown from extending beyond viewport */
+    overflow-y: auto;
+    left: 0; /* Position to left edge of container by default */
+    bottom: 100%; /* Position above the avatar */
+    margin-bottom: 5px; /* Add a small space between avatar and dropdown */
+  }
+  
+  /* When sidebar is collapsed, place dropdown next to the sidebar */
+  :global(body.sidebar-collapsed) .avatar-dropdown {
+    left: 65px; /* Position just to the right of collapsed sidebar */
+    bottom: 0; /* Align with avatar */
   }
   
   .avatar-container {
@@ -245,10 +255,11 @@
   
   .avatar {
     @apply relative w-[2.5rem] h-[2.5rem] rounded-full overflow-hidden border border-[hsl(var(--border))];
+    transition: all 0.3s ease-in-out;
   }
   
   .avatar-text {
-    @apply text-[0.875rem] font-medium text-center text-[hsl(var(--foreground))] dark:text-[hsl(var(--foreground)/0.8)];
+    @apply text-[0.875rem] font-[500] text-center text-[hsl(var(--foreground))] dark:text-[hsl(var(--foreground)/0.8)];
   }
   
   .dropdown-item {
@@ -261,21 +272,41 @@
     @apply hover:bg-[hsl(var(--primary)/0.9)] transition-colors duration-200;
   }
 
-  .sidebar {
-    @apply fixed top-0 left-0 h-screen w-[16rem] bg-[hsl(var(--background))] border-r border-[hsl(var(--border))] z-50 transition-all duration-300 ease-in-out flex flex-col;
+  /* Sidebar responsive sizing */
+  .sidebar-wrapper {
+    width: 240px;
+    min-width: 240px;
+    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
   }
-
-  .sidebar.collapsed {
-    @apply w-[5rem];
+  
+  :global(body.sidebar-collapsed) .sidebar-wrapper {
+    width: 64px !important;
+    min-width: 64px !important;
   }
-
-  .menu-item {
-    @apply flex items-center gap-[0.5rem] p-[0.5rem] rounded-[0.375rem] text-[0.875rem] text-[hsl(var(--foreground))] dark:text-[hsl(var(--foreground)/0.8)];
-    @apply hover:bg-[hsl(var(--muted)/0.5)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200;
+  
+  /* Icon & content transition */
+  .sidebar-icon {
+    margin-right: 0.75rem;
+    transition: margin 0.3s ease-in-out;
+    /* Ensure icons remain visible and centered when collapsed */
+    :global(body.sidebar-collapsed) & {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin: 0 auto;
+    }
+  }
+  
+  .sidebar-label {
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .sidebar-toggle {
+    @apply p-[0.25rem] rounded-[0.25rem] hover:bg-[hsl(var(--muted)/0.2)] transition-colors;
   }
 </style>
 
-<div class={collapsed ? 'sidebar-collapsed' : ''} data-testid="sidebar" style="width: 240px; min-width: 240px;">
+<div class="sidebar-wrapper" data-testid="sidebar" class:collapsed={collapsed}>
   <Root class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
     <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)]">
       <div class="flex items-center justify-between px-[0.5rem]">
@@ -364,7 +395,7 @@
             <div class="p-[0.5rem] border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
               <div class="font-semibold">{user.name}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>
-              <div class="text-[0.75rem] font-medium mt-[0.25rem] text-[hsl(var(--primary))]">{user.plan}</div>
+              <div class="text-[0.75rem] font-[500] mt-[0.25rem] text-[hsl(var(--primary))]">{user.plan}</div>
             </div>
             
             <div class="py-[0.25rem]">

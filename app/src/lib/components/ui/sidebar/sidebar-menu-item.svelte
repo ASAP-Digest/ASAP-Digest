@@ -6,7 +6,7 @@
 <li
 	bind:this={ref}
 	data-sidebar="menu-item"
-	class={cn("group/menu-item relative", className)}
+	class={cn("list-none", className)}
 	{...restProps}
 >
 	{@render children?.()}

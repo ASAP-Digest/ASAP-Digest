@@ -59,6 +59,10 @@
     }
     
     console.log(`[Layout] Sidebar toggled to ${isSidebarCollapsed ? 'collapsed' : 'expanded'}`);
+    
+    // Dispatch a global event for child components to sync with
+    const event = new CustomEvent('sidebarToggle', { detail: { collapsed: isSidebarCollapsed } });
+    document.dispatchEvent(event);
   }
 
   // Track if we're on mobile
@@ -337,6 +341,29 @@
       console.log("[Layout] All elements with sidebar in class:", 
         document.querySelectorAll('[class*="sidebar"]').length);
     }, 1000);
+
+    // Check localStorage for saved sidebar state
+    const savedSidebarState = localStorage.getItem('sidebar-collapsed');
+    if (savedSidebarState === 'true') {
+      isSidebarCollapsed = true;
+      document.body.classList.add('sidebar-collapsed');
+    }
+
+    // Setup listener for sidebar toggle events from child components
+    /**
+     * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
+     */
+    const handleSidebarToggle = (event) => {
+      if (isSidebarCollapsed !== event.detail.collapsed) {
+        toggleSidebar(null);
+      }
+    };
+    
+    document.addEventListener('sidebarToggle', handleSidebarToggle);
+    
+    return () => {
+      document.removeEventListener('sidebarToggle', handleSidebarToggle);
+    };
   });
 </script>
 
@@ -439,6 +466,12 @@
   .main-area {
     overflow-y: auto;
     padding: 1rem;
+    transition: margin-left 0.3s ease-in-out;
+  }
+  
+  /* Adjust main content when sidebar collapses */
+  :global(body.sidebar-collapsed) .main-area {
+    margin-left: -176px; /* 240px - 64px */
   }
   
   /* Footer area */
@@ -480,6 +513,10 @@
       background-color: hsl(var(--background));
       box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     }
+    
+    :global(body.sidebar-collapsed) .main-area {
+      margin-left: 0; /* Don't adjust margin on mobile */
+    }
   }
   
   /* Desktop specific styles */
@@ -511,12 +548,68 @@
           </span>
         </div>
         
-        <!-- Header actions (search, etc) -->
+        <!-- Header actions (search, notifications, user avatar) -->
         <div class="flex items-center gap-[1rem]">
-          <!-- Search input could go here -->
+          <!-- Search input -->
           <button class="p-[0.5rem] rounded-[0.375rem] bg-[hsl(var(--muted)/0.1)]" aria-label="Search">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
+          
+          <!-- Notifications -->
+          <div class="relative">
+            <button class="p-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <div class="absolute top-0 right-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center text-[0.75rem] font-bold">
+                3
+              </div>
+            </button>
+          </div>
+          
+          <!-- User avatar with dropdown -->
+          <div class="relative">
+            <button 
+              class="flex items-center space-x-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] p-[0.25rem] transition-colors"
+              onclick={() => {
+                const dropdown = document.getElementById('user-dropdown');
+                if (dropdown) {
+                  dropdown.classList.toggle('hidden');
+                }
+              }}
+              aria-haspopup="true"
+            >
+              <div class="w-[2rem] h-[2rem] rounded-full bg-[hsl(var(--muted)/0.2)] overflow-hidden">
+                <img 
+                  src="/images/avatar.png" 
+                  alt="User" 
+                  class="w-full h-full object-cover"
+                  onerror={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
+                  }}
+                />
+              </div>
+            </button>
+            
+            <!-- User dropdown menu -->
+            <div id="user-dropdown" class="hidden absolute right-0 mt-[0.5rem] w-[12rem] bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] rounded-[0.375rem] z-50 border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+              <div class="p-[0.5rem] border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+                <div class="font-semibold">John Doe</div>
+                <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">john.doe@example.com</div>
+              </div>
+              
+              <div class="py-[0.25rem]">
+                <a href="/dashboard" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                  Dashboard
+                </a>
+                <a href="/settings" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                  Settings
+                </a>
+                <a href="/logout" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                  Logout
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </header>

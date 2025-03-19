@@ -1,7 +1,8 @@
-<script>
+<script lang="ts">
   import { page } from '$app/stores';
   import { Home, User, LogIn, Menu, Search, Bell } from 'lucide-svelte';
   import { Input } from '$lib/components/ui/input';
+  import { onMount } from 'svelte';
   
   // Avatar dropdown open state
   let isAvatarDropdownOpen = $state(false);
@@ -37,6 +38,50 @@
       imgElement.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
     }
   }
+
+  // Function to check viewport position and adjust dropdown
+  function adjustDropdownPosition() {
+    if (isAvatarDropdownOpen) {
+      setTimeout(() => {
+        const dropdown = document.querySelector('.avatar-dropdown');
+        if (dropdown && dropdown instanceof HTMLElement) {
+          const rect = dropdown.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const viewportWidth = window.innerWidth;
+          
+          // Check if dropdown is off the right edge
+          if (rect.right > viewportWidth) {
+            dropdown.style.right = '0px';
+            dropdown.style.left = 'auto';
+          }
+          
+          // Check if dropdown is off the bottom edge
+          if (rect.bottom > viewportHeight) {
+            dropdown.style.bottom = '100%';
+            dropdown.style.top = 'auto';
+            dropdown.style.marginBottom = '5px';
+          }
+        }
+      }, 0);
+    }
+  }
+  
+  // Add listener for window resize
+  let resizeObserver;
+  onMount(() => {
+    adjustDropdownPosition();
+    window.addEventListener('resize', adjustDropdownPosition);
+    return () => {
+      window.removeEventListener('resize', adjustDropdownPosition);
+    };
+  });
+  
+  // Call adjust function when dropdown state changes
+  $effect(() => {
+    if (isAvatarDropdownOpen) {
+      adjustDropdownPosition();
+    }
+  });
 </script>
 
 <header class="bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-[0_1px_3px_0_rgba(0,0,0,0.1)]">
@@ -90,20 +135,20 @@
         </button>
         
         {#if isAvatarDropdownOpen}
-          <div class="absolute right-0 mt-[0.5rem] w-[12rem] bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] rounded-[0.375rem] z-50 border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
-            <div class="p-[0.5rem] border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+          <div class="avatar-dropdown">
+            <div class="avatar-dropdown-header">
               <div class="font-semibold">{user.name}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>
             </div>
             
             <div class="py-[0.25rem]">
-              <a href="/dashboard" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+              <a href="/dashboard" class="avatar-dropdown-link">
                 Dashboard
               </a>
-              <a href="/settings" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+              <a href="/settings" class="avatar-dropdown-link">
                 Settings
               </a>
-              <a href="/logout" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+              <a href="/logout" class="avatar-dropdown-link">
                 Logout
               </a>
             </div>
@@ -136,5 +181,51 @@
   
   .absolute {
     animation: fadeIn 0.2s ease-out;
+  }
+
+  /* Avatar dropdown styles */
+  .avatar-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.5rem;
+    width: 12rem;
+    background-color: hsl(var(--background));
+    border-radius: 0.375rem;
+    z-index: 50;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+
+  /* Dark mode styles */
+  :global(.dark) .avatar-dropdown {
+    background-color: hsl(var(--muted));
+    border-color: hsl(var(--muted-foreground)/0.2);
+  }
+
+  .avatar-dropdown-header {
+    padding: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  :global(.dark) .avatar-dropdown-header {
+    border-color: hsl(var(--muted-foreground)/0.2);
+  }
+
+  .avatar-dropdown-link {
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: background-color 0.2s;
+  }
+
+  .avatar-dropdown-link:hover {
+    background-color: hsl(var(--muted)/0.1);
+  }
+
+  :global(.dark) .avatar-dropdown-link:hover {
+    background-color: hsl(var(--muted)/0.2);
   }
 </style> 
