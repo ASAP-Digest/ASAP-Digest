@@ -298,7 +298,7 @@
   <div class="grid w-full gap-4 md:gap-6
     grid-cols-4  /* Mobile: 4 column grid system (2 columns of 2 grid units) */
     sm:grid-cols-6  /* Tablet: 6 column grid system (2 columns of 3 grid units) */
-    md:grid-cols-6  
+    md:grid-cols-6 
     lg:grid-cols-12  /* Desktop: 12 column grid system (4 columns of 3 grid units) */
     xl:grid-cols-12 
     2xl:grid-cols-12"
@@ -309,33 +309,33 @@
     </div>
     
     <!-- News Widgets -->
-    {#each newsWidgets as widget}
+      {#each newsWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
+          {#if widget.type === 'article'}
+            <ArticleWidget 
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
+            />
+          {:else if widget.type === 'podcast'}
+            <PodcastWidget
+              id={widget.id || ''}
+              title={widget.title || ''}
             episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
+            />
+          {/if}
+        </div>
+      {/each}
     
     <!-- Finance Section Header - Full width -->
     <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
@@ -343,33 +343,33 @@
     </div>
     
     <!-- Finance Widgets -->
-    {#each financeWidgets as widget}
+      {#each financeWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
+          {#if widget.type === 'article'}
+            <ArticleWidget 
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
+            />
+          {:else if widget.type === 'podcast'}
+            <PodcastWidget
+              id={widget.id || ''}
+              title={widget.title || ''}
             episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
+            />
+          {/if}
+        </div>
+      {/each}
     
     <!-- Personalized Section Header - Full width -->
     <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
@@ -377,33 +377,33 @@
     </div>
     
     <!-- Personalized Widgets -->
-    {#each personalWidgets as widget}
+      {#each personalWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
+          {#if widget.type === 'article'}
+            <ArticleWidget 
+              id={widget.id || ''}
+              title={widget.title || ''}
+              excerpt={widget.excerpt || ''}
+              source={widget.source || ''}
+              date={widget.date || ''}
+              tags={widget.tags || []}
+              sourceUrl={widget.sourceUrl || ''}
+            />
+          {:else if widget.type === 'podcast'}
+            <PodcastWidget
+              id={widget.id || ''}
+              title={widget.title || ''}
             episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
+              duration={typeof widget.duration === 'number' ? widget.duration : 0}
+              summary={widget.summary || ''}
+            />
+          {/if}
+        </div>
+      {/each}
   </div>
 </div>
 

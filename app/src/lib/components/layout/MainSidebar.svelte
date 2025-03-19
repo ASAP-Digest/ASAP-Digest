@@ -62,34 +62,58 @@
   });
 </script>
 
+<style>
+  /* Enhance transitions for collapse state */
+  :global(.sidebar-icon) {
+    @apply transition-all duration-200;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  :global(.sidebar-label) {
+    @apply transition-opacity duration-200 whitespace-nowrap overflow-hidden;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Balance icon sizing when collapsed */
+  .sidebar-collapsed :global(.sidebar-icon) {
+    @apply mx-auto h-5 w-5;
+  }
+  
+  /* Fix alignment in menu items */
+  :global(.sidebar-menu-item a) {
+    @apply flex items-center gap-3;
+  }
+  
+  /* Enhanced visibility for active items in collapsed mode */
+  .sidebar-collapsed :global(.sidebar-menu-item a.active .sidebar-icon) {
+    @apply text-[hsl(var(--primary))];
+  }
+</style>
+
 <Root class="h-full border-r border-[hsl(var(--sidebar-border))]">
   <Header class="px-2">
     <div class="flex items-center justify-between p-4">
       <div class="flex items-center gap-2">
-        <span class="font-semibold text-lg">ASAP Digest</span>
+        <span class="font-semibold text-lg sidebar-label">ASAP Digest</span>
       </div>
     </div>
   </Header>
   
   <Content class="px-2">
     <Group class="pb-4">
-      <GroupLabel class="px-2">Main</GroupLabel>
+      <GroupLabel class="px-2 sidebar-label">Main</GroupLabel>
       <GroupContent class="space-y-1">
         <Menu class="space-y-1">
           {#each mainNavItems as item (item.label)}
-            <MenuItem class="px-0">
-              <MenuButton 
-                class="w-full justify-start" 
-                isActive={item.active}
-                tooltipContent={item.label}
-                tooltipContentProps={{}}>
-                {#snippet child({ props = /** @type {Record<string, any>} */ ({}) })}
-                  <a href={item.url} {...props}>
+            <MenuItem class="px-0 sidebar-menu-item">
+              <a href={item.url} class="{item.active ? 'active' : ''} flex items-center gap-3 w-full justify-start p-2 rounded-md hover:bg-[hsl(var(--sidebar-accent))]">
+                <div class="sidebar-icon">
+                  {#if item.icon}
                     <item.icon size={18} />
-                    <span>{item.label}</span>
-                  </a>
-                {/snippet}
-              </MenuButton>
+                  {/if}
+                </div>
+                <span class="sidebar-label">{item.label}</span>
+              </a>
             </MenuItem>
           {/each}
         </Menu>
@@ -99,23 +123,19 @@
     <Separator class="my-2" />
     
     <Group class="pb-4">
-      <GroupLabel class="px-2">Account</GroupLabel>
+      <GroupLabel class="px-2 sidebar-label">Account</GroupLabel>
       <GroupContent class="space-y-1">
         <Menu class="space-y-1">
           {#each secondaryNavItems as item (item.label)}
-            <MenuItem class="px-0">
-              <MenuButton 
-                class="w-full justify-start" 
-                isActive={item.active}
-                tooltipContent={item.label}
-                tooltipContentProps={{}}>
-                {#snippet child({ props = /** @type {Record<string, any>} */ ({}) })}
-                  <a href={item.url} {...props}>
+            <MenuItem class="px-0 sidebar-menu-item">
+              <a href={item.url} class="{item.active ? 'active' : ''} flex items-center gap-3 w-full justify-start p-2 rounded-md hover:bg-[hsl(var(--sidebar-accent))]">
+                <div class="sidebar-icon">
+                  {#if item.icon}
                     <item.icon size={18} />
-                    <span>{item.label}</span>
-                  </a>
-                {/snippet}
-              </MenuButton>
+                  {/if}
+                </div>
+                <span class="sidebar-label">{item.label}</span>
+              </a>
             </MenuItem>
           {/each}
         </Menu>
@@ -125,7 +145,7 @@
   
   <Footer class="px-4 py-2">
     <div class="p-2 text-sm">
-      <p>ASAP Digest v1.0</p>
+      <p class="sidebar-label">ASAP Digest v1.0</p>
     </div>
   </Footer>
 </Root> 
