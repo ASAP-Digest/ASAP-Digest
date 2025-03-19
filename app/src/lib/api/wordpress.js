@@ -32,6 +32,9 @@ console.debug('WordPress API Configuration:', {
     WP_GRAPHQL_URL
 });
 
+export { SITE_URL };
+
+
 /**
  * @typedef {Object} ArticleProps
  * @property {string} id - Unique identifier for the article
