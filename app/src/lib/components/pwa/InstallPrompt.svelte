@@ -190,24 +190,24 @@
 				<span>Install ASAP Digest</span>
 			</h3>
 			
-			<button 
+				<button 
 				onclick={closePrompt}
 				class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
 				aria-label="Close installation prompt"
 			>
 				<X size={18} />
-			</button>
-		</div>
-		
+				</button>
+			</div>
+			
 		<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-[1rem]">
 			{#if deviceOS === 'ios'}
 				Add ASAP Digest to your Home Screen for a better experience. Tap <span class="inline-block w-[1rem] h-[1rem] bg-[#1677ff] text-white text-center leading-[1rem] rounded-[0.25rem] mx-[0.25rem]">+</span> in your Safari browser and then "Add to Home Screen".
 			{:else if deviceOS === 'android'}
 				Install ASAP Digest as an app on your device for a better experience with offline access.
-			{:else}
+				{:else}
 				Install ASAP Digest for offline access and a better experience.
-			{/if}
-		</p>
+						{/if}
+					</p>
 		
 		{#if deferredPrompt || deviceOS === 'desktop'}
 			<button 

@@ -198,21 +198,68 @@
 </script>
 
 <style>
+  /* All sidebar elements should transition smoothly */
+  .sidebar-wrapper *,
+  .sidebar-wrapper *::before,
+  .sidebar-wrapper *::after {
+    transition-property: width, height, margin, padding, transform, border-radius;
+    transition-duration: 0.3s;
+    transition-timing-function: ease-in-out;
+  }
+
   /* Sidebar collapse/expand styling */
   :global(body.sidebar-collapsed) .sidebar-content-collapsible {
     display: none;
   }
   
-  :global(body.sidebar-collapsed) .sidebar-icon {
-    margin-right: 0;
+  /* Logo centering when collapsed */
+  :global(body.sidebar-collapsed) .sidebar-label:not(.sidebar-content-collapsible) {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    font-size: 1rem;
   }
   
-  /* Adjust avatar to square when collapsed */
+  /* Fix icon visibility and centering in collapsed state */
+  .sidebar-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+    transition: all 0.3s ease-in-out;
+  }
+  
+  :global(body.sidebar-collapsed) .sidebar-wrapper .sidebar-icon {
+    @apply flex justify-center items-center w-full h-full;
+    margin: 0;
+    padding: 0.375rem;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    max-width: none !important;
+  }
+  
+  /* Adjust avatar to square when collapsed with higher specificity */
+  .avatar {
+    @apply relative overflow-hidden border border-[hsl(var(--border))];
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px; /* Full rounded */
+    transition: all 0.3s ease-in-out;
+  }
+  
   :global(body.sidebar-collapsed) .avatar {
     width: 2rem !important;
     height: 2rem !important;
     border-radius: 0.375rem !important; /* Square with slightly rounded corners */
     transform: scale(0.9);
+    transition: all 0.3s ease-in-out;
+    margin: 0 auto;
   }
   
   /* Menu hover effect */
@@ -233,19 +280,25 @@
   
   /* Avatar styling */
   .avatar-dropdown {
-    @apply fixed z-50 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-[0.375rem] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] p-[0.5rem] w-[16rem];
-    @apply dark:bg-[hsl(var(--muted))] dark:border-[hsl(var(--muted-foreground)/0.5)];
-    max-height: calc(100vh - 120px); /* Prevent dropdown from extending beyond viewport */
+    position: absolute;
+    z-index: 50;
+    /* Position 7px above avatar as requested */
+    bottom: calc(100% + 7px);
+    right: 0;
+    width: 16rem;
+    max-height: calc(100vh - 120px);
     overflow-y: auto;
-    left: 0; /* Position to left edge of container by default */
-    bottom: 100%; /* Position above the avatar */
-    margin-bottom: 5px; /* Add a small space between avatar and dropdown */
+    @apply bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-[0.375rem] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] p-[0.5rem];
+    @apply dark:bg-[hsl(var(--muted))] dark:border-[hsl(var(--muted-foreground)/0.5)];
   }
   
   /* When sidebar is collapsed, place dropdown next to the sidebar */
   :global(body.sidebar-collapsed) .avatar-dropdown {
-    left: 65px; /* Position just to the right of collapsed sidebar */
-    bottom: 0; /* Align with avatar */
+    right: auto;
+    left: 100%;
+    bottom: auto;
+    top: 0;
+    margin-left: 7px;
   }
   
   .avatar-container {
@@ -253,9 +306,11 @@
     @apply hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200;
   }
   
-  .avatar {
-    @apply relative w-[2.5rem] h-[2.5rem] rounded-full overflow-hidden border border-[hsl(var(--border))];
-    transition: all 0.3s ease-in-out;
+  /* Avatar container is centered when collapsed */
+  :global(body.sidebar-collapsed) .avatar-container {
+    justify-content: center;
+    width: 100%;
+    padding: 0.5rem 0;
   }
   
   .avatar-text {
@@ -276,7 +331,7 @@
   .sidebar-wrapper {
     width: 240px;
     min-width: 240px;
-    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
+    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out;
   }
   
   :global(body.sidebar-collapsed) .sidebar-wrapper {
@@ -284,35 +339,58 @@
     min-width: 64px !important;
   }
   
-  /* Icon & content transition */
-  .sidebar-icon {
-    margin-right: 0.75rem;
-    transition: margin 0.3s ease-in-out;
-    /* Ensure icons remain visible and centered when collapsed */
-    :global(body.sidebar-collapsed) & {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-      margin: 0 auto;
-    }
-  }
-  
+  /* Sidebar label transition */
   .sidebar-label {
     transition: opacity 0.3s ease-in-out;
   }
   
+  /* Keep trigger button visible with absolute positioning */
   .sidebar-toggle {
-    @apply p-[0.25rem] rounded-[0.25rem] hover:bg-[hsl(var(--muted)/0.2)] transition-colors;
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 30;
+    background-color: hsl(var(--sidebar-background));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 0.25rem;
+    @apply p-[0.25rem] hover:bg-[hsl(var(--muted)/0.2)] transition-colors;
+  }
+  
+  /* When collapsed, position button on the edge */
+  :global(body.sidebar-collapsed) .sidebar-toggle {
+    right: -12px;
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 50%;
+  }
+  
+  /* Ensure sufficient padding in sidebar items when collapsed */
+  :global(body.sidebar-collapsed) .sidebar-menu-item a {
+    justify-content: center !important;
+    padding: 0.5rem 0 !important;
+    width: 100%;
+  }
+  
+  /* Fix for header structure when collapsed */
+  :global(body.sidebar-collapsed) .sidebar-header-content {
+    justify-content: center;
+    padding: 0 !important;
+  }
+  
+  /* Fix for Recent Digests section when collapsed */
+  :global(body.sidebar-collapsed) .sidebar-group-label {
+    display: none;
   }
 </style>
 
 <div class="sidebar-wrapper" data-testid="sidebar" class:collapsed={collapsed}>
   <Root class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]">
-    <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)]">
-      <div class="flex items-center justify-between px-[0.5rem]">
+    <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)] relative">
+      <div class="flex items-center sidebar-header-content justify-between px-[0.5rem]">
         <a href="/" class="flex items-center gap-[0.75rem]">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[hsl(var(--primary))]"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          <span class="font-[600] text-[1.125rem] sidebar-label sidebar-content-collapsible">⚡️ ASAP</span>
+          <!-- Removed SVG heartbeat icon, keeping only the text -->
+          <span class="font-[600] text-[1.125rem] sidebar-label">⚡️ ASAP</span>
         </a>
         <!-- Collapse toggle button -->
         <button 
@@ -355,7 +433,7 @@
       <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-[1px]" />
 
       <Group class="pb-[1rem]">
-        <GroupLabel class="px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)] sidebar-label sidebar-content-collapsible" child={() => "Recent Digests"}>
+        <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)] sidebar-label sidebar-content-collapsible" child={() => "Recent Digests"}>
           Recent Digests
         </GroupLabel>
         <GroupContent class="space-y-[0.75rem] sidebar-content-collapsible">
@@ -381,7 +459,7 @@
       <div class="relative">
         <button class="avatar-container w-full text-left" onclick={toggleAvatarDropdown} aria-haspopup="true" aria-expanded={isAvatarDropdownOpen}>
           <div class="avatar">
-            <img src={user.avatar} alt={user.name} onerror={handleImageError} />
+            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="w-full h-full object-cover" />
           </div>
           <div class="ml-[0.5rem] sidebar-content-collapsible">
             <div class="font-semibold">{user.name}</div>

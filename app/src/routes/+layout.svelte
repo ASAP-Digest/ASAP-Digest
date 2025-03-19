@@ -430,23 +430,24 @@
     overflow-x: hidden;
   }
   
-  /* Inner content grid for sidebar and main */
+  /* Content grid for sidebar and main */
   .content-grid {
     display: grid;
     grid-template-columns: 240px 1fr; /* Fixed width for sidebar */
     min-height: 100%;
     width: 100%;
+    transition: grid-template-columns 0.3s ease-in-out;
   }
   
   /* When sidebar is collapsed, adjust the grid */
-  .sidebar-collapsed .content-grid {
+  :global(body.sidebar-collapsed) .content-grid {
     grid-template-columns: 64px 1fr;
   }
   
   /* Sidebar area */
   .sidebar-area {
     width: 240px; /* Expanded state */
-    transition: width 0.3s ease;
+    transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
     background-color: hsl(var(--sidebar-background));
     border-right: 1px solid hsl(var(--sidebar-border)/0.8);
     z-index: 10;
@@ -458,20 +459,17 @@
   }
   
   /* Collapsed sidebar */
-  .sidebar-collapsed .sidebar-area {
+  :global(body.sidebar-collapsed) .sidebar-area {
     width: 64px;
+    min-width: 64px;
   }
   
   /* Main content area */
   .main-area {
     overflow-y: auto;
     padding: 1rem;
-    transition: margin-left 0.3s ease-in-out;
-  }
-  
-  /* Adjust main content when sidebar collapses */
-  :global(body.sidebar-collapsed) .main-area {
-    margin-left: -176px; /* 240px - 64px */
+    width: 100%;
+    transition: all 0.3s ease-in-out;
   }
   
   /* Footer area */
