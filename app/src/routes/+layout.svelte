@@ -290,6 +290,10 @@
 
   // Set up sidebar state (expanded by default, but can be toggled)
   let sidebarOpen = $state(true);
+  /**
+   * Updates the sidebar open state
+   * @param {boolean} open - Whether the sidebar should be open
+   */
   const setOpen = (open) => {
     sidebarOpen = open;
   };
@@ -314,38 +318,6 @@
   });
 </script>
 
-<div class="relative flex min-h-screen flex-col">
-  <!-- Main layout structure -->
-  {#if !isAuthRoute}
-    <!-- Sidebar -->
-    <div class="fixed left-0 top-0 z-20 h-full">
-      {#if sidebarInitialized}
-        <MainSidebar />
-      {/if}
-    </div>
-    
-    <!-- Main content area with proper margin to prevent overlap -->
-    <div class="flex min-h-screen flex-col md:ml-[var(--sidebar-width)]">
-      <header class="sticky top-0 z-10 w-full bg-[hsl(var(--background))] border-b border-[hsl(var(--border))]">
-        <Navigation />
-      </header>
-      
-      <main class="flex-1 pt-[4.5rem] px-[1.5rem]">
-        {@render children?.()}
-      </main>
-      
-      <Footer />
-    </div>
-  {:else}
-    <!-- Auth layout without sidebar -->
-    <div class="flex min-h-screen flex-col">
-      <main class="flex-1">
-        {@render children?.()}
-      </main>
-    </div>
-  {/if}
-</div>
-
 <style>
   /* Add CSS for lazy-loaded images */
   :global(img.lazy) {
@@ -366,4 +338,79 @@
     @apply fixed top-[0] left-[0] right-[0] h-[0.25rem] z-[9999];
     background-color: var(--offline-indicator);
   }
+  
+  /* Define sidebar width */
+  :global(:root) {
+    --sidebar-width: 240px;
+  }
 </style>
+
+<!-- Main wrapper - corresponds to <main-wrapper> -->
+<div class="flex flex-col min-h-screen">
+  {#if !isAuthRoute}
+    <!-- Full width header -->
+    <header class="sticky top-0 z-30 w-full bg-[hsl(var(--background))] border-b border-[hsl(var(--border))]">
+      <Navigation />
+    </header>
+    
+    <!-- Main content wrap - corresponds to <main-content-wrap> -->
+    <div class="flex flex-1 relative">
+      <!-- Sidebar - desktop view -->
+      <aside class="hidden md:block w-[var(--sidebar-width)] shrink-0 border-r border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+        {#if sidebarInitialized}
+          <MainSidebar />
+        {/if}
+      </aside>
+      
+      <!-- Mobile sidebar trigger -->
+      <div class="md:hidden fixed left-4 top-16 z-40">
+        {#if sidebarInitialized}
+          <button 
+            class="flex h-10 w-10 items-center justify-center rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))]"
+            onclick={() => {
+              const sidebar = useSidebar();
+              sidebar.toggle();
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4">
+              <path d="M4 6h16"></path>
+              <path d="M4 12h16"></path>
+              <path d="M4 18h16"></path>
+            </svg>
+            <span class="sr-only">Toggle sidebar</span>
+          </button>
+        {/if}
+      </div>
+      
+      <!-- Mobile sheet for sidebar -->
+      <Sheet.Root bind:open={sheetOpen} onOpenChange={handleSheetOpenChange}>
+        <Sheet.Content 
+          side="left" 
+          class="w-[var(--sidebar-width)] p-0 border-r border-[hsl(var(--border))]"
+          portalProps={{}}
+        >
+          {#if sidebarInitialized}
+            <MainSidebar />
+          {/if}
+        </Sheet.Content>
+      </Sheet.Root>
+      
+      <!-- Main content - corresponds to <main-content> -->
+      <main class="flex-1 w-full overflow-x-hidden">
+        {@render children?.()}
+      </main>
+    </div>
+    
+    <!-- Full width footer -->
+    <footer class="w-full border-t border-[hsl(var(--border))] bg-[hsl(var(--background))]">
+      <Footer />
+    </footer>
+  {:else}
+    <!-- Auth layout (simpler) -->
+    <div class="flex flex-col min-h-screen">
+      <main class="flex-1">
+        {@render children?.()}
+      </main>
+    </div>
+  {/if}
+</div>
