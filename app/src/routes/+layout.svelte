@@ -13,6 +13,7 @@
   import { SidebarProvider, SidebarTrigger, useSidebar } from '$lib/components/ui/sidebar';
   import * as Sheet from '$lib/components/ui/sheet';
   import { findProblematicClasses } from '$lib/utils/tailwindFixer';
+  import { setSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -286,6 +287,31 @@
   
   // Use a single onMount with the initialization function
   onMount(initializeLayout);
+
+  // Set up sidebar state (expanded by default, but can be toggled)
+  let sidebarOpen = $state(true);
+  const setOpen = (open) => {
+    sidebarOpen = open;
+  };
+  
+  // Track sidebar initialization
+  let sidebarInitialized = $state(false);
+  
+  // Initialize sidebar state during component mount
+  onMount(() => {
+    if (typeof document !== 'undefined') {
+      setSidebar({
+        open: () => sidebarOpen,
+        setOpen
+      });
+      sidebarInitialized = true;
+    }
+    
+    return () => {
+      // Clean up if needed
+      sidebarInitialized = false;
+    };
+  });
 </script>
 
 <div class="relative flex min-h-screen flex-col">
@@ -293,7 +319,9 @@
   {#if !isAuthRoute}
     <!-- Sidebar -->
     <div class="fixed left-0 top-0 z-20 h-full">
-      <MainSidebar />
+      {#if sidebarInitialized}
+        <MainSidebar />
+      {/if}
     </div>
     
     <!-- Main content area with proper margin to prevent overlap -->
