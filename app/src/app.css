@@ -17,29 +17,47 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* Dark foundation */
+    --background: 220 13% 18%;        /* Deep blue-gray */
+    --foreground: 210 40% 98%;        /* Off-white */
+    --card: 220 13% 23%;              /* Slightly lighter deep blue-gray */
+    --card-foreground: 210 40% 98%;   /* Off-white */
+    --popover: 220 13% 23%;           /* Slightly lighter deep blue-gray */
+    --popover-foreground: 210 40% 98%; /* Off-white */
+    
+    /* Neon primary colors */
+    --primary: 326 100% 60%;           /* Neon pink */
+    --primary-foreground: 210 40% 98%; /* Off-white */
+    
+    /* Secondary neon */
+    --secondary: 175 98% 60%;          /* Neon cyan */
+    --secondary-foreground: 220 13% 18%; /* Deep blue-gray */
+    
+    /* Supporting colors */
+    --muted: 220 13% 28%;              /* Muted dark blue-gray */
+    --muted-foreground: 210 40% 80%;   /* Light gray */
+    
+    /* Accent neon */
+    --accent: 265 90% 65%;             /* Neon purple */
+    --accent-foreground: 210 40% 98%;  /* Off-white */
+    
+    /* Alert colors */
+    --destructive: 0 90% 60%;          /* Neon red */
+    --destructive-foreground: 210 40% 98%; /* Off-white */
+    
+    /* UI elements */
+    --border: 220 13% 30%;             /* Border color */
+    --input: 220 13% 30%;              /* Input border */
+    --ring: 326 100% 60%;              /* Focus ring (neon pink) */
     --radius: 0.5rem;
     
+    /* Additional neon accents */
+    --neon-yellow: 60 100% 60%;        /* Neon yellow */
+    --neon-green: 145 100% 60%;        /* Neon green */
+    --neon-blue: 210 100% 60%;         /* Neon blue */
+    
     /* Sidebar specific variables */
-    --sidebar-background: 210 40% 98%;
+    --sidebar-background: 220 13% 20%;         /* Slightly lighter than main background */
     --sidebar-foreground: var(--foreground);
     --sidebar-border: var(--border);
     --sidebar-primary: var(--primary);
@@ -50,44 +68,96 @@
     --sidebar-muted-foreground: var(--muted-foreground);
     --sidebar-ring: var(--ring);
     
+    /* Spacing Unit */
+    --spacing-unit: 0.25rem;           /* 4px at base font size */
+    
+    /* Border Radius */
+    --radius-none: 0;
+    --radius-sm: 0.125rem;
+    --radius-md: 0.25rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-full: 9999px;
+    
+    /* Typography */
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-body: 'Rubik', 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    
+    /* Font Sizes */
+    --font-size-xs: 0.75rem;      /* 12px */
+    --font-size-sm: 0.875rem;     /* 14px */
+    --font-size-base: 1rem;       /* 16px */
+    --font-size-lg: 1.125rem;     /* 18px */
+    --font-size-xl: 1.25rem;      /* 20px */
+    --font-size-2xl: 1.5rem;      /* 24px */
+    --font-size-3xl: 1.875rem;    /* 30px */
+    --font-size-4xl: 2.25rem;     /* 36px */
+    --font-size-5xl: 3rem;        /* 48px */
+    
+    /* Font Weights */
+    --font-weight-thin: 100;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+    
+    /* Line Heights */
+    --line-height-none: 1;        /* tight */
+    --line-height-tight: 1.25;    /* headings */
+    --line-height-snug: 1.375;    
+    --line-height-normal: 1.5;    /* body text */
+    --line-height-relaxed: 1.625;
+    --line-height-loose: 2;       /* spacious text */
+    
+    /* Animation Durations */
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --duration-slower: 1000ms;
+    
+    /* Animation Easings */
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    
+    /* Neon Glow */
+    --glow-sm: 0 0 2px;
+    --glow-md: 0 0 4px;
+    --glow-lg: 0 0 8px;
+    
     /* Grid system variables */
-    --grid-gap: 2rem;
+    --grid-gap: calc(var(--spacing-unit) * 8);  /* 2rem */
     --grid-columns: 12;
     --grid-max-width: 1440px;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Dark mode is our default, but we adjust it slightly for true dark mode */
+    --background: 220 13% 10%;         /* Deeper blue-gray */
+    --foreground: 210 40% 98%;         /* Off-white */
+    --card: 220 13% 15%;               /* Slightly lighter deep blue-gray */
+    --card-foreground: 210 40% 98%;    /* Off-white */
+    --popover: 220 13% 15%;            /* Slightly lighter deep blue-gray */
+    --popover-foreground: 210 40% 98%; /* Off-white */
     
     /* Sidebar specific variables - dark mode */
-    --sidebar-background: 217.2 32.6% 12%;
-    --sidebar-foreground: var(--foreground);
-    --sidebar-border: var(--border);
-    --sidebar-primary: var(--primary);
-    --sidebar-primary-foreground: var(--primary-foreground);
-    --sidebar-accent: var(--accent);
-    --sidebar-accent-foreground: var(--accent-foreground);
-    --sidebar-muted: var(--muted);
-    --sidebar-muted-foreground: var(--muted-foreground);
-    --sidebar-ring: var(--ring);
+    --sidebar-background: 220 13% 12%;  /* Slightly lighter than main background */
+  }
+
+  /* Focus states */
+  :root {
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+  }
+
+  .focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 
   * {
@@ -123,7 +193,7 @@
   }
 
   body.sidebar-collapsed .sidebar-area {
-    width: 64px !important;
+    width: calc(var(--spacing-unit) * 16) !important; /* 64px */
   }
 
   .sidebar-icon svg {
@@ -134,22 +204,40 @@
   .menu-item-hover:hover .sidebar-icon svg {
     color: hsl(var(--primary));
     transform: scale(1.1);
+    box-shadow: var(--glow-sm) hsl(var(--primary));
+    transition: transform var(--duration-fast) var(--ease-out), 
+                box-shadow var(--duration-normal) var(--ease-out);
   }
 
   .sidebar-menu-item a.active .sidebar-icon svg {
     color: hsl(var(--primary));
     font-weight: bold;
     stroke-width: 2.5px;
+    box-shadow: var(--glow-md) hsl(var(--primary));
   }
 }
+
+/* Standard spacing utilities */
+.space-xs { @apply p-[calc(var(--spacing-unit)*2)]; }
+.space-sm { @apply p-[calc(var(--spacing-unit)*4)]; }
+.space-md { @apply p-[calc(var(--spacing-unit)*6)]; }
+.space-lg { @apply p-[calc(var(--spacing-unit)*8)]; }
+.space-xl { @apply p-[calc(var(--spacing-unit)*12)]; }
+
+/* Gap utilities */
+.gap-xs { @apply gap-[calc(var(--spacing-unit)*2)]; }
+.gap-sm { @apply gap-[calc(var(--spacing-unit)*4)]; }
+.gap-md { @apply gap-[calc(var(--spacing-unit)*6)]; }
+.gap-lg { @apply gap-[calc(var(--spacing-unit)*8)]; }
+.gap-xl { @apply gap-[calc(var(--spacing-unit)*12)]; }
 
 /* Additional custom styles here */
 
 /* Sidebar specific link styles */
 [data-sidebar="content"] a {
   text-decoration: none !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+  padding-top: calc(var(--spacing-unit)*2) !important; /* 8px */
+  padding-bottom: calc(var(--spacing-unit)*2) !important; /* 8px */
 }
 
 /* Parent UL centered at 98% width when not collapsed */
@@ -166,9 +254,9 @@
 }
 
 [data-sidebar="content"][data-collapsed="true"] {
-  width: 64px !important;
-  min-width: 64px !important;
-  max-width: 64px !important;
+  width: calc(var(--spacing-unit)*16) !important; /* 64px */
+  min-width: calc(var(--spacing-unit)*16) !important;
+  max-width: calc(var(--spacing-unit)*16) !important;
 }
 
 /* Remove all padding from menu completely */
@@ -215,10 +303,10 @@
 [data-sidebar="menu"][data-collapsed="true"] .sidebar-icon {
   margin: 0 auto !important;
   padding: 0 !important;
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
+  width: calc(var(--spacing-unit)*6) !important; /* 24px */
+  height: calc(var(--spacing-unit)*6) !important;
+  min-width: calc(var(--spacing-unit)*6) !important;
+  min-height: calc(var(--spacing-unit)*6) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -227,10 +315,10 @@
 }
 
 [data-sidebar="menu"][data-collapsed="true"] .sidebar-icon svg {
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
+  width: calc(var(--spacing-unit)*5) !important; /* 20px */
+  height: calc(var(--spacing-unit)*5) !important;
+  min-width: calc(var(--spacing-unit)*5) !important;
+  min-height: calc(var(--spacing-unit)*5) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -242,46 +330,24 @@ body.sidebar-collapsed svg,
 body.sidebar-collapsed .lucide,
 body.sidebar-collapsed [data-sidebar] svg,
 body.sidebar-collapsed .sidebar-icon svg {
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
+  width: calc(var(--spacing-unit)*5) !important; /* 20px */
+  height: calc(var(--spacing-unit)*5) !important;
+  min-width: calc(var(--spacing-unit)*5) !important;
+  min-height: calc(var(--spacing-unit)*5) !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  flex-shrink: 0 !important;
-  z-index: 50 !important;
-  position: static !important;
-  overflow: visible !important;
-  box-sizing: content-box !important;
 }
 
-/* SVG containers */
-body.sidebar-collapsed [data-sidebar="menu-button"],
-body.sidebar-collapsed [data-sidebar="menu-item"] > a,
-body.sidebar-collapsed a.sidebar-icon,
-body.sidebar-collapsed button.sidebar-icon,
-body.sidebar-collapsed div.sidebar-icon {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: auto !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  padding: 0.5rem !important;
-  position: relative !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  z-index: 40 !important;
-  overflow: visible !important;
-}
-
-/* Tooltip z-index fix for collapsed sidebar */
-body.sidebar-collapsed [role="tooltip"],
-body.sidebar-collapsed [data-role="tooltip"],
-body.sidebar-collapsed [data-radix-popper-content-wrapper],
-body.sidebar-collapsed [data-state="open"] {
-  z-index: 9999 !important;
+/* Grid system implementation */
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 12), minmax(0, 1fr));
+  gap: var(--grid-gap, calc(var(--spacing-unit) * 6));
+  width: 100%;
+  max-width: var(--grid-max-width, 1440px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @layer utilities {
