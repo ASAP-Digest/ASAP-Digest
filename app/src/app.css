@@ -271,7 +271,8 @@
   .menu-item-hover:hover .sidebar-icon svg {
     color: hsl(var(--primary));
     transform: scale(1.1);
-    box-shadow: var(--glow-sm) hsl(var(--primary));
+    /* box-shadow: var(--glow-sm) hsl(var(--primary)); */
+    box-shadow: none !important;
     transition: transform var(--duration-fast) var(--ease-out), 
                 box-shadow var(--duration-normal) var(--ease-out);
   }
@@ -280,7 +281,8 @@
     color: hsl(var(--primary));
     font-weight: bold;
     stroke-width: 2.5px;
-    box-shadow: var(--glow-md) hsl(var(--primary));
+    /* box-shadow: var(--glow-md) hsl(var(--primary)); */
+    box-shadow: none !important;
   }
 }
 
@@ -360,6 +362,11 @@
   padding-right: 0 !important;
   width: 100% !important;
 }
+
+[data-collapsed="false"] [data-sidebar="menu"] a {
+  padding-left: 10px !important;
+} 
+
 
 [data-sidebar="menu"][data-collapsed="true"] a,
 [data-sidebar="menu"][data-collapsed="true"] button {

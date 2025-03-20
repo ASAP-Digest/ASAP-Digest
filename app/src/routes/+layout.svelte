@@ -416,7 +416,7 @@
       grid-template-columns: 240px 1fr;
       grid-template-areas: 
         "header header"
-        "sidebar content"
+        "content content"
         "footer footer";
     }
     
