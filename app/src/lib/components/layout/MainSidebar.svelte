@@ -16,7 +16,7 @@
     Languages,
     CreditCard as CreditCardIcon,
     Bug
-  } from 'lucide-svelte';
+  } from '$lib/utils/lucide-icons';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
   import Header from '$lib/components/ui/sidebar/sidebar-header.svelte';
@@ -30,6 +30,31 @@
   import Footer from '$lib/components/ui/sidebar/sidebar-footer.svelte';
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  
+  /**
+   * @typedef {Object} IconObject
+   * @property {string} name - The icon name
+   * @property {string} svgContent - The SVG content as a string
+   */
+
+  /**
+   * Render the SVG icon based on its content
+   * @param {{name: string, svgContent: string}} icon - Icon object with svgContent
+   * @param {number} size - Size of the icon in pixels
+   * @param {string} [className] - Optional CSS class for the icon
+   * @returns {string} SVG HTML string
+   */
+  function renderIcon(icon, size = 24, className = '') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" 
+      width="${size}" height="${size}" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round" 
+      class="${className}">${icon.svgContent}</svg>`;
+  }
   
   // Reference to the avatar dropdown element for positioning with proper type
   /** @type {HTMLDivElement | null} */
@@ -1279,9 +1304,9 @@
         style="z-index: 9999 !important; display: flex !important; visibility: visible !important; opacity: 1 !important;"
       >
         {#if collapsed}
-          <ChevronRight size={16} class="opacity-100" />
+          {@html renderIcon(ChevronRight, 16, "opacity-100")}
         {:else}
-          <ChevronLeft size={16} class="opacity-100" />
+          {@html renderIcon(ChevronLeft, 16, "opacity-100")}
         {/if}
       </button>
     </Header>
