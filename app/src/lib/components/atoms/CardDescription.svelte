@@ -3,13 +3,15 @@
   import { cn } from "$lib/utils";
   import Typography from './Typography.svelte';
 
-  /** @type {string} [className=""] - Additional CSS classes */
-  let { className = "" } = $props();
+  let {
+    className = "",
+    children
+  } = $props();
 </script>
 
 <Typography 
   variant="p" 
-  className={cn('text-[hsl(var(--muted-foreground))] text-[var(--font-size-sm)] mb-0', className)}
+  class={cn('text-[hsl(var(--muted-foreground))] text-[var(--font-size-sm)] mb-0', className)}
 >
-  <slot />
+  {@render children?.()}
 </Typography> 

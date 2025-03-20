@@ -2,10 +2,12 @@
 <script>
   import { cn } from "$lib/utils";
 
-  /** @type {string} [className=""] - Additional CSS classes */
-  let { className = "" } = $props();
+  let {
+    className = "",
+    children
+  } = $props();
 </script>
 
-<div class={cn('p-[calc(var(--spacing-unit)*6)]', className)} {...$$restProps}>
-  <slot />
+<div class={cn('p-[calc(var(--spacing-unit)*6)]', className)}>
+  {@render children?.()}
 </div> 

@@ -1,6 +1,8 @@
 <script>
   import { page } from '$app/stores';
-  import { Home, Search, Calendar, User, Bell, Menu, X } from 'lucide-svelte';
+  // Replace direct imports from lucide-svelte with our compatibility layer
+  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Home, Search, Calendar, User, Bell, Menu, X } from '$lib/utils/lucide-compat';
   import { slide } from 'svelte/transition';
   import { LAYOUT_SPACING } from '$lib/styles/spacing.js';
   
@@ -78,9 +80,9 @@
     
     <button onclick={toggleMobileMenu} class="text-gray-600 dark:text-gray-300">
       {#if mobileMenuOpen}
-        <X size={24} />
+        <Icon icon={X} size={24} />
       {:else}
-        <Menu size={24} />
+        <Icon icon={Menu} size={24} />
       {/if}
     </button>
   </div>
@@ -102,7 +104,7 @@
               onclick={closeMenu}
               class="flex items-center gap-4 text-lg {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
             >
-              <item.icon size={24} />
+              <Icon icon={item.icon} size={24} />
               <span>{item.name}</span>
             </a>
           </li>
@@ -123,7 +125,7 @@ DISABLED: This mobile navigation has been replaced by MainSidebar.svelte to prev
         data-sveltekit-preload-data="hover"
         class="flex flex-col items-center justify-center {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
       >
-        <item.icon size={20} />
+        <Icon icon={item.icon} size={20} />
         <span class="text-xs mt-1">{item.name}</span>
       </a>
     {/each}

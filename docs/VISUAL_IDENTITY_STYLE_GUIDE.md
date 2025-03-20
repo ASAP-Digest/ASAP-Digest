@@ -482,31 +482,264 @@ Animations and transitions bring our interfaces to life, reinforcing our energy 
 
 Our component library is built using Svelte 5 with a consistent architecture for all elements.
 
+### Icon System
+
+ASAP Digest uses the Lucide icon library with a custom compatibility layer for Svelte 5 runes mode.
+
+#### Icon Implementation
+
+Icons are implemented through a central utility file and wrapper component:
+
+1. **Compatibility Layer** (`$lib/utils/lucide-icons.ts`):
+   ```ts
+   import type { ComponentType, SvelteComponent } from 'svelte';
+   
+   // Create standardized icon object
+   export function createIconObject(
+     component: ComponentType<SvelteComponent>
+   ) {
+     return component;
+   }
+   
+   // Define commonly used icons
+   export { default as AlertCircle } from 'lucide-svelte/icons/alert-circle';
+   export { default as Check } from 'lucide-svelte/icons/check';
+   export { default as ChevronDown } from 'lucide-svelte/icons/chevron-down';
+   // Additional icons as needed...
+   export { default as ExternalLink } from 'lucide-svelte/icons/external-link';
+   export { default as Home } from 'lucide-svelte/icons/home';
+   export { default as Maximize } from 'lucide-svelte/icons/maximize';
+   export { default as Pause } from 'lucide-svelte/icons/pause';
+   export { default as Play } from 'lucide-svelte/icons/play';
+   export { default as Share2 } from 'lucide-svelte/icons/share-2';
+   ```
+
+2. **Icon Wrapper Component** (`$lib/components/ui/Icon.svelte`):
+   ```svelte
+   <script>
+     import { cn } from "$lib/utils";
+     
+     /** @type {any} */
+     export let icon = $props();
+     
+     /** @type {string} */
+     export let color = $props("currentColor");
+     
+     /** @type {number} */
+     export let size = $props(24);
+     
+     /** @type {string} */
+     export let strokeWidth = $props("2");
+     
+     /** @type {string} */
+     export let class = $props("");
+   </script>
+
+   <svelte:component 
+     this={icon} 
+     color={color} 
+     size={size} 
+     strokeWidth={strokeWidth} 
+     class={cn(class)} 
+   />
+   ```
+
+#### Using Icons in Components
+
+When using icons, always import them from our compatibility layer and use the Icon wrapper:
+
+```svelte
+<script>
+  import { ExternalLink } from "$lib/utils/lucide-icons";
+  import Icon from "$lib/components/ui/Icon.svelte";
+</script>
+
+<button>
+  Open Link
+  <Icon icon={ExternalLink} size={16} color="currentColor" />
+</button>
+```
+
+This approach ensures consistent styling, proper scaling, and compatibility with Svelte 5 runes mode.
+
+### Link Styling
+
+Links must follow our design language with consistent states and transitions.
+
+```svelte
+<!-- Link styling example -->
+<style>
+  /* Base link styling - no underlines by default */
+  a {
+    text-decoration: none;
+    color: hsl(var(--primary));
+    transition: all var(--duration-normal) var(--ease-out);
+  }
+  
+  /* Unvisited links */
+  a:link {
+    color: hsl(var(--primary));
+  }
+  
+  /* Visited links - slightly subdued */
+  a:visited {
+    color: hsl(var(--primary)/0.85);
+  }
+  
+  /* Hover state - add glow effect */
+  a:hover {
+    color: hsl(var(--primary)/0.9);
+    text-shadow: var(--glow-sm) hsl(var(--primary)/0.5);
+  }
+  
+  /* Active/pressed state */
+  a:active {
+    color: hsl(var(--accent));
+    text-shadow: var(--glow-md) hsl(var(--accent)/0.7);
+  }
+  
+  /* Focus state for accessibility */
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  
+  /* Style variations */
+  a.underlined {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  
+  a.muted {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  a.muted:hover {
+    color: hsl(var(--foreground));
+    text-shadow: none;
+  }
+</style>
+
+<!-- Usage example -->
+<a href="/path">Standard link</a>
+<a href="/path" class="underlined">Underlined link variation</a>
+<a href="/path" class="muted">Muted link</a>
+```
+
+### Example Component: Link
+
+```svelte
+<!-- atoms/Link.svelte -->
+<script>
+  import { cn } from "$lib/utils";
+  import { ExternalLink } from "$lib/utils/lucide-icons";
+  import Icon from "$lib/components/ui/Icon.svelte";
+  
+  /** @typedef {'primary' | 'secondary' | 'ghost' | 'inline'} LinkVariant */
+  
+  /** @type {string} */
+  let href = $props("");
+  
+  /** @type {LinkVariant} */
+  let variant = $props("primary");
+  
+  /** @type {boolean} */
+  let external = $props(false);
+  
+  /** @type {string} */
+  let className = $props("");
+  
+  /** @type {string} */
+  let id = $props("");
+  
+  /** @type {string} */
+  let title = $props("");
+  
+  /** @type {string} */
+  let ariaLabel = $props("");
+  
+  // Generate classes based on variant
+  function getVariantClasses() {
+    switch (variant) {
+      case "primary":
+        return "text-primary hover:text-primary/90 hover:underline";
+      case "secondary":
+        return "text-secondary hover:text-secondary/90 hover:underline";
+      case "ghost":
+        return "text-foreground/50 hover:text-foreground hover:underline";
+      case "inline":
+        return "text-primary underline hover:text-primary/90";
+      default:
+        return "";
+    }
+  }
+  
+  // Base class for all links
+  const baseClass = "transition-colors duration-200";
+  
+  // Get variant class based on variant prop
+  let variantClass = $derived(getVariantClasses());
+</script>
+
+<a 
+  {href}
+  class={cn(baseClass, variantClass, className)}
+  target={external ? "_blank" : undefined}
+  rel={external ? "noopener noreferrer" : undefined}
+  {id}
+  {title}
+  aria-label={ariaLabel || title}
+>
+  {@render $$slots.default?.()}
+  {#if external}
+    <Icon icon={ExternalLink} class="inline-block ml-[0.25rem]" size={14} color="currentColor" />
+  {/if}
+</a>
+```
+
 ### Base Component Structure
 
 ```svelte
 <!-- atoms/Button.svelte -->
 <script>
-  /** @type {string} [variant="primary"] - Button variant */
-  let { variant = 'primary' } = $props();
+  import { cn } from "$lib/utils";
+
+  /** @typedef {'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'} ButtonVariant */
+  /** @typedef {'sm' | 'md' | 'lg'} ButtonSize */
+  /** @typedef {'button' | 'submit' | 'reset'} ButtonType */
   
-  /** @type {string} [size="md"] - Button size */
-  let { size = 'md' } = $props();
+  /** @type {ButtonVariant} */
+  let variant = $props('primary');
   
-  /** @type {boolean} [disabled=false] - Whether the button is disabled */
-  let { disabled = false } = $props();
+  /** @type {ButtonSize} */
+  let size = $props('md');
   
-  // Computed classes based on props
-  let classes = $derived(() => {
-    return {
-      base: "inline-flex items-center justify-center rounded-[var(--radius-md)] transition-all duration-[var(--duration-normal)]",
-      variant: getVariantClasses(),
-      size: getSizeClasses(),
-      state: disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-    };
-  });
+  /** @type {boolean} */
+  let disabled = $props(false);
   
-  /** Get the appropriate classes for the selected variant */
+  /** @type {string} */
+  let className = $props("");
+  
+  /** @type {ButtonType} */
+  let type = $props("button");
+  
+  /** @type {string} */
+  let id = $props("");
+  
+  /** @type {string} */
+  let name = $props("");
+  
+  /** @type {string} */
+  let value = $props("");
+  
+  /** @type {string} */
+  let ariaLabel = $props("");
+  
+  /** 
+   * Get the appropriate classes for the selected variant
+   * @returns {string} CSS classes for the variant
+   */
   function getVariantClasses() {
     switch(variant) {
       case 'primary':
@@ -524,7 +757,10 @@ Our component library is built using Svelte 5 with a consistent architecture for
     }
   }
   
-  /** Get the appropriate classes for the selected size */
+  /** 
+   * Get the appropriate classes for the selected size
+   * @returns {string} CSS classes for the size
+   */
   function getSizeClasses() {
     switch(size) {
       case 'sm':
@@ -537,15 +773,101 @@ Our component library is built using Svelte 5 with a consistent architecture for
         return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
     }
   }
+  
+  // Define base class
+  const baseClass = "inline-flex items-center justify-center rounded-[var(--radius-md)] transition-all duration-[var(--duration-normal)]";
+  
+  // Define state class based on disabled prop
+  let stateClass = $derived(disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer");
+  
+  // Get variant class based on variant prop
+  let variantClass = $derived(getVariantClasses());
+  
+  // Get size class based on size prop
+  let sizeClass = $derived(getSizeClasses());
 </script>
 
 <button 
-  class="{classes.base} {classes.variant} {classes.size} {classes.state}"
-  disabled={disabled}
-  on:click
-  {...$$restProps}
+  class={cn(baseClass, variantClass, sizeClass, stateClass, className)}
+  {disabled}
+  {type}
+  {id}
+  {name}
+  {value}
+  aria-label={ariaLabel}
 >
-  <slot />
+  {@render $$slots.default?.()}
+</button>
+```
+
+### Icon Button Example
+
+```svelte
+<!-- atoms/IconButton.svelte -->
+<script>
+  import { cn } from "$lib/utils";
+  import Icon from "$lib/components/ui/Icon.svelte";
+  
+  /** @typedef {'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'} ButtonVariant */
+  /** @typedef {'sm' | 'md' | 'lg'} ButtonSize */
+  
+  /** @type {any} */
+  let icon = $props();
+  
+  /** @type {ButtonVariant} */
+  let variant = $props('primary');
+  
+  /** @type {ButtonSize} */
+  let size = $props('md');
+  
+  /** @type {boolean} */
+  let disabled = $props(false);
+  
+  /** @type {string} */
+  let className = $props("");
+  
+  /** @type {string} */
+  let ariaLabel = $props("");
+  
+  /** @type {string} */
+  let title = $props("");
+  
+  // Generate size classes
+  function getSizeClasses() {
+    switch(size) {
+      case 'sm': return "p-1";
+      case 'md': return "p-2";
+      case 'lg': return "p-3";
+      default: return "p-2";
+    }
+  }
+  
+  // Get icon size based on button size
+  function getIconSize() {
+    switch(size) {
+      case 'sm': return 16;
+      case 'md': return 20;
+      case 'lg': return 24;
+      default: return 20;
+    }
+  }
+  
+  // Base classes for all icon buttons
+  const baseClass = "inline-flex items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 transition-all duration-200";
+  
+  // Derived values
+  let sizeClass = $derived(getSizeClasses());
+  let iconSize = $derived(getIconSize());
+  let variantClass = $derived(getVariantClasses());
+</script>
+
+<button
+  class={cn(baseClass, variantClass, sizeClass, className)}
+  {disabled}
+  aria-label={ariaLabel || title}
+  {title}
+>
+  <Icon icon={icon} size={iconSize} color="currentColor" />
 </button>
 ```
 
@@ -831,12 +1153,25 @@ src/lib/components/
    - Compose molecules from atoms
    - Develop organisms from molecules
 
-3. **Refactor Templates**
+3. **Icon Implementation Guidelines**
+   - Always import icons from `$lib/utils/lucide-icons` compatibility layer
+   - Use the Icon wrapper component for all icon rendering
+   - Set color="currentColor" to inherit from parent element unless specific color is needed
+   - Configure appropriate size based on the context (14-16px for inline, 20-24px standard)
+   - When adding new icons, add them to the centralized compatibility layer
+   - For icon buttons, use the IconButton component instead of combining Button with Icon
+
+4. **Refactor Templates**
    - Apply consistent spacing system
    - Use CSS variables for tokens
    - Remove hard-coded values
 
-4. **Page Implementation**
+5. **Development Workflow**
+   - Apply consistent spacing system
+   - Use CSS variables for tokens
+   - Remove hard-coded values
+
+6. **Page Implementation**
    - Apply real content to templates
    - Test responsive behaviors
    - Validate against accessibility standards

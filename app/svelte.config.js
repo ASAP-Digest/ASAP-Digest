@@ -2,6 +2,10 @@ import adapter from '@sveltejs/adapter-node';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
+	// Enable runes for Svelte 5 features
+	compilerOptions: {
+		runes: true
+	},
 	kit: {
 		// Using adapter-node for Node.js server deployment
 		adapter: adapter(),

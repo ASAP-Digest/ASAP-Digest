@@ -5,11 +5,13 @@
    * Sidebar navigation component properties
    * @typedef {Object} SidebarNavProps
    * @property {string} [class] - Additional CSS classes for styling
+   * @property {Function} [children] - Child content to render
    */
   
   /** @type {SidebarNavProps} */
   let {
-    class: className = ""
+    class: className = "",
+    children
   } = $props();
 </script>
 
@@ -17,5 +19,5 @@
   class={cn("grid gap-1 px-2", className)} 
   data-testid="sidebar-nav"
 >
-  <slot />
+  {@render children?.()}
 </nav> 

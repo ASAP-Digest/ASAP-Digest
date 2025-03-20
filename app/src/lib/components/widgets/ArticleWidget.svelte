@@ -1,171 +1,114 @@
 <script>
-	import { BookOpen, Share2, Speaker, ExternalLink } from 'lucide-svelte';
+	import { BookOpen } from 'lucide-svelte';
 	import BaseWidget from './BaseWidget.svelte';
+	import { Separator } from '$lib/components/ui/separator';
+	import Link from '$lib/components/atoms/Link.svelte';
+	import Image from '$lib/components/atoms/Image.svelte';
 	
-	/** @type {string} */
-	export let id = '';
+	/** @typedef {Object} Article
+	 * @property {string} title - Article title
+	 * @property {string} slug - Article slug
+	 * @property {string} [summary] - Article summary
+	 * @property {string} [featuredImage] - Featured image URL
+	 * @property {string} [author] - Article author
+	 * @property {string} [publishedAt] - Publication date
+	 */
 	
-	/** @type {string} */
-	export let title = '';
+	let {
+		article = /** @type {Article|null} */ (null),
+		loading = false,
+		showFullSummary = false,
+		error = false
+	} = $props();
 	
-	/** @type {string} */
-	export let excerpt = '';
+	let expanded = $state(false);
 	
-	/** @type {string} */
-	export let source = '';
+	// Dynamically calculate truncated summary with $derived
+	let summary = $derived(
+		article?.summary && !showFullSummary 
+			? article.summary.length > 120 
+				? article.summary.substring(0, 120) + '...' 
+				: article.summary
+			: article?.summary || ''
+	);
 	
-	/** @type {string} */
-	export let sourceUrl = '';
-	
-	/** @type {string} */
-	export let date = '';
-	
-	/** @type {string} */
-	export let imageUrl = '';
-	
-	/** @type {string[]} */
-	export let tags = [];
-	
-	/** @type {boolean} */
-	let loading = false;
-	
-	/** @type {boolean} */
-	let error = false;
-	
-	/** @type {boolean} */
-	let expanded = false;
-	
-	// Truncate excerpt if it's too long
-	$: truncatedExcerpt = excerpt.length > 150 && !expanded 
-		? excerpt.substring(0, 150) + '...' 
-		: excerpt;
+	// Format publication date with $derived
+	let formattedDate = $derived(
+		article?.publishedAt 
+			? new Date(article.publishedAt).toLocaleDateString('en-US', {
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric'
+			})
+			: ''
+	);
 	
 	/**
-	 * Handle read more button click
-	 * @param {MouseEvent} event - Mouse event object
+	 * Handle image error
+	 * @param {Event} e - Event object
 	 */
-	function handleReadMore(event) {
-		expanded = !expanded;
-	}
-	
-	/**
-	 * Handle share button click
-	 * @param {MouseEvent} event - Mouse event object
-	 */
-	function handleShare(event) {
-		console.log('Share article:', id);
-		if (navigator.share) {
-			navigator.share({
-				title: title,
-				text: excerpt,
-				url: window.location.href
-			}).catch(error => {
-				console.error('Error sharing:', error);
-			});
-		} else {
-			console.log('Web Share API not supported');
-		}
-	}
-	
-	/**
-	 * Handle text-to-speech button click
-	 * @param {MouseEvent} event - Mouse event object
-	 */
-	function handleTextToSpeech(event) {
-		console.log('Text to speech for article:', id);
-		const utterance = new SpeechSynthesisUtterance(title + '. ' + excerpt);
-		window.speechSynthesis.speak(utterance);
+	function handleImageError(e) {
+		e.target.style.display = 'none';
 	}
 </script>
 
-<BaseWidget title={title} icon={BookOpen} {loading}>
+<BaseWidget 
+	title="Latest Article" 
+	loading={loading}
+	icon={import('lucide-svelte').then(m => m.BookOpen)}
+>
 	{#if loading}
-		<!-- Loading state handled by BaseWidget -->
+		<div class="space-y-2">
+			<div class="h-32 bg-muted/50 rounded-md animate-pulse"></div>
+			<div class="h-4 w-3/4 bg-muted/50 rounded-md animate-pulse"></div>
+			<div class="h-4 w-1/2 bg-muted/50 rounded-md animate-pulse"></div>
+		</div>
 	{:else if error}
-		<div class="text-[hsl(var(--destructive))] text-[0.875rem]">
+		<div class="text-destructive text-sm">
 			Failed to load article content
 		</div>
-	{:else}
-		<div class="flex flex-col h-full">
-			{#if imageUrl}
-				<div class="mb-[0.75rem] w-full h-[8rem] overflow-hidden rounded-[0.375rem]">
-					<img 
-						src={imageUrl} 
-						alt={title} 
-						class="w-full h-full object-cover"
-						onerror={(e) => {
-							e.target.style.display = 'none';
-							error = true;
-						}}
-					/>
-				</div>
+	{:else if article}
+		<div class="space-y-3">
+			{#if article.featuredImage}
+				<Image 
+					src={article.featuredImage} 
+					alt={article.title} 
+					aspectRatio="16:9"
+					className="rounded-md object-cover w-full"
+					onerror={handleImageError}
+				/>
 			{/if}
 			
-			<div class="mb-[0.75rem]">
-				<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))]">
-					{truncatedExcerpt}
-				</p>
-				{#if excerpt.length > 150}
-					<button 
-						onclick={handleReadMore}
-						class="text-[0.75rem] text-[hsl(var(--primary))] mt-[0.5rem] hover:underline"
-					>
-						{expanded ? 'Read less' : 'Read more'}
-					</button>
+			<div class="space-y-2">
+				<Link href={`/article/${article.slug}`} variant="heading">
+					{article.title}
+				</Link>
+				
+				{#if article.author}
+					<div class="text-sm text-muted-foreground flex items-center gap-2">
+						<span>By {article.author}</span>
+						{#if formattedDate}
+							<span>•</span>
+							<span>{formattedDate}</span>
+						{/if}
+					</div>
 				{/if}
 			</div>
 			
-			<div class="mt-auto">
-				<div class="flex justify-between items-center">
-					<div class="text-[0.75rem] text-[hsl(var(--muted-foreground))]">
-						{#if source}
-							<span>{source}</span>
-						{/if}
-						{#if date}
-							<span class="mx-[0.25rem]">•</span>
-							<span>{new Date(date).toLocaleDateString()}</span>
-						{/if}
-					</div>
-					
-					<div class="flex gap-[0.5rem]">
-						<button 
-							onclick={handleTextToSpeech}
-							class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-							aria-label="Text to speech"
-						>
-							<Speaker size={16} />
-						</button>
-						<button 
-							onclick={handleShare}
-							class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-							aria-label="Share article"
-						>
-							<Share2 size={16} />
-						</button>
-						{#if sourceUrl}
-							<a 
-								href={sourceUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-								aria-label="Open original source"
-							>
-								<ExternalLink size={16} />
-							</a>
-						{/if}
-					</div>
-				</div>
+			{#if summary}
+				<Separator />
+				<p class="text-sm text-muted-foreground">{summary}</p>
 				
-				{#if tags.length > 0}
-					<div class="flex flex-wrap gap-[0.25rem] mt-[0.5rem]">
-						{#each tags as tag}
-							<span class="text-[0.75rem] px-[0.5rem] py-[0.125rem] bg-[hsl(var(--muted)/0.5)] rounded-[0.25rem]">
-								{tag}
-							</span>
-						{/each}
-					</div>
+				{#if article.summary && article.summary.length > 120 && !showFullSummary}
+					<Link href={`/article/${article.slug}`} variant="text" className="text-sm">
+						Read more
+					</Link>
 				{/if}
-			</div>
+			{/if}
+		</div>
+	{:else}
+		<div class="text-center text-muted-foreground py-4">
+			No article available
 		</div>
 	{/if}
 </BaseWidget> 

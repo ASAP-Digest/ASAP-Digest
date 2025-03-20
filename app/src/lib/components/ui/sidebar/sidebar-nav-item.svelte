@@ -8,6 +8,7 @@
    * @property {boolean} [active=false] - Whether the item is active
    * @property {boolean} [disabled=false] - Whether the item is disabled
    * @property {string} [href] - Link href
+   * @property {Function} [children] - Child content to render with isHovered state
    */
   
   /** @type {SidebarNavItemProps} */
@@ -15,7 +16,8 @@
     class: className = "",
     active = false,
     disabled = false,
-    href = undefined
+    href = undefined,
+    children
   } = $props();
   
   let isHovered = $state(false);
@@ -46,5 +48,5 @@
   tabindex={disabled ? -1 : 0}
   data-testid="sidebar-nav-item"
 >
-  <slot {isHovered} />
+  {@render children?.({isHovered})}
 </a> 

@@ -6,12 +6,14 @@
    * @typedef {Object} SidebarSectionProps
    * @property {string} [class] - Additional CSS classes for styling
    * @property {string} [title] - Section title
+   * @property {Function} [children] - Child content to render
    */
   
   /** @type {SidebarSectionProps} */
   let {
     class: className = "",
-    title = ""
+    title = "",
+    children
   } = $props();
 </script>
 
@@ -21,5 +23,5 @@
       {title}
     </h3>
   {/if}
-  <slot />
+  {@render children?.()}
 </div> 

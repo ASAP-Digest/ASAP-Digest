@@ -56,6 +56,12 @@
     --neon-green: 145 100% 60%;        /* Neon green */
     --neon-blue: 210 100% 60%;         /* Neon blue */
     
+    /* Link colors */
+    --link: var(--primary);            /* Default link color (unvisited) */
+    --link-hover: var(--primary);      /* Link hover color */
+    --link-active: var(--accent);      /* Link active/pressed color */
+    --link-visited: var(--primary);    /* Visited link color */
+
     /* Sidebar specific variables */
     --sidebar-background: 220 13% 20%;         /* Slightly lighter than main background */
     --sidebar-foreground: var(--foreground);
@@ -168,6 +174,57 @@
   body {
     @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Global link styling - remove underlines by default */
+  a {
+    text-decoration: none;
+    color: hsl(var(--link));
+    transition: all var(--duration-normal) var(--ease-out);
+  }
+  
+  /* Unvisited links */
+  a:link {
+    color: hsl(var(--link));
+  }
+  
+  /* Visited links - slightly subdued */
+  a:visited {
+    color: hsl(var(--link-visited)/0.85);
+  }
+  
+  /* Hover state - add glow effect */
+  a:hover {
+    color: hsl(var(--link-hover)/0.9);
+    text-shadow: var(--glow-sm) hsl(var(--link-hover)/0.5);
+  }
+  
+  /* Active/pressed state */
+  a:active {
+    color: hsl(var(--link-active));
+    text-shadow: var(--glow-md) hsl(var(--link-active)/0.7);
+  }
+  
+  /* Focus state for accessibility */
+  a:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  
+  /* Link variants */
+  a.underlined {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  
+  a.muted {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  a.muted:hover {
+    color: hsl(var(--foreground));
+    text-shadow: none;
   }
   
   ::selection {

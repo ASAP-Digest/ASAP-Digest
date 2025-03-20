@@ -48,7 +48,7 @@
 		"@stripe/stripe-js": "^6.0.0",
 		"@urql/svelte": "^4.2.3",
 		"better-auth": "^1.2.3",
-		"lucide-svelte": "^0.482.0",
+		"@lucide/svelte": "^0.300.0",
 		"svelte-chart": "^1.0.0",
 		"svelte-dnd-action": "^0.9.60",
 		"web-push": "^3.6.7",

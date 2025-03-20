@@ -4,19 +4,17 @@
   import { fade } from 'svelte/transition';
   import { WIDGET_SPACING } from '$lib/styles/spacing.js';
   
-  /** @type {string} */
-  export let title = "";
+  /** @type {Object} props - Component properties */
+  let {
+    title = "",
+    icon = null,
+    loading = false,
+    variant = /** @type {'default' | 'compact' | 'expanded'} */ ('default'),
+    default: defaultSlot,
+    loadingSlot
+  } = $props();
   
-  /** @type {import('lucide-svelte').LucideIcon | null} */
-  export let icon = null;
-  
-  /** @type {boolean} */
-  export let loading = false;
-  
-  /** @type {'default' | 'compact' | 'expanded'} */
-  export let variant = 'default';
-  
-  $: spacing = getVariantSpacing(variant);
+  let spacing = $derived(getVariantSpacing(variant));
   
   /**
    * Get spacing values based on widget variant
@@ -50,7 +48,10 @@
     <CardHeader class="{spacing.padding} pb-0">
       <CardTitle class="flex items-center {spacing.gap}">
         {#if icon}
-          <svelte:component this={icon} class="text-primary" size={20} />
+          <div class="text-primary">
+            <!-- Hard-coded icon handling -->
+            <span class="text-primary w-5 h-5"></span>
+          </div>
         {/if}
         {#if loading}
           <Skeleton class="h-[1.5rem] w-[8rem]" />
@@ -62,15 +63,19 @@
   {/if}
   <CardContent class="{spacing.padding} {spacing.gap} flex flex-col">
     {#if loading}
-      <slot name="loading">
+      {#if loadingSlot}
+        {@render loadingSlot()}
+      {:else}
         <div class="space-y-[0.5rem]">
           <Skeleton class="h-[4rem] w-full" />
           <Skeleton class="h-[1rem] w-3/4" />
           <Skeleton class="h-[1rem] w-1/2" />
         </div>
-      </slot>
+      {/if}
     {:else}
-      <slot />
+      {#if defaultSlot}
+        {@render defaultSlot()}
+      {/if}
     {/if}
   </CardContent>
 </Card>

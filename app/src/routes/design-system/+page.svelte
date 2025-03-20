@@ -1,7 +1,20 @@
 <!-- Design System Demo Page -->
 <script>
   import CardExample from '$lib/components/examples/CardExample.svelte';
-  import { Typography, Button } from '$lib/components/atoms';
+  import { Typography, Button, Link } from '$lib/components/atoms';
+  
+  /**
+   * Handle link click events
+   * @param {Event} event - The click event
+   */
+  function handleLinkClick(event) {
+    // Prevent default navigation for demo links
+    event.preventDefault();
+    
+    // Type assertion for the event target
+    const target = /** @type {HTMLAnchorElement} */ (event.currentTarget);
+    console.log('Link clicked:', target.href);
+  }
 </script>
 
 <div class="container mx-auto py-[calc(var(--spacing-unit)*10)]">
@@ -51,6 +64,23 @@
       <div class="flex flex-wrap gap-[calc(var(--spacing-unit)*3)]">
         <Button variant="primary" disabled>Disabled</Button>
       </div>
+    </div>
+  </div>
+  
+  <div class="mt-[calc(var(--spacing-unit)*8)]">
+    <Typography variant="h2">Links</Typography>
+    
+    <div class="mt-[calc(var(--spacing-unit)*4)] space-y-[calc(var(--spacing-unit)*4)]">
+      <div class="flex flex-wrap gap-[calc(var(--spacing-unit)*6)]">
+        <Link href="#" on:click={handleLinkClick}>Default Link</Link>
+        <Link href="#" variant="underlined" on:click={handleLinkClick}>Underlined Link</Link>
+        <Link href="#" variant="muted" on:click={handleLinkClick}>Muted Link</Link>
+        <Link href="https://asapdigest.com" external>External Link</Link>
+      </div>
+      
+      <Typography variant="p">
+        <Link href="/design-system/link-demo" variant="underlined">View the full Link component demo</Link> for more examples and states.
+      </Typography>
     </div>
   </div>
   

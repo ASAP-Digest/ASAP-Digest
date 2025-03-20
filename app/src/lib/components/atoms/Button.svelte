@@ -4,33 +4,25 @@
 
   /** @typedef {'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'} ButtonVariant */
   /** @typedef {'sm' | 'md' | 'lg'} ButtonSize */
+  /** @typedef {'button' | 'submit' | 'reset'} ButtonType */
   
-  /** @type {ButtonVariant} [variant="primary"] - Button variant */
-  let { variant = 'primary' } = $props();
+  let {
+    variant = /** @type {ButtonVariant} */ ('primary'),
+    size = /** @type {ButtonSize} */ ('md'),
+    disabled = false,
+    className = "",
+    type = /** @type {ButtonType} */ ("button"),
+    id = "",
+    name = "",
+    value = "",
+    ariaLabel = "",
+    children = /** @type {import('svelte').Snippet | undefined} */ (undefined)
+  } = $props();
   
-  /** @type {ButtonSize} [size="md"] - Button size */
-  let { size = 'md' } = $props();
-  
-  /** @type {boolean} [disabled=false] - Whether the button is disabled */
-  let { disabled = false } = $props();
-  
-  /** @type {string} [className=""] - Additional CSS classes */
-  let { className = "" } = $props();
-  
-  /** @type {string} [type="button"] - Button type attribute */
-  let { type = "button" } = $props();
-  
-  // Computed classes based on props
-  let classes = $derived(() => {
-    return {
-      base: "inline-flex items-center justify-center rounded-[var(--radius-md)] transition-all duration-[var(--duration-normal)]",
-      variant: getVariantClasses(),
-      size: getSizeClasses(),
-      state: disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-    };
-  });
-  
-  /** Get the appropriate classes for the selected variant */
+  /** 
+   * Get the appropriate classes for the selected variant
+   * @returns {string} CSS classes for the variant
+   */
   function getVariantClasses() {
     switch(variant) {
       case 'primary':
@@ -48,7 +40,10 @@
     }
   }
   
-  /** Get the appropriate classes for the selected size */
+  /** 
+   * Get the appropriate classes for the selected size
+   * @returns {string} CSS classes for the size
+   */
   function getSizeClasses() {
     switch(size) {
       case 'sm':
@@ -61,14 +56,28 @@
         return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
     }
   }
+  
+  // Define base class
+  const baseClass = "inline-flex items-center justify-center rounded-[var(--radius-md)] transition-all duration-[var(--duration-normal)]";
+  
+  // Define state class based on disabled prop
+  let stateClass = $derived(disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer");
+  
+  // Get variant class based on variant prop
+  let variantClass = $derived(getVariantClasses());
+  
+  // Get size class based on size prop
+  let sizeClass = $derived(getSizeClasses());
 </script>
 
 <button 
-  class="{cn(classes.base, classes.variant, classes.size, classes.state, className)}"
+  class={cn(baseClass, variantClass, sizeClass, stateClass, className)}
   {disabled}
   {type}
-  on:click
-  {...$$restProps}
+  {id}
+  {name}
+  {value}
+  aria-label={ariaLabel}
 >
-  <slot />
+  {@render children?.()}
 </button> 

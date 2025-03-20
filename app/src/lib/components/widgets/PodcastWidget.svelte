@@ -1,36 +1,21 @@
 <script>
-	import { Play, Pause, Share2, ExternalLink, Maximize } from 'lucide-svelte';
+	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-icons';
 	import BaseWidget from './BaseWidget.svelte';
+	import Icon from '$lib/components/ui/Icon.svelte';
 	
-	/** @type {string} */
-	export let id = '';
+	let {
+		id = '',
+		title = '',
+		episode = 1,
+		duration = 0,
+		summary = '',
+		loading = false,
+		error = false
+	} = $props();
 	
-	/** @type {string} */
-	export let title = '';
-	
-	/** @type {number} */
-	export let episode = 1;
-	
-	/** @type {number} */
-	export let duration = 0;
-	
-	/** @type {string} */
-	export let summary = '';
-	
-	/** @type {boolean} */
-	let loading = false;
-	
-	/** @type {boolean} */
-	let error = false;
-	
-	/** @type {boolean} */
-	let playing = false;
-	
-	/** @type {boolean} */
-	let expanded = false;
-	
-	/** @type {boolean} */
-	let offline = false;
+	let playing = $state(false);
+	let expanded = $state(false);
+	let offline = $state(false);
 	
 	/**
 	 * Check if device is online
@@ -94,78 +79,91 @@
 	}
 </script>
 
-<BaseWidget title={title} icon={Play} {loading}>
-	{#if loading}
-		<!-- Loading state handled by BaseWidget -->
-	{:else if error}
-		<div class="text-[hsl(var(--destructive))] text-[0.875rem]">
+<BaseWidget 
+	title={title} 
+	icon={Play} 
+	loading={loading} 
+	loadingSlot={loadingContent} 
+	default={podcastContent}
+>
+</BaseWidget>
+
+{#snippet loadingContent()}
+	<div class="flex justify-center items-center h-full">
+		<span class="text-muted-foreground text-sm">Loading...</span>
+	</div>
+{/snippet}
+
+{#snippet podcastContent()}
+	{#if error}
+		<div class="text-destructive text-sm">
 			Failed to load podcast content
 		</div>
 	{:else}
 		<div class="flex flex-col h-full">
-			<div class="mb-[0.75rem]">
-				<div class="flex items-center text-[0.75rem] text-[hsl(var(--muted-foreground))] mb-[0.5rem]">
+			<div class="mb-3">
+				<div class="flex items-center text-xs text-muted-foreground mb-2">
 					<span>Episode {episode}</span>
 					{#if duration}
-						<span class="mx-[0.25rem]">•</span>
+						<span class="mx-1">•</span>
 						<span>{Math.floor(duration / 60)} min</span>
 					{/if}
 				</div>
 				
-				<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))]">
+				<p class="text-sm text-muted-foreground">
 					{summary}
 				</p>
 			</div>
 			
-			<div class="mt-auto pt-[0.75rem] border-t border-[hsl(var(--border))]">
+			<div class="mt-auto pt-3 border-t border-border">
 				<div class="flex items-center justify-between">
 					<button
 						onclick={togglePlay}
 						disabled={offline}
-						class="flex items-center justify-center w-[2.5rem] h-[2.5rem] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] disabled:opacity-50"
+						class="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground disabled:opacity-50"
 						aria-label={playing ? 'Pause' : 'Play'}
 					>
 						{#if playing}
-							<Pause size={16} />
+							<Icon icon={Pause} size={16} color="currentColor" />
 						{:else}
-							<Play size={16} />
+							<Icon icon={Play} size={16} color="currentColor" />
 						{/if}
 					</button>
 					
-					<div class="flex gap-[0.5rem]">
+					<div class="flex gap-2">
 						<button 
 							onclick={expandView}
-							class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="text-muted-foreground hover:text-foreground"
 							aria-label="Expand view"
 						>
-							<Maximize size={16} />
+							<Icon icon={Maximize} size={16} color="currentColor" />
 						</button>
 						<button 
 							onclick={handleShare}
-							class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="text-muted-foreground hover:text-foreground"
 							aria-label="Share podcast"
 						>
-							<Share2 size={16} />
+							<Icon icon={Share2} size={16} color="currentColor" />
 						</button>
 						<a 
 							href={`/podcast/${id}`}
-							class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="text-muted-foreground hover:text-foreground"
 							aria-label="Open podcast details"
 						>
-							<ExternalLink size={16} />
+							<Icon icon={ExternalLink} size={16} color="currentColor" />
 						</a>
 					</div>
 				</div>
 				
 				{#if offline}
-					<div class="mt-[0.5rem] text-[0.75rem] text-[hsl(var(--warning))]">
+					<div class="mt-2 text-xs text-warning">
 						Podcasts not available offline
 					</div>
 				{/if}
 			</div>
 		</div>
 	{/if}
-</BaseWidget>
+{/snippet}
 
 <style>
 	/* Add animation to utility classes instead of custom CSS */

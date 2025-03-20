@@ -4,32 +4,35 @@
 
   /** @typedef {'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'caption' | 'blockquote' | 'code'} TypographyVariant */
   
-  /** @type {TypographyVariant} [variant="p"] - Typography variant */
-  let { variant = 'p' } = $props();
-  
-  /** @type {string} [className=""] - Additional CSS classes */
-  let { className = "" } = $props();
-  
-  /** @type {boolean} [bold=false] - Whether to apply bold styling */
-  let { bold = false } = $props();
-  
-  /** @type {boolean} [italic=false] - Whether to apply italic styling */
-  let { italic = false } = $props();
-
-  /** @type {string} [color=null] - Custom text color */
-  let { color = null } = $props();
+  let {
+    variant = /** @type {TypographyVariant} */ ('p'),
+    className = "",
+    bold = false,
+    italic = false,
+    color = /** @type {string|null} */ (null),
+    children = /** @type {import('svelte').Snippet | undefined} */ (undefined)
+  } = $props();
   
   // Map variants to HTML tags (defaults to variant name if not specified)
+  /** @type {Record<string, string>} */
   const variantToTag = {
     'caption': 'p',
-    // All other variants map to themselves by default
+    'h1': 'h1',
+    'h2': 'h2',
+    'h3': 'h3',
+    'h4': 'h4',
+    'h5': 'h5',
+    'h6': 'h6',
+    'p': 'p',
+    'blockquote': 'blockquote',
+    'code': 'code'
   };
   
   // Compute the HTML tag to render
-  let tag = $derived(() => variantToTag[variant] || variant);
+  let tag = $derived(/** @type {keyof HTMLElementTagNameMap} */ (variantToTag[variant] || 'p'));
   
   // Compute CSS classes for the typography variant
-  let variantClasses = $derived(() => {
+  let variantClasses = $derived((() => {
     switch(variant) {
       case 'h1':
         return "text-[var(--font-size-4xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] tracking-[var(--tracking-tighter)] mb-[calc(var(--spacing-unit)*6)]";
@@ -54,23 +57,23 @@
       default:
         return "text-[var(--font-size-base)] leading-[var(--line-height-relaxed)]";
     }
-  });
+  })());
   
   // Apply font weight and style modifiers
-  let fontModifiers = $derived(() => {
+  let fontModifiers = $derived((() => {
     let modifiers = "";
     if (bold) modifiers += " font-[var(--font-weight-bold)]";
     if (italic) modifiers += " italic";
     return modifiers;
-  });
+  })());
 
   // Apply color if specified
-  let colorStyle = $derived(() => {
+  let colorStyle = $derived((() => {
     if (color) {
       return `color: ${color};`;
     }
     return '';
-  });
+  })());
 </script>
 
 <svelte:element
@@ -78,5 +81,5 @@
   class={cn(variantClasses, fontModifiers, className)}
   style={colorStyle}
 >
-  <slot />
+  {@render children?.()}
 </svelte:element> 
