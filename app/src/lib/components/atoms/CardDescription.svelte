@@ -9,8 +9,7 @@
 
 <Typography 
   variant="p" 
-  class={cn('text-[hsl(var(--muted-foreground))] text-[var(--font-size-sm)] mb-0', className)} 
-  {...$$restProps}
+  className={cn('text-[hsl(var(--muted-foreground))] text-[var(--font-size-sm)] mb-0', className)}
 >
   <slot />
 </Typography> 

@@ -75,9 +75,8 @@
 
 <svelte:element
   this={tag}
-  class="{cn(variantClasses, fontModifiers, className)}"
+  class={cn(variantClasses, fontModifiers, className)}
   style={colorStyle}
-  {...$$restProps}
 >
   <slot />
 </svelte:element> 

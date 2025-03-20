@@ -9,8 +9,7 @@
 
 <Typography 
   variant="h3" 
-  class={cn('text-[var(--font-size-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-height-snug)] mb-0', className)} 
-  {...$$restProps}
+  class={cn('text-[var(--font-size-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-height-snug)] mb-0', className)}
 >
   <slot />
 </Typography> 
