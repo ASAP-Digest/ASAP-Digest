@@ -670,7 +670,7 @@
   :global([role="button"].sidebar-toggle),
   :global(button.sidebar-toggle) {
     position: absolute !important;
-    right: -11px !important;
+    right: 0 !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     z-index: 9999 !important;
@@ -857,9 +857,13 @@
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 1.625rem 0.75rem;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     border-radius: 0.375rem;
     transition: all 0.3s ease-in-out;
+    text-decoration: none !important;
   }
   
   /* Menu hover effects */
@@ -879,7 +883,10 @@
   :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
   :global(body.sidebar-collapsed) .sidebar-menu-item a {
     justify-content: center !important;
-    padding: 0.75rem 0 !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     gap: 0 !important;
     width: 100% !important;
   }
@@ -995,11 +1002,12 @@
   :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
   :global(body.sidebar-collapsed) .sidebar-menu-item a {
     justify-content: center !important;
-    padding: 0.75rem 0 !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
     gap: 0 !important;
     width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
   }
 
   /* Fix for Svelte 5 scoped classes */
@@ -1253,6 +1261,7 @@
   <Root 
     class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
     style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : ''}
+    data-collapsed={collapsed}
   >
     <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)] relative">
       <div class="flex items-center justify-between px-[0.5rem]">
@@ -1284,12 +1293,12 @@
       <Group class="pb-[1rem] pt-[1rem]">
         <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
           {#each mainNavItems as item (item.label)}
-            <MenuItem class="px-0 sidebar-menu-item">
+            <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
               <a 
                 href={item.url} 
                 class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[0.75rem] w-full"
                 data-sveltekit-preload-data="hover"
-                style={collapsed ? 'justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important;' : ''}
+                style={collapsed ? 'justify-content: center !important;' : ''}
               >
                 <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
                   {#if item.icon}
@@ -1310,13 +1319,14 @@
           Recent Digests
         </GroupLabel>
         <GroupContent class="space-y-[0.75rem] sidebar-content-collapsible">
-          <Menu class="space-y-[0.75rem]">
+          <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
             {#each ['Tech Digest', 'Finance Update', 'Health News'] as digest}
-              <MenuItem class="px-0">
+              <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
                 <a 
                   href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] px-[0.75rem] text-[0.875rem]"
+                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]"
                   data-sveltekit-preload-data="hover"
+                  style={collapsed ? 'justify-content: center !important;' : ''}
                 >
                   <span class="font-[600]">{digest}</span>
                 </a>

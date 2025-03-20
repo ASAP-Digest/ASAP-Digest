@@ -145,39 +145,70 @@
 
 /* Additional custom styles here */
 
+/* Sidebar specific link styles */
+[data-sidebar="content"] a {
+  text-decoration: none !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Parent UL centered at 98% width when not collapsed */
+[data-sidebar="menu"]:not([data-collapsed="true"]) {
+  width: 98% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 /* Unified data-attribute based approach for sidebar collapsed state */
-[data-sidebar="content"][data-collapsed="true"] {
+[data-sidebar="content"] {
   padding: 0 !important;
   margin: 0 !important;
+}
+
+[data-sidebar="content"][data-collapsed="true"] {
   width: 64px !important;
   min-width: 64px !important;
   max-width: 64px !important;
 }
 
-[data-sidebar="menu"][data-collapsed="true"] {
+/* Remove all padding from menu completely */
+[data-sidebar="menu"] {
   padding: 0 !important;
   margin: 0 !important;
   width: 100% !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+[data-sidebar="menu"][data-collapsed="true"] {
   align-items: center !important;
   justify-content: center !important;
 }
 
-[data-sidebar="menu"][data-collapsed="true"] [data-sidebar="menu-item"] {
+/* Simplify menu item styling */
+[data-sidebar="menu-item"] {
   width: 100% !important;
   padding: 0 !important;
   display: flex !important;
+}
+
+[data-sidebar="menu-item"][data-collapsed="true"],
+[data-sidebar="menu"][data-collapsed="true"] [data-sidebar="menu-item"] {
   justify-content: center !important;
   align-items: center !important;
+}
+
+/* Simple link styling */
+[data-sidebar="menu"] a,
+[data-sidebar="menu"] button {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  width: 100% !important;
 }
 
 [data-sidebar="menu"][data-collapsed="true"] a,
 [data-sidebar="menu"][data-collapsed="true"] button {
   justify-content: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  width: 100% !important;
 }
 
 /* Fix for sidebar icons in collapsed state */
