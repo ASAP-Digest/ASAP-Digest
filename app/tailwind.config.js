@@ -20,7 +20,11 @@ const config = {
 		},
 		container: {
 			center: true,
-			padding: "15px",
+			padding: {
+				DEFAULT: 'calc(var(--spacing-unit) * 4)',
+				md: 'calc(var(--spacing-unit) * 6)',
+				lg: 'calc(var(--spacing-unit) * 8)'
+			},
 			screens: {
 				"2xl": "1440px"
 			}

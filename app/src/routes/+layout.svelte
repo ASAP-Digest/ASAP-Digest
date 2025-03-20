@@ -402,12 +402,27 @@
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
+    grid-template-columns: 1fr;
     grid-template-rows: auto 1fr auto;
     grid-template-areas: 
       "header"
       "content"
       "footer";
     transition: all 0.3s ease-in-out;
+  }
+  
+  @media (min-width: 768px) {
+    .app-shell {
+      grid-template-columns: 240px 1fr;
+      grid-template-areas: 
+        "header header"
+        "sidebar content"
+        "footer footer";
+    }
+    
+    :global(body.sidebar-collapsed) .app-shell {
+      grid-template-columns: 64px 1fr;
+    }
   }
   
   /* Header area */
@@ -435,6 +450,7 @@
   .content-grid {
     display: grid;
     grid-template-columns: 240px 1fr;
+    gap: calc(var(--spacing-unit) * 6);
     width: 100%;
     min-height: 100%;
     transition: grid-template-columns 0.3s ease-in-out;
@@ -630,7 +646,7 @@
         </aside>
         
         <!-- Main content area -->
-        <main class="main-area">
+        <main class="main-area container mx-auto px-[calc(var(--spacing-unit)*4)] md:px-[calc(var(--spacing-unit)*6)]">
           <!-- PWA install prompt -->
           <InstallPrompt />
           

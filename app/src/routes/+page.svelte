@@ -286,7 +286,7 @@
 <div class="container">
   <!-- Section Headers -->
   <div class="mb-[1.5rem] space-y-[0.5rem]">
-    <h1 class="text-[1.5rem] md:text-[1.875rem] font-bold text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
+    <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*3)] text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
     <p class="text-[hsl(var(--muted-foreground))]">Customized content based on your interests</p>
   </div>
 
@@ -305,7 +305,7 @@
   >
     <!-- News Section Header - Full width -->
     <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[0.5rem]">
-      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Latest News</h2>
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Latest News</h2>
     </div>
     
     <!-- News Widgets -->
@@ -339,7 +339,7 @@
     
     <!-- Finance Section Header - Full width -->
     <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
-      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Financial Updates</h2>
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Financial Updates</h2>
     </div>
     
     <!-- Finance Widgets -->
@@ -373,7 +373,7 @@
     
     <!-- Personalized Section Header - Full width -->
     <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
-      <h2 class="text-[1.25rem] font-bold text-[hsl(var(--foreground))]">Your Interests</h2>
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Your Interests</h2>
     </div>
     
     <!-- Personalized Widgets -->

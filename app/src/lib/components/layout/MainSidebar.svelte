@@ -30,6 +30,7 @@
   import Footer from '$lib/components/ui/sidebar/sidebar-footer.svelte';
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  import Icon from "$lib/components/ui/Icon.svelte";
   
   /**
    * @typedef {Object} IconObject
@@ -1311,17 +1312,14 @@
       </div>
       <!-- Enhanced toggle button with stronger styling -->
       <button 
-        type="button" 
-        onclick={toggleSidebar} 
-        class="sidebar-toggle"
-        id="sidebar-toggle-button"
+        class="sidebar-toggle absolute right-[-12px] top-[24px] w-[24px] h-[24px] bg-[hsl(var(--sidebar-background))] border border-[hsl(var(--sidebar-border))] rounded-full flex items-center justify-center z-[5]"
+        onclick={toggleSidebar}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        style="z-index: 9999 !important; display: flex !important; visibility: visible !important; opacity: 1 !important;"
       >
         {#if collapsed}
-          {@html renderIcon(ChevronRight, 16, "opacity-100")}
+          <Icon icon={ChevronRight} size={16} color="currentColor" />
         {:else}
-          {@html renderIcon(ChevronLeft, 16, "opacity-100")}
+          <Icon icon={ChevronLeft} size={16} color="currentColor" />
         {/if}
       </button>
     </Header>
@@ -1336,13 +1334,13 @@
             <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
               <a 
                 href={item.url} 
-                class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[0.75rem] w-full"
+                class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
                 data-sveltekit-preload-data="hover"
                 style={collapsed ? 'justify-content: center !important;' : ''}
               >
                 <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
                   {#if item.icon}
-                    {@html renderIcon(item.icon, 20, "opacity-100")}
+                    <Icon icon={item.icon} size={20} color="currentColor" />
                   {/if}
                 </div>
                 <span class="sidebar-content-collapsible font-[600]">{item.label}</span>

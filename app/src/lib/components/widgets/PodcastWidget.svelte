@@ -120,37 +120,33 @@
 					<button
 						onclick={togglePlay}
 						disabled={offline}
-						class="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground disabled:opacity-50"
+						class="play-button p-[calc(var(--spacing-unit)*2)] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] disabled:opacity-50"
 						aria-label={playing ? 'Pause' : 'Play'}
 					>
-						{#if playing}
-							<Icon icon={Pause} size={16} color="currentColor" />
-						{:else}
-							<Icon icon={Play} size={16} color="currentColor" />
-						{/if}
+						<Icon icon={playing ? Pause : Play} size={20} color="hsl(var(--primary-foreground))" />
 					</button>
 					
-					<div class="flex gap-2">
+					<div class="action-buttons flex gap-[calc(var(--spacing-unit)*2)]">
 						<button 
 							onclick={expandView}
-							class="text-muted-foreground hover:text-foreground"
+							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
 							aria-label="Expand view"
 						>
-							<Icon icon={Maximize} size={16} color="currentColor" />
+							<Icon icon={Maximize} size={16} />
 						</button>
 						<button 
 							onclick={handleShare}
-							class="text-muted-foreground hover:text-foreground"
+							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
 							aria-label="Share podcast"
 						>
-							<Icon icon={Share2} size={16} color="currentColor" />
+							<Icon icon={Share2} size={16} />
 						</button>
 						<a 
 							href={`/podcast/${id}`}
-							class="text-muted-foreground hover:text-foreground"
+							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
 							aria-label="Open podcast details"
 						>
-							<Icon icon={ExternalLink} size={16} color="currentColor" />
+							<Icon icon={ExternalLink} size={16} />
 						</a>
 					</div>
 				</div>

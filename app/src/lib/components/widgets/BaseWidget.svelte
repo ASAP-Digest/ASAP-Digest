@@ -25,25 +25,25 @@
     switch(variant) {
       case 'compact':
         return {
-          padding: 'p-[0.75rem]',
-          gap: 'gap-[0.5rem]'
+          padding: 'p-[calc(var(--spacing-unit)*3)]',
+          gap: 'gap-[calc(var(--spacing-unit)*2)]'
         };
       case 'expanded':
         return {
-          padding: 'p-[1.5rem]',
-          gap: 'gap-[1rem]'
+          padding: 'p-[calc(var(--spacing-unit)*6)]',
+          gap: 'gap-[calc(var(--spacing-unit)*4)]'
         };
       case 'default':
       default:
         return {
-          padding: 'p-[1rem]',
-          gap: 'gap-[0.75rem]'
+          padding: 'p-[calc(var(--spacing-unit)*4)]',
+          gap: 'gap-[calc(var(--spacing-unit)*3)]'
         };
     }
   }
 </script>
 
-<Card class="h-full">
+<Card class="h-full rounded-[var(--radius-lg)]">
   {#if title}
     <CardHeader class="{spacing.padding} pb-0">
       <CardTitle class="flex items-center {spacing.gap}">
