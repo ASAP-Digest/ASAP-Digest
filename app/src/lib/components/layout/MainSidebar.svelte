@@ -189,13 +189,13 @@
         // Apply inline styles to SVG elements when collapsed
         const svgElements = document.querySelectorAll('svg');
         svgElements.forEach(svg => {
-          svg.style.cssText = 'width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 20px !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
+          svg.style.cssText = 'width: 1.25rem !important; height: 1.25rem !important; min-width: 1.25rem !important; min-height: 1.25rem !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
         });
         
         // Apply inline styles to menu items
         const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
         menuItems.forEach(item => {
-          item.style.cssText = 'min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; padding: 4px 0 !important; z-index: 30 !important; position: relative !important; overflow: visible !important;';
+          item.style.cssText = 'min-height: 2.5rem !important; display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; padding: 0.25rem 0 !important; z-index: 30 !important; position: relative !important; overflow: visible !important;';
         });
       }, 50);
     } else {
@@ -211,7 +211,7 @@
         // Remove inline styles when expanded
         const svgElements = document.querySelectorAll('svg');
         svgElements.forEach(svg => {
-          svg.style.cssText = '';
+          svg.style.cssText = 'width: 1.25rem !important; height: 1.25rem !important; min-width: 1.25rem !important; min-height: 1.25rem !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
         });
         
         const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
@@ -661,10 +661,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
     margin-right: 0.75rem;
     flex-shrink: 0;
     position: relative;
@@ -673,10 +671,8 @@
   
   /* Icon SVG sizing - ensure proper display */
   .sidebar-icon svg {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    min-height: 20px;
+    width: 1.25rem;
+    height: 1.25rem;
     flex-shrink: 0;
     transition: transform 0.3s ease-in-out;
   }
@@ -685,10 +681,8 @@
   :global(body.sidebar-collapsed) .sidebar-icon {
     margin: 0 auto !important;
     padding: 0 !important;
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -698,10 +692,8 @@
   
   /* Fix icon sizing and position in collapsed state */
   :global(body.sidebar-collapsed) .sidebar-icon svg {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
     flex-shrink: 0 !important;
   }
   

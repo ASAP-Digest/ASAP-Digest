@@ -7,7 +7,7 @@
 <div
 	bind:this={ref}
 	data-sidebar="header"
-	class={cn("flex flex-col gap-2 p-2", className)}
+	class={cn("flex flex-col gap-4 p-4 transition-all duration-200", className)}
 	{...restProps}
 >
 	{@render children?.()}

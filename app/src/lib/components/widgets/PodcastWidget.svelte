@@ -90,19 +90,19 @@
 
 {#snippet loadingContent()}
 	<div class="flex justify-center items-center h-full">
-		<span class="text-muted-foreground text-sm">Loading...</span>
+		<span class="text-[hsl(var(--muted-foreground))] text-sm">Loading...</span>
 	</div>
 {/snippet}
 
 {#snippet podcastContent()}
 	{#if error}
-		<div class="text-destructive text-sm">
+		<div class="text-[hsl(var(--destructive))] text-sm">
 			Failed to load podcast content
 		</div>
 	{:else}
 		<div class="flex flex-col h-full">
 			<div class="mb-3">
-				<div class="flex items-center text-xs text-muted-foreground mb-2">
+				<div class="flex items-center text-xs text-[hsl(var(--muted-foreground))] mb-2">
 					<span>Episode {episode}</span>
 					{#if duration}
 						<span class="mx-1">•</span>
@@ -110,43 +110,43 @@
 					{/if}
 				</div>
 				
-				<p class="text-sm text-muted-foreground">
+				<p class="text-sm text-[hsl(var(--muted-foreground))]">
 					{summary}
 				</p>
 			</div>
 			
-			<div class="mt-auto pt-3 border-t border-border">
+			<div class="mt-auto pt-3 border-t border-[hsl(var(--border))]">
 				<div class="flex items-center justify-between">
 					<button
 						onclick={togglePlay}
 						disabled={offline}
-						class="play-button p-[calc(var(--spacing-unit)*2)] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] disabled:opacity-50"
+						class="play-button p-2 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors duration-200 hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
 						aria-label={playing ? 'Pause' : 'Play'}
 					>
 						<Icon icon={playing ? Pause : Play} size={20} color="hsl(var(--primary-foreground))" />
 					</button>
 					
-					<div class="action-buttons flex gap-[calc(var(--spacing-unit)*2)]">
+					<div class="action-buttons flex gap-2">
 						<button 
 							onclick={expandView}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="p-1 text-[hsl(var(--muted-foreground))] rounded-md transition-colors duration-200 hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Expand view"
 						>
-							<Icon icon={Maximize} size={16} />
+							<Icon icon={Maximize} size={16} color="currentColor" />
 						</button>
 						<button 
 							onclick={handleShare}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="p-1 text-[hsl(var(--muted-foreground))] rounded-md transition-colors duration-200 hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Share podcast"
 						>
-							<Icon icon={Share2} size={16} />
+							<Icon icon={Share2} size={16} color="currentColor" />
 						</button>
 						<a 
 							href={`/podcast/${id}`}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+							class="p-1 text-[hsl(var(--muted-foreground))] rounded-md transition-colors duration-200 hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Open podcast details"
 						>
-							<Icon icon={ExternalLink} size={16} />
+							<Icon icon={ExternalLink} size={16} color="currentColor" />
 						</a>
 					</div>
 				</div>

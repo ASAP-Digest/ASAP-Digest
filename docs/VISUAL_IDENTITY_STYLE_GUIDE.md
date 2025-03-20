@@ -246,36 +246,26 @@ Inter pairs well with several body fonts:
 
 ## Spacing System
 
-Our spacing system uses a consistent scale based on a fundamental unit.
-
-### Base Spacing Unit
-
-```css
-:root {
-  --spacing-unit: 0.25rem; /* 4px at base font size */
-}
-```
-
-### Spacing Scale
+Our spacing system uses Tailwind's built-in scale for consistency across the UI.
 
 ```css
 /* In tailwind.config.js */
 theme: {
   extend: {
     spacing: {
-      '1': 'calc(var(--spacing-unit) * 1)',    /* 4px */
-      '2': 'calc(var(--spacing-unit) * 2)',    /* 8px */
-      '3': 'calc(var(--spacing-unit) * 3)',    /* 12px */
-      '4': 'calc(var(--spacing-unit) * 4)',    /* 16px */
-      '5': 'calc(var(--spacing-unit) * 5)',    /* 20px */
-      '6': 'calc(var(--spacing-unit) * 6)',    /* 24px */
-      '8': 'calc(var(--spacing-unit) * 8)',    /* 32px */
-      '10': 'calc(var(--spacing-unit) * 10)',  /* 40px */
-      '12': 'calc(var(--spacing-unit) * 12)',  /* 48px */
-      '16': 'calc(var(--spacing-unit) * 16)',  /* 64px */
-      '20': 'calc(var(--spacing-unit) * 20)',  /* 80px */
-      '24': 'calc(var(--spacing-unit) * 24)',  /* 96px */
-      '32': 'calc(var(--spacing-unit) * 32)',  /* 128px */
+      '1': '0.25rem',    /* 4px */
+      '2': '0.5rem',     /* 8px */
+      '3': '0.75rem',    /* 12px */
+      '4': '1rem',       /* 16px */
+      '5': '1.25rem',    /* 20px */
+      '6': '1.5rem',     /* 24px */
+      '8': '2rem',       /* 32px */
+      '10': '2.5rem',    /* 40px */
+      '12': '3rem',      /* 48px */
+      '16': '4rem',      /* 64px */
+      '20': '5rem',      /* 80px */
+      '24': '6rem',      /* 96px */
+      '32': '8rem',      /* 128px */
     }
   }
 }
@@ -295,58 +285,24 @@ theme: {
 }
 ```
 
-### Standard Spacing Classes
+### Standard Spacing Usage
 
-```css
-/* In app.css */
-.space-xs {
-  @apply p-[calc(var(--spacing-unit)*2)];      /* 8px padding */
-}
+```html
+<!-- Use standard Tailwind spacing utilities -->
+<div class="p-4">Padded content</div>
+<div class="m-2">Element with margin</div>
+<div class="gap-6">Flex or grid gap</div>
 
-.space-sm {
-  @apply p-[calc(var(--spacing-unit)*4)];      /* 16px padding */
-}
-
-.space-md {
-  @apply p-[calc(var(--spacing-unit)*6)];      /* 24px padding */
-}
-
-.space-lg {
-  @apply p-[calc(var(--spacing-unit)*8)];      /* 32px padding */
-}
-
-.space-xl {
-  @apply p-[calc(var(--spacing-unit)*12)];     /* 48px padding */
-}
-
-/* Gap utilities */
-.gap-xs {
-  @apply gap-[calc(var(--spacing-unit)*2)];    /* 8px gap */
-}
-
-.gap-sm {
-  @apply gap-[calc(var(--spacing-unit)*4)];    /* 16px gap */
-}
-
-.gap-md {
-  @apply gap-[calc(var(--spacing-unit)*6)];    /* 24px gap */
-}
-
-.gap-lg {
-  @apply gap-[calc(var(--spacing-unit)*8)];    /* 32px gap */
-}
-
-.gap-xl {
-  @apply gap-[calc(var(--spacing-unit)*12)];   /* 48px gap */
-}
+<!-- For specific spacing requirements, use arbitrary values -->
+<div class="p-[1.5rem]">Custom padding</div>
 ```
 
 ### Usage Guidelines
 
-- Use the spacing scale for all margins, paddings, gaps, and positioning
+- Use Tailwind's spacing scale utilities directly (p-4, m-6, gap-8) for consistent spacing
 - Maintain consistent spacing rhythm across components
 - Use larger spacing values for section separations, smaller for related items
-- For fixed sizes, always use the `[calc(var(--spacing-unit)*X)]` syntax
+- For arbitrary sizes, use Tailwind's arbitrary value syntax (p-[1.5rem], etc.)
 
 ## Animation & Transitions
 
@@ -962,19 +918,35 @@ Standardized containers and layout elements:
 
 ### Grid System
 
-Consistent grid layout using CSS Grid:
+We leverage Tailwind's built-in grid utilities for layout, rather than implementing a custom grid system.
 
-```css
-.grid-layout {
-  display: grid;
-  grid-template-columns: repeat(var(--grid-columns, 12), minmax(0, 1fr));
-  gap: var(--grid-gap, calc(var(--spacing-unit) * 6));
-  width: 100%;
-  max-width: var(--grid-max-width, 1440px);
-  margin-left: auto;
-  margin-right: auto;
-}
+### Usage Example
+
+```html
+<!-- Grid layout with 12 columns -->
+<div class="grid grid-cols-12 gap-8 w-full max-w-[1440px] mx-auto">
+  <!-- Full width on mobile, half width on tablet, quarter width on desktop -->
+  <div class="col-span-12 md:col-span-6 lg:col-span-3">
+    First item
+  </div>
+  <div class="col-span-12 md:col-span-6 lg:col-span-3">
+    Second item
+  </div>
+  <div class="col-span-12 md:col-span-6 lg:col-span-3">
+    Third item
+  </div>
+  <div class="col-span-12 md:col-span-6 lg:col-span-3">
+    Fourth item
+  </div>
+</div>
 ```
+
+### Grid Usage Guidelines
+
+1. Use `grid` with `grid-cols-{n}` for defining grid layouts
+2. Use `col-span-{n}` for determining item width
+3. Use responsive variants (md:col-span-6) for adaptive layouts
+4. Use `gap-{n}` for consistent spacing between grid items
 
 ## Responsive Design
 
@@ -982,18 +954,28 @@ Our responsive design approach ensures a consistent experience across all device
 
 ### Breakpoints
 
-```css
-/* In tailwind.config.js */
+We use Tailwind's standard breakpoints:
+
+```js
+// In tailwind.config.js
+screens: {
+  'sm': '640px',
+  'md': '768px',
+  'lg': '1024px', 
+  'xl': '1280px',
+  '2xl': '1536px',
+}
+```
+
+For project-specific needs, we also define these additional breakpoints:
+
+```js
+// Additional breakpoints in tailwind.config.js
 screens: {
   "mobile": "478px",
   "mobile-landscape": "767px",
   "tablet": "991px",
   "desktop": "1440px",
-  "sm": "640px",
-  "md": "768px",
-  "lg": "1024px",
-  "xl": "1280px",
-  "2xl": "1536px",
 }
 ```
 
@@ -1007,11 +989,11 @@ screens: {
 
 ### Responsive Component Example
 
-```svelte
+```html
 <!-- ResponsiveCard.svelte -->
 <div class="
   w-full
-  rounded-[var(--radius-md)]
+  rounded-md
   overflow-hidden
   bg-[hsl(var(--card))]
   border border-[hsl(var(--border))]
@@ -1039,22 +1021,22 @@ screens: {
   </div>
   
   <div class="
-    p-[calc(var(--spacing-unit)*4)]
+    p-4
     
     /* Tablet+ styling */
-    md:p-[calc(var(--spacing-unit)*6)]
+    md:p-6 
     md:flex-1
   ">
     <h3 class="
-      text-[var(--font-size-xl)]
-      font-[var(--font-weight-semibold)]
+      text-xl
+      font-semibold
       
       /* Tablet+ styling */
-      md:text-[var(--font-size-2xl)]
+      md:text-2xl
     ">
       {title}
     </h3>
-    <p class="mt-[calc(var(--spacing-unit)*2)]">
+    <p class="mt-2">
       {description}
     </p>
   </div>

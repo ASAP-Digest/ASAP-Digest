@@ -2,17 +2,17 @@
 	import { tv } from "tailwind-variants";
 
 	export const sidebarMenuButtonVariants = tv({
-		base: "peer/menu-button ring-[hsl(var(--sidebar-ring))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] active:bg-[hsl(var(--sidebar-accent))] active:text-[hsl(var(--sidebar-accent-foreground))] data-[active=true]:bg-[hsl(var(--sidebar-accent))] data-[active=true]:text-[hsl(var(--sidebar-accent-foreground))] data-[state=open]:hover:bg-[hsl(var(--sidebar-accent))] data-[state=open]:hover:text-[hsl(var(--sidebar-accent-foreground))] flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none transition-[width,height,padding] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:min-w-[16px] [&>svg]:min-h-[16px] [&>svg]:overflow-visible [&>svg]:box-content [&>svg]:z-10",
+		base: "peer/menu-button ring-[hsl(var(--sidebar-ring))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] active:bg-[hsl(var(--sidebar-accent))] active:text-[hsl(var(--sidebar-accent-foreground))] data-[active=true]:bg-[hsl(var(--sidebar-accent))] data-[active=true]:text-[hsl(var(--sidebar-accent-foreground))] data-[state=open]:hover:bg-[hsl(var(--sidebar-accent))] data-[state=open]:hover:text-[hsl(var(--sidebar-accent-foreground))] flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:min-w-4 [&>svg]:min-h-4 [&>svg]:overflow-visible [&>svg]:box-content [&>svg]:z-10",
 		variants: {
 			variant: {
-				default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+				default: "hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))]",
 				outline:
-					"bg-background hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+					"bg-[hsl(var(--background))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] shadow-sm hover:shadow",
 			},
 			size: {
 				default: "h-8 text-sm",
 				sm: "h-7 text-xs",
-				lg: "h-12 text-sm group-data-[collapsible=icon]:!p-0",
+				lg: "h-12 text-sm group-data-[collapsible=icon]:p-0",
 			},
 		},
 		defaultVariants: {
@@ -33,8 +33,8 @@
 		class: className,
 		children,
 		child,
-		variant = "default",
-		size = "default",
+		variant = $bindable("default"),
+		size = $bindable("default"),
 		isActive = false,
 		tooltipContent,
 		tooltipContentProps,
@@ -52,7 +52,7 @@
 	});
 </script>
 
-{#snippet Button({ props })}
+{#snippet Button({ props = {} })}
 	{@const mergedProps = mergeProps(buttonProps, props)}
 	{#if child}
 		{@render child({ props: mergedProps })}
@@ -64,11 +64,11 @@
 {/snippet}
 
 {#if !tooltipContent}
-	{@render Button({})}
+	{@render Button({ props: {} })}
 {:else}
 	<Tooltip.Root>
-		<Tooltip.Trigger asChild>
-			{@render Button({})}
+		<Tooltip.Trigger>
+			{@render Button({ props: {} })}
 		</Tooltip.Trigger>
 		<Tooltip.Content
 			side="right"

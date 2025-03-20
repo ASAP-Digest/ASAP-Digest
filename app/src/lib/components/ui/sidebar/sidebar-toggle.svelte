@@ -55,7 +55,8 @@
   class={cn(
     "flex h-6 w-6 items-center justify-center rounded-md text-[hsl(var(--sidebar-foreground))]",
     "hover:bg-[hsl(var(--sidebar-accent)/0.5)] hover:text-[hsl(var(--sidebar-accent-foreground))]",
-    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-1",
+    "transition-colors duration-200",
     className
   )}
   aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}

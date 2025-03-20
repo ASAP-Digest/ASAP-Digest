@@ -1,93 +1,77 @@
 <script>
-  import { Card, CardContent, CardHeader, CardTitle } from "$lib/components/ui/card";
-  import { Skeleton } from "$lib/components/ui/skeleton";
-  import { fade } from 'svelte/transition';
-  import { WIDGET_SPACING } from '$lib/styles/spacing.js';
-  
-  /** @type {Object} props - Component properties */
+  import { cn } from '$lib/utils';
+  import { Icon } from '@steeze-ui/svelte-icon';
+  import { Loader2 } from '@steeze-ui/heroicons';
+  import { createEventDispatcher } from 'svelte';
+
+  const dispatch = createEventDispatcher();
+
   let {
-    title = "",
-    icon = null,
-    loading = false,
-    variant = /** @type {'default' | 'compact' | 'expanded'} */ ('default'),
-    default: defaultSlot,
-    loadingSlot
+    title = '',
+    icon = undefined,
+    loading = false, 
+    variant = 'default', // 'default', 'compact', 'expanded'
+    className = ''
   } = $props();
-  
-  let spacing = $derived(getVariantSpacing(variant));
-  
-  /**
-   * Get spacing values based on widget variant
-   * @param {'default' | 'compact' | 'expanded'} variant - Widget variant
-   * @returns {{padding: string, gap: string}} Spacing values
-   */
-  function getVariantSpacing(variant) {
-    switch(variant) {
+
+  const getVariantSpacing = () => {
+    switch (variant) {
       case 'compact':
-        return {
-          padding: 'p-[calc(var(--spacing-unit)*3)]',
-          gap: 'gap-[calc(var(--spacing-unit)*2)]'
-        };
+        return 'p-3 gap-2';
       case 'expanded':
-        return {
-          padding: 'p-[calc(var(--spacing-unit)*6)]',
-          gap: 'gap-[calc(var(--spacing-unit)*4)]'
-        };
-      case 'default':
+        return 'p-6 gap-4';
       default:
-        return {
-          padding: 'p-[calc(var(--spacing-unit)*4)]',
-          gap: 'gap-[calc(var(--spacing-unit)*3)]'
-        };
+        return 'p-4 gap-3';
     }
-  }
+  };
+
+  const spacing = getVariantSpacing();
 </script>
 
-<Card class="h-full rounded-[var(--radius-lg)]">
+<div 
+  class={cn(
+    'group/widget relative bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200',
+    spacing,
+    className
+  )}
+>
+  <!-- Header with title and icon -->
   {#if title}
-    <CardHeader class="{spacing.padding} pb-0">
-      <CardTitle class="flex items-center {spacing.gap}">
-        {#if icon}
-          <div class="text-primary">
-            <!-- Hard-coded icon handling -->
-            <span class="text-primary w-5 h-5"></span>
-          </div>
-        {/if}
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-medium text-base">
+        {title}
+        
         {#if loading}
-          <Skeleton class="h-[1.5rem] w-[8rem]" />
-        {:else}
-          {title}
+          <span class="inline-flex items-center ml-2 text-[hsl(var(--muted-foreground))]">
+            <Icon icon={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
+            <span class="text-xs">Loading...</span>
+          </span>
         {/if}
-      </CardTitle>
-    </CardHeader>
-  {/if}
-  <CardContent class="{spacing.padding} {spacing.gap} flex flex-col">
-    {#if loading}
-      {#if loadingSlot}
-        {@render loadingSlot()}
-      {:else}
-        <div class="space-y-[0.5rem]">
-          <Skeleton class="h-[4rem] w-full" />
-          <Skeleton class="h-[1rem] w-3/4" />
-          <Skeleton class="h-[1rem] w-1/2" />
+      </h3>
+      
+      {#if icon}
+        <div class="text-[hsl(var(--muted-foreground))]">
+          <Icon icon={icon} size={18} color="currentColor" />
         </div>
       {/if}
-    {:else}
-      {#if defaultSlot}
-        {@render defaultSlot()}
-      {/if}
-    {/if}
-  </CardContent>
-</Card>
+    </div>
+  {/if}
+  
+  <!-- Loading indicator if no title -->
+  {#if loading && !title}
+    <div class="flex items-center justify-center py-4 text-[hsl(var(--muted-foreground))]">
+      <Icon icon={Loader2} class="animate-spin mr-2" color="currentColor" />
+      <span>Loading widget content...</span>
+    </div>
+  {/if}
+  
+  <!-- Slot for widget content -->
+  <slot />
+</div>
 
 <style>
-  /* Local styling for widgets */
-  :global(.widget) {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-  
-  :global(.widget:hover) {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* Local styles for hover effects */
+  :global(.group\/widget:hover) {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   }
 </style> 

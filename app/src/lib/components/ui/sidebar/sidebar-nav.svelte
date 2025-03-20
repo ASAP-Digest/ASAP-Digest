@@ -16,7 +16,7 @@
 </script>
 
 <nav 
-  class={cn("grid gap-1 px-2", className)} 
+  class={cn("grid gap-2 px-4 py-2 transition-all duration-200", className)} 
   data-testid="sidebar-nav"
 >
   {@render children?.()}

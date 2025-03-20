@@ -450,7 +450,7 @@
   .content-grid {
     display: grid;
     grid-template-columns: 240px 1fr;
-    gap: calc(var(--spacing-unit) * 6);
+    gap: 6;
     width: 100%;
     min-height: 100%;
     transition: grid-template-columns 0.3s ease-in-out;
@@ -485,7 +485,7 @@
   
   /* Main content area */
   .main-area {
-    padding: calc(var(--spacing-unit) * 4);
+    padding: 4;
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
@@ -561,25 +561,25 @@
     <!-- Header -->
     <header class="header-area">
       <div class="container h-full flex items-center justify-between">
-        <div class="flex items-center gap-[0.75rem]">
+        <div class="flex items-center gap-3">
           <!-- Logo -->
-          <span class="text-[1.25rem] font-[600]">
+          <span class="text-xl font-semibold">
             <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
           </span>
         </div>
         
         <!-- Header actions (search, notifications, user avatar) -->
-        <div class="flex items-center gap-[1rem]">
+        <div class="flex items-center gap-4">
           <!-- Search input -->
-          <button class="p-[0.5rem] rounded-[0.375rem] bg-[hsl(var(--muted)/0.1)]" aria-label="Search">
+          <button class="p-2 rounded-md bg-[hsl(var(--muted)/0.1)] hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]" aria-label="Search">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </button>
           
           <!-- Notifications -->
           <div class="relative">
-            <button class="p-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
+            <button class="p-2 rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              <div class="absolute top-0 right-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center text-[0.75rem] font-bold">
+              <div class="absolute top-0 right-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
                 3
               </div>
             </button>
@@ -588,7 +588,7 @@
           <!-- User avatar with dropdown -->
           <div class="relative">
             <button 
-              class="flex items-center space-x-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] p-[0.25rem] transition-colors"
+              class="flex items-center space-x-2 rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] p-1 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
               onclick={() => {
                 const dropdown = document.getElementById('user-dropdown');
                 if (dropdown) {
@@ -597,7 +597,7 @@
               }}
               aria-haspopup="true"
             >
-              <div class="w-[2rem] h-[2rem] rounded-full bg-[hsl(var(--muted)/0.2)] overflow-hidden">
+              <div class="w-8 h-8 rounded-full bg-[hsl(var(--muted)/0.2)] overflow-hidden">
                 <img 
                   src="/images/avatar.png" 
                   alt="User" 
@@ -611,20 +611,20 @@
             </button>
             
             <!-- User dropdown menu -->
-            <div id="user-dropdown" class="hidden absolute right-0 mt-[0.5rem] w-[12rem] bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_-4px_rgba(0,0,0,0.1)] rounded-[0.375rem] z-50 border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
-              <div class="p-[0.5rem] border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-lg rounded-md z-50 border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+              <div class="p-2 border-b border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
                 <div class="font-semibold">John Doe</div>
-                <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">john.doe@example.com</div>
+                <div class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">john.doe@example.com</div>
               </div>
               
-              <div class="py-[0.25rem]">
-                <a href="/dashboard" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+              <div class="py-1">
+                <a href="/dashboard" class="block px-4 py-2 text-sm hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200">
                   Dashboard
                 </a>
-                <a href="/settings" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                <a href="/settings" class="block px-4 py-2 text-sm hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200">
                   Settings
                 </a>
-                <a href="/logout" class="block px-[1rem] py-[0.5rem] text-[0.875rem] hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                <a href="/logout" class="block px-4 py-2 text-sm hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors duration-200">
                   Logout
                 </a>
               </div>
@@ -646,7 +646,7 @@
         </aside>
         
         <!-- Main content area -->
-        <main class="main-area container mx-auto px-[calc(var(--spacing-unit)*4)] md:px-[calc(var(--spacing-unit)*6)]">
+        <main class="main-area container mx-auto px-4 md:px-6">
           <!-- PWA install prompt -->
           <InstallPrompt />
           

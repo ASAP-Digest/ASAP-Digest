@@ -11,8 +11,30 @@
 ===============================================================
 */
 
-@tailwind base;
-@tailwind components;
+/* 
+===============================================================
+   ⚠️ IMPORTANT: TAILWIND 4 SYNTAX GUIDELINES ⚠️
+===============================================================
+   - COLORS:
+     ✓ NEVER use direct color names (text-red-500, bg-blue-400)
+     ✓ ALWAYS use arbitrary value syntax for theme colors: bg-[hsl(var(--primary))]
+     ✓ NEVER use border-border, bg-background, text-foreground (Tailwind 3 syntax)
+     ✓ ALWAYS use border-[hsl(var(--border))], bg-[hsl(var(--background))], text-[hsl(var(--foreground))]
+   
+   - SPACING:
+     ✓ USE standard Tailwind utilities when available: w-5, h-5, p-4, m-2, etc.
+     ✓ USE arbitrary values only when needed: w-[1.37rem], h-[22px]
+   
+   - SIZING:
+     ✓ For fixed sizes that match Tailwind's scale, use standard classes: h-px, w-4
+     ✓ For custom sizes, use arbitrary values: h-[3px]
+   
+   - REFERENCE: https://tailwindcss.com/docs/upgrade-guide
+===============================================================
+*/
+
+@reference "tailwindcss";
+@import "tailwindcss/preflight";
 @tailwind utilities;
 
 @layer base {
@@ -136,11 +158,6 @@
     --glow-sm: 0 0 2px;
     --glow-md: 0 0 4px;
     --glow-lg: 0 0 8px;
-    
-    /* Grid system variables */
-    --grid-gap: calc(var(--spacing-unit) * 8);  /* 2rem */
-    --grid-columns: 12;
-    --grid-max-width: 1440px;
   }
 
   .dark {
@@ -241,306 +258,63 @@
     @apply bg-[hsl(var(--primary)/0.2)];
   }
   
-  /* Fix for sidebar background */
-  .bg-sidebar {
-    background-color: hsl(var(--sidebar-background));
-  }
-  
-  .text-sidebar-foreground {
-    color: hsl(var(--sidebar-foreground));
-  }
-  
-  .border-sidebar-border {
-    border-color: hsl(var(--sidebar-border));
-  }
-
-  /* Enhanced sidebar styles for better visibility */
+  /* Fixes for sidebar components */
   .sidebar-area {
-    box-shadow: 1px 0 5px rgba(0, 0, 0, 0.05);
+    @apply bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))];
   }
 
   body.sidebar-collapsed .sidebar-area {
-    width: calc(var(--spacing-unit) * 16) !important; /* 64px */
+    @apply w-[64px] min-w-[64px] max-w-[64px];
   }
 
   .sidebar-icon svg {
-    color: hsl(var(--primary));
-    stroke-width: 2px;
+    @apply w-5 h-5;
+    min-width: 1.25rem;
+    min-height: 1.25rem;
   }
 
+  /* Handle svg fill and stroke in svelte components */
   .menu-item-hover:hover .sidebar-icon svg {
-    color: hsl(var(--primary));
-    transform: scale(1.1);
-    /* box-shadow: var(--glow-sm) hsl(var(--primary)); */
-    box-shadow: none !important;
-    transition: transform var(--duration-fast) var(--ease-out), 
-                box-shadow var(--duration-normal) var(--ease-out);
+    @apply stroke-[hsl(var(--sidebar-accent-foreground))];
+  }
+  
+  .menu-item-hover:hover {
+    @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))];
   }
 
   .sidebar-menu-item a.active .sidebar-icon svg {
-    color: hsl(var(--primary));
-    font-weight: bold;
-    stroke-width: 2.5px;
-    /* box-shadow: var(--glow-md) hsl(var(--primary)); */
-    box-shadow: none !important;
+    @apply stroke-[hsl(var(--sidebar-accent-foreground))];
+  }
+  
+  .sidebar-menu-item a.active {
+    @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))];
   }
 }
 
-/* Standard spacing utilities */
-.space-xs { @apply p-[calc(var(--spacing-unit)*2)]; }
-.space-sm { @apply p-[calc(var(--spacing-unit)*4)]; }
-.space-md { @apply p-[calc(var(--spacing-unit)*6)]; }
-.space-lg { @apply p-[calc(var(--spacing-unit)*8)]; }
-.space-xl { @apply p-[calc(var(--spacing-unit)*12)]; }
+/* Use Tailwind's standard spacing utilities */
+.space-xs { @apply p-2; }
+.space-sm { @apply p-4; }
+.space-md { @apply p-6; }
+.space-lg { @apply p-8; }
+.space-xl { @apply p-12; }
 
-/* Gap utilities */
-.gap-xs { @apply gap-[calc(var(--spacing-unit)*2)]; }
-.gap-sm { @apply gap-[calc(var(--spacing-unit)*4)]; }
-.gap-md { @apply gap-[calc(var(--spacing-unit)*6)]; }
-.gap-lg { @apply gap-[calc(var(--spacing-unit)*8)]; }
-.gap-xl { @apply gap-[calc(var(--spacing-unit)*12)]; }
-
-/* Additional custom styles here */
-
-/* Sidebar specific link styles */
-[data-sidebar="content"] a {
-  text-decoration: none !important;
-  padding-top: calc(var(--spacing-unit)*2) !important; /* 8px */
-  padding-bottom: calc(var(--spacing-unit)*2) !important; /* 8px */
-}
-
-/* Parent UL centered at 98% width when not collapsed */
-[data-sidebar="menu"]:not([data-collapsed="true"]) {
-  width: 98% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-/* Unified data-attribute based approach for sidebar collapsed state */
-[data-sidebar="content"] {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-[data-sidebar="content"][data-collapsed="true"] {
-  width: calc(var(--spacing-unit)*16) !important; /* 64px */
-  min-width: calc(var(--spacing-unit)*16) !important;
-  max-width: calc(var(--spacing-unit)*16) !important;
-}
-
-/* Remove all padding from menu completely */
-[data-sidebar="menu"] {
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-[data-sidebar="menu"][data-collapsed="true"] {
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* Simplify menu item styling */
-[data-sidebar="menu-item"] {
-  width: 100% !important;
-  padding: 0 !important;
-  display: flex !important;
-}
-
-[data-sidebar="menu-item"][data-collapsed="true"],
-[data-sidebar="menu"][data-collapsed="true"] [data-sidebar="menu-item"] {
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-/* Simple link styling */
-[data-sidebar="menu"] a,
-[data-sidebar="menu"] button {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  width: 100% !important;
-}
-
-[data-collapsed="false"] [data-sidebar="menu"] a {
-  padding-left: 10px !important;
-} 
-
-
-[data-sidebar="menu"][data-collapsed="true"] a,
-[data-sidebar="menu"][data-collapsed="true"] button {
-  justify-content: center !important;
-}
-
-/* Fix for sidebar icons in collapsed state */
-[data-sidebar="menu"][data-collapsed="true"] .sidebar-icon {
-  margin: 0 auto !important;
-  padding: 0 !important;
-  width: calc(var(--spacing-unit)*6) !important; /* 24px */
-  height: calc(var(--spacing-unit)*6) !important;
-  min-width: calc(var(--spacing-unit)*6) !important;
-  min-height: calc(var(--spacing-unit)*6) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-  flex-shrink: 0 !important;
-}
-
-[data-sidebar="menu"][data-collapsed="true"] .sidebar-icon svg {
-  width: calc(var(--spacing-unit)*5) !important; /* 20px */
-  height: calc(var(--spacing-unit)*5) !important;
-  min-width: calc(var(--spacing-unit)*5) !important;
-  min-height: calc(var(--spacing-unit)*5) !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  flex-shrink: 0 !important;
-}
+/* Use Tailwind's standard gap utilities */
+.gap-xs { @apply gap-2; }
+.gap-sm { @apply gap-4; }
+.gap-md { @apply gap-6; }
+.gap-lg { @apply gap-8; }
+.gap-xl { @apply gap-12; }
 
 /* Universal sidebar icon fix */
 body.sidebar-collapsed svg,
 body.sidebar-collapsed .lucide,
 body.sidebar-collapsed [data-sidebar] svg,
 body.sidebar-collapsed .sidebar-icon svg {
-  width: calc(var(--spacing-unit)*5) !important; /* 20px */
-  height: calc(var(--spacing-unit)*5) !important;
-  min-width: calc(var(--spacing-unit)*5) !important;
-  min-height: calc(var(--spacing-unit)*5) !important;
+  @apply w-5 h-5;
   display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Grid system implementation */
-.grid-layout {
-  display: grid;
-  grid-template-columns: repeat(var(--grid-columns, 12), minmax(0, 1fr));
-  gap: var(--grid-gap, calc(var(--spacing-unit) * 6));
-  width: 100%;
-  max-width: var(--grid-max-width, 1440px);
-  margin-left: auto;
-  margin-right: auto;
 }
 
 @layer utilities {
-  /* Grid layout utilities */
-  .grid-layout {
-    display: grid;
-    grid-template-columns: repeat(var(--grid-columns, 12), minmax(0, 1fr));
-    gap: var(--grid-gap, 2rem);
-    width: 100%;
-    max-width: var(--grid-max-width, 1440px);
-    margin-left: auto;
-    margin-right: auto;
-  }
-  
-  .grid-cols-1 {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
-  
-  .grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  
-  .grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  
-  .grid-cols-6 {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-  
-  .grid-cols-12 {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-  
-  .col-span-1 {
-    grid-column: span 1 / span 1;
-  }
-  
-  .col-span-2 {
-    grid-column: span 2 / span 2;
-  }
-  
-  .col-span-3 {
-    grid-column: span 3 / span 3;
-  }
-  
-  .col-span-4 {
-    grid-column: span 4 / span 4;
-  }
-  
-  .col-span-6 {
-    grid-column: span 6 / span 6;
-  }
-  
-  .col-span-12 {
-    grid-column: span 12 / span 12;
-  }
-  
-  .col-span-full {
-    grid-column: 1 / -1;
-  }
-  
-  /* Responsive grid columns */
-  @screen md {
-    .md\:grid-cols-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    
-    .md\:grid-cols-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    
-    .md\:grid-cols-4 {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-    
-    .md\:col-span-2 {
-      grid-column: span 2 / span 2;
-    }
-    
-    .md\:col-span-3 {
-      grid-column: span 3 / span 3;
-    }
-    
-    .md\:col-span-6 {
-      grid-column: span 6 / span 6;
-    }
-  }
-  
-  @screen lg {
-    .lg\:grid-cols-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    
-    .lg\:grid-cols-4 {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-    
-    .lg\:col-span-3 {
-      grid-column: span 3 / span 3;
-    }
-    
-    .lg\:col-span-4 {
-      grid-column: span 4 / span 4;
-    }
-    
-    .lg\:col-span-8 {
-      grid-column: span 8 / span 8;
-    }
-    
-    .lg\:col-span-9 {
-      grid-column: span 9 / span 9;
-    }
-  }
-  
   /* Widget container */
   .widget-container {
     @apply h-full flex flex-col;
@@ -555,47 +329,6 @@ body.sidebar-collapsed .sidebar-icon svg {
   
   .debug-grid > * {
     /* NEVER use direct color names like border-blue-400 with Tailwind 4 */
-    @apply border border-dashed border-[#60a5fa] p-[0.5rem];
-  }
-  
-  /* Consistent spacing utilities */
-  .space-xs {
-    @apply p-[0.5rem];
-  }
-  
-  .space-sm {
-    @apply p-[1rem];
-  }
-  
-  .space-md {
-    @apply p-[1.5rem];
-  }
-  
-  .space-lg {
-    @apply p-[2rem];
-  }
-  
-  .space-xl {
-    @apply p-[2.5rem];
-  }
-  
-  .gap-xs {
-    @apply gap-[0.5rem];
-  }
-  
-  .gap-sm {
-    @apply gap-[1rem];
-  }
-  
-  .gap-md {
-    @apply gap-[1.5rem];
-  }
-  
-  .gap-lg {
-    @apply gap-[2rem];
-  }
-  
-  .gap-xl {
-    @apply gap-[2.5rem];
+    @apply border border-dashed border-[#60a5fa] p-2;
   }
 }

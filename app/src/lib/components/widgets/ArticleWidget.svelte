@@ -48,34 +48,37 @@
 	 * @param {Event} e - Event object
 	 */
 	function handleImageError(e) {
-		e.target.style.display = 'none';
+		/** @type {HTMLImageElement|null} */
+		const target = /** @type {HTMLImageElement|null} */ (e.target);
+		if (target) {
+			target.style.display = 'none';
+		}
 	}
 </script>
 
 <BaseWidget 
 	title="Latest Article" 
 	loading={loading}
-	icon={BookOpen}
+	className="transition-all duration-200"
 >
 	{#if loading}
 		<div class="space-y-2">
-			<div class="h-32 bg-muted/50 rounded-md animate-pulse"></div>
-			<div class="h-4 w-3/4 bg-muted/50 rounded-md animate-pulse"></div>
-			<div class="h-4 w-1/2 bg-muted/50 rounded-md animate-pulse"></div>
+			<div class="h-32 bg-[hsl(var(--muted)/0.5)] rounded-md animate-pulse"></div>
+			<div class="h-4 w-3/4 bg-[hsl(var(--muted)/0.5)] rounded-md animate-pulse"></div>
+			<div class="h-4 w-1/2 bg-[hsl(var(--muted)/0.5)] rounded-md animate-pulse"></div>
 		</div>
 	{:else if error}
-		<div class="text-destructive text-sm">
+		<div class="text-[hsl(var(--destructive))] text-sm">
 			Failed to load article content
 		</div>
 	{:else if article}
 		<div class="space-y-3">
 			{#if article.featuredImage}
-				<Image 
+				<img 
 					src={article.featuredImage} 
 					alt={article.title} 
-					aspectRatio="16:9"
-					className="rounded-md object-cover w-full"
-					onerror={handleImageError}
+					class="rounded-md object-cover w-full aspect-video transition-opacity duration-300"
+					on:error={handleImageError}
 				/>
 			{/if}
 			
@@ -85,7 +88,7 @@
 				</Link>
 				
 				{#if article.author}
-					<div class="text-sm text-muted-foreground flex items-center gap-2">
+					<div class="text-sm text-[hsl(var(--muted-foreground))] flex items-center gap-2">
 						<span>By {article.author}</span>
 						{#if formattedDate}
 							<span>•</span>
@@ -96,18 +99,18 @@
 			</div>
 			
 			{#if summary}
-				<Separator />
-				<p class="text-sm text-muted-foreground">{summary}</p>
+				<hr class="border-t border-[hsl(var(--border))]" />
+				<p class="text-sm text-[hsl(var(--muted-foreground))]">{summary}</p>
 				
 				{#if article.summary && article.summary.length > 120 && !showFullSummary}
-					<Link href={`/article/${article.slug}`} variant="text" className="text-sm">
+					<Link href={`/article/${article.slug}`} variant="text" className="text-sm hover:text-[hsl(var(--primary))] transition-colors duration-200">
 						Read more
 					</Link>
 				{/if}
 			{/if}
 		</div>
 	{:else}
-		<div class="text-center text-muted-foreground py-4">
+		<div class="text-center text-[hsl(var(--muted-foreground))] py-4">
 			No article available
 		</div>
 	{/if}

@@ -285,8 +285,8 @@
 <!-- Main layout container -->
 <div class="container">
   <!-- Section Headers -->
-  <div class="mb-[1.5rem] space-y-[0.5rem]">
-    <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*3)] text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
+  <div class="mb-6 space-y-2">
+    <h1 class="text-3xl font-bold leading-tight mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
     <p class="text-[hsl(var(--muted-foreground))]">Customized content based on your interests</p>
   </div>
 
@@ -295,7 +295,7 @@
     - Tablet (sm/md): 2 columns of 3 grids (6 total) 
     - Desktop (lg+): 4 columns of 3 grids (12 total)
   -->
-  <div class="grid w-full gap-[1rem] md:gap-[1.5rem]
+  <div class="grid w-full gap-4 md:gap-6
     grid-cols-4  /* Mobile: 4 column grid system (2 columns of 2 grid units) */
     sm:grid-cols-6  /* Tablet: 6 column grid system (2 columns of 3 grid units) */
     md:grid-cols-6 
@@ -304,8 +304,8 @@
     2xl:grid-cols-12"
   >
     <!-- News Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[0.5rem]">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Latest News</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-2">
+      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Latest News</h2>
     </div>
     
     <!-- News Widgets -->
@@ -338,8 +338,8 @@
       {/each}
     
     <!-- Finance Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Financial Updates</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
+      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Financial Updates</h2>
     </div>
     
     <!-- Finance Widgets -->
@@ -372,8 +372,8 @@
       {/each}
     
     <!-- Personalized Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-[1.5rem]">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-[calc(var(--spacing-unit)*2)] text-[hsl(var(--foreground))]">Your Interests</h2>
+    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
+      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Your Interests</h2>
     </div>
     
     <!-- Personalized Widgets -->
