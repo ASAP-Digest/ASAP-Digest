@@ -283,7 +283,7 @@
 </script>
 
 <!-- Main layout container -->
-<div class="w-full max-w-[1440px] mx-auto p-[1rem] md:p-[1.5rem]">
+<div class="container">
   <!-- Section Headers -->
   <div class="mb-[1.5rem] space-y-[0.5rem]">
     <h1 class="text-[1.5rem] md:text-[1.875rem] font-bold text-[hsl(var(--foreground))]">Your ASAP Digest</h1>

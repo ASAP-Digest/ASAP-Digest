@@ -45,6 +45,15 @@
    * @returns {string} SVG HTML string
    */
   function renderIcon(icon, size = 24, className = '') {
+    if (!icon || typeof icon !== 'object' || !icon.svgContent) {
+      console.error(`[IconError] Invalid icon object:`, icon);
+      // Return an empty SVG as fallback to prevent breaking the UI
+      return `<svg xmlns="http://www.w3.org/2000/svg" 
+        width="${size}" height="${size}" 
+        viewBox="0 0 24 24" 
+        class="${className || ''}"></svg>`;
+    }
+    
     return `<svg xmlns="http://www.w3.org/2000/svg" 
       width="${size}" height="${size}" 
       viewBox="0 0 24 24" 
@@ -67,8 +76,12 @@
   let collapsed = $state(false);
   
   // Debug info for sidebar elements
+  /** @type {Array<any>} */
   let icons = $state([]);
+  
+  /** @type {Array<any>} */
   let elements = $state([]);
+  
   let debugActive = $state(false);
   let debugCollapsedState = $state(false);
   
@@ -330,6 +343,7 @@
       }
     };
     
+    // @ts-ignore - Custom event is not in standard DocumentEventMap
     document.addEventListener('sidebarToggle', handleSidebarToggle);
     
     // Set up handlers for dropdown positioning
@@ -347,8 +361,8 @@
      */
     const handleOutsideClick = (event) => {
       if (isAvatarDropdownOpen && avatarDropdownElement && 
-         !avatarDropdownElement.contains(event.target) && 
-         !(event.target).closest('.avatar-container')) {
+         !avatarDropdownElement.contains(/** @type {Node} */ (event.target)) && 
+         !(/** @type {HTMLElement} */ (event.target)).closest('.avatar-container')) {
         isAvatarDropdownOpen = false;
       }
     };
@@ -362,6 +376,7 @@
     }, 500);
     
     return () => {
+      // @ts-ignore - Custom event is not in standard DocumentEventMap
       document.removeEventListener('sidebarToggle', handleSidebarToggle);
       window.removeEventListener('resize', handleResize);
       document.removeEventListener('click', handleOutsideClick);
@@ -1327,7 +1342,7 @@
               >
                 <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
                   {#if item.icon}
-                    <item.icon size={20} style="display: block !important; visibility: visible !important; opacity: 1 !important;" />
+                    {@html renderIcon(item.icon, 20, "opacity-100")}
                   {/if}
                 </div>
                 <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
@@ -1373,7 +1388,9 @@
             <div class="font-semibold">{user.name}</div>
             <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.plan}</div>
           </div>
-          <ChevronRight size={16} class="ml-auto transition-transform duration-200 {isAvatarDropdownOpen ? 'rotate-90' : ''} sidebar-content-collapsible" />
+          <div class="ml-auto sidebar-content-collapsible">
+            {@html renderIcon(ChevronRight, 16, `transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-90' : ''}`)}
+          </div>
         </button>
         
         {#if isAvatarDropdownOpen}
@@ -1386,15 +1403,15 @@
             
             <div class="py-[0.25rem]">
               <a href="/billing" class="dropdown-item">
-                <CreditCard size={16} />
+                <span class="sidebar-icon">{@html renderIcon(CreditCard, 16)}</span>
                 <span>Billing</span>
               </a>
               <a href="/settings" class="dropdown-item">
-                <Settings size={16} />
+                <span class="sidebar-icon">{@html renderIcon(Settings, 16)}</span>
                 <span>Settings</span>
               </a>
               <a href="/logout" class="dropdown-item">
-                <LogOut size={16} />
+                <span class="sidebar-icon">{@html renderIcon(LogOut, 16)}</span>
                 <span>Sign Out</span>
               </a>
             </div>

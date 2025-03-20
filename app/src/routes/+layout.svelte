@@ -469,9 +469,11 @@
   
   /* Main content area */
   .main-area {
-    padding: 1rem;
+    padding: calc(var(--spacing-unit) * 4);
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
+    max-width: 100%;
     transition: all 0.3s ease-in-out;
   }
   
@@ -542,7 +544,7 @@
   <div class={`app-shell ${isMobile && !isSidebarCollapsed ? 'sidebar-open' : ''}`}>
     <!-- Header -->
     <header class="header-area">
-      <div class="container mx-auto h-full flex items-center justify-between px-[2rem]">
+      <div class="container h-full flex items-center justify-between">
         <div class="flex items-center gap-[0.75rem]">
           <!-- Logo -->
           <span class="text-[1.25rem] font-[600]">
@@ -633,7 +635,7 @@
           <InstallPrompt />
           
           <!-- Main content -->
-          <div class="min-h-screen">
+          <div class="container min-h-screen">
             {@render children?.()}
           </div>
         </main>

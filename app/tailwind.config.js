@@ -20,7 +20,7 @@ const config = {
 		},
 		container: {
 			center: true,
-			padding: "10px",
+			padding: "15px",
 			screens: {
 				"2xl": "1440px"
 			}
