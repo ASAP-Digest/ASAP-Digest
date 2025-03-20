@@ -37,8 +37,8 @@ export default defineConfig({
 		dedupe: ['svelte', '@sveltejs/kit'],
 		alias: {
 			// Alias lucide-svelte to our compatibility module
-			'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-icons.ts'),
-			'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.ts')
+			'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
+			'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.js')
 		}
 	},
 	optimizeDeps: {

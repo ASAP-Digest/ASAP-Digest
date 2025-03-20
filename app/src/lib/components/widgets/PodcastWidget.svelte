@@ -1,5 +1,5 @@
 <script>
-	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-icons';
+	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-icons.js';
 	import BaseWidget from './BaseWidget.svelte';
 	import Icon from '$lib/components/ui/Icon.svelte';
 	

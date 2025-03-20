@@ -2,7 +2,7 @@
 <script>
   import { cn } from "$lib/utils";
   import Icon from '$lib/components/ui/Icon.svelte';
-  import { ExternalLink } from '$lib/utils/lucide-icons';
+  import { ExternalLink } from '$lib/utils/lucide-icons.js';
 
   /** @typedef {'default' | 'underlined' | 'muted'} LinkVariant */
   

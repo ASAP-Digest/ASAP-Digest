@@ -1,5 +1,5 @@
 <script>
-  import { Search, Filter } from 'lucide-svelte';
+  import { Search, Filter } from '$lib/utils/lucide-icons.js';
 </script>
 
 <div class="space-y-8">

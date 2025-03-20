@@ -1,6 +1,6 @@
 <script>
   import { cn } from "$lib/utils";
-  import { ChevronLeft, ChevronRight } from "$lib/utils/lucide-icons";
+  import { ChevronLeft, ChevronRight } from "$lib/utils/lucide-icons.js";
   
   /**
    * Sidebar toggle component properties

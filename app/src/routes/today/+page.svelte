@@ -1,5 +1,5 @@
 <script>
-  import { Calendar, Play, Download, Share2, Clock, Bookmark } from 'lucide-svelte';
+  import { Calendar, Play, Download, Share2, Clock, Bookmark } from '$lib/utils/lucide-icons.js';
   
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',

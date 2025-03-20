@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { page } from '$app/stores';
   import { 
     Home, 
@@ -16,7 +16,7 @@
     Languages,
     CreditCard as CreditCardIcon,
     Bug
-  } from '$lib/utils/lucide-icons';
+  } from '$lib/utils/lucide-icons.js';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
   import Header from '$lib/components/ui/sidebar/sidebar-header.svelte';
@@ -319,7 +319,7 @@
     /**
      * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
      */
-    const handleSidebarToggle = (event: CustomEvent<{collapsed: boolean}>) => {
+    const handleSidebarToggle = (event) => {
       // Only update if the value is different to prevent infinite loops
       if (collapsed !== event.detail.collapsed) {
         collapsed = event.detail.collapsed;
@@ -330,7 +330,7 @@
       }
     };
     
-    document.addEventListener('sidebarToggle', handleSidebarToggle as EventListener);
+    document.addEventListener('sidebarToggle', handleSidebarToggle);
     
     // Set up handlers for dropdown positioning
     const handleResize = () => {
@@ -345,15 +345,15 @@
     /**
      * @param {MouseEvent} event - The mouse event
      */
-    const handleOutsideClick = (event: MouseEvent) => {
+    const handleOutsideClick = (event) => {
       if (isAvatarDropdownOpen && avatarDropdownElement && 
-         !avatarDropdownElement.contains(event.target as Node) && 
-         !(event.target as Element).closest('.avatar-container')) {
+         !avatarDropdownElement.contains(event.target) && 
+         !(event.target).closest('.avatar-container')) {
         isAvatarDropdownOpen = false;
       }
     };
     
-    document.addEventListener('click', handleOutsideClick as EventListener);
+    document.addEventListener('click', handleOutsideClick);
     
     // Call initial debug info gathering after a delay to ensure DOM is ready
     setTimeout(() => {
@@ -362,9 +362,9 @@
     }, 500);
     
     return () => {
-      document.removeEventListener('sidebarToggle', handleSidebarToggle as EventListener);
+      document.removeEventListener('sidebarToggle', handleSidebarToggle);
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('click', handleOutsideClick as EventListener);
+      document.removeEventListener('click', handleOutsideClick);
     };
   });
   
@@ -554,7 +554,7 @@
   /**
    * @param {MouseEvent} event - The mouse event
    */
-  function toggleAvatarDropdown(event: MouseEvent) {
+  function toggleAvatarDropdown(event) {
     event.stopPropagation();
     isAvatarDropdownOpen = !isAvatarDropdownOpen;
     
@@ -569,7 +569,7 @@
   /**
    * @param {Event} event - The error event from the image
    */
-  function handleImageError(event: Event) {
+  function handleImageError(event) {
     // Type assertion for event.target as HTMLImageElement
     const imgElement = /** @type {HTMLImageElement} */ (event.target);
     if (imgElement instanceof HTMLImageElement) {

@@ -1,7 +1,7 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
 
-  import { User, Bell, Settings, BookOpen, Share2, Moon, Sun, LogOut } from 'lucide-svelte';
+  import { User, Bell, Settings, BookOpen, Share2, Moon, Sun, LogOut } from '$lib/utils/lucide-icons.js';
   
   // Mock user data
   let user = $state({

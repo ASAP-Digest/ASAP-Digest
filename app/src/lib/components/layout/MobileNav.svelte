@@ -1,5 +1,5 @@
 <script>
-  import { Menu, X, Home, User, Calendar, Bell, Settings } from 'lucide-svelte';
+  import { Menu, X, Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-icons.js';
   import { page } from '$app/stores';
   
   /** @type {boolean} */

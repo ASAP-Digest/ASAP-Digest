@@ -1,6 +1,6 @@
 <script>
   import { page } from '$app/stores';
-  import { Play, Pause, Download, Share2, Calendar, Clock, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck } from 'lucide-svelte';
+  import { Play, Pause, Download, Share2, Calendar, Clock, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck } from '$lib/utils/lucide-icons.js';
   
   // Mock data - this would come from an API in a real application
   const digestId = $page.params.id;

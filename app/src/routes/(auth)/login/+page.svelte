@@ -1,7 +1,7 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
 
-  import { LogIn, Mail, Lock, ArrowRight } from 'lucide-svelte';
+  import { LogIn, Mail, Lock, ArrowRight } from '$lib/utils/lucide-icons.js';
   
   let email = $state('');
   let password = $state('');

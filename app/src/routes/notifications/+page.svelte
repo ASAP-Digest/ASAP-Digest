@@ -1,5 +1,5 @@
 <script>
-  import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from 'lucide-svelte';
+  import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from '$lib/utils/lucide-icons.js';
   
   // Mock notification data
   let notifications = $state([

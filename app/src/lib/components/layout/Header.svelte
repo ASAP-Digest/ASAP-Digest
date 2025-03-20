@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Home, User, LogIn, Menu, Search, Bell } from 'lucide-svelte';
+  import { Home, User, LogIn, Menu, Search, Bell } from '$lib/utils/lucide-icons.js';
   import { Input } from '$lib/components/ui/input';
   import { onMount } from 'svelte';
   

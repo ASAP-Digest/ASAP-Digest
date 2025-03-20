@@ -1,5 +1,5 @@
 <script>
-	import { BookOpen } from 'lucide-svelte';
+	import { BookOpen } from '$lib/utils/lucide-icons.js';
 	import BaseWidget from './BaseWidget.svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import Link from '$lib/components/atoms/Link.svelte';
@@ -55,7 +55,7 @@
 <BaseWidget 
 	title="Latest Article" 
 	loading={loading}
-	icon={import('lucide-svelte').then(m => m.BookOpen)}
+	icon={BookOpen}
 >
 	{#if loading}
 		<div class="space-y-2">

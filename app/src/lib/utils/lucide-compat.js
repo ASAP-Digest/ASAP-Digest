@@ -1,8 +1,8 @@
-// lucide-compat.ts
+// lucide-compat.js
 // This file provides a compatibility layer for the transition from lucide-svelte to @lucide/svelte
 // It allows existing imports from 'lucide-svelte' to continue working with Svelte 5 runes
 
-import { createIconObject } from './icon-utils';
+import { createIconObject } from './icon-utils.js';
 
 // Import raw SVG paths for common icons
 // In a full implementation, you would import all icons from @lucide/svelte
@@ -19,7 +19,12 @@ export const User = createIconObject('user', iconPaths.user);
 export const Settings = createIconObject('settings', iconPaths.settings);
 // Add more exports as needed
 
-// Export a function to create custom icons
-export function createCustomIcon(name: string, svgContent: string) {
+/**
+ * Create a custom icon object from a name and SVG content
+ * @param {string} name The name of the icon
+ * @param {string} svgContent The SVG content as a string 
+ * @returns {{name: string, svgContent: string}} An icon object
+ */
+export function createCustomIcon(name, svgContent) {
   return createIconObject(name, svgContent);
 } 
