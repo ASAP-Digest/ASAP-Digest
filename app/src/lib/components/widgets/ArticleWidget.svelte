@@ -78,7 +78,7 @@
 					src={article.featuredImage} 
 					alt={article.title} 
 					class="rounded-md object-cover w-full aspect-video transition-opacity duration-300"
-					on:error={handleImageError}
+					on:error={(e) => handleImageError(e)}
 				/>
 			{/if}
 			

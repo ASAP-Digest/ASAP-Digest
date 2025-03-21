@@ -596,7 +596,7 @@
 </script>
 
 <style>
-  /* Complete overhaul of sidebar collapse styles */
+  /* Core sidebar styles */
   .sidebar-wrapper {
     position: relative;
     width: 240px;
@@ -611,7 +611,7 @@
     flex-direction: column;
   }
   
-  /* Collapsed state dimensions based on shadcn pattern */
+  /* Collapsed state dimensions */
   :global(body.sidebar-collapsed) .sidebar-wrapper,
   :global(body.sidebar-collapsed) *[data-testid="sidebar"] {
     width: 64px !important; 
@@ -619,7 +619,7 @@
     max-width: 64px !important;
   }
   
-  /* Reset all width calculations for shadcn components */
+  /* Reset width calculations for shadcn components */
   :global(body.sidebar-collapsed) [data-sidebar="sidebar"],
   :global(body.sidebar-collapsed) *[data-sidebar="sidebar"] {
     width: 64px !important;
@@ -639,12 +639,12 @@
   
   :global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
     width: 100% !important;
-    padding: 0.75rem 0 !important; /* Increased from 0.5rem for better touch targets */
+    padding: 0.75rem 0 !important;
     justify-content: center !important;
     align-items: center !important;
   }
   
-  /* Force hide all content that should be hidden in collapsed state */
+  /* Hide collapsible content in collapsed state */
   :global(body.sidebar-collapsed) .sidebar-content-collapsible {
     display: none !important;
     width: 0 !important;
@@ -656,7 +656,7 @@
     pointer-events: none !important;
   }
   
-  /* Base sidebar icon styles with fixed dimensions */
+  /* Base sidebar icon styles */
   .sidebar-icon {
     display: flex;
     align-items: center;
@@ -669,7 +669,7 @@
     transition: margin 0.3s ease-in-out;
   }
   
-  /* Icon SVG sizing - ensure proper display */
+  /* Icon SVG sizing */
   .sidebar-icon svg {
     width: 1.25rem;
     height: 1.25rem;
@@ -677,7 +677,7 @@
     transition: transform 0.3s ease-in-out;
   }
   
-  /* Ensure icons are centered and visible in collapsed state */
+  /* Collapsed state icon styling */
   :global(body.sidebar-collapsed) .sidebar-icon {
     margin: 0 auto !important;
     padding: 0 !important;
@@ -690,14 +690,13 @@
     flex-shrink: 0 !important;
   }
   
-  /* Fix icon sizing and position in collapsed state */
   :global(body.sidebar-collapsed) .sidebar-icon svg {
     width: 1.25rem !important;
     height: 1.25rem !important;
     flex-shrink: 0 !important;
   }
   
-  /* Always keep toggle button visible with higher z-index */
+  /* Sidebar toggle button */
   .sidebar-toggle,
   :global(.sidebar-toggle),
   :global([role="button"].sidebar-toggle),
@@ -723,27 +722,25 @@
     pointer-events: auto !important;
   }
   
-  /* Fix focus style for toggle button */
+  /* Button states */
   .sidebar-toggle:focus-visible,
   :global(.sidebar-toggle:focus-visible) {
     outline: 2px solid hsl(var(--primary)) !important;
     outline-offset: 2px !important;
   }
   
-  /* Hover effect for toggle */
   .sidebar-toggle:hover,
   :global(.sidebar-toggle:hover) {
     background-color: hsl(var(--muted)) !important;
     transform: translateY(-50%) scale(1.05) !important;
   }
   
-  /* Active state for toggle */
   .sidebar-toggle:active,
   :global(.sidebar-toggle:active) {
     transform: translateY(-50%) scale(0.95) !important;
   }
   
-  /* Target direct ShadCn containers for proper layout */
+  /* Container padding in collapsed state */
   :global(body.sidebar-collapsed) [data-sidebar="header"],
   :global(body.sidebar-collapsed) [data-sidebar="content"],
   :global(body.sidebar-collapsed) [data-sidebar="footer"] {
@@ -752,12 +749,11 @@
     width: 64px !important;
   }
   
-  /* Remove padding from content in collapsed state */
   :global(body.sidebar-collapsed) [data-sidebar="content"] {
     padding: 0 !important;
   }
   
-  /* Logo centering in collapsed state */
+  /* Logo styling */
   .header-logo {
     display: flex;
     align-items: center;
@@ -771,39 +767,7 @@
     width: 100%;
   }
   
-  /* Hide collapsible content in collapsed state */
-  .sidebar-content-collapsible {
-    opacity: 1;
-    transition: opacity 0.2s ease-in-out;
-    visibility: visible;
-  }
-  
-  /* ShadCn menu adjustments for collapsed mode */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.25rem !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    align-items: center !important;
-  }
-  
-  /* Override any gap classes when collapsed */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
-    gap: 0 !important;
-  }
-  
-  /* Center elements in collapsed mode */
-  :global(body.sidebar-collapsed) [data-sidebar="group"] {
-    padding: 0 !important;
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-  }
-  
-  /* Avatar styling with fixed dimensions */
+  /* Avatar styling */
   .avatar {
     width: 2.5rem;
     height: 2.5rem;
@@ -816,23 +780,21 @@
     transition: all 0.3s ease-in-out;
   }
   
-  /* Ensure avatar content is properly sized */
   .avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
   
-  /* Avatar transformation in collapsed state */
   :global(body.sidebar-collapsed) .avatar {
     width: 2rem !important;
     height: 2rem !important;
     min-width: 2rem !important;
     min-height: 2rem !important;
-    border-radius: 0.375rem !important; /* Square corners when collapsed */
+    border-radius: 0.375rem !important;
   }
   
-  /* Avatar container alignment */
+  /* Avatar container */
   .avatar-container {
     display: flex;
     align-items: center;
@@ -849,12 +811,11 @@
     width: 100%;
   }
   
-  /* Hover effect for avatar container */
   .avatar-container:hover {
     background-color: hsl(var(--muted)/0.2);
   }
   
-  /* Dropdown menu positioning */
+  /* Dropdown menu */
   .avatar-dropdown {
     position: fixed;
     z-index: 9999;
@@ -874,17 +835,17 @@
     to { opacity: 1; transform: translateY(0); }
   }
   
-  /* Group label display in collapsed state */
+  /* Hide group label in collapsed state */
   :global(body.sidebar-collapsed) .sidebar-group-label {
     display: none !important;
   }
   
-  /* Recent digests visibility in collapsed state */
+  /* Hide recent digests in collapsed state */
   :global(body.sidebar-collapsed) .recent-digests {
     display: none !important;
   }
   
-  /* Basic menu item styling */
+  /* Menu item styling */
   .sidebar-menu-item a,
   [data-sidebar="menu-item"] a {
     display: flex;
@@ -912,7 +873,7 @@
     font-weight: 600;
   }
   
-  /* Collapsed state menu item adjustments */
+  /* Collapsed state menu item styling */
   :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
   :global(body.sidebar-collapsed) .sidebar-menu-item a {
     justify-content: center !important;
@@ -924,7 +885,7 @@
     width: 100% !important;
   }
   
-  /* Ensure text is completely hidden in collapsed state */
+  /* Hide spans in collapsed mode */
   :global(body.sidebar-collapsed) span:not(.sidebar-icon span) {
     display: none !important;
     visibility: hidden !important;
@@ -936,7 +897,7 @@
     pointer-events: none !important;
   }
   
-  /* Complete overhaul of ul elements */
+  /* List item styling */
   :global(body.sidebar-collapsed) ul,
   :global(body.sidebar-collapsed) li {
     margin: 0 !important;
@@ -947,7 +908,7 @@
     align-items: center !important;
   }
   
-  /* Dropdown styles */
+  /* Dropdown item styling */
   .dropdown-item {
     display: flex;
     align-items: center;
@@ -963,7 +924,7 @@
     background-color: hsl(var(--muted)/0.3);
   }
   
-  /* Upgrade button styling */
+  /* Upgrade button */
   .upgrade-button {
     display: block;
     width: 100%;
@@ -981,307 +942,12 @@
   .upgrade-button:hover {
     opacity: 0.9;
   }
-
-  /* Fix icon sizing and position in collapsed state */
-  :global(body.sidebar-collapsed) .sidebar-icon,
-  :global(body.sidebar-collapsed) [class*="sidebar-icon"] {
-    margin: 0 auto !important;
-    padding: 0 !important;
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    flex-shrink: 0 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-  }
-
-  /* Fix icon SVG sizing and position in collapsed state */
-  :global(body.sidebar-collapsed) .sidebar-icon svg,
-  :global(body.sidebar-collapsed) [class*="sidebar-icon"] svg {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
-    flex-shrink: 0 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
-  }
-
-  /* Override hidden span when in sidebar-icon */
-  :global(body.sidebar-collapsed) .sidebar-icon span,
-  :global(body.sidebar-collapsed) [class*="sidebar-icon"] span {
-    display: none !important;
-  }
-
-  /* When body has sidebar-collapsed, force all spans to none EXCEPT inside sidebar-icon */
-  :global(body.sidebar-collapsed) span:not(.sidebar-icon span):not([class*="sidebar-icon"] span) {
-    display: none !important;
-    visibility: hidden !important;
-    position: absolute !important;
-    overflow: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-
-  /* Collapsed state menu item adjustments */
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
-  :global(body.sidebar-collapsed) .sidebar-menu-item a {
-    justify-content: center !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    gap: 0 !important;
-    width: 100% !important;
-  }
-
-  /* Fix for Svelte 5 scoped classes */
-  :global(body.sidebar-collapsed) [class*="s-"] .sidebar-icon,
-  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    margin: 0 auto !important;
-  }
-
-  :global(body.sidebar-collapsed) [class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-  }
-
-  /* Ensure menu items show correctly */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    width: 100% !important;
-  }
-
-  /* Avatar transformation in collapsed state */
-  :global(body.sidebar-collapsed) .avatar,
-  :global(body.sidebar-collapsed) [class*="avatar"] {
-    width: 2rem !important;
-    height: 2rem !important;
-    min-width: 2rem !important;
-    min-height: 2rem !important;
-    border-radius: 0.375rem !important; /* Square corners when collapsed */
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
-  }
-
-  /* Create a new emergency fix section for Svelte 5 scoped classes */
-  /* EMERGENCY FIXES FOR COLLAPSED STATE */
-  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon,
-  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon,
-  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon,
-  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"],
-  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon svg {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 24px !important;
-    height: 24px !important;
-    position: static !important;
-    margin: 0 auto !important;
-  }
-
-  :global(body.sidebar-collapsed) a [class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) a[class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) div[class*="s-"] .sidebar-icon svg,
-  :global(body.sidebar-collapsed) .sidebar-icon[class*="s-"] svg,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] [class*="s-"] .sidebar-icon svg {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
-    display: block !important;
-  }
-
-  /* Force display of all svg icons in collapsed state */
+  
+  /* Force svg visibility in collapsed mode */
   :global(body.sidebar-collapsed) svg {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-  }
-
-  /* Special fix for the specific classes in the DOM */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .s-Ye0sG_sAbYc3,
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a.s-Ye0sG_sAbYc3 {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    width: 100% !important;
-    justify-content: center !important;
-    align-items: center !important;
-  }
-
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon.s-Ye0sG_sAbYc3,
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .s-Ye0sG_sAbYc3 .sidebar-icon {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
-    position: static !important;
-    margin: 0 auto !important;
-  }
-
-  /* Direct path to the icon svgs based on DOM structure */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon svg,
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon .lucide,
-  :global(body.sidebar-collapsed) [data-sidebar="menu"] li a .sidebar-icon .lucide-icon {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  /* Direct target for Lucide components and their child elements */
-  :global(body.sidebar-collapsed) .lucide,
-  :global(body.sidebar-collapsed) .lucide-icon,
-  :global(body.sidebar-collapsed) .lucide *,
-  :global(body.sidebar-collapsed) .lucide-icon * {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  
-  /* Fix for any remaining SVG elements */
-  :global(body.sidebar-collapsed) path,
-  :global(body.sidebar-collapsed) circle,
-  :global(body.sidebar-collapsed) rect,
-  :global(body.sidebar-collapsed) line,
-  :global(body.sidebar-collapsed) polyline {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  
-  /* Target icons directly based on their source SVG components */
-  :global(body.sidebar-collapsed) [data-lucide] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 20px !important;
-    height: 20px !important;
-  }
-
-  /* Enhanced forced display of icons in collapsed state */
-  @keyframes forceIconShow {
-    0%, 100% { opacity: 1; visibility: visible; }
-  }
-
-  /* Target all SVG icons with ultimate specificity */
-  :global(body.sidebar-collapsed) svg,
-  :global(body.sidebar-collapsed) .lucide,
-  :global(body.sidebar-collapsed) .lucide-icon,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-button"] svg,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] svg {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    flex-shrink: 0 !important;
-    flex-grow: 0 !important;
-    pointer-events: auto !important;
-    position: static !important;
-    z-index: 50 !important;
-    overflow: visible !important;
-    animation: forceIconShow 0.1s forwards !important;
-  }
-
-  /* Ultimate override - for Svelte 5 scoped classes */
-  :global(body.sidebar-collapsed) [class*="s-"] svg,
-  :global(body.sidebar-collapsed) svg[class*="s-"],
-  :global(body.sidebar-collapsed) [data-sidebar] [class*="s-"] svg,
-  :global(body.sidebar-collapsed) [data-sidebar] svg[class*="s-"] {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    flex-shrink: 0 !important;
-    z-index: 50 !important;
-    position: static !important;
-    transform: none !important;
-    animation: forceIconShow 0.1s forwards !important;
-  }
-
-  /* Force icon containers to show */
-  :global(body.sidebar-collapsed) .sidebar-icon,
-  :global(body.sidebar-collapsed) [class*="sidebar-icon"],
-  :global(body.sidebar-collapsed) [data-sidebar="menu-button"],
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] > a,
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"] > button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: auto !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    padding: 6px !important;
-    position: relative !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 40 !important;
-    overflow: visible !important;
-    transform: none !important;
-    animation: forceIconShow 0.1s forwards !important;
-  }
-
-  /* Force parent containers to properly size */
-  :global(body.sidebar-collapsed) [data-sidebar="menu"],
-  :global(body.sidebar-collapsed) [data-sidebar="menu-item"],
-  :global(body.sidebar-collapsed) ul,
-  :global(body.sidebar-collapsed) li {
-    min-height: 40px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    padding: 4px 0 !important;
-    z-index: 30 !important;
-    position: relative !important;
-    overflow: visible !important;
-  }
-
-  /* Add direct inline style to SVG elements via attribute when sidebar collapses */
-  @media screen {
-    :global(body.sidebar-collapsed) svg {
-      width: 20px;
-      height: 20px;
-      min-width: 20px;
-      min-height: 20px;
-      display: block;
-      visibility: visible;
-      opacity: 1;
-    }
   }
 </style>
 

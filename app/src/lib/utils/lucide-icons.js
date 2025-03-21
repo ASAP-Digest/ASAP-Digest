@@ -18,6 +18,7 @@ export const Compass = createIconObject('compass', '<circle cx="12" cy="12" r="1
 export const Languages = createIconObject('languages', '<path d="m5 8 6 6"></path><path d="m4 14 6-6 2-3"></path><path d="M2 5h12"></path><path d="M7 2h1"></path><path d="m22 22-5-10-5 10"></path><path d="M14 18h6"></path>');
 export const HelpCircle = createIconObject('help-circle', '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>');
 export const Bug = createIconObject('bug', '<rect width="8" height="14" x="8" y="6" rx="4"></rect><path d="m19 7-3 2"></path><path d="m5 7 3 2"></path><path d="m19 19-3-2"></path><path d="m5 19 3-2"></path><path d="M20 13h-4"></path><path d="M4 13h4"></path><path d="m4 8 2 2"></path><path d="m4 16 2-2"></path><path d="m20 8-2 2"></path><path d="m20 16-2-2"></path>');
+export const Loader2 = createIconObject('loader2', '<path d="M21 12a9 9 0 1 1-6.219-8.56"></path>');
 
 // Media Controls
 export const Play = createIconObject('play', '<polygon points="5 3 19 12 5 21 5 3"></polygon>');
@@ -106,5 +107,6 @@ export default {
   Languages,
   HelpCircle,
   CreditCard,
-  Bug
+  Bug,
+  Loader2
 }; 

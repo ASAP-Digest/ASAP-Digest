@@ -1,7 +1,6 @@
 <script>
   import { cn } from '$lib/utils';
-  import { Icon } from '@steeze-ui/svelte-icon';
-  import { Loader2 } from '@steeze-ui/heroicons';
+  import { Loader2 } from '$lib/utils/lucide-icons.js';
   import { createEventDispatcher } from 'svelte';
 
   const dispatch = createEventDispatcher();
@@ -43,7 +42,7 @@
         
         {#if loading}
           <span class="inline-flex items-center ml-2 text-[hsl(var(--muted-foreground))]">
-            <Icon icon={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
+            <svelte:component this={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
             <span class="text-xs">Loading...</span>
           </span>
         {/if}
@@ -51,7 +50,7 @@
       
       {#if icon}
         <div class="text-[hsl(var(--muted-foreground))]">
-          <Icon icon={icon} size={18} color="currentColor" />
+          <svelte:component this={icon} size={18} color="currentColor" />
         </div>
       {/if}
     </div>
@@ -60,7 +59,7 @@
   <!-- Loading indicator if no title -->
   {#if loading && !title}
     <div class="flex items-center justify-center py-4 text-[hsl(var(--muted-foreground))]">
-      <Icon icon={Loader2} class="animate-spin mr-2" color="currentColor" />
+      <svelte:component this={Loader2} class="animate-spin mr-2" color="currentColor" />
       <span>Loading widget content...</span>
     </div>
   {/if}
