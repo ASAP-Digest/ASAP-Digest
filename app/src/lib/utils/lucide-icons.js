@@ -23,6 +23,10 @@ export const Loader2 = createIconObject('loader2', '<path d="M21 12a9 9 0 1 1-6.
 // Media Controls
 export const Play = createIconObject('play', '<polygon points="5 3 19 12 5 21 5 3"></polygon>');
 export const Pause = createIconObject('pause', '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>');
+export const SkipForward = createIconObject('skip-forward', '<polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line>');
+export const SkipBack = createIconObject('skip-back', '<polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line>');
+export const Volume2 = createIconObject('volume-2', '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>');
+export const VolumeX = createIconObject('volume-x', '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>');
 export const Download = createIconObject('download', '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line>');
 export const Share2 = createIconObject('share-2', '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>');
 export const Clock = createIconObject('clock', '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>');
@@ -79,6 +83,10 @@ export default {
   X,
   Play,
   Pause,
+  SkipForward,
+  SkipBack,
+  Volume2,
+  VolumeX,
   Download,
   Share2,
   Clock,

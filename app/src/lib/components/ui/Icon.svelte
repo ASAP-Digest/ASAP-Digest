@@ -14,7 +14,7 @@
   } = $props();
   
   // Create SVG element props
-  const svgProps = {
+  let svgProps = $state({
     width: size,
     height: size,
     stroke: color,
@@ -24,12 +24,22 @@
     fill: 'none',
     class: `lucide lucide-${icon?.name?.toLowerCase()} ${className}`,
     ...rest
-  };
+  });
   
   $effect(() => {
     if (absoluteStrokeWidth && size) {
       svgProps['stroke-width'] = (strokeWidth * 24) / Number(size);
     }
+    
+    // Update class when icon or className changes
+    svgProps.class = `lucide lucide-${icon?.name?.toLowerCase()} ${className}`;
+    
+    // Update size when it changes
+    svgProps.width = size;
+    svgProps.height = size;
+    
+    // Update stroke color when it changes
+    svgProps.stroke = color;
   });
 </script>
 

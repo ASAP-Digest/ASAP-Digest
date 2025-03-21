@@ -118,7 +118,7 @@ function asap_cleanup_data() {
   global $wpdb;
   $digests_table = $wpdb->prefix . 'asap_digests';
   $notifications_table = $wpdb->prefix . 'asap_notifications';
-  $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'))
+  $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'));
   
   // Secure delete queries
   $wpdb->query($wpdb->prepare(

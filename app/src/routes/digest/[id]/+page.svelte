@@ -1,6 +1,7 @@
 <script>
   import { page } from '$app/stores';
-  import { Play, Pause, Download, Share2, Calendar, Clock, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck } from '$lib/utils/lucide-icons.js';
+  import * as Icons from '$lib/utils/lucide-icons.js';
+  import { AudioPlayer } from '$lib/components/atoms';
   
   // Mock data - this would come from an API in a real application
   const digestId = $page.params.id;
@@ -13,6 +14,7 @@
     summary: 'Today\'s digest covers the latest in AI development, market trends, and technological innovations.',
     isSaved: false,
     isPlaying: false,
+    audioUrl: '', // This would be fetched from an API
     content: [
       {
         type: 'article',
@@ -69,10 +71,22 @@
     ]
   });
   
+  // Fetch audio URL (would be implemented with actual API call)
+  function fetchAudioUrl() {
+    // Simulate API call with setTimeout
+    setTimeout(() => {
+      digest.audioUrl = `https://example.com/api/digests/${digestId}/audio.mp3`;
+    }, 1000);
+  }
+  
   // Toggle audio playback
   function togglePlayback() {
     digest.isPlaying = !digest.isPlaying;
-    // TODO: Implement actual audio playback
+    
+    // If we don't have audio URL yet, fetch it
+    if (!digest.audioUrl) {
+      fetchAudioUrl();
+    }
   }
   
   // Toggle bookmark
@@ -83,14 +97,32 @@
   
   // Share digest
   function shareDigest() {
-    // TODO: Implement sharing functionality
-    alert('Sharing functionality will be implemented soon!');
+    if (navigator.share) {
+      navigator.share({
+        title: digest.title,
+        text: digest.summary,
+        url: window.location.href
+      }).catch(error => {
+        console.error('Error sharing:', error);
+      });
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      alert('Sharing functionality will be implemented soon!');
+    }
   }
   
   // Download digest as audio
   function downloadAudio() {
-    // TODO: Implement download functionality
-    alert('Download functionality will be implemented soon!');
+    if (digest.audioUrl) {
+      const link = document.createElement('a');
+      link.href = digest.audioUrl;
+      link.download = `${digest.title}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('Audio is not available yet.');
+    }
   }
   
   // Navigation between digests
@@ -105,35 +137,48 @@
     const nextId = parseInt(digestId) + 1;
     window.location.href = `/digest/${nextId}`;
   }
+  
+  // Audio player event handlers
+  function handleAudioPlay() {
+    digest.isPlaying = true;
+  }
+  
+  function handleAudioPause() {
+    digest.isPlaying = false;
+  }
+  
+  function handleAudioEnded() {
+    digest.isPlaying = false;
+  }
 </script>
 
 <div class="max-w-4xl mx-auto">
   <!-- Navigation and actions -->
   <div class="flex justify-between items-center mb-6">
     <a href="/" class="text-primary hover:underline flex items-center gap-1">
-      <ChevronLeft size={16} />
+      <Icons.ChevronLeft size={16} />
       <span>Back to Digests</span>
     </a>
     
     <div class="flex space-x-4">
       <button 
-        onclick={toggleBookmark}
+        on:click={toggleBookmark}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
         {#if digest.isSaved}
-          <BookmarkCheck size={18} class="text-primary" />
+          <Icons.BookmarkCheck size={18} class="text-primary" />
           <span class="text-sm">Saved</span>
         {:else}
-          <Bookmark size={18} />
+          <Icons.Bookmark size={18} />
           <span class="text-sm">Save</span>
         {/if}
       </button>
       
       <button 
-        onclick={shareDigest}
+        on:click={shareDigest}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
-        <Share2 size={18} />
+        <Icons.Share2 size={18} />
         <span class="text-sm">Share</span>
       </button>
     </div>
@@ -146,11 +191,11 @@
       
       <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
         <div class="flex items-center gap-1">
-          <Calendar size={16} />
+          <Icons.Calendar size={16} />
           <span>{digest.date}</span>
         </div>
         <div class="flex items-center gap-1">
-          <Clock size={16} />
+          <Icons.Clock size={16} />
           <span>{digest.readTime}</span>
         </div>
       </div>
@@ -159,25 +204,55 @@
         {digest.summary}
       </p>
       
-      <div class="flex flex-col sm:flex-row gap-4">
+      <!-- Simple button controls for mobile users -->
+      <div class="md:hidden flex flex-col sm:flex-row gap-4 mb-4">
         <button 
-          onclick={togglePlayback}
+          on:click={togglePlayback}
           class="flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
         >
           {#if digest.isPlaying}
-            <Pause size={18} />
+            <Icons.Pause size={18} />
             <span>Pause</span>
           {:else}
-            <Play size={18} />
+            <Icons.Play size={18} />
             <span>Listen</span>
           {/if}
         </button>
         
         <button 
-          onclick={downloadAudio}
+          on:click={downloadAudio}
           class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
-          <Download size={18} />
+          <Icons.Download size={18} />
+          <span>Download Audio</span>
+        </button>
+      </div>
+      
+      <!-- Advanced audio player for larger screens -->
+      <div class="hidden md:block">
+        <AudioPlayer 
+          src={digest.audioUrl}
+          variant="accent"
+          size="default"
+          showControls={true}
+          showVolume={true}
+          showTime={true}
+          showSeek={true}
+          showSkip={true}
+          skipAmount={15}
+          on:play={handleAudioPlay}
+          on:pause={handleAudioPause}
+          on:ended={handleAudioEnded}
+          className="mb-4"
+        />
+      </div>
+      
+      <div class="md:flex items-center justify-end hidden">
+        <button 
+          on:click={downloadAudio}
+          class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          <Icons.Download size={18} />
           <span>Download Audio</span>
         </button>
       </div>
@@ -255,7 +330,7 @@
       <div class="py-4 text-center">
         <button 
           class="px-4 py-2 bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] rounded-md hover:bg-[hsl(var(--primary)/0.2)] transition-colors"
-          onclick={() => {
+          on:click={() => {
             digest.content = [...digest.content]; // Trigger reactivity
           }}
         >
@@ -268,20 +343,20 @@
   <!-- Pagination -->
   <div class="mt-8 flex justify-between">
     <button 
-      onclick={goToPreviousDigest}
+      on:click={goToPreviousDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       disabled={parseInt(digestId) <= 1}
     >
-      <ChevronLeft size={18} />
+      <Icons.ChevronLeft size={18} />
       <span>Previous Digest</span>
     </button>
     
     <button 
-      onclick={goToNextDigest}
+      on:click={goToNextDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
     >
       <span>Next Digest</span>
-      <ChevronRight size={18} />
+      <Icons.ChevronRight size={18} />
     </button>
   </div>
 </div> 

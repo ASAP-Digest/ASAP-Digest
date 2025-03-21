@@ -2,6 +2,7 @@
 	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-icons.js';
 	import BaseWidget from './BaseWidget.svelte';
 	import Icon from '$lib/components/ui/Icon.svelte';
+	import { onMount } from 'svelte';
 	
 	let {
 		id = '',
@@ -9,6 +10,7 @@
 		episode = 1,
 		duration = 0,
 		summary = '',
+		audioUrl = '', // Audio URL for the podcast
 		loading = false,
 		error = false
 	} = $props();
@@ -16,6 +18,7 @@
 	let playing = $state(false);
 	let expanded = $state(false);
 	let offline = $state(false);
+	let audioElement;
 	
 	/**
 	 * Check if device is online
@@ -23,20 +26,78 @@
 	function checkOnlineStatus() {
 		offline = !navigator.onLine;
 	}
+
+	// Set up event listeners for online/offline events
+	onMount(() => {
+		// Create audio element
+		audioElement = new Audio(audioUrl);
+		
+		// Set up event listeners
+		audioElement.addEventListener('ended', () => {
+			playing = false;
+		});
+		
+		audioElement.addEventListener('error', () => {
+			error = true;
+			playing = false;
+		});
+		
+		// Check initial online status
+		checkOnlineStatus();
+		
+		// Add event listeners for online/offline events
+		window.addEventListener('online', checkOnlineStatus);
+		window.addEventListener('offline', checkOnlineStatus);
+		
+		return () => {
+			// Clean up event listeners
+			window.removeEventListener('online', checkOnlineStatus);
+			window.removeEventListener('offline', checkOnlineStatus);
+			
+			// Clean up audio
+			if (audioElement) {
+				audioElement.pause();
+				audioElement.src = '';
+			}
+		};
+	});
 	
 	/**
 	 * Toggle audio play/pause
 	 * @param {MouseEvent} event - Mouse event object
 	 */
 	function togglePlay(event) {
-		// Simulate audio playback toggle
+		// Prevent default button behavior
+		event.preventDefault();
+		
+		// Check if we're offline
 		if (offline) {
 			console.error('Cannot play audio offline');
 			return;
 		}
 		
-		playing = !playing;
-		console.log(`${playing ? 'Playing' : 'Paused'} podcast:`, id);
+		// Check if audio URL is available
+		if (!audioUrl) {
+			console.error('No audio URL provided');
+			return;
+		}
+		
+		// Toggle play state
+		if (!playing) {
+			audioElement.play()
+				.then(() => {
+					playing = true;
+					console.log(`Playing podcast:`, id);
+				})
+				.catch(err => {
+					console.error('Error playing audio:', err);
+					error = true;
+				});
+		} else {
+			audioElement.pause();
+			playing = false;
+			console.log(`Paused podcast:`, id);
+		}
 	}
 	
 	/**
@@ -119,7 +180,7 @@
 				<div class="flex items-center justify-between">
 					<button
 						onclick={togglePlay}
-						disabled={offline}
+						disabled={offline || !audioUrl}
 						class="play-button p-2 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors duration-200 hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
 						aria-label={playing ? 'Pause' : 'Play'}
 					>
@@ -152,8 +213,12 @@
 				</div>
 				
 				{#if offline}
-					<div class="mt-2 text-xs text-warning">
+					<div class="mt-2 text-xs text-[hsl(var(--warning))]">
 						Podcasts not available offline
+					</div>
+				{:else if !audioUrl}
+					<div class="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+						Audio not available for this podcast
 					</div>
 				{/if}
 			</div>
