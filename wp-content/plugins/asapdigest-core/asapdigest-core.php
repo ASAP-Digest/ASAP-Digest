@@ -2,7 +2,7 @@
 /**
  * Plugin Name:     ASAP Digest Core
  * Plugin URI:      https://asapdigest.com/
- * Description:     Core functionality for ASAPDigest.com
+ * Description:     Core functionality for ASAP Digest app
  * Author:          ASAP Digest
  * Author URI:      https://philoveracity.com/
  * Text Domain:     adc
@@ -12,12 +12,24 @@
  * @package         ASAPDigest_Core
  */
 
+define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
+
+load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
+
 global $wpdb;
 
 // Create custom tables on plugin activation
-static function asap_create_tables() {
+function asap_create_tables() {
   global $wpdb;
+  ob_start(); // Start output buffering
   $charset_collate = $wpdb->get_charset_collate();
+  $wpdb->suppress_errors(true); // Disable error display
+
+  // Schema version check
+  $installed_ver = get_option('asap_digest_schema_version');
+  if ($installed_ver != ASAP_DIGEST_SCHEMA_VERSION) {
+    require_once(plugin_dir_path(__FILE__) . 'upgrade.php');
+  }
 
   // Digests table
   $digests_table = $wpdb->prefix . 'asap_digests';
@@ -33,16 +45,20 @@ static function asap_create_tables() {
     PRIMARY KEY (id),
     INDEX idx_user_id (user_id),
     INDEX idx_sentiment (sentiment_score),
-    FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE
-  ) $charset_collate;";
+    FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE,
+    INDEX idx_created_at (created_at)
+  ) ENGINE=InnoDB $charset_collate;";
   require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
   dbDelta($digests_sql);
 
   // Migration: Move existing digests from options table
   $option_prefix = 'asap_digest_';
-  $options = $wpdb->get_results("SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE '$option_prefix%'", ARRAY_A);
+  $options = $wpdb->get_results($wpdb->prepare(
+    "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
+    $option_prefix.'%'
+  ), ARRAY_A);
   foreach ($options as $option) {
-    $digest_id = str_replace($option_prefix, '', $option['option_name']);
+    $digest_id = absint(str_replace($option_prefix, '', $option['option_name']));
     $wpdb->insert(
       $digests_table,
       ['id' => $digest_id, 'content' => $option['option_value'], 'created_at' => current_time('mysql')],
@@ -61,12 +77,34 @@ static function asap_create_tables() {
     auth TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_endpoint (endpoint),
+    UNIQUE INDEX unique_endpoint (endpoint(255)),
+    FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE,
     INDEX idx_user_id (user_id)
-  ) $charset_collate;";
+  ) ENGINE=InnoDB $charset_collate;";
   dbDelta($notifications_sql);
+
+  $wpdb->suppress_errors(false); // Re-enable errors
+  ob_end_clean(); // Discard any buffered output
+  update_option('asap_digest_schema_version', ASAP_DIGEST_SCHEMA_VERSION);
 }
 register_activation_hook(__FILE__, 'asap_create_tables');
+
+
+// Cleanup on deactivation
+register_deactivation_hook(__FILE__, 'asap_cleanup_on_deactivation');
+
+function asap_cleanup_on_deactivation() {
+  if (!defined('WP_UNINSTALL_PLUGIN')) {
+    global $wpdb;
+    
+    // Remove scheduled cleanup
+    wp_clear_scheduled_hook('asap_cleanup_data');
+    
+    // Remove debug options
+    delete_option('sms_digest_time');
+  }
+}
+
 
 // Schedule cleanup of old digests and notifications
 function asap_schedule_cleanup() {
@@ -80,8 +118,14 @@ function asap_cleanup_data() {
   global $wpdb;
   $digests_table = $wpdb->prefix . 'asap_digests';
   $notifications_table = $wpdb->prefix . 'asap_notifications';
-  $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'));
-  $wpdb->query("DELETE FROM $digests_table WHERE created_at < '$cutoff_date'");
+  $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'))
+  
+  // Secure delete queries
+  $wpdb->query($wpdb->prepare(
+    "DELETE FROM $digests_table WHERE created_at < %s",
+    $cutoff_date
+  ));
+  
   $wpdb->query("DELETE FROM $notifications_table WHERE created_at < '$cutoff_date'");
 }
 add_action('asap_cleanup_data', 'asap_cleanup_data');
@@ -153,12 +197,30 @@ function asap_register_rest_routes() {
     'methods' => 'GET',
     'callback' => 'asap_generate_digest',
     'permission_callback' => function () {
+      check_ajax_referer('asap_digest_nonce', 'security');
       return current_user_can('read');
     },
   ]);
 }
 add_action('rest_api_init', 'asap_register_rest_routes');
 
+/**
+ * Register nonce endpoint
+ */
+add_action('rest_api_init', function() {
+  register_rest_route('asap/v1', '/nonce', [
+    'methods' => 'GET',
+    'callback' => fn($req) => rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'))
+  ]);
+});
+
+/**
+ * Generates daily digest content
+ * 
+ * @since 0.1.0
+ * @param WP_REST_Request $request REST API request object
+ * @return WP_REST_Response|WP_Error Formatted response or error
+ */
 function asap_generate_digest(WP_REST_Request $request) {
   global $wpdb;
   $digests_table = $wpdb->prefix . 'asap_digests';
@@ -190,11 +252,16 @@ function asap_generate_digest(WP_REST_Request $request) {
   }
 
   $digest_id = time();
+  $digest_id = absint(time()); // Sanitized ID
   $wpdb->insert(
     $digests_table,
     ['content' => $digest, 'share_link' => get_rest_url(null, "asap/v1/digest/{$digest_id}")],
-    ['%s', '%s']
+    ['%s', '%s', '%s']
   );
+
+  if ($wpdb->last_error) {
+    error_log('Digest insertion error: ' . $wpdb->last_error);
+  }
 
   // Determine the correct API endpoint
   $api_endpoints = [
@@ -249,6 +316,7 @@ function asap_register_notification_routes() {
     'methods' => 'POST',
     'callback' => 'asap_subscribe_push',
     'permission_callback' => function () {
+      check_ajax_referer('asap_push_nonce', 'security');
       return current_user_can('read');
     },
   ]);
@@ -268,6 +336,11 @@ function asap_subscribe_push(WP_REST_Request $request) {
   $data = $request->get_json_params();
   $subscription = $data['subscription'];
   $user_id = get_current_user_id();
+
+  // Validate subscription data
+  if (!isset($subscription['endpoint']) || !filter_var($subscription['endpoint'], FILTER_VALIDATE_URL)) {
+    return new WP_Error('invalid_data', 'Invalid subscription data', ['status' => 400]);
+  }
 
   $existing = $wpdb->get_row($wpdb->prepare("SELECT id FROM $notifications_table WHERE endpoint = %s", $subscription['endpoint']));
   if ($existing) {
@@ -322,6 +395,7 @@ function asap_send_notification(WP_REST_Request $request) {
     $response = wp_remote_post($api_endpoint, [
       'body' => json_encode(['subscription' => $subscription, 'payload' => $payload]),
       'headers' => ['Content-Type' => 'application/json'],
+      'sslverify' => true // Force SSL verification
     ]);
     if (is_wp_error($response)) {
       error_log('Push notification error: ' . $response->get_error_message());
@@ -334,15 +408,15 @@ function asap_send_notification(WP_REST_Request $request) {
 // Add CORS headers for SvelteKit frontend
 function asap_add_cors_headers() {
   $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-  $allowed_origins = [
+  $allowed_origins = apply_filters('asap_allowed_origins', [
     'https://asapdigest.com',
     'https://asapdigest.local',
     'http://asapdigest.local',
     'http://localhost:5173'
-  ];
+  ]);
   
   if (in_array($origin, $allowed_origins)) {
-    header("Access-Control-Allow-Origin: $origin");
+    header("Access-Control-Allow-Origin: " . esc_url_raw($origin));
   } else {
     header('Access-Control-Allow-Origin: https://asapdigest.com');
   }
@@ -369,6 +443,7 @@ function asap_update_podcast_url(WP_REST_Request $request) {
   $data = $request->get_json_params();
   $digest_id = $data['digestId'];
   $podcast_url = $data['podcastUrl'];
+  $podcast_url = esc_url_raw($podcast_url);
 
   $wpdb->update(
     $digests_table,
@@ -435,6 +510,7 @@ add_action('admin_init', function() {
 function sms_time_callback() {
   $time = get_option('sms_digest_time', '09:00');
   echo '<input type="time" name="sms_digest_time" value="' . esc_attr($time) . '" />';
+  echo '<p class="description">' . esc_html__('Daily time to send SMS digests', 'adc') . '</p>';
 }
 
 // Cron System for Digest Delivery
@@ -445,3 +521,24 @@ add_filter('cron_schedules', function($schedules) {
   ];
   return $schedules;
 });
+
+// Uninstall handler
+register_uninstall_hook(__FILE__, 'asap_digest_uninstall');
+function asap_digest_uninstall() {
+  global $wpdb;
+  
+  if (!defined('WP_UNINSTALL_PLUGIN')) {
+    return;
+  }
+
+  // Remove tables
+  $tables = [
+    $wpdb->prefix . 'asap_digests',
+    $wpdb->prefix . 'asap_notifications'
+  ];
+  
+  foreach ($tables as $table) {
+    $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %s", $table));
+  }
+  delete_option('sms_digest_time');
+}

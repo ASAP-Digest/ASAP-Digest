@@ -3,6 +3,8 @@
  * @module api/wordpress
  */
 
+import { getNonce } from '$lib/auth';
+
 /**
  * Environment type from Vite environment variables
  * @type {string}
@@ -78,6 +80,31 @@ export { SITE_URL };
  * @typedef {Object} GraphQLEdge
  * @property {GraphQLNode} node - The node object
  */
+
+/**
+ * Secure fetch wrapper for WordPress API
+ * @param {string} url
+ * @param {RequestInit} [options]
+ */
+export async function wpFetch(url, options = {}) {
+    const security = await getNonce();
+
+    const headers = {
+        'X-WP-Nonce': security,
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    // Handle expired nonce
+    if (response.status === 403) {
+        sessionStorage.removeItem('wp_nonce');
+        window.location.reload();
+    }
+
+    return response;
+}
 
 /**
  * Fetch articles from WordPress
