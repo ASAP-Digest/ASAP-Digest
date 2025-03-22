@@ -4,6 +4,7 @@
 !app/
 !docs/
 /index.php
+/.vscode/
 
 # ignore all mu-plugins, plugins, and themes
 # unless explicitly whitelisted at the end of this file
