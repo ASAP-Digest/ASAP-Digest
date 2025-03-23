@@ -182,7 +182,7 @@
 </script>
 
 {#if isPromptVisible}
-	<div class="fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] p-[1rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
+	<div class="install-widget p-2.5 fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
 		<div class="flex justify-between items-start mb-[0.75rem]">
 			<h3 class="text-[1rem] font-semibold flex items-center gap-[0.5rem]">
 				<Download size={18} />

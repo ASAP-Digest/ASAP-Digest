@@ -10,7 +10,8 @@
     icon = undefined,
     loading = false, 
     variant = 'default', // 'default', 'compact', 'expanded'
-    className = ''
+    className = '',
+    children = undefined
   } = $props();
 
   const getVariantSpacing = () => {
@@ -66,7 +67,7 @@
   {/if}
   
   <!-- Widget content -->
-  <slot />
+  {@render children?.()}
 </div>
 
 <style>
