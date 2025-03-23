@@ -374,15 +374,15 @@
 
 
 <style>
-  @reference "tailwindcss";
-  
   /* Add CSS for lazy-loaded images */
   :global(img.lazy) {
-    @apply opacity-0 transition-opacity duration-300;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 300ms;
   }
   
   :global(img:not(.lazy)) {
-    @apply opacity-100;
+    opacity: 100;
   }
   
   /* Add CSS for offline mode - use CSS variables from Tailwind */
@@ -392,13 +392,17 @@
   
   :global(body.offline::before) {
     content: '';
-    @apply fixed top-[0] left-[0] right-[0] h-[0.25rem];
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
     background-color: var(--offline-indicator);
   }
   
   /* Prevent horizontal overflow */
   :global(html, body) {
-    @apply overflow-x-hidden;
+    overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
   }
@@ -498,7 +502,6 @@
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
-    transition: all 0.3s ease-in-out;
   }
   
   /* Footer area */

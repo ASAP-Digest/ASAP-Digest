@@ -225,3 +225,6 @@
 		{/if}
 	</div>
 {/if} 
+<style>
+	/* Remove tailwind reference and use direct CSS instead */
+</style>
