@@ -1,4 +1,6 @@
 <script>
+  /** @type {Props} */
+  let { children } = $props();
   import "../app.css";
   import { onMount } from 'svelte';
   import Footer from "$lib/components/layout/Footer.svelte";
@@ -16,8 +18,7 @@
    * @property {import('svelte').Snippet} [children]
    */
 
-  /** @type {Props} */
-  let { children } = $props();
+
   
   /**
    * Determines if the current route is an auth route
@@ -370,7 +371,11 @@
   });
 </script>
 
+
+
 <style>
+  @reference "tailwindcss";
+  
   /* Add CSS for lazy-loaded images */
   :global(img.lazy) {
     @apply opacity-0 transition-opacity duration-300;
@@ -563,7 +568,7 @@
   <div class={`app-shell ${isMobile && !isSidebarCollapsed ? 'sidebar-open' : ''}`}>
     <!-- Header -->
     <header class="header-area">
-      <div class="container h-full flex items-center justify-between">
+      <div class="container flex items-center justify-between h-full">
         <div class="flex items-center gap-3">
           <!-- Logo -->
           <span class="text-xl font-semibold">
@@ -604,7 +609,7 @@
                 <img 
                   src="/images/avatar.png" 
                   alt="User" 
-                  class="w-full h-full object-cover"
+                  class="object-cover w-full h-full"
                   onerror={(e) => {
                     e.target.onerror = null;
                     e.target.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
@@ -643,7 +648,7 @@
       <div class="content-grid">
         <!-- Sidebar -->
         <aside class="sidebar-area">
-          <SidebarProvider class="w-full h-full flex" style="--sidebar-width: 240px; --sidebar-width-icon: 64px;">
+          <SidebarProvider class="flex w-full h-full" style="--sidebar-width: 240px; --sidebar-width-icon: 64px;">
             <MainSidebar />
           </SidebarProvider>
         </aside>
