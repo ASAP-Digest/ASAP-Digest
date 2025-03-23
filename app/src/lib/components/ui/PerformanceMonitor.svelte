@@ -206,7 +206,7 @@
   
   .toggle-button {
     position: fixed;
-    bottom: 5rem;
+    bottom: 25rem;
     right: 1rem;
     z-index: 1000;
     background-color: hsl(var(--background)/0.8);

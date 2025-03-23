@@ -1020,7 +1020,7 @@
               <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
                 <a 
                   href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]"
+                  class="menu-item-hover flex items-center w-full justify-start py-2.5 text-[0.875rem]"
                   data-sveltekit-preload-data="hover"
                   style={collapsed ? 'justify-content: center !important;' : ''}
                 >
@@ -1036,9 +1036,9 @@
     <Footer class="mt-auto py-[1rem] px-[1rem] border-t border-[hsl(var(--sidebar-border)/0.8)]">
       <!-- User profile area with dropdown -->
       <div class="relative">
-        <button class="avatar-container w-full text-left" onclick={toggleAvatarDropdown} aria-haspopup="true" aria-expanded={isAvatarDropdownOpen}>
+        <button class="w-full text-left avatar-container" onclick={toggleAvatarDropdown} aria-haspopup="true" aria-expanded={isAvatarDropdownOpen}>
           <div class="avatar">
-            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="w-full h-full object-cover" />
+            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="object-cover w-full h-full" />
           </div>
           <div class="ml-[0.5rem] sidebar-content-collapsible">
             <div class="font-semibold">{user.name}</div>
@@ -1088,7 +1088,7 @@
                   </button>
                 </div>
               </div>
-              <div class="flex justify-between items-center">
+              <div class="flex items-center justify-between">
                 <span class="text-[0.75rem]">Language</span>
                 <select class="text-[0.75rem] p-[0.25rem] rounded-[0.375rem] bg-transparent border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
                   <option>English</option>

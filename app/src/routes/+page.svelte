@@ -41,9 +41,6 @@
     { id: 'personal-2', type: 'podcast', title: 'Topics You Follow', episode: 1, duration: 15, summary: 'Audio updates on topics you have expressed interest in.', size: 'full-mobile' }
   ];
 
-  // Combined widget array to demonstrate grid layout
-  const allWidgets = [...newsWidgets, ...financeWidgets, ...personalWidgets];
-  
   // Keep track of dragged widget
   /** @type {string|null} */
   let draggedWidget = null;
@@ -316,14 +313,14 @@
 <!-- Main layout container -->
 <div class="page-content max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8">
   <!-- Section Headers -->
-  <div class="space-y-2 mb-8">
+  <div class="mb-8 space-y-2">
     <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
     <p class="text-[hsl(var(--muted-foreground))] font-[var(--font-body)] text-[var(--font-size-base)]">Customized content based on your interests</p>
   </div>
 
   <!-- Grid layout: Consistent 12-column grid across all breakpoints -->
   <div 
-    class="grid grid-cols-12 gap-4 md:gap-6 lg:gap-8 w-full"
+    class="grid w-full grid-cols-12 gap-4 md:gap-6 lg:gap-8"
   >
     <!-- News Section Header - Full width -->
     <div class="col-span-12 mt-2 mb-4">
