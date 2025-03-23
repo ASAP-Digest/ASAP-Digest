@@ -34,10 +34,10 @@
 <a
   {href}
   class={cn(
-    "flex items-center rounded-md px-3 py-2 text-sm transition-colors",
-    "hover:bg-[hsl(var(--sidebar-accent)/0.1)] hover:text-[hsl(var(--sidebar-accent-foreground))]",
+    "flex items-center rounded-md px-3 py-2 text-sm transition-colors antialiased subpixel-antialiased",
+    "hover:bg-[hsl(var(--sidebar-accent)/0.15)] hover:text-[hsl(var(--sidebar-accent-foreground))]",
     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-    active && "bg-[hsl(var(--sidebar-accent)/0.1)] text-[hsl(var(--sidebar-accent-foreground))] font-medium",
+    active && "bg-[hsl(var(--sidebar-accent)/0.15)] text-[hsl(var(--sidebar-accent-foreground))] font-medium",
     disabled && "pointer-events-none opacity-60",
     className
   )}

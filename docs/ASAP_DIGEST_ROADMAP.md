@@ -516,6 +516,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
      }
      ```
   4. Create `public/manifest.json`:
+     **Status Update (2025/03/22)**: Web App Manifest has been fully configured with all required fields, PWA icon assets (placeholder versions), and theme colors. Task completed.
      ```json
      {
        "name": "ASAP Digest",
@@ -568,6 +569,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
 ### Subtask 1.5: Configure Service Worker for PWA
 - **Action**: Implement a service worker to enable offline mode, caching, and push notifications.
+- **Status Update (2025/03/22)**: Service worker implementation continuing with caching strategies and offline functionality. Installation prompt implementation is also in progress.
 - **Steps**:
   1. Install Workbox CLI globally:
      ```bash
@@ -976,6 +978,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
 ### Subtask 2.2: Implement Podcast Widget
 - **Action**: Create a Svelte component for the Podcast widget with Lucide Svelte icons and TTS.
+- **Status Update (2025/03/22)**: Component skeleton completed, audio playback implementation in progress with play/pause functionality, offline state detection, expandable/collapsible view for detailed information, sharing functionality, and audio progress tracking/visualization in development.
 - **Steps**:
   1. Create `src/lib/PodcastWidget.svelte`:
      ```svelte

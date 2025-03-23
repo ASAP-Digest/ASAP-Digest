@@ -19,7 +19,7 @@
 
 <div class={cn("pb-4", className)} data-testid="sidebar-section">
   {#if title}
-    <h3 class="mb-2 px-4 text-sm font-semibold text-[hsl(var(--sidebar-foreground)/0.7)]">
+    <h3 class="mb-2 px-4 text-sm font-semibold text-[hsl(var(--sidebar-foreground)/0.85)] antialiased subpixel-antialiased">
       {title}
     </h3>
   {/if}

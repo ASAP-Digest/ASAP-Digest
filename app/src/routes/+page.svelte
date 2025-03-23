@@ -76,13 +76,13 @@
     widgetElements.forEach(element => {
       element.setAttribute('draggable', 'true');
       
-      // Add event listeners with proper typing
-      element.addEventListener('dragstart', (e) => handleDragStart(/** @type {DragEvent} */ e));
-      element.addEventListener('dragend', (e) => handleDragEnd(/** @type {DragEvent} */ e));
-      element.addEventListener('dragover', (e) => handleDragOver(/** @type {DragEvent} */ e));
-      element.addEventListener('dragenter', (e) => handleDragEnter(/** @type {DragEvent} */ e));
-      element.addEventListener('dragleave', (e) => handleDragLeave(/** @type {DragEvent} */ e));
-      element.addEventListener('drop', (e) => handleDrop(/** @type {DragEvent} */ e));
+      // Add event listeners
+      element.addEventListener('dragstart', handleDragStart);
+      element.addEventListener('dragend', handleDragEnd);
+      element.addEventListener('dragover', handleDragOver);
+      element.addEventListener('dragenter', handleDragEnter);
+      element.addEventListener('dragleave', handleDragLeave);
+      element.addEventListener('drop', handleDrop);
     });
   }
   
@@ -94,30 +94,32 @@
     
     widgetElements.forEach(element => {
       // Remove event listeners
-      element.removeEventListener('dragstart', (e) => handleDragStart(/** @type {DragEvent} */ e));
-      element.removeEventListener('dragend', (e) => handleDragEnd(/** @type {DragEvent} */ e));
-      element.removeEventListener('dragover', (e) => handleDragOver(/** @type {DragEvent} */ e));
-      element.removeEventListener('dragenter', (e) => handleDragEnter(/** @type {DragEvent} */ e));
-      element.removeEventListener('dragleave', (e) => handleDragLeave(/** @type {DragEvent} */ e));
-      element.removeEventListener('drop', (e) => handleDrop(/** @type {DragEvent} */ e));
+      element.removeEventListener('dragstart', handleDragStart);
+      element.removeEventListener('dragend', handleDragEnd);
+      element.removeEventListener('dragover', handleDragOver);
+      element.removeEventListener('dragenter', handleDragEnter);
+      element.removeEventListener('dragleave', handleDragLeave);
+      element.removeEventListener('drop', handleDrop);
     });
   }
   
   /**
    * Handle drag start event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDragStart(event) {
-    if (!event.target) return;
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    if (!dragEvent.target) return;
     
     // Type cast target to HTMLElement
-    const target = /** @type {HTMLElement} */ (event.target);
+    const target = /** @type {HTMLElement} */ (dragEvent.target);
     draggedElement = target;
     draggedWidget = target.getAttribute('data-id');
     
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', draggedWidget || '');
+    if (dragEvent.dataTransfer) {
+      dragEvent.dataTransfer.effectAllowed = 'move';
+      dragEvent.dataTransfer.setData('text/plain', draggedWidget || '');
       
       // Add dragging class for visual feedback
       setTimeout(() => {
@@ -128,11 +130,15 @@
   
   /**
    * Handle drag end event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDragEnd(event) {
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    if (!dragEvent.target) return;
+    
     // Type cast target to HTMLElement
-    const target = /** @type {HTMLElement} */ (event.target);
+    const target = /** @type {HTMLElement} */ (dragEvent.target);
     
     // Remove dragging class
     target.classList.remove('dragging');
@@ -150,23 +156,30 @@
   
   /**
    * Handle drag over event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDragOver(event) {
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    
     // Allow dropping
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
+    dragEvent.preventDefault();
+    if (dragEvent.dataTransfer) {
+      dragEvent.dataTransfer.dropEffect = 'move';
     }
   }
   
   /**
    * Handle drag enter event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDragEnter(event) {
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    if (!dragEvent.target) return;
+    
     // Add class to highlight drop target
-    const target = findDropTarget(/** @type {HTMLElement} */ (event.target));
+    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
     if (target && draggedElement && target !== draggedElement) {
       target.classList.add('drag-over');
       dropTarget = target;
@@ -175,11 +188,15 @@
   
   /**
    * Handle drag leave event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDragLeave(event) {
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    if (!dragEvent.target) return;
+    
     // Remove highlight from drop target
-    const target = findDropTarget(/** @type {HTMLElement} */ (event.target));
+    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
     if (target) {
       target.classList.remove('drag-over');
     }
@@ -187,13 +204,17 @@
   
   /**
    * Handle drop event
-   * @param {DragEvent} event - The drag event
+   * @param {Event} event - The drag event
    */
   function handleDrop(event) {
-    event.preventDefault();
+    // Type cast event to DragEvent
+    const dragEvent = /** @type {DragEvent} */ (event);
+    dragEvent.preventDefault();
+    
+    if (!dragEvent.target) return;
     
     // Get the dropped element
-    const target = findDropTarget(/** @type {HTMLElement} */ (event.target));
+    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
     
     if (target && draggedElement && target !== draggedElement) {
       // Get parent containers for both elements
@@ -270,157 +291,161 @@
   function getColSpanClasses(size) {
     switch(size) {
       case 'large':
-        return 'col-span-4 sm:col-span-3 md:col-span-3 lg:col-span-6 xl:col-span-6 2xl:col-span-6';
+        return 'col-span-12 md:col-span-8 lg:col-span-8'; // Full width on mobile, 2/3 on larger screens
       case 'full-mobile':
-        return 'col-span-4 sm:col-span-3 md:col-span-3 lg:col-span-3 xl:col-span-3 2xl:col-span-3';
+        return 'col-span-12 md:col-span-6 lg:col-span-4'; // Full width on mobile, 1/2 on medium, 1/3 on large
       case 'full-tablet':
-        return 'col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-3 xl:col-span-3 2xl:col-span-3';
+        return 'col-span-12 md:col-span-12 lg:col-span-6'; // Full width until large screens, then 1/2
       case 'normal':
       default:
-        return 'col-span-2 sm:col-span-3 md:col-span-3 lg:col-span-3 xl:col-span-3 2xl:col-span-3';
+        return 'col-span-12 md:col-span-6 lg:col-span-4'; // Full width on mobile, 1/2 on medium, 1/3 on large
+    }
+  }
+  
+  /**
+   * Toggle grid debug mode for development
+   * This enables the commented-out debug styles to help visualize the grid
+   */
+  function toggleGridDebug() {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('debug-grid');
     }
   }
 </script>
 
 <!-- Main layout container -->
-<div class="container">
+<div class="page-content max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8">
   <!-- Section Headers -->
-  <div class="mb-6 space-y-2">
-    <h1 class="text-3xl font-bold leading-tight mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
-    <p class="text-[hsl(var(--muted-foreground))]">Customized content based on your interests</p>
+  <div class="space-y-2 mb-8">
+    <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
+    <p class="text-[hsl(var(--muted-foreground))] font-[var(--font-body)] text-[var(--font-size-base)]">Customized content based on your interests</p>
   </div>
 
-  <!-- Grid layout: 
-    - Mobile (default): 2 columns of 2 grids (4 total)
-    - Tablet (sm/md): 2 columns of 3 grids (6 total) 
-    - Desktop (lg+): 4 columns of 3 grids (12 total)
-  -->
-  <div class="grid w-full gap-4 md:gap-6
-    grid-cols-4  /* Mobile: 4 column grid system (2 columns of 2 grid units) */
-    sm:grid-cols-6  /* Tablet: 6 column grid system (2 columns of 3 grid units) */
-    md:grid-cols-6 
-    lg:grid-cols-12  /* Desktop: 12 column grid system (4 columns of 3 grid units) */
-    xl:grid-cols-12 
-    2xl:grid-cols-12"
+  <!-- Grid layout: Consistent 12-column grid across all breakpoints -->
+  <div 
+    class="grid grid-cols-12 gap-4 md:gap-6 lg:gap-8 w-full"
   >
     <!-- News Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-2">
-      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Latest News</h2>
+    <div class="col-span-12 mt-2 mb-4">
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Latest News</h2>
     </div>
     
     <!-- News Widgets -->
-      {#each newsWidgets as widget}
+    {#each newsWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-          {#if widget.type === 'article'}
-            <ArticleWidget 
-              id={widget.id || ''}
-              title={widget.title || ''}
-              excerpt={widget.excerpt || ''}
-              source={widget.source || ''}
-              date={widget.date || ''}
-              tags={widget.tags || []}
-              sourceUrl={widget.sourceUrl || ''}
-            />
-          {:else if widget.type === 'podcast'}
-            <PodcastWidget
-              id={widget.id || ''}
-              title={widget.title || ''}
-              episode={typeof widget.episode === 'number' ? widget.episode : 1}
-              duration={typeof widget.duration === 'number' ? widget.duration : 0}
-              summary={widget.summary || ''}
-            />
-          {/if}
-        </div>
-      {/each}
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
     
     <!-- Finance Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
-      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Financial Updates</h2>
+    <div class="col-span-12 mt-6 mb-4">
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Financial Updates</h2>
     </div>
     
     <!-- Finance Widgets -->
-      {#each financeWidgets as widget}
+    {#each financeWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-          {#if widget.type === 'article'}
-            <ArticleWidget 
-              id={widget.id || ''}
-              title={widget.title || ''}
-              excerpt={widget.excerpt || ''}
-              source={widget.source || ''}
-              date={widget.date || ''}
-              tags={widget.tags || []}
-              sourceUrl={widget.sourceUrl || ''}
-            />
-          {:else if widget.type === 'podcast'}
-            <PodcastWidget
-              id={widget.id || ''}
-              title={widget.title || ''}
-              episode={typeof widget.episode === 'number' ? widget.episode : 1}
-              duration={typeof widget.duration === 'number' ? widget.duration : 0}
-              summary={widget.summary || ''}
-            />
-          {/if}
-        </div>
-      {/each}
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
     
     <!-- Personalized Section Header - Full width -->
-    <div class="col-span-4 sm:col-span-6 md:col-span-6 lg:col-span-12 xl:col-span-12 2xl:col-span-12 mt-6">
-      <h2 class="text-xl font-bold leading-tight mb-2 text-[hsl(var(--foreground))]">Your Interests</h2>
+    <div class="col-span-12 mt-6 mb-4">
+      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Your Interests</h2>
     </div>
     
     <!-- Personalized Widgets -->
-      {#each personalWidgets as widget}
+    {#each personalWidgets as widget}
       <div 
         class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
         data-id={widget.id} 
         data-size={widget.size}
       >
-          {#if widget.type === 'article'}
-            <ArticleWidget 
-              id={widget.id || ''}
-              title={widget.title || ''}
-              excerpt={widget.excerpt || ''}
-              source={widget.source || ''}
-              date={widget.date || ''}
-              tags={widget.tags || []}
-              sourceUrl={widget.sourceUrl || ''}
-            />
-          {:else if widget.type === 'podcast'}
-            <PodcastWidget
-              id={widget.id || ''}
-              title={widget.title || ''}
-              episode={typeof widget.episode === 'number' ? widget.episode : 1}
-              duration={typeof widget.duration === 'number' ? widget.duration : 0}
-              summary={widget.summary || ''}
-            />
-          {/if}
-        </div>
-      {/each}
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
   </div>
 </div>
 
 <style>
   /* Styling for draggable elements */
   .cursor-move {
-    transition: all 0.2s ease;
+    transition: all var(--duration-normal) var(--ease-out);
   }
   
   .cursor-move:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
   }
   
   /* Drag and drop styles */
   .draggable-widget {
     user-select: none;
+    width: 100%; /* Ensure widgets take full width of their grid cell */
+    display: block; /* Ensure widgets display properly */
+    margin-bottom: calc(var(--spacing-unit) * 3); /* Add spacing between widgets */
   }
   
   .dragging {
@@ -430,7 +455,70 @@
   
   .drag-over {
     border: 2px dashed hsl(var(--primary));
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     background-color: hsl(var(--accent) / 0.2);
   }
+
+  /* Grid Debug Styles - Only active when body has debug-grid class */
+  :global(body.debug-grid .grid > *) {
+    outline: 1px solid hsl(var(--primary) / 0.5);
+    position: relative;
+  }
+  
+  :global(body.debug-grid .grid > *::before) {
+    content: attr(class);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 10px;
+    background: hsl(var(--background));
+    padding: 2px;
+    z-index: 10;
+    color: hsl(var(--primary));
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  :global(body.debug-grid .grid) {
+    outline: 1px solid hsl(var(--secondary) / 0.7);
+    position: relative;
+  }
+
+  :global(body.debug-grid .grid::before) {
+    content: "GRID";
+    position: absolute;
+    top: -16px;
+    left: 0;
+    font-size: 10px;
+    background: hsl(var(--background));
+    padding: 2px;
+    z-index: 10;
+    color: hsl(var(--secondary));
+  }
+  
+  /* Add debug button to toggle grid debug mode */
+  :global(.debug-toggle) {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    z-index: 9999;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  
+  :global(.debug-toggle:hover) {
+    opacity: 1;
+  }
 </style>
+
+<!-- Debug button for development - can be commented out for production -->
+<button class="debug-toggle" onclick={toggleGridDebug}>Toggle Grid Debug</button>

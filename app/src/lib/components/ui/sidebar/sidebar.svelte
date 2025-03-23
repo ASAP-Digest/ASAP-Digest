@@ -2,7 +2,7 @@
 	import { tv } from "tailwind-variants";
 
 	export const sidebarVariants = tv({
-		base: 'bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] flex h-full w-[var(--sidebar-width)] flex-col transition-all duration-200',
+		base: 'bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] flex h-full w-[var(--sidebar-width)] flex-col transition-all duration-200 antialiased subpixel-antialiased font-sans',
 	});
 </script>
 

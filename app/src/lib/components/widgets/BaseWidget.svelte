@@ -16,11 +16,11 @@
   const getVariantSpacing = () => {
     switch (variant) {
       case 'compact':
-        return 'p-3 gap-2';
+        return 'p-[calc(var(--spacing-unit)*3)] gap-[calc(var(--spacing-unit)*2)]';
       case 'expanded':
-        return 'p-6 gap-4';
+        return 'p-[calc(var(--spacing-unit)*6)] gap-[calc(var(--spacing-unit)*4)]';
       default:
-        return 'p-4 gap-3';
+        return 'p-[calc(var(--spacing-unit)*4)] gap-[calc(var(--spacing-unit)*3)]';
     }
   };
 
@@ -29,21 +29,22 @@
 
 <div 
   class={cn(
-    'group/widget relative bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200',
+    'group/widget relative bg-[hsl(var(--card))] rounded-[var(--radius-md)] border border-[hsl(var(--border))] shadow-sm mb-0 h-full',
+    'transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]',
     spacing,
     className
   )}
 >
   <!-- Header with title and icon -->
   {#if title}
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="font-medium text-base">
+    <div class="flex items-center justify-between mb-[calc(var(--spacing-unit)*3)]">
+      <h3 class="font-[var(--font-weight-medium)] text-[var(--font-size-base)] text-[hsl(var(--foreground))]">
         {title}
         
         {#if loading}
           <span class="inline-flex items-center ml-2 text-[hsl(var(--muted-foreground))]">
             <Icon icon={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
-            <span class="text-xs">Loading...</span>
+            <span class="text-[var(--font-size-xs)]">Loading...</span>
           </span>
         {/if}
       </h3>
@@ -58,7 +59,7 @@
   
   <!-- Loading indicator if no title -->
   {#if loading && !title}
-    <div class="flex items-center justify-center py-4 text-[hsl(var(--muted-foreground))]">
+    <div class="flex items-center justify-center py-[calc(var(--spacing-unit)*4)] text-[hsl(var(--muted-foreground))]">
       <Icon icon={Loader2} class="animate-spin mr-2" color="currentColor" />
       <span>Loading widget content...</span>
     </div>
@@ -71,6 +72,7 @@
 <style>
   /* Local styles for hover effects */
   :global(.group\/widget:hover) {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px hsl(var(--card-foreground) / 0.05);
+    transform: translateY(-2px);
   }
 </style> 

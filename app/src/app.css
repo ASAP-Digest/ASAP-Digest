@@ -1,18 +1,5 @@
 /* 
 ===============================================================
-   ⚠️ IMPORTANT: ONLY USE TAILWIND 4 SYNTAX ⚠️
-===============================================================
-   - NEVER use direct color names (text-red-500, bg-blue-400)
-   - ALWAYS use arbitrary value syntax: text-[#ef4444] or bg-[hsl(var(--primary))]
-   - NEVER use border-border, bg-background, text-foreground (Tailwind 3 syntax)
-   - ALWAYS use border-[hsl(var(--border))], bg-[hsl(var(--background))], text-[hsl(var(--foreground))]
-   - For fixed sizes, use arbitrary values: h-[3px] not h-px
-   - Reference docs: https://tailwindcss.com/docs/upgrade-guide
-===============================================================
-*/
-
-/* 
-===============================================================
    ⚠️ IMPORTANT: TAILWIND 4 SYNTAX GUIDELINES ⚠️
 ===============================================================
    - COLORS:

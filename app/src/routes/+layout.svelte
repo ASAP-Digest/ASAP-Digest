@@ -646,12 +646,12 @@
         </aside>
         
         <!-- Main content area -->
-        <main class="main-area container mx-auto px-4 md:px-6">
+        <main class="main-area">
           <!-- PWA install prompt -->
           <InstallPrompt />
           
           <!-- Main content -->
-          <div class="container min-h-screen">
+          <div class="min-h-screen">
             {@render children?.()}
           </div>
         </main>

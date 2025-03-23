@@ -6,7 +6,7 @@
 <div
 	bind:this={ref}
 	data-sidebar="group-content"
-	class={cn("w-full text-sm", className)}
+	class={cn("w-full text-sm antialiased subpixel-antialiased", className)}
 	{...restProps}
 >
 	{@render children?.()}
