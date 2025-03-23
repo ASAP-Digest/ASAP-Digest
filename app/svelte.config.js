@@ -29,6 +29,18 @@ const config = {
 				// Log missing IDs but don't fail the build
 				console.warn(`[Prerender] Missing ID: ${id} for ${path} (referred from ${referrer})`);
 				return;
+			},
+			// Prerender more paths for better performance
+			entries: ['*']
+			// The filter option is not supported in SvelteKit 2
+			// filter: (path) => !path.includes('[') && !path.includes(']')
+		},
+
+		// Optimize server-side rendering
+		csp: {
+			mode: 'auto',
+			directives: {
+				'script-src': ['self']
 			}
 		},
 
@@ -50,7 +62,10 @@ const config = {
 			$lib: 'src/lib',
 			$stores: 'src/stores',
 			$utils: 'src/utils'
-		}
+		},
+
+		// Improve page loading experience
+		inlineStyleThreshold: 8192 // Inline CSS under 8KB
 	}
 };
 

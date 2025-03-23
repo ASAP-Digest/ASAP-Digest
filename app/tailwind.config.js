@@ -5,8 +5,11 @@ import tailwindcssAnimate from "tailwindcss-animate";
 const config = {
 	darkMode: ["class"],
 	content: [
-		"./src/**/*.{html,js,svelte,ts}",
-		"./src/**/*.{svelte,js,ts,jsx,tsx}"
+		"./src/**/*.svelte",
+		"./src/**/*.js",
+		"./src/components/**/*.{svelte,js}",
+		"./src/routes/**/*.{svelte,js}",
+		"./src/lib/**/*.{svelte,js}"
 	],
 	safelist: ["dark"],
 	theme: {
@@ -183,6 +186,9 @@ const config = {
 		},
 	},
 	plugins: [tailwindcssAnimate],
+	future: {
+		hoverOnlyWhenSupported: true,
+	}
 };
 
 export default config;
