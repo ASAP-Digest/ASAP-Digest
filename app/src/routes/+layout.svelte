@@ -10,6 +10,7 @@
   import MainSidebar from '$lib/components/layout/MainSidebar.svelte';
   import { SidebarProvider } from '$lib/components/ui/sidebar';
   import { findProblematicClasses } from '$lib/utils/tailwindFixer';
+  import { registerServiceWorker } from '$lib/utils/register-sw';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -360,6 +361,8 @@
     };
     
     document.addEventListener('sidebarToggle', handleSidebarToggle);
+    
+    registerServiceWorker();
     
     return () => {
       document.removeEventListener('sidebarToggle', handleSidebarToggle);

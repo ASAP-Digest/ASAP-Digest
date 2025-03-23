@@ -1,12 +1,40 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   
-  // State for visibility toggle
+  // Configuration props with defaults
+  let isEnabled = $state(true);
+  let enableConsoleLogging = $state(true);
   let isVisible = $state(true);
   
   // Toggle visibility
   function toggleVisibility() {
     isVisible = !isVisible;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('perfMonitorVisible', isVisible.toString());
+    }
+  }
+  
+  // Enable/disable monitor
+  /** @param {boolean} value */
+  function setEnabled(value) {
+    isEnabled = value;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('perfMonitorEnabled', value.toString());
+    }
+    if (!value) {
+      cleanup();
+    } else if (animationFrameId === null) {
+      animationFrameId = requestAnimationFrame(updateMetrics);
+    }
+  }
+  
+  // Enable/disable console logging
+  /** @param {boolean} value */
+  function setConsoleLogging(value) {
+    enableConsoleLogging = value;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('perfMonitorLogging', value.toString());
+    }
   }
   
   // Performance metrics
@@ -31,8 +59,18 @@
    * @typedef {Performance & { memory?: MemoryInfo }} PerformanceWithMemory
    */
   
+  // Cleanup function
+  function cleanup() {
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+  }
+  
   // Update performance metrics
   function updateMetrics() {
+    if (!isEnabled) return;
+    
     const now = performance.now();
     
     // Calculate FPS
@@ -41,6 +79,10 @@
       fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
       frameCount = 0;
       lastFpsUpdate = now;
+      
+      if (enableConsoleLogging) {
+        console.log(`Performance Monitor - FPS: ${fps}, Frame Time: ${frameTime}ms, Memory: ${memory}MB`);
+      }
     }
     
     // Calculate frame time
@@ -54,31 +96,30 @@
       memory = Math.round(perf.memory.usedJSHeapSize / (1024 * 1024));
     }
     
-    // Schedule next update
-    animationFrameId = requestAnimationFrame(updateMetrics);
+    // Schedule next update if enabled
+    if (isEnabled) {
+      animationFrameId = requestAnimationFrame(updateMetrics);
+    }
   }
   
   onMount(() => {
+    // Initialize state from localStorage if available
+    if (typeof window !== 'undefined') {
+      isEnabled = localStorage.getItem('perfMonitorEnabled') !== 'false';
+      enableConsoleLogging = localStorage.getItem('perfMonitorLogging') !== 'false';
+      isVisible = localStorage.getItem('perfMonitorVisible') !== 'false';
+    }
+    
+    if (!isEnabled) return;
+    
     // Calculate page load time
     loadTime = Math.round(performance.now());
     
     // Start metrics monitoring
     animationFrameId = requestAnimationFrame(updateMetrics);
-    
-    return () => {
-      // Cleanup on component unmount
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
   });
   
-  onDestroy(() => {
-    // Cleanup on component unmount
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId);
-    }
-  });
+  onDestroy(cleanup);
 </script>
 
 <style>
@@ -187,6 +228,28 @@
     transform: scale(1.05);
     background-color: hsl(var(--accent)/0.1);
   }
+  
+  .performance-monitor-controls {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid hsl(var(--border)/0.5);
+  }
+  
+  .control-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+  }
+  
+  .control-label input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+  }
 </style>
 
 {#if !isVisible}
@@ -233,6 +296,26 @@
           </tr>
         </tbody>
       </table>
+      
+      <div class="performance-monitor-controls">
+        <label class="control-label">
+          <input 
+            type="checkbox" 
+            checked={isEnabled}
+            onclick={(/** @type {Event} */ e) => setEnabled(/** @type {HTMLInputElement} */ (e.target).checked)}
+          />
+          Enable Monitor
+        </label>
+        
+        <label class="control-label">
+          <input 
+            type="checkbox" 
+            checked={enableConsoleLogging}
+            onclick={(/** @type {Event} */ e) => setConsoleLogging(/** @type {HTMLInputElement} */ (e.target).checked)}
+          />
+          Console Logging
+        </label>
+      </div>
     </div>
   </div>
 {/if} 

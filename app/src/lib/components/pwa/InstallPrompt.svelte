@@ -1,7 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Download, X } from '$lib/utils/lucide-icons.js';
+	import { Download, X } from '@lucide/svelte';
 	
 	/**
 	 * Define the BeforeInstallPromptEvent interface missing from standard TS defs

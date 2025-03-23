@@ -13,9 +13,33 @@ const THRESHOLDS = {
     TBT: 200,  // Total Blocking Time
 };
 
+/**
+ * Check if performance monitoring is enabled
+ * @returns {boolean}
+ */
+function isMonitoringEnabled() {
+    try {
+        return localStorage.getItem('perfMonitorEnabled') !== 'false';
+    } catch (e) {
+        return true; // Default to enabled if localStorage is not available
+    }
+}
+
+/**
+ * Check if console logging is enabled
+ * @returns {boolean}
+ */
+function isLoggingEnabled() {
+    try {
+        return localStorage.getItem('perfMonitorLogging') !== 'false';
+    } catch (e) {
+        return true; // Default to enabled if localStorage is not available
+    }
+}
+
 // Initialize performance monitoring
 export function initPerformanceMonitoring() {
-    if (typeof window === 'undefined' || !('performance' in window)) {
+    if (typeof window === 'undefined' || !('performance' in window) || !isMonitoringEnabled()) {
         return;
     }
 
@@ -121,6 +145,9 @@ export function initPerformanceMonitoring() {
 
             // Track resource loading performance
             const resourceObserver = new PerformanceObserver((entryList) => {
+                // Skip if monitoring or logging is disabled
+                if (!isMonitoringEnabled() || !isLoggingEnabled()) return;
+
                 const entries = entryList.getEntries();
                 entries.forEach((entry) => {
                     // Only log resources that took longer than 500ms to load
@@ -137,11 +164,13 @@ export function initPerformanceMonitoring() {
             let pageLoadStart = performance.now();
 
             document.addEventListener('sveltekit:start', () => {
+                if (!isMonitoringEnabled() || !isLoggingEnabled()) return;
                 pageLoadStart = performance.now();
                 console.log('[Performance] SvelteKit navigation started');
             });
 
             document.addEventListener('sveltekit:end', () => {
+                if (!isMonitoringEnabled() || !isLoggingEnabled()) return;
                 const navigationTime = performance.now() - pageLoadStart;
                 console.log(`[Performance] SvelteKit navigation completed in ${navigationTime.toFixed(0)}ms`);
                 reportMetric('PageTransition', navigationTime, 300);
@@ -154,12 +183,17 @@ export function initPerformanceMonitoring() {
 
 // Report a metric to analytics and console
 function reportMetric(name, value, threshold) {
+    // Skip if monitoring is disabled
+    if (!isMonitoringEnabled()) return;
+
     // Determine if the metric is good or needs improvement
     const status = value <= threshold ? 'good' : 'needs-improvement';
 
-    // Log to console with color coding
-    const color = status === 'good' ? 'green' : 'orange';
-    console.log(`%c[Performance] ${name}: ${value.toFixed(1)}ms (${status})`, `color: ${color}`);
+    // Log to console with color coding if logging is enabled
+    if (isLoggingEnabled()) {
+        const color = status === 'good' ? 'green' : 'orange';
+        console.log(`%c[Performance] ${name}: ${value.toFixed(1)}ms (${status})`, `color: ${color}`);
+    }
 
     // Send to analytics if available
     if (window.gtag) {
