@@ -142,20 +142,9 @@
 
 <BaseWidget 
 	title={title} 
-	icon={Play} 
-	loading={loading} 
-	loadingSlot={loadingContent} 
-	default={podcastContent}
+	icon={Play}
+	loading={loading}
 >
-</BaseWidget>
-
-{#snippet loadingContent()}
-	<div class="flex justify-center items-center h-full">
-		<span class="text-[hsl(var(--muted-foreground))] text-sm">Loading...</span>
-	</div>
-{/snippet}
-
-{#snippet podcastContent()}
 	{#if error}
 		<div class="text-[hsl(var(--destructive))] text-sm">
 			Failed to load podcast content
@@ -224,7 +213,7 @@
 			</div>
 		</div>
 	{/if}
-{/snippet}
+</BaseWidget>
 
 <style>
 	/* Add animation to utility classes instead of custom CSS */

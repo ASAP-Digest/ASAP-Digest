@@ -1,9 +1,9 @@
 <script>
   import { cn } from '$lib/utils';
   import { Loader2 } from '$lib/utils/lucide-icons.js';
-  import { createEventDispatcher } from 'svelte';
+  import Icon from '$lib/components/ui/Icon.svelte';
 
-  const dispatch = createEventDispatcher();
+  /** @typedef {{ default?: () => void }} SlotsType */
 
   let {
     title = '',
@@ -42,7 +42,7 @@
         
         {#if loading}
           <span class="inline-flex items-center ml-2 text-[hsl(var(--muted-foreground))]">
-            <svelte:component this={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
+            <Icon icon={Loader2} size={14} class="animate-spin mr-1" color="currentColor" />
             <span class="text-xs">Loading...</span>
           </span>
         {/if}
@@ -50,7 +50,7 @@
       
       {#if icon}
         <div class="text-[hsl(var(--muted-foreground))]">
-          <svelte:component this={icon} size={18} color="currentColor" />
+          <Icon icon={icon} size={18} color="currentColor" />
         </div>
       {/if}
     </div>
@@ -59,12 +59,12 @@
   <!-- Loading indicator if no title -->
   {#if loading && !title}
     <div class="flex items-center justify-center py-4 text-[hsl(var(--muted-foreground))]">
-      <svelte:component this={Loader2} class="animate-spin mr-2" color="currentColor" />
+      <Icon icon={Loader2} class="animate-spin mr-2" color="currentColor" />
       <span>Loading widget content...</span>
     </div>
   {/if}
   
-  <!-- Slot for widget content -->
+  <!-- Widget content -->
   <slot />
 </div>
 

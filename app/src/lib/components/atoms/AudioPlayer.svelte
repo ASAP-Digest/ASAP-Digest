@@ -307,7 +307,7 @@
         <div class="flex items-center gap-2">
           {#if showSkip}
             <button 
-              on:click={skipBackward}
+              onclick={skipBackward}
               disabled={!loaded}
               class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
               aria-label={`Skip back ${skipAmount} seconds`}
@@ -317,7 +317,7 @@
           {/if}
           
           <button 
-            on:click={togglePlay}
+            onclick={togglePlay}
             disabled={!loaded && !error}
             class="play-button p-2 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
             aria-label={playing ? 'Pause' : 'Play'}
@@ -327,7 +327,7 @@
           
           {#if showSkip}
             <button 
-              on:click={skipForward}
+              onclick={skipForward}
               disabled={!loaded}
               class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
               aria-label={`Skip forward ${skipAmount} seconds`}
@@ -346,7 +346,7 @@
         {#if showVolume}
           <div class="volume-controls flex items-center gap-2">
             <button 
-              on:click={toggleMute}
+              onclick={toggleMute}
               class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
@@ -359,7 +359,7 @@
               max="1" 
               step="0.01" 
               value={volume} 
-              on:input={handleVolumeChange} 
+              oninput={handleVolumeChange} 
               class="volume-slider w-16 accent-[hsl(var(--primary))]"
               aria-label="Volume"
             />
@@ -376,11 +376,11 @@
           max="100" 
           step="0.1" 
           value={progress} 
-          on:input={handleSeek}
-          on:mousedown={startSeeking}
-          on:mouseup={endSeeking}
-          on:touchstart={startSeeking}
-          on:touchend={endSeeking}
+          oninput={handleSeek}
+          onmousedown={startSeeking}
+          onmouseup={endSeeking}
+          ontouchstart={startSeeking}
+          ontouchend={endSeeking}
           class="progress-slider w-full accent-[hsl(var(--primary))] h-2 rounded-full bg-[hsl(var(--muted))]"
           aria-label="Seek"
         />

@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import * as Icons from '$lib/utils/lucide-icons.js';
   import { AudioPlayer } from '$lib/components/atoms';
+  import Icon from '$lib/components/ui/Icon.svelte';
   
   // Mock data - this would come from an API in a real application
   const digestId = $page.params.id;
@@ -156,29 +157,29 @@
   <!-- Navigation and actions -->
   <div class="flex justify-between items-center mb-6">
     <a href="/" class="text-primary hover:underline flex items-center gap-1">
-      <Icons.ChevronLeft size={16} />
+      <Icon icon={Icons.ChevronLeft} size={16} />
       <span>Back to Digests</span>
     </a>
     
     <div class="flex space-x-4">
       <button 
-        on:click={toggleBookmark}
+        onclick={toggleBookmark}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
         {#if digest.isSaved}
-          <Icons.BookmarkCheck size={18} class="text-primary" />
+          <Icon icon={Icons.BookmarkCheck} size={18} class="text-primary" />
           <span class="text-sm">Saved</span>
         {:else}
-          <Icons.Bookmark size={18} />
+          <Icon icon={Icons.Bookmark} size={18} />
           <span class="text-sm">Save</span>
         {/if}
       </button>
       
       <button 
-        on:click={shareDigest}
+        onclick={shareDigest}
         class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       >
-        <Icons.Share2 size={18} />
+        <Icon icon={Icons.Share2} size={18} />
         <span class="text-sm">Share</span>
       </button>
     </div>
@@ -191,11 +192,11 @@
       
       <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
         <div class="flex items-center gap-1">
-          <Icons.Calendar size={16} />
+          <Icon icon={Icons.Calendar} size={16} />
           <span>{digest.date}</span>
         </div>
         <div class="flex items-center gap-1">
-          <Icons.Clock size={16} />
+          <Icon icon={Icons.Clock} size={16} />
           <span>{digest.readTime}</span>
         </div>
       </div>
@@ -207,23 +208,23 @@
       <!-- Simple button controls for mobile users -->
       <div class="md:hidden flex flex-col sm:flex-row gap-4 mb-4">
         <button 
-          on:click={togglePlayback}
+          onclick={togglePlayback}
           class="flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
         >
           {#if digest.isPlaying}
-            <Icons.Pause size={18} />
+            <Icon icon={Icons.Pause} size={18} />
             <span>Pause</span>
           {:else}
-            <Icons.Play size={18} />
+            <Icon icon={Icons.Play} size={18} />
             <span>Listen</span>
           {/if}
         </button>
         
         <button 
-          on:click={downloadAudio}
+          onclick={downloadAudio}
           class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
-          <Icons.Download size={18} />
+          <Icon icon={Icons.Download} size={18} />
           <span>Download Audio</span>
         </button>
       </div>
@@ -240,19 +241,19 @@
           showSeek={true}
           showSkip={true}
           skipAmount={15}
-          on:play={handleAudioPlay}
-          on:pause={handleAudioPause}
-          on:ended={handleAudioEnded}
+          onplay={handleAudioPlay}
+          onpause={handleAudioPause}
+          onended={handleAudioEnded}
           className="mb-4"
         />
       </div>
       
       <div class="md:flex items-center justify-end hidden">
         <button 
-          on:click={downloadAudio}
+          onclick={downloadAudio}
           class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
         >
-          <Icons.Download size={18} />
+          <Icon icon={Icons.Download} size={18} />
           <span>Download Audio</span>
         </button>
       </div>
@@ -330,7 +331,7 @@
       <div class="py-4 text-center">
         <button 
           class="px-4 py-2 bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] rounded-md hover:bg-[hsl(var(--primary)/0.2)] transition-colors"
-          on:click={() => {
+          onclick={() => {
             digest.content = [...digest.content]; // Trigger reactivity
           }}
         >
@@ -343,20 +344,20 @@
   <!-- Pagination -->
   <div class="mt-8 flex justify-between">
     <button 
-      on:click={goToPreviousDigest}
+      onclick={goToPreviousDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
       disabled={parseInt(digestId) <= 1}
     >
-      <Icons.ChevronLeft size={18} />
+      <Icon icon={Icons.ChevronLeft} size={18} />
       <span>Previous Digest</span>
     </button>
     
     <button 
-      on:click={goToNextDigest}
+      onclick={goToNextDigest}
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
     >
       <span>Next Digest</span>
-      <Icons.ChevronRight size={18} />
+      <Icon icon={Icons.ChevronRight} size={18} />
     </button>
   </div>
 </div> 
