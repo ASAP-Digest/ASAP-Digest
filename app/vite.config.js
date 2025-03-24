@@ -44,7 +44,6 @@ export default defineConfig(({ mode }) => {
 					manualChunks: {
 						'svelte': ['svelte'],
 						'ui-lib': ['bits-ui'],
-						'chart': ['svelte-chart'],
 						'stripe': ['@stripe/stripe-js']
 					}
 				}
@@ -57,7 +56,8 @@ export default defineConfig(({ mode }) => {
 			dedupe: ['svelte', '@sveltejs/kit'],
 			alias: {
 				'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
-				'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.js')
+				'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
+				'svelte-chart': resolve(__dirname, 'src/lib/utils/svelte-chart-compat.js')
 			}
 		},
 		optimizeDeps: {
