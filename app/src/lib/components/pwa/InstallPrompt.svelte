@@ -38,6 +38,10 @@
 	// Reference to the beforeinstallprompt event
 	/** @type {any} */
 	let deferredPrompt = $state(null);
+
+	// Determine if we're in test mode
+	/** @type {boolean} */
+	let isTestMode = $state(false);
 	
 	/**
 	 * Check if app is already installed
@@ -89,7 +93,7 @@
 	 * @param {MouseEvent} event - Mouse event object 
 	 */
 	function handleInstall(event) {
-		console.log('Install button clicked');
+		console.log('[InstallPrompt] Install button clicked');
 		
 		// Hide prompt
 		isPromptVisible = false;
@@ -106,11 +110,11 @@
 			// @ts-ignore - BeforeInstallPromptEvent is a non-standard API
 			deferredPrompt.userChoice.then(/** @param {any} choiceResult */ (choiceResult) => {
 				if (choiceResult.outcome === 'accepted') {
-					console.log('User accepted the install prompt');
+					console.log('[InstallPrompt] User accepted the install prompt');
 					localStorage.setItem('appInstalled', 'true');
 					isAppInstalled = true;
 				} else {
-					console.log('User dismissed the install prompt');
+					console.log('[InstallPrompt] User dismissed the install prompt');
 				}
 				
 				// Clear the saved prompt
@@ -128,9 +132,42 @@
 		hasShownPrompt = true;
 		localStorage.setItem('installPromptShown', 'true');
 	}
+
+	/**
+	 * Reset prompt settings (for testing)
+	 */
+	function resetPromptSettings() {
+		localStorage.removeItem('installPromptShown');
+		localStorage.removeItem('appInstalled');
+		hasShownPrompt = false;
+		isAppInstalled = false;
+		if (isTestMode) {
+			// In test mode, we show the prompt immediately
+			setTimeout(() => {
+				isPromptVisible = true;
+			}, 500);
+		}
+	}
+
+	/**
+	 * Custom event handler for communication with test controls
+	 * @param {CustomEvent} event - Custom event with test control data
+	 */
+	function handlePwaTest(event) {
+		if (event.detail?.type === 'reset-install-prompt') {
+			resetPromptSettings();
+		} else if (event.detail?.type === 'force-show-prompt') {
+			isPromptVisible = true;
+		} else if (event.detail?.type === 'force-hide-prompt') {
+			isPromptVisible = false;
+		}
+	}
 	
 	// Initialize on mount
 	onMount(() => {
+		// Check if we're in test mode
+		isTestMode = window.location.search.includes('pwa-test');
+
 		// Detect browser and OS
 		detectBrowserAndOS();
 		
@@ -138,7 +175,8 @@
 		isAppInstalled = checkIfAppInstalled();
 		
 		// Check if prompt has been shown this session or in localStorage
-		const promptShown = localStorage.getItem('installPromptShown') === 'true';
+		// In test mode, we ignore the localStorage setting
+		const promptShown = isTestMode ? false : localStorage.getItem('installPromptShown') === 'true';
 		hasShownPrompt = promptShown;
 		
 		// Add beforeinstallprompt listener
@@ -149,19 +187,27 @@
 			// Stash the event so it can be triggered later
 			deferredPrompt = e;
 			
+			// Dispatch event for test controls
+			window.dispatchEvent(new CustomEvent('pwa-install-prompt-available', {
+				detail: { event: e }
+			}));
+			
 			// Update UI to show install button/banner
-			if (!hasShownPrompt && !isAppInstalled) {
+			if ((!hasShownPrompt && !isAppInstalled) || isTestMode) {
 				// Show the prompt after a short delay
-				setTimeout(() => {
-					isPromptVisible = true;
-				}, 3000);
+				// In test mode, wait for explicit action
+				if (!isTestMode) {
+					setTimeout(() => {
+						isPromptVisible = true;
+					}, 3000);
+				}
 			}
 		});
 		
 		// Track when the app is installed
 		window.addEventListener('appinstalled', () => {
 			// Log app installed
-			console.log('PWA was installed');
+			console.log('[InstallPrompt] PWA was installed');
 			
 			// Update state
 			isAppInstalled = true;
@@ -169,15 +215,29 @@
 			
 			// Save to localStorage
 			localStorage.setItem('appInstalled', 'true');
+
+			// Dispatch event for test controls
+			window.dispatchEvent(new CustomEvent('pwa-app-installed'));
 		});
 		
+		// Listen for test control events
+		window.addEventListener('pwa-test-control', handlePwaTest);
+		
 		// Check if we need to show the prompt (not installed and not shown yet)
-		if (!isAppInstalled && !hasShownPrompt) {
-			// Show prompt after a delay
-			setTimeout(() => {
-				isPromptVisible = true;
-			}, 3000);
+		if ((!isAppInstalled && !hasShownPrompt) || isTestMode) {
+			// In test mode, wait for explicit action
+			if (!isTestMode) {
+				// Show prompt after a delay
+				setTimeout(() => {
+					isPromptVisible = true;
+				}, 3000);
+			}
 		}
+
+		// Clean up event listeners on unmount
+		return () => {
+			window.removeEventListener('pwa-test-control', handlePwaTest);
+		};
 	});
 </script>
 
@@ -189,24 +249,24 @@
 				<span>Install ASAP Digest</span>
 			</h3>
 			
-				<button 
+			<button 
 				onclick={closePrompt}
 				class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
 				aria-label="Close installation prompt"
 			>
 				<X size={18} />
-				</button>
-			</div>
+			</button>
+		</div>
 			
 		<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-[1rem]">
 			{#if deviceOS === 'ios'}
 				Add ASAP Digest to your Home Screen for a better experience. Tap <span class="inline-block w-[1rem] h-[1rem] bg-[#1677ff] text-white text-center leading-[1rem] rounded-[0.25rem] mx-[0.25rem]">+</span> in your Safari browser and then "Add to Home Screen".
 			{:else if deviceOS === 'android'}
 				Install ASAP Digest as an app on your device for a better experience with offline access.
-				{:else}
+			{:else}
 				Install ASAP Digest for offline access and a better experience.
-						{/if}
-					</p>
+			{/if}
+		</p>
 		
 		{#if deferredPrompt || deviceOS === 'desktop'}
 			<button 
@@ -223,8 +283,14 @@
 				<span>then "Add to Home Screen"</span>
 			</div>
 		{/if}
+
+		{#if isTestMode}
+			<div class="mt-2 pt-2 border-t border-[hsl(var(--border))]">
+				<p class="text-[0.75rem] text-[hsl(var(--muted-foreground))]">Test Mode Active</p>
+			</div>
+		{/if}
 	</div>
-{/if} 
+{/if}
 <style>
-	/* Remove tailwind reference and use direct CSS instead */
+	/* No styles needed - using Tailwind utility classes */
 </style>

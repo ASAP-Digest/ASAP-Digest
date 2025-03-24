@@ -13,6 +13,7 @@
   import { SidebarProvider } from '$lib/components/ui/sidebar';
   import { findProblematicClasses } from '$lib/utils/tailwindFixer';
   import { registerServiceWorker } from '$lib/utils/register-sw';
+  import TestPwaControls from '$lib/components/pwa/TestPwaControls.svelte';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -79,9 +80,33 @@
     // Initial check
     checkMobile();
     
-    // Re-check on resize
+    // Register event listener for resize
     window.addEventListener('resize', checkMobile);
     
+    // Check for saved sidebar preference
+    if (localStorage) {
+      const savedPref = localStorage.getItem('sidebar-collapsed');
+      if (savedPref === 'true') {
+        isSidebarCollapsed = true;
+        document.body.classList.add('sidebar-collapsed');
+      }
+    }
+    
+    // Initialize performance monitoring
+    initPerformanceMonitoring();
+    
+    // Optimize images
+    initImageOptimization();
+    
+    // Register Service Worker for PWA functionality
+    registerServiceWorker().catch(error => {
+      console.debug('[SW] Registration error (non-critical):', error.message);
+    });
+    
+    // Find and report any problematic Tailwind classes
+    findProblematicClasses();
+    
+    // Clean up on component destruction
     return () => {
       window.removeEventListener('resize', checkMobile);
     };
@@ -344,13 +369,6 @@
         document.querySelectorAll('[class*="sidebar"]').length);
     }, 1000);
 
-    // Check localStorage for saved sidebar state
-    const savedSidebarState = localStorage.getItem('sidebar-collapsed');
-    if (savedSidebarState === 'true') {
-      isSidebarCollapsed = true;
-      document.body.classList.add('sidebar-collapsed');
-    }
-
     // Setup listener for sidebar toggle events from child components
     /**
      * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
@@ -362,12 +380,6 @@
     };
     
     document.addEventListener('sidebarToggle', handleSidebarToggle);
-    
-    registerServiceWorker();
-    
-    return () => {
-      document.removeEventListener('sidebarToggle', handleSidebarToggle);
-    };
   });
 </script>
 
@@ -691,6 +703,9 @@
         <Footer />
       </div>
     </footer>
+    
+    <!-- PWA Testing Controls -->
+    <TestPwaControls />
   </div>
   
   <!-- Performance monitor (dev only) - Positioned outside app-shell -->

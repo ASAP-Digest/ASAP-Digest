@@ -27,11 +27,14 @@ export default defineConfig(({ mode }) => {
 				strict: false,
 				allow: ['..', '../..', '../../node_modules', '.', './node_modules']
 			},
+			host: '0.0.0.0',
+			port: 5173,
 			hmr: {
-				clientPort: 5173,
+				clientPort: process.env.HMR_HOST ? 5173 : null,
 				overlay: false,
 				timeout: 120000,
-				protocol: 'ws'
+				protocol: 'ws',
+				host: 'localhost'
 			}
 		},
 		build: {
@@ -43,8 +46,7 @@ export default defineConfig(({ mode }) => {
 				output: {
 					manualChunks: {
 						'svelte': ['svelte'],
-						'ui-lib': ['bits-ui'],
-						'stripe': ['@stripe/stripe-js']
+						'ui-lib': ['bits-ui']
 					}
 				}
 			},
@@ -67,7 +69,8 @@ export default defineConfig(({ mode }) => {
 				'bits-ui',
 				'clsx',
 				'tailwind-merge',
-				'tailwind-variants'
+				'tailwind-variants',
+				'@stripe/stripe-js'
 			],
 			esbuildOptions: {
 				target: 'esnext'

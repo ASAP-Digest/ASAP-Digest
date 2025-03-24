@@ -6,7 +6,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="manifest" href="/manifest.json" />
 		<meta name="theme-color" content="#00ffff" />
-		<title>ASAP Digest</title>
+		<title>⚡️ ASAP Digest - Devour Insights at AI Speed</title>
 		
 		<!-- Preconnect to critical domains -->
 		<link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
@@ -24,43 +24,7 @@
 		// We'll send page views manually after the page is fully loaded
 		</script>
 		
-		<!-- Service Worker Registration -->
-		<script>
-			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-						.then(registration => {
-							console.log('Service Worker registered with scope:', registration.scope);
-							
-							// Check for updates
-							registration.addEventListener('updatefound', () => {
-								const newWorker = registration.installing;
-								console.log('New service worker state:', newWorker.state);
-								
-								newWorker.addEventListener('statechange', () => {
-									console.log('Service worker state changed to:', newWorker.state);
-									if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-										// New content is available, show update notification if desired
-										if (window.confirm('New content is available. Reload to update?')) {
-											// Tell the service worker to skip waiting
-											newWorker.postMessage({ type: 'SKIP_WAITING' });
-											window.location.reload();
-										}
-									}
-								});
-							});
-						})
-						.catch(error => {
-							console.debug('Service worker registration failed:', error);
-						});
-					
-					// Handle service worker updates
-					navigator.serviceWorker.addEventListener('controllerchange', () => {
-						console.log('Service worker controller changed');
-					});
-				});
-			}
-		</script>
+		<!-- Service Worker Registration - now handled by the app code -->
 		
 		<!-- System font strategy - no external font loading -->
 		<style>
