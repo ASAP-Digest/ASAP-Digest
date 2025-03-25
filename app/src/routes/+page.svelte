@@ -68,6 +68,8 @@
    * Initialize drag and drop functionality
    */
   function initDraggableWidgets() {
+    if (typeof window === 'undefined') return;
+    
     const widgetElements = document.querySelectorAll('.draggable-widget');
     
     widgetElements.forEach(element => {
@@ -87,6 +89,8 @@
    * Clean up drag and drop event listeners
    */
   function cleanupDraggableWidgets() {
+    if (typeof window === 'undefined') return;
+    
     const widgetElements = document.querySelectorAll('.draggable-widget');
     
     widgetElements.forEach(element => {
@@ -276,6 +280,8 @@
    * Save the current layout configuration
    */
   function saveLayout() {
+    if (typeof window === 'undefined') return;
+    
     // In a real application, you would save the new layout to localStorage or a database
     console.log('Layout saved');
   }
@@ -304,16 +310,16 @@
    * This enables the commented-out debug styles to help visualize the grid
    */
   function toggleGridDebug() {
-    if (typeof document !== 'undefined') {
-      document.body.classList.toggle('debug-grid');
-    }
+    if (typeof window === 'undefined') return;
+    
+    document.body.classList.toggle('debug-grid');
   }
 </script>
 
 <!-- Main layout container -->
-<div class="page-content max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8">
+<div class="page-content max-w-[1440px] mx-auto px-6 sm:px-8 md:px-10 lg:px-12">
   <!-- Section Headers -->
-  <div class="mb-8 space-y-2">
+  <div class="mb-10 space-y-3 p-3">
     <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
     <p class="text-[hsl(var(--muted-foreground))] font-[var(--font-body)] text-[var(--font-size-base)]">Customized content based on your interests</p>
   </div>

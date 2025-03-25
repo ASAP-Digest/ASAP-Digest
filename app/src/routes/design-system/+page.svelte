@@ -1,7 +1,7 @@
 <!-- Design System Demo Page -->
 <script>
-  import CardExample from '$lib/components/examples/CardExample.svelte';
-  import { Typography, Button, Link } from '$lib/components/atoms';
+  import CardExample from '$lib/components/layout/CardExample.svelte';
+  import { Button, Link, Typography } from '$lib/components/atoms';
   
   /**
    * Handle link click events

@@ -2,9 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   
   // Configuration props with defaults
-  let isEnabled = $state(true);
-  let enableConsoleLogging = $state(true);
-  let isVisible = $state(true);
+  let isEnabled = $state(false);
+  let enableConsoleLogging = $state(false);
+  let isVisible = $state(false);
   
   // Toggle visibility
   function toggleVisibility() {
@@ -105,9 +105,9 @@
   onMount(() => {
     // Initialize state from localStorage if available
     if (typeof window !== 'undefined') {
-      isEnabled = localStorage.getItem('perfMonitorEnabled') !== 'false';
-      enableConsoleLogging = localStorage.getItem('perfMonitorLogging') !== 'false';
-      isVisible = localStorage.getItem('perfMonitorVisible') !== 'false';
+      isEnabled = localStorage.getItem('perfMonitorEnabled') === 'true';
+      enableConsoleLogging = localStorage.getItem('perfMonitorLogging') === 'true';
+      isVisible = localStorage.getItem('perfMonitorVisible') === 'true';
     }
     
     if (!isEnabled) return;

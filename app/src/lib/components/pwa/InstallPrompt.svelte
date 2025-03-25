@@ -165,79 +165,91 @@
 	
 	// Initialize on mount
 	onMount(() => {
-		// Check if we're in test mode
-		isTestMode = window.location.search.includes('pwa-test');
+		try {
+			// Check if we're in test mode
+			isTestMode = window.location.search.includes('pwa-test');
 
-		// Detect browser and OS
-		detectBrowserAndOS();
-		
-		// Check if app is installed
-		isAppInstalled = checkIfAppInstalled();
-		
-		// Check if prompt has been shown this session or in localStorage
-		// In test mode, we ignore the localStorage setting
-		const promptShown = isTestMode ? false : localStorage.getItem('installPromptShown') === 'true';
-		hasShownPrompt = promptShown;
-		
-		// Add beforeinstallprompt listener
-		window.addEventListener('beforeinstallprompt', (e) => {
-			// Prevent Chrome 67+ from automatically showing the prompt
-			e.preventDefault();
+			// Detect browser and OS
+			detectBrowserAndOS();
 			
-			// Stash the event so it can be triggered later
-			deferredPrompt = e;
+			// Check if app is installed
+			isAppInstalled = checkIfAppInstalled();
 			
-			// Dispatch event for test controls
-			window.dispatchEvent(new CustomEvent('pwa-install-prompt-available', {
-				detail: { event: e }
-			}));
+			// Check if prompt has been shown this session or in localStorage
+			// In test mode, we ignore the localStorage setting
+			const promptShown = isTestMode ? false : localStorage.getItem('installPromptShown') === 'true';
+			hasShownPrompt = promptShown;
 			
-			// Update UI to show install button/banner
-			if ((!hasShownPrompt && !isAppInstalled) || isTestMode) {
-				// Show the prompt after a short delay
+			// Add beforeinstallprompt listener
+			window.addEventListener('beforeinstallprompt', (e) => {
+				try {
+					// Prevent Chrome 67+ from automatically showing the prompt
+					e.preventDefault();
+					
+					// Stash the event so it can be triggered later
+					deferredPrompt = e;
+					
+					// Dispatch event for test controls
+					window.dispatchEvent(new CustomEvent('pwa-install-prompt-available', {
+						detail: { event: e }
+					}));
+					
+					// Update UI to show install button/banner
+					if ((!hasShownPrompt && !isAppInstalled) || isTestMode) {
+						// Show the prompt after a short delay
+						// In test mode, wait for explicit action
+						if (!isTestMode) {
+							setTimeout(() => {
+								isPromptVisible = true;
+							}, 3000);
+						}
+					}
+				} catch (error) {
+					console.error('[InstallPrompt] Error handling install prompt:', error);
+				}
+			});
+			
+			// Track when the app is installed
+			window.addEventListener('appinstalled', () => {
+				try {
+					// Log app installed
+					console.log('[InstallPrompt] PWA was installed');
+					
+					// Update state
+					isAppInstalled = true;
+					isPromptVisible = false;
+					
+					// Save to localStorage
+					localStorage.setItem('appInstalled', 'true');
+
+					// Dispatch event for test controls
+					window.dispatchEvent(new CustomEvent('pwa-app-installed'));
+				} catch (error) {
+					console.error('[InstallPrompt] Error handling app installed event:', error);
+				}
+			});
+			
+			// Listen for test control events
+			window.addEventListener('pwa-test-control', handlePwaTest);
+			
+			// Check if we need to show the prompt (not installed and not shown yet)
+			if ((!isAppInstalled && !hasShownPrompt) || isTestMode) {
 				// In test mode, wait for explicit action
 				if (!isTestMode) {
+					// Show prompt after a delay
 					setTimeout(() => {
 						isPromptVisible = true;
 					}, 3000);
 				}
 			}
-		});
-		
-		// Track when the app is installed
-		window.addEventListener('appinstalled', () => {
-			// Log app installed
-			console.log('[InstallPrompt] PWA was installed');
-			
-			// Update state
-			isAppInstalled = true;
-			isPromptVisible = false;
-			
-			// Save to localStorage
-			localStorage.setItem('appInstalled', 'true');
 
-			// Dispatch event for test controls
-			window.dispatchEvent(new CustomEvent('pwa-app-installed'));
-		});
-		
-		// Listen for test control events
-		window.addEventListener('pwa-test-control', handlePwaTest);
-		
-		// Check if we need to show the prompt (not installed and not shown yet)
-		if ((!isAppInstalled && !hasShownPrompt) || isTestMode) {
-			// In test mode, wait for explicit action
-			if (!isTestMode) {
-				// Show prompt after a delay
-				setTimeout(() => {
-					isPromptVisible = true;
-				}, 3000);
-			}
+			// Clean up event listeners on unmount
+			return () => {
+				window.removeEventListener('pwa-test-control', handlePwaTest);
+			};
+		} catch (error) {
+			console.error('[InstallPrompt] Error initializing component:', error);
 		}
-
-		// Clean up event listeners on unmount
-		return () => {
-			window.removeEventListener('pwa-test-control', handlePwaTest);
-		};
 	});
 </script>
 

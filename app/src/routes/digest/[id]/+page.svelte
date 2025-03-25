@@ -98,7 +98,7 @@
   
   // Share digest
   function shareDigest() {
-    if (navigator.share) {
+    if (typeof window !== 'undefined' && navigator.share) {
       navigator.share({
         title: digest.title,
         text: digest.summary,
@@ -114,6 +114,8 @@
   
   // Download digest as audio
   function downloadAudio() {
+    if (typeof window === 'undefined') return;
+    
     if (digest.audioUrl) {
       const link = document.createElement('a');
       link.href = digest.audioUrl;
@@ -128,6 +130,8 @@
   
   // Navigation between digests
   function goToPreviousDigest() {
+    if (typeof window === 'undefined') return;
+    
     const prevId = parseInt(digestId) - 1;
     if (prevId > 0) {
       window.location.href = `/digest/${prevId}`;
@@ -135,6 +139,8 @@
   }
   
   function goToNextDigest() {
+    if (typeof window === 'undefined') return;
+    
     const nextId = parseInt(digestId) + 1;
     window.location.href = `/digest/${nextId}`;
   }

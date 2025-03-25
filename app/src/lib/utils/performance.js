@@ -19,9 +19,9 @@ const THRESHOLDS = {
  */
 function isMonitoringEnabled() {
     try {
-        return localStorage.getItem('perfMonitorEnabled') !== 'false';
+        return localStorage.getItem('perfMonitorEnabled') === 'true';
     } catch (e) {
-        return true; // Default to enabled if localStorage is not available
+        return false; // Default to disabled if localStorage is not available
     }
 }
 
@@ -31,9 +31,9 @@ function isMonitoringEnabled() {
  */
 function isLoggingEnabled() {
     try {
-        return localStorage.getItem('perfMonitorLogging') !== 'false';
+        return localStorage.getItem('perfMonitorLogging') === 'true';
     } catch (e) {
-        return true; // Default to enabled if localStorage is not available
+        return false; // Default to disabled if localStorage is not available
     }
 }
 

@@ -39,6 +39,8 @@
    * @param {MouseEvent} e - Mouse event
    */
   function toggleSidebar(e) {
+    if (typeof window === 'undefined') return;
+    
     isSidebarCollapsed = !isSidebarCollapsed;
     // Add class to body to allow for CSS transitions
     if (isSidebarCollapsed) {
@@ -57,7 +59,7 @@
     }
     
     // Save preference
-    if (localStorage) {
+    if (typeof localStorage !== 'undefined') {
       localStorage.setItem('sidebar-collapsed', String(isSidebarCollapsed));
     }
     
@@ -73,47 +75,54 @@
   
   // Setup responsive behavior
   onMount(() => {
-    const checkMobile = () => {
-      isMobile = window.innerWidth < 1024; // lg breakpoint
-    };
-    
-    // Initial check
-    checkMobile();
-    
-    // Register event listener for resize
-    window.addEventListener('resize', checkMobile);
-    
-    // Check for saved sidebar preference
-    if (localStorage) {
-      const savedPref = localStorage.getItem('sidebar-collapsed');
-      if (savedPref === 'true') {
-        isSidebarCollapsed = true;
-        document.body.classList.add('sidebar-collapsed');
+    try {
+      const checkMobile = () => {
+        isMobile = window.innerWidth < 1024; // lg breakpoint
+      };
+      
+      // Initial check
+      checkMobile();
+      
+      // Register event listener for resize
+      window.addEventListener('resize', checkMobile);
+      
+      // Check for saved sidebar preference
+      if (typeof localStorage !== 'undefined') {
+        const savedPref = localStorage.getItem('sidebar-collapsed');
+        if (savedPref === 'true') {
+          isSidebarCollapsed = true;
+          document.body.classList.add('sidebar-collapsed');
+        }
       }
+      
+      // Initialize performance monitoring
+      initPerformanceMonitoring();
+      
+      // Optimize images
+      initImageOptimization();
+      
+      // Register Service Worker for PWA functionality
+      registerServiceWorker().catch(error => {
+        // Log error but don't break app functionality
+        console.debug('[SW] Registration error (non-critical):', error.message);
+      });
+      
+      // Find and report any problematic Tailwind classes
+      findProblematicClasses();
+      
+      // Clean up on component destruction
+      return () => {
+        window.removeEventListener('resize', checkMobile);
+      };
+    } catch (error) {
+      console.error('[Layout] Error initializing layout:', error);
     }
-    
-    // Initialize performance monitoring
-    initPerformanceMonitoring();
-    
-    // Optimize images
-    initImageOptimization();
-    
-    // Register Service Worker for PWA functionality
-    registerServiceWorker().catch(error => {
-      console.debug('[SW] Registration error (non-critical):', error.message);
-    });
-    
-    // Find and report any problematic Tailwind classes
-    findProblematicClasses();
-    
-    // Clean up on component destruction
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
   });
 
   // Initialization function for all layout behaviors
   function initializeLayout() {
+    if (typeof window === 'undefined') return;
+    
     console.log("[Layout] Starting layout initialization...");
     
     // Initialize performance monitoring
@@ -327,6 +336,8 @@
   
   // Initialize on mount
   onMount(() => {
+    if (typeof window === 'undefined') return;
+    
     console.log("[Layout] Component mounted");
     
     // Force sidebar to be visible on initial load
@@ -380,6 +391,11 @@
     };
     
     document.addEventListener('sidebarToggle', handleSidebarToggle);
+    
+    // Clean up event listener on component destruction
+    return () => {
+      document.removeEventListener('sidebarToggle', handleSidebarToggle);
+    };
   });
 </script>
 
@@ -509,7 +525,7 @@
   
   /* Main content area */
   .main-area {
-    padding: 4;
+    padding: 6;
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
@@ -613,6 +629,7 @@
             <button 
               class="flex items-center space-x-2 rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] p-1 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
               onclick={() => {
+                if (typeof window === 'undefined') return;
                 const dropdown = document.getElementById('user-dropdown');
                 if (dropdown) {
                   dropdown.classList.toggle('hidden');
@@ -626,6 +643,7 @@
                   alt="User" 
                   class="object-cover w-full h-full"
                   onerror={(e) => {
+                    if (typeof window === 'undefined') return;
                     e.target.onerror = null;
                     e.target.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
                   }}

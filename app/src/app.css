@@ -24,7 +24,17 @@
 ===============================================================
 */
 
+/* 
+===============================================================
+   ⚠️ IMPORTANT: CSS VARIABLES USAGE NOTES ⚠️
+===============================================================
 
+   - CSS variables in :root are used throughout the application
+   - All variable definitions must be in the :root section to be 
+     accessible globally
+     
+===============================================================
+*/
 
 @layer base {
   :root {
@@ -127,8 +137,16 @@
     --line-height-tight: 1.25;    /* headings */
     --line-height-snug: 1.375;    
     --line-height-normal: 1.5;    /* body text */
-    --line-height-relaxed: 1.625;
+    --line-height-relaxed: 1.75;  /* increased from 1.625 */
     --line-height-loose: 2;       /* spacious text */
+    
+    /* Letter Spacing / Tracking */
+    --tracking-tighter: -0.05em;  /* tighter than normal */
+    --tracking-tight: -0.025em;   /* slightly tighter */
+    --tracking-normal: 0em;       /* normal spacing */
+    --tracking-wide: 0.025em;     /* slightly wider */
+    --tracking-wider: 0.05em;     /* wider than normal */
+    --tracking-widest: 0.1em;     /* extra wide */
     
     /* Animation Durations */
     --duration-fast: 150ms;

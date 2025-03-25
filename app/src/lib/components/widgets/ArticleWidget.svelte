@@ -93,7 +93,7 @@
 			Failed to load article content
 		</div>
 	{:else if displayTitle || (article && article.title)}
-		<div class="space-y-[calc(var(--spacing-unit)*3)]">
+		<div class="space-y-[calc(var(--spacing-unit)*4)]">
 			{#if article && article.featuredImage}
 				<img 
 					src={article.featuredImage} 
@@ -103,7 +103,7 @@
 				/>
 			{/if}
 			
-			<div class="space-y-[calc(var(--spacing-unit)*2)]">
+			<div class="space-y-[calc(var(--spacing-unit)*3)]">
 				{#if sourceUrl || (article && article.slug)}
 					<Link href={sourceUrl || (article ? `/article/${article.slug}` : '')} variant="heading">
 						{displayTitle}

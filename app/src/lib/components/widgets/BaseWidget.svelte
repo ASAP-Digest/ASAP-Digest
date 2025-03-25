@@ -17,11 +17,11 @@
   const getVariantSpacing = () => {
     switch (variant) {
       case 'compact':
-        return 'p-[calc(var(--spacing-unit)*3)] gap-[calc(var(--spacing-unit)*2)]';
-      case 'expanded':
-        return 'p-[calc(var(--spacing-unit)*6)] gap-[calc(var(--spacing-unit)*4)]';
-      default:
         return 'p-[calc(var(--spacing-unit)*4)] gap-[calc(var(--spacing-unit)*3)]';
+      case 'expanded':
+        return 'p-[calc(var(--spacing-unit)*8)] gap-[calc(var(--spacing-unit)*5)]';
+      default:
+        return 'p-[calc(var(--spacing-unit)*6)] gap-[calc(var(--spacing-unit)*4)]';
     }
   };
 

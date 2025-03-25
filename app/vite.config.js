@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
 			hmr: {
 				clientPort: process.env.HMR_HOST ? 5173 : null,
 				overlay: false,
-				timeout: 120000,
+				timeout: 300000,
 				protocol: 'ws',
 				host: 'localhost'
 			}

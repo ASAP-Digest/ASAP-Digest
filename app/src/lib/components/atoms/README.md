@@ -1,6 +1,14 @@
 # Atomic Components
 
-This directory contains atomic UI components that follow the ASAP Digest Visual Identity Style Guide. These components are the building blocks of our UI and should be used consistently across the application.
+This directory contains atomic-level components following the Atomic Design methodology.
+
+## Import Pattern
+
+Import components using the barrel file:
+
+```js
+import { Button, Link, Typography } from '$lib/components/atoms';
+```
 
 ## ⚠️ IMPORTANT: ONLY USE TAILWIND 4 SYNTAX ⚠️
 
