@@ -1,16 +1,24 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
-
+  import { goto } from '$app/navigation';
   import { LogIn, Mail, Lock, ArrowRight } from '$lib/utils/lucide-icons.js';
   import Icon from "$lib/components/ui/Icon.svelte";
+  import { authStore, isLoading } from '$lib/auth';
   
   let email = $state('');
   let password = $state('');
   let rememberMe = $state(false);
+  let errorMessage = $state('');
   
-  function handleSubmit() {
-    // TODO: Implement login functionality
-    console.log('Login submitted', { email, password, rememberMe });
+  async function handleSubmit() {
+    try {
+      errorMessage = '';
+      await authStore.signIn(email, password, rememberMe);
+      goto('/dashboard'); // Redirect to dashboard on success
+    } catch (error) {
+      errorMessage = error.message || 'Login failed. Please check your credentials.';
+      console.error('Login error:', error);
+    }
   }
 </script>
 
@@ -26,12 +34,18 @@
       </p>
     </div>
     
+    {#if errorMessage}
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+        <span class="block sm:inline">{errorMessage}</span>
+      </div>
+    {/if}
+    
     <form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
       <div class="space-y-2">
         <label for="email" class="text-sm font-medium">Email</label>
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Mail size={16} class="text-gray-400" />
+            <Icon icon={Mail} size={16} class="text-gray-400" />
           </div>
           <input 
             type="email" 
@@ -48,7 +62,7 @@
         <label for="password" class="text-sm font-medium">Password</label>
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Lock size={16} class="text-gray-400" />
+            <Icon icon={Lock} size={16} class="text-gray-400" />
           </div>
           <input 
             type="password" 
@@ -81,14 +95,14 @@
         class="w-full flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-white py-2 px-4 rounded-md hover:bg-[hsl(var(--primary))]/90 transition-colors"
       >
         <span>Sign In</span>
-        <ArrowRight size={16} />
+        <Icon icon={ArrowRight} size={16} />
       </button>
     </form>
     
     <div class="mt-6 text-center">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         Don't have an account? 
-        <a href="/auth/register" class="text-[hsl(var(--primary))] hover:underline">
+        <a href="/register" class="text-[hsl(var(--primary))] hover:underline">
           Sign up
         </a>
       </p>

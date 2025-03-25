@@ -201,6 +201,31 @@ function asap_register_rest_routes() {
       return current_user_can('read');
     },
   ]);
+
+  // JWT Authentication endpoints
+  register_rest_route('asap/v1', '/auth/token', [
+    'methods' => 'POST',
+    'callback' => 'asap_generate_jwt_token',
+    'permission_callback' => '__return_true',
+  ]);
+
+  register_rest_route('asap/v1', '/auth/validate', [
+    'methods' => 'POST',
+    'callback' => 'asap_validate_jwt_token',
+    'permission_callback' => '__return_true',
+  ]);
+
+  register_rest_route('asap/v1', '/auth/refresh', [
+    'methods' => 'POST',
+    'callback' => 'asap_refresh_jwt_token',
+    'permission_callback' => '__return_true',
+  ]);
+
+  register_rest_route('asap/v1', '/auth/register', [
+    'methods' => 'POST',
+    'callback' => 'asap_register_user',
+    'permission_callback' => '__return_true',
+  ]);
 }
 add_action('rest_api_init', 'asap_register_rest_routes');
 
@@ -410,6 +435,7 @@ function asap_add_cors_headers() {
   $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
   $allowed_origins = apply_filters('asap_allowed_origins', [
     'https://asapdigest.com',
+    'https://app.asapdigest.com',  // Add app subdomain
     'https://asapdigest.local',
     'http://asapdigest.local',
     'http://localhost:5173'
@@ -422,6 +448,12 @@ function asap_add_cors_headers() {
   }
   header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
   header('Access-Control-Allow-Headers: Authorization, Content-Type');
+  
+  // Handle preflight OPTIONS requests
+  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header('Access-Control-Max-Age: 86400'); // Cache preflight response for 24 hours
+    exit(0);
+  }
 }
 add_action('rest_api_init', 'asap_add_cors_headers');
 
@@ -541,4 +573,269 @@ function asap_digest_uninstall() {
     $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %s", $table));
   }
   delete_option('sms_digest_time');
+}
+
+/**
+ * Generate JWT token for user authentication
+ * 
+ * @param WP_REST_Request $request REST API request object
+ * @return WP_REST_Response|WP_Error Response with token or error
+ */
+function asap_generate_jwt_token(WP_REST_Request $request) {
+  $data = $request->get_json_params();
+  $username = sanitize_user($data['username']);
+  $password = $data['password'];
+
+  // Authenticate user
+  $user = wp_authenticate($username, $password);
+  if (is_wp_error($user)) {
+    return new WP_Error('invalid_credentials', 'Invalid credentials', ['status' => 401]);
+  }
+
+  // Generate JWT token
+  $issued_at = time();
+  $expiration = $issued_at + (DAY_IN_SECONDS * 7); // Token valid for 7 days
+  
+  $token = [
+    'iss' => get_site_url(),
+    'iat' => $issued_at,
+    'exp' => $expiration,
+    'data' => [
+      'user' => [
+        'id' => $user->ID,
+      ],
+    ],
+  ];
+  
+  // Use WordPress auth_key as JWT key
+  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
+  
+  // Use JWT library if available, otherwise simple implementation
+  $jwt = jwt_encode($token, $jwt_key);
+  
+  return rest_ensure_response([
+    'token' => $jwt,
+    'user_id' => $user->ID,
+    'user_email' => $user->user_email,
+    'user_display_name' => $user->display_name,
+    'exp' => $expiration,
+  ]);
+}
+
+/**
+ * Validate JWT token
+ * 
+ * @param WP_REST_Request $request REST API request object
+ * @return WP_REST_Response|WP_Error Response with validation status or error
+ */
+function asap_validate_jwt_token(WP_REST_Request $request) {
+  $data = $request->get_json_params();
+  $token = $data['token'];
+  
+  // Use WordPress auth_key as JWT key
+  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
+  
+  try {
+    $decoded = jwt_decode($token, $jwt_key, true);
+    return rest_ensure_response(['valid' => true, 'data' => $decoded->data]);
+  } catch (Exception $e) {
+    return new WP_Error('invalid_token', 'Invalid or expired token', ['status' => 401]);
+  }
+}
+
+/**
+ * Refresh JWT token
+ * 
+ * @param WP_REST_Request $request REST API request object
+ * @return WP_REST_Response|WP_Error Response with new token or error
+ */
+function asap_refresh_jwt_token(WP_REST_Request $request) {
+  $data = $request->get_json_params();
+  $token = $data['token'];
+  
+  // Use WordPress auth_key as JWT key
+  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
+  
+  try {
+    $decoded = jwt_decode($token, $jwt_key, true);
+    $user_id = $decoded->data->user->id;
+    
+    // Get user
+    $user = get_user_by('id', $user_id);
+    if (!$user) {
+      return new WP_Error('user_not_found', 'User not found', ['status' => 404]);
+    }
+    
+    // Generate new token
+    $issued_at = time();
+    $expiration = $issued_at + (DAY_IN_SECONDS * 7);
+    
+    $new_token = [
+      'iss' => get_site_url(),
+      'iat' => $issued_at,
+      'exp' => $expiration,
+      'data' => [
+        'user' => [
+          'id' => $user->ID,
+        ],
+      ],
+    ];
+    
+    $jwt = jwt_encode($new_token, $jwt_key);
+    
+    return rest_ensure_response([
+      'token' => $jwt,
+      'user_id' => $user->ID,
+      'exp' => $expiration,
+    ]);
+  } catch (Exception $e) {
+    return new WP_Error('invalid_token', 'Invalid or expired token', ['status' => 401]);
+  }
+}
+
+/**
+ * Simple JWT encode function (should be replaced with a proper library)
+ * 
+ * @param array $payload JWT payload
+ * @param string $key Secret key
+ * @return string JWT token
+ */
+function jwt_encode($payload, $key) {
+  $header = ['alg' => 'HS256', 'typ' => 'JWT'];
+  
+  $header_encoded = rtrim(strtr(base64_encode(json_encode($header)), '+/', '-_'), '=');
+  $payload_encoded = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+  
+  $signature = hash_hmac('SHA256', "$header_encoded.$payload_encoded", $key, true);
+  $signature_encoded = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+  
+  return "$header_encoded.$payload_encoded.$signature_encoded";
+}
+
+/**
+ * Simple JWT decode function (should be replaced with a proper library)
+ * 
+ * @param string $jwt JWT token
+ * @param string $key Secret key
+ * @param bool $verify Whether to verify signature
+ * @return object Decoded token
+ * @throws Exception If token is invalid or expired
+ */
+function jwt_decode($jwt, $key, $verify = true) {
+  $parts = explode('.', $jwt);
+  if (count($parts) !== 3) {
+    throw new Exception('Invalid token format');
+  }
+  
+  [$header_encoded, $payload_encoded, $signature_encoded] = $parts;
+  
+  if ($verify) {
+    $signature = base64_decode(strtr($signature_encoded, '-_', '+/'));
+    $expected_signature = hash_hmac('SHA256', "$header_encoded.$payload_encoded", $key, true);
+    
+    if (!hash_equals($expected_signature, $signature)) {
+      throw new Exception('Invalid signature');
+    }
+  }
+  
+  $payload = json_decode(base64_decode(strtr($payload_encoded, '-_', '+/')));
+  
+  // Check if token is expired
+  if (isset($payload->exp) && $payload->exp < time()) {
+    throw new Exception('Token expired');
+  }
+  
+  return $payload;
+}
+
+/**
+ * Register a new user
+ * 
+ * @param WP_REST_Request $request REST API request object
+ * @return WP_REST_Response|WP_Error Response with user data or error
+ */
+function asap_register_user(WP_REST_Request $request) {
+  $data = $request->get_json_params();
+  
+  // Validate required fields
+  $required_fields = ['username', 'email', 'password'];
+  foreach ($required_fields as $field) {
+    if (empty($data[$field])) {
+      return new WP_Error(
+        'missing_field',
+        sprintf(__('Missing required field: %s', 'adc'), $field),
+        ['status' => 400]
+      );
+    }
+  }
+  
+  // Sanitize input
+  $username = sanitize_user($data['username']);
+  $email = sanitize_email($data['email']);
+  $password = $data['password'];
+  
+  // Validate email
+  if (!is_email($email)) {
+    return new WP_Error('invalid_email', __('Invalid email address', 'adc'), ['status' => 400]);
+  }
+  
+  // Check if username or email already exists
+  if (username_exists($username)) {
+    return new WP_Error('username_exists', __('Username already exists', 'adc'), ['status' => 400]);
+  }
+  
+  if (email_exists($email)) {
+    return new WP_Error('email_exists', __('Email address already exists', 'adc'), ['status' => 400]);
+  }
+  
+  // Create user
+  $user_id = wp_create_user($username, $password, $email);
+  
+  if (is_wp_error($user_id)) {
+    return new WP_Error(
+      'registration_failed',
+      $user_id->get_error_message(),
+      ['status' => 500]
+    );
+  }
+  
+  // Set user role
+  $user = new WP_User($user_id);
+  $user->set_role('subscriber');
+  
+  // Add additional user meta if provided
+  if (!empty($data['first_name'])) {
+    update_user_meta($user_id, 'first_name', sanitize_text_field($data['first_name']));
+  }
+  
+  if (!empty($data['last_name'])) {
+    update_user_meta($user_id, 'last_name', sanitize_text_field($data['last_name']));
+  }
+  
+  // Generate JWT token for the new user
+  $issued_at = time();
+  $expiration = $issued_at + (DAY_IN_SECONDS * 7);
+  
+  $token = [
+    'iss' => get_site_url(),
+    'iat' => $issued_at,
+    'exp' => $expiration,
+    'data' => [
+      'user' => [
+        'id' => $user_id,
+      ],
+    ],
+  ];
+  
+  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
+  $jwt = jwt_encode($token, $jwt_key);
+  
+  // Return user data and token
+  return rest_ensure_response([
+    'user_id' => $user_id,
+    'username' => $username,
+    'email' => $email,
+    'token' => $jwt,
+    'exp' => $expiration,
+  ]);
 }

@@ -1,17 +1,35 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
-
+  import { goto } from '$app/navigation';
   import { UserPlus, Mail, Lock, User, ArrowRight } from '$lib/utils/lucide-icons.js';
+  import Icon from "$lib/components/ui/Icon.svelte";
+  import { authStore, isLoading } from '$lib/auth';
   
   let name = $state('');
   let email = $state('');
   let password = $state('');
   let confirmPassword = $state('');
   let acceptTerms = $state(false);
+  let errorMessage = $state('');
   
-  function handleSubmit() {
-    // TODO: Implement registration functionality
-    console.log('Registration submitted', { name, email, password, confirmPassword, acceptTerms });
+  async function handleSubmit() {
+    try {
+      errorMessage = '';
+      
+      if (password !== confirmPassword) {
+        errorMessage = 'Passwords do not match';
+        return;
+      }
+      
+      console.log('Attempting registration with:', { email, name, acceptTerms });
+      
+      await authStore.register(email, password, name);
+      console.log('Registration successful, redirecting to dashboard');
+      goto('/dashboard'); // Redirect to dashboard on success
+    } catch (error) {
+      console.error('Registration error details:', error);
+      errorMessage = error.message || 'Registration failed. Please try again.';
+    }
   }
 </script>
 
@@ -19,13 +37,19 @@
   <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
     <div class="text-center mb-6">
       <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
-        <UserPlus size={24} />
+        <Icon icon={UserPlus} size={24} />
         <span>Create Account</span>
       </h1>
       <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
         Sign up for your personalized digest
       </p>
     </div>
+    
+    {#if errorMessage}
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+        <span class="block sm:inline">{errorMessage}</span>
+      </div>
+    {/if}
     
     <form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
       <div class="space-y-2">
@@ -116,16 +140,17 @@
       <button 
         type="submit" 
         class="w-full flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
+        disabled={$isLoading}
       >
-        <span>Create Account</span>
-        <ArrowRight size={16} />
+        <span>{$isLoading ? 'Creating Account...' : 'Create Account'}</span>
+        <Icon icon={ArrowRight} size={16} />
       </button>
     </form>
     
     <div class="mt-6 text-center">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         Already have an account? 
-        <a href="/auth/login" class="text-primary hover:underline">
+        <a href="/login" class="text-[hsl(var(--primary))] hover:underline">
           Sign in
         </a>
       </p>
