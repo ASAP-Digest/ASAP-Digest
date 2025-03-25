@@ -25,7 +25,6 @@
 <script>
 	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 	import { cn } from "$lib/utils.js";
-	import { mergeProps } from "bits-ui";
 	import { useSidebar } from "./context.svelte.js";
 
 	let {
@@ -53,7 +52,7 @@
 </script>
 
 {#snippet Button({ props = {} })}
-	{@const mergedProps = mergeProps(buttonProps, props)}
+	{@const mergedProps = { ...buttonProps, ...props }}
 	{#if child}
 		{@render child({ props: mergedProps })}
 	{:else}

@@ -2,8 +2,12 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { fly, slide, fade } from 'svelte/transition';
-  import { Dialog, DialogContent, DialogHeader, DialogTitle, Button } from '$lib/components/ui';
-  import { Input } from '$lib/components/ui/input';
+  import Dialog from '$lib/components/ui/dialog/dialog.svelte';
+  import DialogContent from '$lib/components/ui/dialog/dialog-content.svelte';
+  import DialogHeader from '$lib/components/ui/dialog/dialog-header.svelte';
+  import DialogTitle from '$lib/components/ui/dialog/dialog-title.svelte';
+  import Button from '$lib/components/ui/button/button.svelte';
+  import Input from '$lib/components/ui/input/input.svelte';
   import { Check, Plus, X, Search, FileText, Headphones, Key, DollarSign, Twitter, MessageSquare, Calendar, LineChart } from '$lib/utils/lucide-icons.js';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { getContentTypeColor } from '$lib/utils/color-utils.js';
