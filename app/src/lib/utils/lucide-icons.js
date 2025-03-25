@@ -80,6 +80,9 @@ export const Key = createIconObject('key', '<path d="M21 2l-2 2m-7.61 7.61a5.5 5
 // Finance Icons
 export const DollarSign = createIconObject('dollar-sign', '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>');
 
+// Chart Icons
+export const LineChart = createIconObject('line-chart', '<path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path>');
+
 // Social Icons
 export const Twitter = createIconObject('twitter', '<path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>');
 export const MessageSquare = createIconObject('message-square', '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>');
@@ -140,5 +143,6 @@ export default {
   DollarSign,
   Twitter,
   MessageSquare,
-  PanelLeft
+  PanelLeft,
+  LineChart
 }; 
