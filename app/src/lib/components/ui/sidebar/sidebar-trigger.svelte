@@ -1,7 +1,7 @@
 <script>
 	import { Button } from "$lib/components/ui/button/index.js";
 	import { cn } from "$lib/utils.js";
-	import PanelLeft from "@lucide/svelte/icons/panel-left";
+	import { PanelLeft } from "$lib/utils/lucide-icons.js";
 	import { useSidebar } from "./context.svelte.js";
 
 	let { ref = $bindable(null), class: className, onclick, ...restProps } = $props();

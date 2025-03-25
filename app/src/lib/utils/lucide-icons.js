@@ -19,6 +19,7 @@ export const Languages = createIconObject('languages', '<path d="m5 8 6 6"></pat
 export const HelpCircle = createIconObject('help-circle', '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>');
 export const Bug = createIconObject('bug', '<rect width="8" height="14" x="8" y="6" rx="4"></rect><path d="m19 7-3 2"></path><path d="m5 7 3 2"></path><path d="m19 19-3-2"></path><path d="m5 19 3-2"></path><path d="M20 13h-4"></path><path d="M4 13h4"></path><path d="m4 8 2 2"></path><path d="m4 16 2-2"></path><path d="m20 8-2 2"></path><path d="m20 16-2-2"></path>');
 export const Loader2 = createIconObject('loader2', '<path d="M21 12a9 9 0 1 1-6.219-8.56"></path>');
+export const PanelLeft = createIconObject('panel-left', '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line>');
 
 // Media Controls
 export const Play = createIconObject('play', '<polygon points="5 3 19 12 5 21 5 3"></polygon>');
@@ -66,6 +67,22 @@ export const Sun = createIconObject('sun', '<circle cx="12" cy="12" r="5"></circ
 // Misc
 export const Maximize = createIconObject('maximize', '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>');
 export const Plus = createIconObject('plus', '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>');
+
+// Document Icons
+export const FileText = createIconObject('file-text', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>');
+
+// Media Icons
+export const Headphones = createIconObject('headphones', '<path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>');
+
+// Security Icons
+export const Key = createIconObject('key', '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>');
+
+// Finance Icons
+export const DollarSign = createIconObject('dollar-sign', '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>');
+
+// Social Icons
+export const Twitter = createIconObject('twitter', '<path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>');
+export const MessageSquare = createIconObject('message-square', '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>');
 
 // Alias for backward compatibility with lucide-svelte/icons imports
 export const icons = {
@@ -116,5 +133,12 @@ export default {
   HelpCircle,
   CreditCard,
   Bug,
-  Loader2
+  Loader2,
+  FileText,
+  Headphones,
+  Key,
+  DollarSign,
+  Twitter,
+  MessageSquare,
+  PanelLeft
 }; 
