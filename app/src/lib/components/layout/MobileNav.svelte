@@ -32,7 +32,7 @@
   <!-- Mobile menu overlay -->
   {#if isOpen}
     <div 
-      class="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+      class="fixed inset-0 bg-[hsl(var(--background)/0.8)] backdrop-blur-sm z-40"
       onclick={closeMenu}
       onkeydown={(e) => e.key === 'Escape' && closeMenu()}
       role="dialog"
@@ -42,7 +42,7 @@
     ></div>
     
     <!-- Mobile menu panel -->
-    <div class="fixed inset-y-0 right-0 z-50 w-full max-w-xs bg-background p-6 shadow-xl">
+    <div class="fixed inset-y-0 right-0 z-50 w-full max-w-xs bg-[hsl(var(--background))] p-6 shadow-xl">
       <div class="flex items-center justify-between mb-8">
         <h2 class="text-xl font-semibold">ASAP Digest</h2>
         <button type="button" aria-label="Close menu" onclick={closeMenu}>
@@ -53,7 +53,7 @@
       <nav class="space-y-6">
         <a 
           href="/" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-muted {$page.url.pathname === '/' ? 'bg-muted font-medium' : ''}"
+          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
           <Home class="w-5 h-5" />
@@ -62,7 +62,7 @@
         
         <a 
           href="/profile" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-muted {$page.url.pathname === '/profile' ? 'bg-muted font-medium' : ''}"
+          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/profile' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
           <User class="w-5 h-5" />
@@ -71,7 +71,7 @@
         
         <a 
           href="/calendar" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-muted {$page.url.pathname === '/calendar' ? 'bg-muted font-medium' : ''}"
+          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/calendar' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
           <Calendar class="w-5 h-5" />
@@ -80,7 +80,7 @@
         
         <a 
           href="/notifications" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-muted {$page.url.pathname === '/notifications' ? 'bg-muted font-medium' : ''}"
+          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/notifications' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
           <Bell class="w-5 h-5" />
@@ -89,7 +89,7 @@
         
         <a 
           href="/settings" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-muted {$page.url.pathname === '/settings' ? 'bg-muted font-medium' : ''}"
+          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/settings' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
           <Settings class="w-5 h-5" />

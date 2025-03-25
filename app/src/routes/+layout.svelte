@@ -11,7 +11,7 @@
   import InstallPrompt from '$lib/components/pwa/InstallPrompt.svelte';
   import MainSidebar from '$lib/components/layout/MainSidebar.svelte';
   import { SidebarProvider } from '$lib/components/ui/sidebar';
-  import { findProblematicClasses } from '$lib/utils/tailwindFixer';
+  import { findProblematicClasses, fixClassString } from '$lib/utils/tailwindFixer';
   import { registerServiceWorker } from '$lib/utils/register-sw';
   import TestPwaControls from '$lib/components/pwa/TestPwaControls.svelte';
   import { browser } from '$app/environment';
@@ -29,10 +29,60 @@
    */
   let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
   
+  /**
+   * Determines if the current route is a design system route
+   */
+  let isDesignSystemRoute = $derived($page.url.pathname.startsWith('/design-system'));
+  
   // Use an effect to log state changes (creates proper closure)
   $effect(() => {
-    console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute);
+    console.debug('[DEBUG] Current path:', $page.url.pathname, 'Auth route:', isAuthRoute, 'Design system route:', isDesignSystemRoute);
+    
+    // If it's a design system route, immediately apply CSS var forcing
+    if (isDesignSystemRoute && browser) {
+      console.debug('[DEBUG] Forcing CSS variable application for design system');
+      forceCSSVariableApplication();
+    }
   });
+  
+  /**
+   * Force CSS variables to be applied properly - addresses Tailwind 4 HSL processing issues
+   */
+  function forceCSSVariableApplication() {
+    if (typeof window === 'undefined') return;
+    
+    console.log('[Layout] Forcing CSS variable application');
+    
+    // Get all CSS variables from :root
+    const computedStyle = getComputedStyle(document.documentElement);
+    const cssColorVars = [
+      '--background', '--foreground', '--card', '--card-foreground', 
+      '--popover', '--popover-foreground', '--primary', '--primary-foreground', 
+      '--secondary', '--secondary-foreground', '--muted', '--muted-foreground', 
+      '--accent', '--accent-foreground', '--destructive', '--destructive-foreground', 
+      '--border', '--input', '--ring'
+    ];
+    
+    // Force re-application of CSS variables with direct style manipulation
+    cssColorVars.forEach(varName => {
+      const value = computedStyle.getPropertyValue(varName).trim();
+      if (value) {
+        document.documentElement.style.setProperty(varName, value);
+        
+        // Also force HSL variables for Tailwind 4
+        document.body.style.setProperty(`--applied${varName}`, `hsl(${value})`);
+      }
+    });
+    
+    // Also initialize direct CSS application for key elements
+    setTimeout(() => {
+      // Apply direct styles to key elements that might be using Tailwind classes
+      document.querySelectorAll('.design-system-container button, .design-system-container a, .design-system-container h1, .design-system-container h2').forEach(el => {
+        // Force reflow to ensure styles are recalculated
+        void el.offsetWidth;
+      });
+    }, 100);
+  }
   
   // Track sidebar state
   let isSidebarCollapsed = $state(false);

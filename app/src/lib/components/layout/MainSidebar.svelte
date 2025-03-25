@@ -15,7 +15,10 @@
     ChevronDown,
     Languages,
     CreditCard as CreditCardIcon,
-    Bug
+    Bug,
+    PanelLeft,
+    Bell,
+    LineChart
   } from '$lib/utils/lucide-icons.js';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
@@ -393,6 +396,12 @@
       get active() { return path === '/' }
     },
     {
+      label: "Dashboard",
+      url: "/dashboard",
+      icon: LineChart,
+      get active() { return path.startsWith('/dashboard') }
+    },
+    {
       label: "Today",
       url: "/today",
       icon: Calendar,
@@ -423,6 +432,25 @@
       get active() { return debugActive }
     }
   ];
+  
+  // Dev navigation items - only shown in development mode
+  const devNavItems = [
+    {
+      label: "Design System",
+      url: "/design-system",
+      icon: PanelLeft,
+      get active() { return path.startsWith('/design-system') }
+    },
+    {
+      label: "Demo",
+      url: "/demo",
+      icon: Compass,
+      get active() { return path.startsWith('/demo') }
+    }
+  ];
+  
+  // Show dev items only in development mode
+  const isDev = import.meta.env.DEV;
   
   // Add observer for element visibility
   let visibilityObserver = $state(null);
@@ -1008,6 +1036,33 @@
         </Menu>
       </Group>
       
+      {#if isDev}
+        <Group class="pb-[1rem] pt-[0.5rem]">
+          <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)]">
+            Developer Tools
+          </GroupLabel>
+          <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
+            {#each devNavItems as item (item.label)}
+              <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
+                <a 
+                  href={item.url} 
+                  class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
+                  data-sveltekit-preload-data="hover"
+                  style={collapsed ? 'justify-content: center !important;' : ''}
+                >
+                  <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+                    {#if item.icon}
+                      <Icon icon={item.icon} size={20} color="currentColor" />
+                    {/if}
+                  </div>
+                  <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
+                </a>
+              </MenuItem>
+            {/each}
+          </Menu>
+        </Group>
+      {/if}
+      
       <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-[1px]" />
 
       <Group class="pb-[1rem] recent-digests">
@@ -1058,8 +1113,16 @@
             </div>
             
             <div class="py-[0.25rem]">
+              <a href="/profile" class="dropdown-item">
+                <span class="sidebar-icon">{@html renderIcon(User, 16)}</span>
+                <span>Profile</span>
+              </a>
+              <a href="/notifications" class="dropdown-item">
+                <span class="sidebar-icon">{@html renderIcon(Bell, 16)}</span>
+                <span>Notifications</span>
+              </a>
               <a href="/billing" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(CreditCard, 16)}</span>
+                <span class="sidebar-icon">{@html renderIcon(CreditCardIcon, 16)}</span>
                 <span>Billing</span>
               </a>
               <a href="/settings" class="dropdown-item">

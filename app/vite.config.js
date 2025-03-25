@@ -13,7 +13,10 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		plugins: [
-			tailwindcss(),
+			tailwindcss({
+				config: './tailwind.config.js',
+				mode: 'jit',
+			}),
 			sveltekit(),
 			isAnalyze && visualizer({
 				open: true,

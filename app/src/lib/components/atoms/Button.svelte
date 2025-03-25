@@ -26,17 +26,17 @@
   function getVariantClasses() {
     switch(variant) {
       case 'primary':
-        return "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-glow-sm";
+        return "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--primary))]";
       case 'secondary':
-        return "bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:shadow-glow-sm";
+        return "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:bg-[hsl(var(--secondary)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--secondary))]";
       case 'outline':
-        return "bg-transparent border border-primary text-primary hover:bg-primary/10 hover:shadow-glow-sm";
+        return "bg-transparent border border-[hsl(var(--primary))] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] hover:shadow-[var(--glow-sm)_hsl(var(--primary))]";
       case 'ghost':
-        return "bg-transparent text-foreground hover:bg-foreground/10";
+        return "bg-transparent text-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground)/0.1)]";
       case 'destructive':
-        return "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-glow-sm";
+        return "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--destructive)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--destructive))]";
       default:
-        return "bg-primary text-primary-foreground hover:bg-primary/90";
+        return "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)]";
     }
   }
   
@@ -47,18 +47,18 @@
   function getSizeClasses() {
     switch(size) {
       case 'sm':
-        return "text-sm px-3 py-1.5";
+        return "text-[var(--font-size-sm)] px-[calc(var(--spacing-unit)*3)] py-[calc(var(--spacing-unit)*1.5)]";
       case 'md':
-        return "text-base px-4 py-2";
+        return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
       case 'lg':
-        return "text-lg px-6 py-3";
+        return "text-[var(--font-size-lg)] px-[calc(var(--spacing-unit)*6)] py-[calc(var(--spacing-unit)*3)]";
       default:
-        return "text-base px-4 py-2";
+        return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
     }
   }
   
   // Define base class
-  const baseClass = "inline-flex items-center justify-center rounded-md transition-all duration-normal";
+  const baseClass = "inline-flex items-center justify-center rounded-[var(--radius-md)] transition-all duration-[var(--duration-normal)]";
   
   // Define state class based on disabled prop
   let stateClass = $derived(disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer");

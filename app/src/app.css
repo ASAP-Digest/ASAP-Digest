@@ -1,3 +1,8 @@
+/* 
+===============================================================
+   Tailwind 4 CSS Imports - Proper Order is Critical
+===============================================================
+*/
 @import "tailwindcss";
 @import "tailwindcss/preflight";
 @tailwind utilities;
@@ -30,8 +35,6 @@
 
 ===============================================================
 */
-
-
 
 @layer base {
   :root {
@@ -162,6 +165,16 @@
     --glow-sm: 0 0 2px;
     --glow-md: 0 0 4px;
     --glow-lg: 0 0 8px;
+    
+    /* Direct CSS fallbacks for use with design system debugging */
+    --direct-background: hsl(220 13% 18%);
+    --direct-foreground: hsl(210 40% 98%);
+    --direct-primary: hsl(326 100% 60%);
+    --direct-secondary: hsl(175 98% 60%);
+    --direct-accent: hsl(265 90% 65%);
+    --direct-muted: hsl(220 13% 28%);
+    --direct-card: hsl(220 13% 23%);
+    --direct-border: hsl(220 13% 30%);
   }
 
   .dark {
@@ -334,5 +347,38 @@ body.sidebar-collapsed .sidebar-icon svg {
   .debug-grid > * {
     /* NEVER use direct color names like border-blue-400 with Tailwind 4 */
     @apply border border-dashed border-[#60a5fa] p-2;
+  }
+  
+  /* Direct HSL color utilities for Tailwind 4 */
+  .text-var-primary {
+    color: hsl(var(--primary));
+  }
+  
+  .bg-var-primary {
+    background-color: hsl(var(--primary));
+  }
+  
+  .text-var-secondary {
+    color: hsl(var(--secondary));
+  }
+  
+  .bg-var-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  
+  .text-var-background {
+    color: hsl(var(--background));
+  }
+  
+  .bg-var-background {
+    background-color: hsl(var(--background));
+  }
+  
+  .text-var-foreground {
+    color: hsl(var(--foreground));
+  }
+  
+  .bg-var-foreground {
+    background-color: hsl(var(--foreground));
   }
 }

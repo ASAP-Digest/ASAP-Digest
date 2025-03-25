@@ -2,6 +2,7 @@
   import { preventDefault } from 'svelte/legacy';
 
   import { LogIn, Mail, Lock, ArrowRight } from '$lib/utils/lucide-icons.js';
+  import Icon from "$lib/components/ui/Icon.svelte";
   
   let email = $state('');
   let password = $state('');
@@ -17,7 +18,7 @@
   <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
     <div class="text-center mb-6">
       <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
-        <LogIn size={24} />
+        <Icon icon={LogIn} size={24} />
         <span>Sign In</span>
       </h1>
       <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">

@@ -162,7 +162,7 @@
 <div class="max-w-4xl mx-auto">
   <!-- Navigation and actions -->
   <div class="flex justify-between items-center mb-6">
-    <a href="/" class="text-primary hover:underline flex items-center gap-1">
+    <a href="/" class="text-[hsl(var(--primary))] hover:underline flex items-center gap-1">
       <Icon icon={Icons.ChevronLeft} size={16} />
       <span>Back to Digests</span>
     </a>
@@ -170,10 +170,10 @@
     <div class="flex space-x-4">
       <button 
         onclick={toggleBookmark}
-        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
       >
         {#if digest.isSaved}
-          <Icon icon={Icons.BookmarkCheck} size={18} class="text-primary" />
+          <Icon icon={Icons.BookmarkCheck} size={18} class="text-[hsl(var(--primary))]" />
           <span class="text-sm">Saved</span>
         {:else}
           <Icon icon={Icons.Bookmark} size={18} />
@@ -183,7 +183,7 @@
       
       <button 
         onclick={shareDigest}
-        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
       >
         <Icon icon={Icons.Share2} size={18} />
         <span class="text-sm">Share</span>
@@ -327,7 +327,7 @@
           </div>
           
           {#if item.url}
-            <a href={item.url} class="text-primary hover:underline text-sm">Read more</a>
+            <a href={item.url} class="text-[hsl(var(--primary))] hover:underline text-sm">Read more</a>
           {/if}
         </div>
       </div>
@@ -351,7 +351,7 @@
   <div class="mt-8 flex justify-between">
     <button 
       onclick={goToPreviousDigest}
-      class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+      class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
       disabled={parseInt(digestId) <= 1}
     >
       <Icon icon={Icons.ChevronLeft} size={18} />
@@ -360,7 +360,7 @@
     
     <button 
       onclick={goToNextDigest}
-      class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary"
+      class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
     >
       <span>Next Digest</span>
       <Icon icon={Icons.ChevronRight} size={18} />

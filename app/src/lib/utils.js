@@ -2,9 +2,19 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { cubicOut } from "svelte/easing";
 import { fly, scale } from "svelte/transition";
+import { fixClassString } from "./utils/tailwindFixer.js";
 
+/**
+ * Enhanced class name helper with automatic Tailwind 4 syntax fixing
+ * @param  {...any} inputs - Class names or conditionals 
+ * @returns {string} - Merged and fixed class names
+ */
 export function cn(...inputs) {
-	return twMerge(clsx(inputs));
+	// First merge classes with clsx and tailwind-merge
+	const mergedClasses = twMerge(clsx(inputs));
+
+	// Then fix any Tailwind 3 syntax to use Tailwind 4 HSL variables
+	return fixClassString(mergedClasses);
 }
 
 /**
