@@ -12,61 +12,12 @@
    * @property {string} description - Digest description
    */
   
-  /** @type {Digest[]} */
-  const recentDigests = [
-    {
-      id: 'finance-mar20',
-      title: 'Finance Weekly Roundup',
-      date: '2024-03-20',
-      articleCount: 12,
-      category: 'Finance',
-      description: 'Key market trends and financial news from the past week.'
-    },
-    {
-      id: 'tech-mar19',
-      title: 'Tech Innovation Digest',
-      date: '2024-03-19',
-      articleCount: 8,
-      category: 'Technology',
-      description: 'Latest breakthroughs in AI, robotics, and consumer tech.'
-    },
-    {
-      id: 'health-mar18',
-      title: 'Healthcare Updates',
-      date: '2024-03-18',
-      articleCount: 10,
-      category: 'Healthcare',
-      description: 'Medical research highlights and healthcare industry news.'
-    },
-    {
-      id: 'politics-mar18',
-      title: 'Political Analysis',
-      date: '2024-03-18',
-      articleCount: 14,
-      category: 'Politics',
-      description: 'In-depth coverage of global political developments.'
-    }
-  ];
+  /** @type {import('./$types').PageData} */
+  const { data } = $props();
   
-  /** @type {Digest[]} */
-  const trendingDigests = [
-    {
-      id: 'crypto-mar17',
-      title: 'Cryptocurrency Special Report',
-      date: '2024-03-17',
-      articleCount: 7,
-      category: 'Finance',
-      description: 'Analysis of recent cryptocurrency market movements.'
-    },
-    {
-      id: 'climate-mar16',
-      title: 'Climate Change Update',
-      date: '2024-03-16',
-      articleCount: 9,
-      category: 'Environment',
-      description: 'Latest research and policy changes regarding climate change.'
-    }
-  ];
+  // Make a copy of the server data for local use
+  let recentDigests = $state(data.digests.slice(0, 4));
+  let trendingDigests = $state(data.digests.slice(4));
   
   /**
    * Format date to a more readable format

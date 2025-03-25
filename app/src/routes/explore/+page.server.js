@@ -1,8 +1,5 @@
 import { error } from '@sveltejs/kit';
 
-/** @type {import('./$types').PageServerLoad} */
-export const ssr = true;
-
 /**
  * Server load function for the explore page
  * @param {Object} params - Load function parameters

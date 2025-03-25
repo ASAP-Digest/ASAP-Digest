@@ -1,8 +1,5 @@
 import { error } from '@sveltejs/kit';
 
-/** @type {import('./$types').PageData} */
-export const ssr = true;
-
 /**
  * Server load function for the digest page
  * @typedef {Object} Digest
