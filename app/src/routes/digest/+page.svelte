@@ -57,9 +57,11 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {#each recentDigests as digest}
-        <div 
-          class="bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
+        <button 
+          type="button"
+          class="bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer text-left"
           onclick={() => viewDigest(digest.id)}
+          onkeydown={(e) => e.key === 'Enter' && viewDigest(digest.id)}
         >
           <div class="p-5">
             <div class="flex items-center justify-between mb-2">
@@ -84,7 +86,7 @@
           <div class="p-3 bg-[hsl(var(--muted)/0.3)] border-t border-[hsl(var(--border))] text-center">
             <span class="text-sm font-medium text-[hsl(var(--primary))]">Read Digest</span>
           </div>
-        </div>
+        </button>
       {/each}
     </div>
   </section>
@@ -95,9 +97,11 @@
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {#each trendingDigests as digest}
-        <div 
-          class="bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
+        <button 
+          type="button"
+          class="bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer text-left"
           onclick={() => viewDigest(digest.id)}
+          onkeydown={(e) => e.key === 'Enter' && viewDigest(digest.id)}
         >
           <div class="p-5">
             <div class="flex items-center justify-between mb-2">
@@ -122,7 +126,7 @@
           <div class="p-3 bg-[hsl(var(--muted)/0.3)] border-t border-[hsl(var(--border))] text-center">
             <span class="text-sm font-medium text-[hsl(var(--primary))]">Read Digest</span>
           </div>
-        </div>
+        </button>
       {/each}
     </div>
   </section>

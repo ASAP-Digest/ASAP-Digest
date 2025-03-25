@@ -14,6 +14,9 @@
   import { findProblematicClasses } from '$lib/utils/tailwindFixer';
   import { registerServiceWorker } from '$lib/utils/register-sw';
   import TestPwaControls from '$lib/components/pwa/TestPwaControls.svelte';
+  import { browser } from '$app/environment';
+  import { dev } from '$app/environment';
+  import GlobalFAB from '$lib/components/layout/GlobalFAB.svelte';
   /**
    * @typedef {Object} Props
    * @property {import('svelte').Snippet} [children]
@@ -70,6 +73,18 @@
     document.dispatchEvent(event);
   }
 
+  /**
+   * Handle content added from the GlobalFAB
+   * @param {CustomEvent} event - The add event with content details
+   */
+  function handleAddContent(event) {
+    // Log the items added
+    console.log('[Layout] Content added from GlobalFAB:', event.detail);
+    
+    // The GlobalFAB already dispatches a global event, so we don't need to do anything
+    // else here, but we can extend this in the future if needed
+  }
+  
   // Track if we're on mobile
   let isMobile = $state(false);
   
@@ -730,4 +745,7 @@
   {#if import.meta.env.DEV}
     <PerformanceMonitor />
   {/if}
+
+  <!-- Add GlobalFAB at the end of the layout -->
+  <GlobalFAB on:add={handleAddContent} />
 {/if}
