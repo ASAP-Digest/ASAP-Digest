@@ -20,7 +20,7 @@
 	<div
 		bind:this={ref}
 		data-sidebar="sidebar"
-		class={cn("w-full flex h-full min-h-dvh flex-col shadow-none", className)}
+		class={cn("w-[var(--sidebar-width)] flex h-full min-h-dvh flex-col shadow-none", className)}
 		{...restProps}
 	>
 		{@render children?.()}
@@ -30,7 +30,7 @@
 		bind:this={ref}
 		data-sidebar="sidebar"
 		data-collapsible={collapsible}
-		class={cn("w-full flex h-full min-h-dvh flex-col shadow-none group", className)}
+		class={cn("w-[var(--sidebar-width)] flex h-full min-h-dvh flex-col shadow-none group", className)}
 		{...restProps}
 	>
 		{@render children?.()}
@@ -39,7 +39,7 @@
 	<div
 		bind:this={ref}
 		data-sidebar="sidebar"
-		class={cn("w-full flex h-full min-h-dvh flex-col shadow-none", className)}
+		class={cn("w-[var(--sidebar-width)] flex h-full min-h-dvh flex-col shadow-none", className)}
 		{...restProps}
 	>
 		{@render children?.()}
