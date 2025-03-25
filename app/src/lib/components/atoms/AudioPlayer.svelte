@@ -64,11 +64,11 @@
   const getSizeClass = () => {
     switch (size) {
       case 'sm':
-        return 'p-2 text-xs';
+        return 'p-[0.5rem] text-[var(--font-size-xs)]';
       case 'lg':
-        return 'p-4 text-base';
+        return 'p-[1rem] text-[var(--font-size-base)]';
       default:
-        return 'p-3 text-sm';
+        return 'p-[0.75rem] text-[var(--font-size-sm)]';
     }
   };
 
@@ -296,20 +296,20 @@
   )}
 >
   {#if error}
-    <div class="error-message text-[hsl(var(--destructive))] text-center py-2">
+    <div class="error-message text-[hsl(var(--destructive))] text-center py-[0.5rem]">
       {errorMessage || 'Failed to load audio'}
     </div>
   {/if}
   
-  <div class="flex flex-col gap-2">
+  <div class="flex flex-col gap-[0.5rem]">
     {#if showControls}
       <div class="controls flex items-center justify-between">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-[0.5rem]">
           {#if showSkip}
             <button 
               onclick={skipBackward}
               disabled={!loaded}
-              class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
+              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
               aria-label={`Skip back ${skipAmount} seconds`}
             >
               <Icon icon={SkipBack} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -319,7 +319,7 @@
           <button 
             onclick={togglePlay}
             disabled={!loaded && !error}
-            class="play-button p-2 rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
+            class="play-button p-[0.5rem] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
             aria-label={playing ? 'Pause' : 'Play'}
           >
             <Icon icon={playing ? Pause : Play} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="hsl(var(--primary-foreground))" />
@@ -329,7 +329,7 @@
             <button 
               onclick={skipForward}
               disabled={!loaded}
-              class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
+              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
               aria-label={`Skip forward ${skipAmount} seconds`}
             >
               <Icon icon={SkipForward} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -344,10 +344,10 @@
         </div>
         
         {#if showVolume}
-          <div class="volume-controls flex items-center gap-2">
+          <div class="volume-controls flex items-center gap-[0.5rem]">
             <button 
               onclick={toggleMute}
-              class="p-1 rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors"
+              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
               <Icon icon={muted ? VolumeX : Volume2} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -360,7 +360,7 @@
               step="0.01" 
               value={volume} 
               oninput={handleVolumeChange} 
-              class="volume-slider w-16 accent-[hsl(var(--primary))]"
+              class="volume-slider w-[4rem] accent-[hsl(var(--primary))]"
               aria-label="Volume"
             />
           </div>
@@ -381,7 +381,7 @@
           onmouseup={endSeeking}
           ontouchstart={startSeeking}
           ontouchend={endSeeking}
-          class="progress-slider w-full accent-[hsl(var(--primary))] h-2 rounded-full bg-[hsl(var(--muted))]"
+          class="progress-slider w-full accent-[hsl(var(--primary))] h-[0.5rem] rounded-full bg-[hsl(var(--muted))]"
           aria-label="Seek"
         />
       </div>

@@ -343,7 +343,7 @@
           >Reload Page</button>
         </div>
         
-        <h3 class="mt-4">Install Prompt Controls</h3>
+        <h3 class="mt-[1rem]">Install Prompt Controls</h3>
         <div class="button-row">
           <button 
             class="action-btn" 
@@ -384,28 +384,28 @@
     position: fixed;
     bottom: 0;
     right: 0;
-    width: 380px;
+    width: 23.75rem; /* 380px */
     background-color: hsl(var(--background));
     border: 1px solid hsl(var(--border)/0.8);
-    border-top-left-radius: 8px;
+    border-top-left-radius: 0.5rem; /* 8px */
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    font-size: 14px;
+    font-size: 0.875rem; /* 14px */
   }
   
   .controls-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
+    padding: 0.625rem 0.9375rem; /* 10px 15px */
     background-color: hsl(var(--primary)/0.1);
     border-bottom: 1px solid hsl(var(--border)/0.8);
-    border-top-left-radius: 8px;
+    border-top-left-radius: 0.5rem; /* 8px */
   }
   
   .controls-header h2 {
     margin: 0;
-    font-size: 16px;
+    font-size: 1rem; /* 16px */
     font-weight: 600;
     color: hsl(var(--primary));
   }
@@ -413,48 +413,48 @@
   .close-btn {
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 1.25rem; /* 20px */
     cursor: pointer;
     color: hsl(var(--foreground)/0.8);
   }
   
   .controls-body {
-    padding: 15px;
-    max-height: 500px;
+    padding: 0.9375rem; /* 15px */
+    max-height: 31.25rem; /* 500px */
     overflow-y: auto;
   }
   
   .status-section,
   .actions-section,
   .info-section {
-    margin-bottom: 20px;
+    margin-bottom: 1.25rem; /* 20px */
   }
   
   .status-section h3,
   .actions-section h3,
   .info-section h3 {
     margin-top: 0;
-    margin-bottom: 10px;
-    font-size: 14px;
+    margin-bottom: 0.625rem; /* 10px */
+    font-size: 0.875rem; /* 14px */
     font-weight: 600;
     color: hsl(var(--foreground)/0.8);
   }
   
   .button-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 0.625rem; /* 10px */
+    margin-bottom: 0.625rem; /* 10px */
   }
   
   .action-btn {
-    padding: 8px 12px;
+    padding: 0.5rem 0.75rem; /* 8px 12px */
     background-color: hsl(var(--secondary)/0.8);
     color: hsl(var(--secondary-foreground));
     border: none;
-    border-radius: 4px;
+    border-radius: 0.25rem; /* 4px */
     cursor: pointer;
     flex: 1;
-    font-size: 13px;
+    font-size: 0.8125rem; /* 13px */
     transition: background-color 0.2s ease;
   }
   
@@ -487,26 +487,26 @@
   
   .info-section ol {
     margin: 0;
-    padding-left: 20px;
+    padding-left: 1.25rem; /* 20px */
   }
   
   .info-section li {
-    margin-bottom: 5px;
+    margin-bottom: 0.3125rem; /* 5px */
   }
   
   .show-controls-btn {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 15px;
+    bottom: 1.25rem; /* 20px */
+    right: 1.25rem; /* 20px */
+    padding: 0.625rem 0.9375rem; /* 10px 15px */
     background-color: hsl(var(--primary)/0.8);
     color: hsl(var(--primary-foreground));
     border: none;
-    border-radius: 4px;
+    border-radius: 0.25rem; /* 4px */
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     z-index: 1000;
-    font-size: 14px;
+    font-size: 0.875rem; /* 14px */
   }
   
   .show-controls-btn:hover {

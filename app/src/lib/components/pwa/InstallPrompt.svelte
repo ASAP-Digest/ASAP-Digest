@@ -254,7 +254,7 @@
 </script>
 
 {#if isPromptVisible}
-	<div class="install-widget p-2.5 fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
+	<div class="install-widget p-[0.625rem] fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
 		<div class="flex justify-between items-start mb-[0.75rem]">
 			<h3 class="text-[1rem] font-semibold flex items-center gap-[0.5rem]">
 				<Download size={18} />
@@ -297,7 +297,7 @@
 		{/if}
 
 		{#if isTestMode}
-			<div class="mt-2 pt-2 border-t border-[hsl(var(--border))]">
+			<div class="mt-[0.5rem] pt-[0.5rem] border-t border-[hsl(var(--border))]">
 				<p class="text-[0.75rem] text-[hsl(var(--muted-foreground))]">Test Mode Active</p>
 			</div>
 		{/if}

@@ -11,7 +11,7 @@
 
 <Typography 
   variant="h3" 
-  class={cn('p-2.5 text-[var(--font-size-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-height-snug)] mb-0', className)}
+  class={cn('p-[calc(var(--spacing-unit)*2.5)] text-[var(--font-size-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-height-snug)] mb-0', className)}
 >
   {@render children?.()}
 </Typography> 

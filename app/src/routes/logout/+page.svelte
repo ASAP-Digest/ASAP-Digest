@@ -1,20 +1,19 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { authStore } from '$lib/auth'; // Import authStore
   
-  onMount(() => {
-    console.log('Logout page mounted');
-    // TODO: perform logout operations here
-    
-    // Simulate logout with a timeout
-    const timeout = setTimeout(() => {
-      // TODO: Redirect to login page after logout
+  onMount(async () => {
+    console.log('Logout page mounted, attempting sign out...');
+    try {
+      await authStore.signOut();
+      console.log('Sign out successful, redirecting to login.');
+      goto('/login'); // Redirect to login page after logout
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Optionally handle error, maybe redirect anyway or show a message
       goto('/login');
-    }, 2000);
-    
-    return () => {
-      clearTimeout(timeout);
-    };
+    }
   });
 </script>
 

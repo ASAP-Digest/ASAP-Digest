@@ -4,7 +4,8 @@
 ===============================================================
 */
 @import "tailwindcss";
-@import "tailwindcss/preflight";
+/* Preflight styles are usually included automatically by the above import in v4 */
+
 @tailwind utilities;
 
 /* 
@@ -202,11 +203,14 @@
 
   * {
     /* NEVER use border-border with Tailwind 4. Always use border-[hsl(var(--border))] instead */
-    @apply border-[hsl(var(--border))];
+    /* @apply border-[hsl(var(--border))]; */ /* Removed @apply */
+    border-color: hsl(var(--border)); /* Use standard CSS */
   }
   
   body {
-    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    /* @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))]; */ /* Removed @apply */
+    background-color: hsl(var(--background)); /* Use standard CSS */
+    color: hsl(var(--foreground)); /* Use standard CSS */
     font-feature-settings: "rlig" 1, "calt" 1;
     margin: 0;
     width: 100%;
@@ -272,113 +276,75 @@
   }
   
   ::selection {
-    @apply bg-[hsl(var(--primary)/0.2)];
+    /* @apply bg-[hsl(var(--primary)/0.2)]; */ /* Removed @apply */
+    background-color: hsl(var(--primary) / 0.2); /* Use standard CSS */
   }
   
   /* Fixes for sidebar components */
   .sidebar-area {
-    @apply bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))];
+    /* @apply bg-[hsl(var(--sidebar-background))] border-r border-[hsl(var(--sidebar-border))]; */ /* Removed @apply */
+    background-color: hsl(var(--sidebar-background)); /* Use standard CSS */
+    border-right: 1px solid hsl(var(--sidebar-border)); /* Use standard CSS */
   }
 
   body.sidebar-collapsed .sidebar-area {
-    @apply w-[64px] min-w-[64px] max-w-[64px];
+    /* @apply w-[64px] min-w-[64px] max-w-[64px]; */ /* Removed @apply */
+    width: 64px; /* Use standard CSS */
+    min-width: 64px; /* Use standard CSS */
+    max-width: 64px; /* Use standard CSS */
   }
 
   .sidebar-icon svg {
-    @apply w-5 h-5;
+    /* @apply w-5 h-5; */ /* Removed @apply */
+    width: 1.25rem; /* Use standard CSS (w-5 equivalent) */
+    height: 1.25rem; /* Use standard CSS (h-5 equivalent) */
     min-width: 1.25rem;
     min-height: 1.25rem;
   }
 
   /* Handle svg fill and stroke in svelte components */
   .menu-item-hover:hover .sidebar-icon svg {
-    @apply stroke-[hsl(var(--sidebar-accent-foreground))];
+    /* @apply stroke-[hsl(var(--sidebar-accent-foreground))]; */ /* Removed @apply */
+    stroke: hsl(var(--sidebar-accent-foreground)); /* Use standard CSS */
   }
   
   .menu-item-hover:hover {
-    @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))];
+    /* @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))]; */ /* Removed @apply */
+    background-color: hsl(var(--sidebar-accent)); /* Use standard CSS */
+    color: hsl(var(--sidebar-accent-foreground)); /* Use standard CSS */
   }
 
   .sidebar-menu-item a.active .sidebar-icon svg {
-    @apply stroke-[hsl(var(--sidebar-accent-foreground))];
+    /* @apply stroke-[hsl(var(--sidebar-accent-foreground))]; */ /* Removed @apply */
+    stroke: hsl(var(--sidebar-accent-foreground)); /* Use standard CSS */
   }
   
   .sidebar-menu-item a.active {
-    @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))];
+    /* @apply bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))]; */ /* Removed @apply */
+    background-color: hsl(var(--sidebar-accent)); /* Use standard CSS */
+    color: hsl(var(--sidebar-accent-foreground)); /* Use standard CSS */
   }
 }
 
-/* Use Tailwind's standard spacing utilities */
-.space-xs { @apply p-2; }
-.space-sm { @apply p-4; }
-.space-md { @apply p-6; }
-.space-lg { @apply p-8; }
-.space-xl { @apply p-12; }
-
-/* Use Tailwind's standard gap utilities */
-.gap-xs { @apply gap-2; }
-.gap-sm { @apply gap-4; }
-.gap-md { @apply gap-6; }
-.gap-lg { @apply gap-8; }
-.gap-xl { @apply gap-12; }
+/* 
+   Removed custom utility classes like .space-*, .gap-*. 
+   Apply spacing/gap utilities directly in your markup using Tailwind 4 syntax, e.g., p-[1rem], gap-[1.5rem].
+*/
 
 /* Universal sidebar icon fix */
 body.sidebar-collapsed svg,
 body.sidebar-collapsed .lucide,
 body.sidebar-collapsed [data-sidebar] svg,
 body.sidebar-collapsed .sidebar-icon svg {
-  @apply w-5 h-5;
+  /* @apply w-5 h-5; */ /* Removed @apply */
+  width: 1.25rem; /* Use standard CSS (w-5 equivalent) */
+  height: 1.25rem; /* Use standard CSS (h-5 equivalent) */
   display: block !important;
 }
 
-@layer utilities {
-  /* Widget container */
-  .widget-container {
-    @apply h-full flex flex-col;
-  }
-  
-  /* Debug grid (for development) */
-  .debug-grid {
-    /* NEVER use direct color names like border-pink-500 with Tailwind 4. 
-       Always use arbitrary value syntax like border-[#ec4899] or border-[hsl(var(--color-var))] */
-    @apply border border-[#ec4899];
-  }
-  
-  .debug-grid > * {
-    /* NEVER use direct color names like border-blue-400 with Tailwind 4 */
-    @apply border border-dashed border-[#60a5fa] p-2;
-  }
-  
-  /* Direct HSL color utilities for Tailwind 4 */
-  .text-var-primary {
-    color: hsl(var(--primary));
-  }
-  
-  .bg-var-primary {
-    background-color: hsl(var(--primary));
-  }
-  
-  .text-var-secondary {
-    color: hsl(var(--secondary));
-  }
-  
-  .bg-var-secondary {
-    background-color: hsl(var(--secondary));
-  }
-  
-  .text-var-background {
-    color: hsl(var(--background));
-  }
-  
-  .bg-var-background {
-    background-color: hsl(var(--background));
-  }
-  
-  .text-var-foreground {
-    color: hsl(var(--foreground));
-  }
-  
-  .bg-var-foreground {
-    background-color: hsl(var(--foreground));
-  }
-}
+/* 
+   Removed @layer utilities section. 
+   Apply utilities like flex, flex-col, border, padding directly in markup.
+   Removed debug grid styles and direct HSL color utilities (.text-var-*, .bg-var-*).
+   Use Tailwind 4's arbitrary value syntax like text-[hsl(var(--primary))] directly.
+*/

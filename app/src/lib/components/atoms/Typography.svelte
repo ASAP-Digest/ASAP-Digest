@@ -42,7 +42,7 @@
     'h6': "text-[var(--font-size-base)] font-[var(--font-weight-semibold)] leading-[var(--line-height-normal)] mb-[calc(var(--spacing-unit)*3)]",
     'p': "text-[var(--font-size-base)] leading-[var(--line-height-loose)] mb-[calc(var(--spacing-unit)*5)]",
     'caption': "text-[var(--font-size-sm)] leading-[var(--line-height-normal)] text-[hsl(var(--muted-foreground))] mb-[calc(var(--spacing-unit)*2)]",
-    'blockquote': "pl-[calc(var(--spacing-unit)*6)] border-l-4 border-[hsl(var(--border))] italic text-[var(--font-size-lg)] mb-[calc(var(--spacing-unit)*5)]",
+    'blockquote': "pl-[calc(var(--spacing-unit)*6)] border-l-[4px] border-[hsl(var(--border))] italic text-[var(--font-size-lg)] mb-[calc(var(--spacing-unit)*5)]",
     'code': "font-mono bg-[hsl(var(--muted))] px-[calc(var(--spacing-unit)*1.5)] py-[calc(var(--spacing-unit)*0.8)] rounded-[var(--radius-sm)] text-[var(--font-size-sm)]"
   };
   

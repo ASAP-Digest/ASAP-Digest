@@ -171,7 +171,7 @@
   
   :global(.design-system-container h1) {
     color: hsl(var(--foreground, 210 40% 98%)) !important;
-    font-size: var(--font-size-4xl, 3rem) !important;
+    font-size: var(--font-size-4xl, 2.25rem) !important;
     font-weight: var(--font-weight-extrabold, 800) !important;
     margin-bottom: calc(var(--spacing-unit, 0.25rem) * 8) !important;
   }

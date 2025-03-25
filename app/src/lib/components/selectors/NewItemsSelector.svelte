@@ -149,10 +149,10 @@
 
 <!-- Content Type Selection Floating Action Button -->
 {#if !selectedType && showFab}
-  <div class="fixed {fabPosition === 'center' ? 'bottom-6 left-1/2 -translate-x-1/2' : 'bottom-6 right-6'} z-50">
+  <div class="fixed {fabPosition === 'center' ? 'bottom-[1.5rem] left-1/2 -translate-x-1/2' : 'bottom-[1.5rem] right-[1.5rem]'} z-50">
     <!-- Main FAB Button -->
     <button 
-      class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
+      class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[3.5rem] h-[3.5rem] flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
       onclick={() => showFlyout = !showFlyout}
     >
       <Icon icon={Plus} size={24} />
@@ -160,7 +160,7 @@
     
     <!-- Position Toggle (small button) -->
     <button 
-      class="absolute -left-6 bottom-1 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-full w-5 h-5 flex items-center justify-center shadow-sm hover:bg-[hsl(var(--muted)/0.9)]"
+      class="absolute -left-[1.5rem] bottom-[0.25rem] bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center shadow-sm hover:bg-[hsl(var(--muted)/0.9)]"
       onclick={toggleFabPosition}
       title="Toggle position"
     >
@@ -171,21 +171,21 @@
     {#if showFlyout}
       <div 
         transition:fly={{y: 20, duration: 200}} 
-        class="{fabPosition === 'center' ? 'left-1/2 -translate-x-1/2 bottom-20' : 'right-0 bottom-20'} absolute bg-[hsl(var(--background))] rounded-lg shadow-xl p-4 grid grid-cols-4 gap-3 min-w-[320px] border border-[hsl(var(--border))]"
+        class="{fabPosition === 'center' ? 'left-1/2 -translate-x-1/2 bottom-[5rem]' : 'right-0 bottom-[5rem]'} absolute bg-[hsl(var(--background))] rounded-lg shadow-xl p-[1rem] grid grid-cols-4 gap-[0.75rem] min-w-[320px] border border-[hsl(var(--border))]"
       >
         {#each contentTypes as type}
           <button 
-            class="flex flex-col items-center p-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+            class="flex flex-col items-center p-[0.5rem] rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
             onclick={() => selectContentType(type.id)}
           >
-            <div class="w-10 h-10 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-1">
+            <div class="w-[2.5rem] h-[2.5rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-[0.25rem]">
               <Icon icon={type.icon} size={20} color="currentColor" class="text-[hsl(var(--primary))]" />
             </div>
-            <span class="text-xs">{type.label}</span>
+            <span class="text-[0.75rem]">{type.label}</span>
           </button>
         {/each}
         
-        <button onclick={closeFlyout} class="absolute top-2 right-2 text-[hsl(var(--muted-foreground))]">
+        <button onclick={closeFlyout} class="absolute top-[0.5rem] right-[0.5rem] text-[hsl(var(--muted-foreground))]">
           <Icon icon={X} size={16} />
         </button>
       </div>
@@ -196,14 +196,14 @@
 {#if selectedType || startOpen}
   <!-- Visual Grid Selection Dialog -->
   <Dialog open={true} onClose={resetAndClose}>
-    <DialogContent class="max-w-4xl p-6">
+    <DialogContent class="max-w-4xl p-[1.5rem]">
       <DialogHeader>
-        <DialogTitle class="text-xl font-medium flex items-center gap-2">
+        <DialogTitle class="text-[1.25rem] font-medium flex items-center gap-[0.5rem]">
           {#if selectedType}
             {#if contentTypes.find(t => t.id === selectedType)}
               {@const type = contentTypes.find(t => t.id === selectedType)}
               {#if type.icon}
-                <div class="w-6 h-6 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center">
+                <div class="w-[1.5rem] h-[1.5rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center">
                   <Icon icon={type.icon} size={14} class="text-[hsl(var(--primary))]" />
                 </div>
               {/if}
@@ -217,37 +217,37 @@
       
       <!-- Type Selection (when opened directly without a type) -->
       {#if !selectedType}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-[1rem] py-[1rem]">
           {#each contentTypes as type}
             <button 
-              class="flex flex-col items-center p-4 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
+              class="flex flex-col items-center p-[1rem] rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
               onclick={() => selectContentType(type.id)}
             >
-              <div class="w-12 h-12 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-2">
+              <div class="w-[3rem] h-[3rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-[0.5rem]">
                 <Icon icon={type.icon} size={24} color="currentColor" class="text-[hsl(var(--primary))]" />
               </div>
-              <span class="text-sm font-medium">{type.label}</span>
+              <span class="text-[0.875rem] font-medium">{type.label}</span>
             </button>
           {/each}
         </div>
       {:else}
         <!-- Search Bar -->
-        <div class="mb-4 flex">
+        <div class="mb-[1rem] flex">
           <div class="relative flex-grow">
-            <div class="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+            <div class="absolute left-[0.75rem] top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
               <Icon icon={Search} size={16} />
             </div>
             <Input 
               value={searchQuery}
               oninput={filterItems} 
               placeholder="Search content..." 
-              class="w-full pl-9"
+              class="w-full pl-[2.25rem]"
             />
           </div>
         </div>
         
         <!-- Content Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1rem] max-h-[60vh] overflow-y-auto p-[0.25rem]">
           {#each contentItems as item (item.id)}
             <div 
               class="bg-[hsl(var(--card))] rounded-lg overflow-hidden shadow-sm border border-[hsl(var(--border))] transition-all cursor-pointer {isSelected(item) ? 'ring-2 ring-[hsl(var(--primary))]' : 'hover:shadow-md'}"
@@ -256,17 +256,17 @@
               <div class="aspect-video relative bg-[hsl(var(--muted))]">
                 <img src={item.image} alt={item.title} class="w-full h-full object-cover" />
                 {#if isSelected(item)}
-                  <div class="absolute top-2 right-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-6 h-6 flex items-center justify-center">
+                  <div class="absolute top-[0.5rem] right-[0.5rem] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[1.5rem] h-[1.5rem] flex items-center justify-center">
                     <Icon icon={Check} size={16} />
                   </div>
                 {/if}
               </div>
-              <div class="p-3">
-                <h3 class="font-medium text-sm line-clamp-1">{item.title}</h3>
-                <p class="text-xs text-[hsl(var(--muted-foreground))] mt-1 line-clamp-2">
+              <div class="p-[0.75rem]">
+                <h3 class="font-medium text-[0.875rem] line-clamp-1">{item.title}</h3>
+                <p class="text-[0.75rem] text-[hsl(var(--muted-foreground))] mt-[0.25rem] line-clamp-2">
                   {item.excerpt || (item.duration ? `Duration: ${item.duration}` : '')}
                 </p>
-                <div class="mt-2 flex items-center text-xs text-[hsl(var(--muted-foreground))]">
+                <div class="mt-[0.5rem] flex items-center text-[0.75rem] text-[hsl(var(--muted-foreground))]">
                   <span>{item.source}</span>
                 </div>
               </div>
@@ -274,19 +274,19 @@
           {/each}
           
           {#if contentItems.length === 0}
-            <div class="col-span-full text-center py-12 text-[hsl(var(--muted-foreground))]">
+            <div class="col-span-full text-center py-[3rem] text-[hsl(var(--muted-foreground))]">
               No content found. Try adjusting your search.
             </div>
           {/if}
         </div>
         
         <!-- Action Buttons -->
-        <div class="mt-4 flex justify-between items-center">
+        <div class="mt-[1rem] flex justify-between items-center">
           <Button variant="outline" onclick={() => selectedType = ''}>
             Back
           </Button>
           <div>
-            <span class="mr-2 text-sm">{selectedItems.length} selected</span>
+            <span class="mr-[0.5rem] text-[0.875rem]">{selectedItems.length} selected</span>
             <Button 
               variant="default" 
               onclick={addSelectedItems} 

@@ -63,10 +63,10 @@
 </script>
 
 <!-- Floating Action Button -->
-<div class="fixed {fabPosition === 'center' ? 'bottom-6 left-1/2 -translate-x-1/2' : 'bottom-6 right-6'} z-50">
+<div class="fixed {fabPosition === 'center' ? 'bottom-[1.5rem] left-1/2 -translate-x-1/2' : 'bottom-[1.5rem] right-[1.5rem]'} z-50">
   <!-- Main FAB Button -->
   <button 
-    class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
+    class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[3.5rem] h-[3.5rem] flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
     onclick={toggleSelector}
   >
     <Icon icon={Plus} size={24} />
@@ -74,7 +74,7 @@
   
   <!-- Position Toggle (small button) -->
   <button 
-    class="absolute -left-6 bottom-1 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-full w-5 h-5 flex items-center justify-center shadow-sm hover:bg-[hsl(var(--muted)/0.9)]"
+    class="absolute -left-[1.5rem] bottom-[0.25rem] bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center shadow-sm hover:bg-[hsl(var(--muted)/0.9)]"
     onclick={toggleFabPosition}
     title="Toggle position"
   >
@@ -85,7 +85,7 @@
   {#if showNotification}
     <div 
       transition:fly={{y: -20, duration: 200}}
-      class="absolute -top-16 right-0 bg-[hsl(var(--success)/0.9)] text-[hsl(var(--success-foreground))] px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
+      class="absolute -top-[4rem] right-0 bg-[hsl(var(--success)/0.9)] text-[hsl(var(--success-foreground))] px-[1rem] py-[0.5rem] rounded-lg shadow-lg flex items-center gap-[0.5rem]"
     >
       <Icon icon={Check} size={16} />
       <span>{notificationMessage}</span>

@@ -19,13 +19,13 @@
   <button 
     type="button"
     aria-label={isOpen ? "Close menu" : "Open menu"}
-    class="fixed bottom-4 right-4 z-50 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full p-3 shadow-lg"
+    class="fixed bottom-[1rem] right-[1rem] z-50 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full p-[0.75rem] shadow-lg"
     onclick={toggleMenu}
   >
     {#if isOpen}
-      <X class="w-6 h-6" />
+      <X class="w-[1.5rem] h-[1.5rem]" />
     {:else}
-      <Menu class="w-6 h-6" />
+      <Menu class="w-[1.5rem] h-[1.5rem]" />
     {/if}
   </button>
   
@@ -42,57 +42,57 @@
     ></div>
     
     <!-- Mobile menu panel -->
-    <div class="fixed inset-y-0 right-0 z-50 w-full max-w-xs bg-[hsl(var(--background))] p-6 shadow-xl">
-      <div class="flex items-center justify-between mb-8">
-        <h2 class="text-xl font-semibold">ASAP Digest</h2>
+    <div class="fixed inset-y-0 right-0 z-50 w-full max-w-xs bg-[hsl(var(--background))] p-[1.5rem] shadow-xl">
+      <div class="flex items-center justify-between mb-[2rem]">
+        <h2 class="text-[1.25rem] font-semibold">ASAP Digest</h2>
         <button type="button" aria-label="Close menu" onclick={closeMenu}>
-          <X class="w-6 h-6" />
+          <X class="w-[1.5rem] h-[1.5rem]" />
         </button>
       </div>
       
-      <nav class="space-y-6">
+      <nav class="space-y-[1.5rem]">
         <a 
           href="/" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
+          class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Home class="w-5 h-5" />
+          <Home class="w-[1.25rem] h-[1.25rem]" />
           <span>Home</span>
         </a>
         
         <a 
           href="/profile" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/profile' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
+          class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/profile' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <User class="w-5 h-5" />
+          <User class="w-[1.25rem] h-[1.25rem]" />
           <span>Profile</span>
         </a>
         
         <a 
           href="/calendar" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/calendar' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
+          class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/calendar' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Calendar class="w-5 h-5" />
+          <Calendar class="w-[1.25rem] h-[1.25rem]" />
           <span>History</span>
         </a>
         
         <a 
           href="/notifications" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/notifications' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
+          class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/notifications' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Bell class="w-5 h-5" />
+          <Bell class="w-[1.25rem] h-[1.25rem]" />
           <span>Notifications</span>
         </a>
         
         <a 
           href="/settings" 
-          class="flex items-center space-x-4 px-2 py-2 rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/settings' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
+          class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/settings' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Settings class="w-5 h-5" />
+          <Settings class="w-[1.25rem] h-[1.25rem]" />
           <span>Settings</span>
         </a>
       </nav>

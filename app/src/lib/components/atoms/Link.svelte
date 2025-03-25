@@ -24,9 +24,9 @@
   function getVariantClasses() {
     switch(variant) {
       case 'default':
-        return "text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.9)] hover:shadow-md";
+        return "text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.9)] hover:shadow-[var(--shadow-md)]";
       case 'underlined':
-        return "text-[hsl(var(--primary))] underline underline-offset-4 hover:decoration-[hsl(var(--link-hover))]";
+        return "text-[hsl(var(--primary))] underline underline-offset-[4px] hover:decoration-[hsl(var(--link-hover))]";
       case 'muted':
         return "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--link-hover))]";
       case 'heading':
@@ -56,6 +56,6 @@
 >
   {@render children?.()}
   {#if external}
-    <Icon icon={ExternalLink} class="inline-block ml-1" size={14} color="currentColor" />
+    <Icon icon={ExternalLink} class="inline-block ml-[0.25rem]" size={14} color="currentColor" />
   {/if}
 </a> 

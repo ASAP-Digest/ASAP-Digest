@@ -627,9 +627,9 @@
   /* Core sidebar styles */
   .sidebar-wrapper {
     position: relative;
-    width: 240px;
-    min-width: 240px;
-    max-width: 240px;
+    width: 15rem; /* 240px */
+    min-width: 15rem; /* 240px */
+    max-width: 15rem; /* 240px */
     height: 100%;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-x: hidden;
@@ -642,17 +642,17 @@
   /* Collapsed state dimensions */
   :global(body.sidebar-collapsed) .sidebar-wrapper,
   :global(body.sidebar-collapsed) *[data-testid="sidebar"] {
-    width: 64px !important; 
-    min-width: 64px !important;
-    max-width: 64px !important;
+    width: 4rem !important; /* 64px */
+    min-width: 4rem !important; /* 64px */
+    max-width: 4rem !important; /* 64px */
   }
   
   /* Reset width calculations for shadcn components */
   :global(body.sidebar-collapsed) [data-sidebar="sidebar"],
   :global(body.sidebar-collapsed) *[data-sidebar="sidebar"] {
-    width: 64px !important;
-    min-width: 64px !important;
-    max-width: 64px !important;
+    width: 4rem !important; /* 64px */
+    min-width: 4rem !important; /* 64px */
+    max-width: 4rem !important; /* 64px */
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
@@ -667,7 +667,7 @@
   
   :global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
     width: 100% !important;
-    padding: 0.75rem 0 !important;
+    padding: 0.75rem 0 !important; /* 12px */
     justify-content: center !important;
     align-items: center !important;
   }
@@ -689,9 +689,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    margin-right: 0.75rem;
+    width: 1.5rem; /* 24px */
+    height: 1.5rem; /* 24px */
+    margin-right: 0.75rem; /* 12px */
     flex-shrink: 0;
     position: relative;
     transition: margin 0.3s ease-in-out;
@@ -699,8 +699,8 @@
   
   /* Icon SVG sizing */
   .sidebar-icon svg {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.25rem; /* 20px */
+    height: 1.25rem; /* 20px */
     flex-shrink: 0;
     transition: transform 0.3s ease-in-out;
   }
@@ -709,8 +709,8 @@
   :global(body.sidebar-collapsed) .sidebar-icon {
     margin: 0 auto !important;
     padding: 0 !important;
-    width: 1.5rem !important;
-    height: 1.5rem !important;
+    width: 1.5rem !important; /* 24px */
+    height: 1.5rem !important; /* 24px */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -719,8 +719,8 @@
   }
   
   :global(body.sidebar-collapsed) .sidebar-icon svg {
-    width: 1.25rem !important;
-    height: 1.25rem !important;
+    width: 1.25rem !important; /* 20px */
+    height: 1.25rem !important; /* 20px */
     flex-shrink: 0 !important;
   }
   
@@ -730,13 +730,13 @@
   :global([role="button"].sidebar-toggle),
   :global(button.sidebar-toggle) {
     position: absolute !important;
-    right: 0 !important;
-    top: 50% !important;
+    right: -0.75rem !important; /* -12px */
+    top: 1.5rem !important; /* 24px */
     transform: translateY(-50%) !important;
-    z-index: 9999 !important;
-    width: 22px !important;
-    height: 22px !important;
-    border-radius: 50% !important;
+    z-index: 5 !important; /* Reduced z-index */
+    width: 1.5rem !important; /* 24px */
+    height: 1.5rem !important; /* 24px */
+    border-radius: 9999px !important; /* 50% */
     background-color: hsl(var(--background)) !important;
     border: 1px solid hsl(var(--border)) !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
@@ -772,9 +772,9 @@
   :global(body.sidebar-collapsed) [data-sidebar="header"],
   :global(body.sidebar-collapsed) [data-sidebar="content"],
   :global(body.sidebar-collapsed) [data-sidebar="footer"] {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-    width: 64px !important;
+    padding-left: 0.5rem !important; /* 8px */
+    padding-right: 0.5rem !important; /* 8px */
+    width: 4rem !important; /* 64px */
   }
   
   :global(body.sidebar-collapsed) [data-sidebar="content"] {
@@ -797,10 +797,10 @@
   
   /* Avatar styling */
   .avatar {
-    width: 2.5rem;
-    height: 2.5rem;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
+    width: 2.5rem; /* 40px */
+    height: 2.5rem; /* 40px */
+    min-width: 2.5rem; /* 40px */
+    min-height: 2.5rem; /* 40px */
     border-radius: 9999px;
     overflow: hidden;
     border: 1px solid hsl(var(--border));
@@ -815,26 +815,26 @@
   }
   
   :global(body.sidebar-collapsed) .avatar {
-    width: 2rem !important;
-    height: 2rem !important;
-    min-width: 2rem !important;
-    min-height: 2rem !important;
-    border-radius: 0.375rem !important;
+    width: 2rem !important; /* 32px */
+    height: 2rem !important; /* 32px */
+    min-width: 2rem !important; /* 32px */
+    min-height: 2rem !important; /* 32px */
+    border-radius: 0.375rem !important; /* 6px */
   }
   
   /* Avatar container */
   .avatar-container {
     display: flex;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.5rem; /* 8px */
     cursor: pointer;
-    border-radius: 0.375rem;
+    border-radius: 0.375rem; /* 6px */
     transition: background-color 0.2s ease-in-out, padding 0.3s ease-in-out;
     width: 100%;
   }
   
   :global(body.sidebar-collapsed) .avatar-container {
-    padding: 0.5rem 0;
+    padding: 0.5rem 0; /* 8px */
     justify-content: center;
     width: 100%;
   }
@@ -847,19 +847,19 @@
   .avatar-dropdown {
     position: fixed;
     z-index: 9999;
-    width: 16rem;
+    width: 16rem; /* 256px */
     background-color: hsl(var(--background));
     border: 1px solid hsl(var(--border));
-    border-radius: 0.375rem;
+    border-radius: 0.375rem; /* 6px */
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    padding: 0.5rem;
-    max-height: calc(100vh - 120px);
+    padding: 0.5rem; /* 8px */
+    max-height: calc(100vh - 7.5rem); /* 120px */
     overflow-y: auto;
     animation: fadeIn 0.2s ease-out;
   }
   
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
+    from { opacity: 0; transform: translateY(-0.3125rem); } /* -5px */
     to { opacity: 1; transform: translateY(0); }
   }
   
@@ -879,11 +879,11 @@
     display: flex;
     align-items: center;
     width: 100%;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding-top: 0.5rem !important; /* 8px */
+    padding-bottom: 0.5rem !important; /* 8px */
     padding-left: 0 !important;
     padding-right: 0 !important;
-    border-radius: 0.375rem;
+    border-radius: 0.375rem; /* 6px */
     transition: all 0.3s ease-in-out;
     text-decoration: none !important;
   }
@@ -905,8 +905,8 @@
   :global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
   :global(body.sidebar-collapsed) .sidebar-menu-item a {
     justify-content: center !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+    padding-top: 0.5rem !important; /* 8px */
+    padding-bottom: 0.5rem !important; /* 8px */
     padding-left: 0 !important;
     padding-right: 0 !important;
     gap: 0 !important;
@@ -940,11 +940,11 @@
   .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
+    gap: 0.5rem; /* 8px */
+    padding: 0.5rem; /* 8px */
+    border-radius: 0.375rem; /* 6px */
     transition: background-color 0.2s;
-    font-size: 0.875rem;
+    font-size: 0.875rem; /* 14px */
     width: 100%;
   }
   
@@ -956,14 +956,14 @@
   .upgrade-button {
     display: block;
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.5rem; /* 8px */
     text-align: center;
     background-color: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
+    border-radius: 0.375rem; /* 6px */
+    font-size: 0.875rem; /* 14px */
     font-weight: 500;
-    margin-top: 0.5rem;
+    margin-top: 0.5rem; /* 8px */
     transition: opacity 0.2s;
   }
   
@@ -983,11 +983,11 @@
   class="sidebar-wrapper" 
   data-testid="sidebar" 
   class:collapsed={collapsed} 
-  style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : 'width: 240px; min-width: 240px; max-width: 240px;'}
+  style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : 'width: 15rem; min-width: 15rem; max-width: 15rem;'}
 >
   <Root 
     class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
-    style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : ''}
+    style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : ''}
     data-collapsed={collapsed}
   >
     <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)] relative">
@@ -998,7 +998,7 @@
       </div>
       <!-- Enhanced toggle button with stronger styling -->
       <button 
-        class="sidebar-toggle absolute right-[-12px] top-[24px] w-[24px] h-[24px] bg-[hsl(var(--sidebar-background))] border border-[hsl(var(--sidebar-border))] rounded-full flex items-center justify-center z-[5]"
+        class="sidebar-toggle"
         onclick={toggleSidebar}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
@@ -1013,7 +1013,7 @@
     <Content 
       class="overflow-y-auto" 
       collapsed={collapsed}
-      style={collapsed ? 'width: 64px !important; min-width: 64px !important; max-width: 64px !important;' : ''}>
+      style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : ''}>
       <Group class="pb-[1rem] pt-[1rem]">
         <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
           {#each mainNavItems as item (item.label)}
@@ -1075,7 +1075,7 @@
               <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
                 <a 
                   href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex items-center w-full justify-start py-2.5 text-[0.875rem]"
+                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]" /* Updated py-2.5 */
                   data-sveltekit-preload-data="hover"
                   style={collapsed ? 'justify-content: center !important;' : ''}
                 >

@@ -36,7 +36,7 @@
     
     <CardFooter>
       <Button variant="primary" size="md">Primary Action</Button>
-      <Button variant="ghost" size="md" className="ml-[calc(var(--spacing-unit)*3)]">Secondary Action</Button>
+      <Button variant="ghost" size="md" className="ml-[0.75rem]">Secondary Action</Button>
     </CardFooter>
   </Card>
 </div> 
