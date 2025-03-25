@@ -1,7 +1,7 @@
 {
-  "name": "ASAP Digest",
-  "short_name": "ASAP",
-  "description": "ASAP Digest - Your source for the latest news and updates",
+  "name": "⚡️ASAP Digest",
+  "short_name": "⚡️ASAP Digest",
+  "description": "⚡️ ASAP Digest - Devour Insights at AI Speed",
   "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",

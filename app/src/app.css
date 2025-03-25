@@ -6,6 +6,7 @@
 ===============================================================
    ⚠️ IMPORTANT: TAILWIND 4 SYNTAX GUIDELINES ⚠️
 ===============================================================
+
    - COLORS:
      ✓ NEVER use direct color names (text-red-500, bg-blue-400)
      ✓ ALWAYS use arbitrary value syntax for theme colors: bg-[hsl(var(--primary))]
@@ -19,22 +20,18 @@
    - SIZING:
      ✓ For fixed sizes that match Tailwind's scale, use standard classes: h-px, w-4
      ✓ For custom sizes, use arbitrary values: h-[3px]
-   
-   - REFERENCE: https://tailwindcss.com/docs/upgrade-guide
-===============================================================
-*/
 
-/* 
-===============================================================
-   ⚠️ IMPORTANT: CSS VARIABLES USAGE NOTES ⚠️
-===============================================================
-
-   - CSS variables in :root are used throughout the application
-   - All variable definitions must be in the :root section to be 
+  - CSS VARIABLES:
+    ✓ CSS variables in :root are used throughout the application
+    ✓ All variable definitions must be in the :root section to be 
      accessible globally
-     
+
+   - REFERENCE: https://tailwindcss.com/docs/upgrade-guide
+
 ===============================================================
 */
+
+
 
 @layer base {
   :root {
