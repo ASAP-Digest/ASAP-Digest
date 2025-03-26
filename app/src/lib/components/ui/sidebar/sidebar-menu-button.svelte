@@ -23,9 +23,11 @@
 </script>
 
 <script>
-	import Root from "$lib/components/ui/tooltip/tooltip.svelte";
-	import Trigger from "$lib/components/ui/tooltip/tooltip-trigger.svelte";
-	import Content from "$lib/components/ui/tooltip/tooltip-content.svelte";
+	import {
+		Tooltip as Root,
+		TooltipTrigger as Trigger,
+		TooltipContent as Content
+	} from "$lib/components/ui/tooltip/index.js";
 	import { cn } from "$lib/utils.js";
 	import { useSidebar } from "./context.svelte.js";
 
@@ -75,8 +77,13 @@
 			side="right"
 			align="center"
 			hidden={sidebar.state !== "collapsed" || sidebar.isMobile}
-			children={tooltipContent}
 			{...tooltipContentProps}
-		/>
+		>
+			{#if typeof tooltipContent === 'function'}
+				{@render tooltipContent()}
+			{:else}
+				{tooltipContent}
+			{/if}
+		</Content>
 	</Root>
 {/if}

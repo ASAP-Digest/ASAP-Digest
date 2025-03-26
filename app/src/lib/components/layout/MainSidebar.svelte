@@ -1083,7 +1083,7 @@
               <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
                 <a 
                   href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]" /* Updated py-2.5 */
+                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]"
                   data-sveltekit-preload-data="hover"
                   style={collapsed ? 'justify-content: center !important;' : ''}
                 >

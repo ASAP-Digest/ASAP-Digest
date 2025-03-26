@@ -8,7 +8,6 @@
 <Separator
 	bind:ref
 	data-sidebar="separator"
-	// Use HSL variable for background color
 	class={cn("bg-[hsl(var(--sidebar-border))] mx-2 w-auto", className)}
 	{...restProps}
 />

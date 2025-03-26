@@ -9,22 +9,13 @@
 	} from "./constants.js";
 	import { setSidebar } from "./context.svelte.js";
 	import { onMount } from 'svelte';
+	import { TooltipProvider } from '$lib/components/ui/tooltip';
 
-	// For SSR compatibility, we need to ensure consistent DOM structure
-	// but delay loading bits-ui components until client-side
-	let TooltipProvider;
+	/**
+	 * @typedef {import('svelte').ComponentProps<TooltipProvider>} TooltipProviderProps
+	 */
 
-	onMount(() => {
-		// Only import and use Tooltip in browser environment
-		if (browser) {
-			// Import directly from the .svelte file
-			import("$lib/components/ui/tooltip/tooltip-provider.svelte").then(module => {
-				TooltipProvider = module.default; // Assuming default export for provider
-				console.log("[SidebarProvider] Tooltip provider loaded");
-			});
-		}
-	});
-
+	/** @type {TooltipProviderProps} */
 	let {
 		ref = $bindable(null),
 		open = $bindable(true),
@@ -34,6 +25,15 @@
 		children,
 		...restProps
 	} = $props();
+
+	let mounted = $state(false);
+
+	// For SSR compatibility, we need to ensure consistent DOM structure
+	// but delay loading bits-ui components until client-side
+
+	onMount(() => {
+		mounted = true; // Set mounted to true on client-side mount
+	});
 
 	// Check cookie in onMount instead of during initialization
 	onMount(() => {
@@ -64,7 +64,7 @@
 
 <svelte:window onkeydown={sidebar.handleShortcutKeydown} />
 
-<!-- Consistent DOM structure for both SSR and client -->
+<!-- Consistent outer DOM structure for both SSR and client -->
 <div
 	style="--sidebar-width: {SIDEBAR_WIDTH}; --sidebar-width-icon: {SIDEBAR_WIDTH_ICON}; {style}"
 	class={cn(
@@ -72,8 +72,15 @@
 		className
 	)}
 	bind:this={ref}
-	{...restProps}
 	data-sidebar-provider
 >
-	{@render children?.()}
+	{#if mounted}
+		<!-- Render TooltipProvider only after mounting on the client -->
+		<TooltipProvider {...restProps}>
+			{@render children?.()}
+		</TooltipProvider>
+	{:else}
+		<!-- Render children directly during SSR or before mount -->
+		{@render children?.()}
+	{/if}
 </div>
