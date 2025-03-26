@@ -9,10 +9,12 @@
 	} from "./constants.js";
 	import { setSidebar } from "./context.svelte.js";
 	import { onMount } from 'svelte';
-	import TooltipProvider from '$lib/components/ui/tooltip/tooltip-provider.svelte';
+	// Import Tooltip primitive directly from bits-ui
+	import { Tooltip as TooltipPrimitive } from 'bits-ui';
 
 	/**
-	 * @typedef {import('svelte').ComponentProps<TooltipProvider>} TooltipProviderProps
+	 * @typedef {import('svelte').ComponentProps<TooltipPrimitive.Provider>} TooltipProviderProps
+	 * Adjusted typedef to reflect the actual bits-ui Provider component
 	 */
 
 	/** @type {TooltipProviderProps} */
@@ -23,17 +25,13 @@
 		class: className,
 		style,
 		children,
-		...restProps
 	} = $props();
 
-	let mounted = $state(false);
-
-	// For SSR compatibility, we need to ensure consistent DOM structure
-	// but delay loading bits-ui components until client-side
-
-	onMount(() => {
-		mounted = true; // Set mounted to true on client-side mount
-	});
+	// State to track if we are mounted on the client - NO LONGER NEEDED FOR THIS
+	// let mounted = $state(false);
+	// onMount(() => {
+	// 	mounted = true;
+	// });
 
 	// Check cookie in onMount instead of during initialization
 	onMount(() => {
@@ -74,13 +72,6 @@
 	bind:this={ref}
 	data-sidebar-provider
 >
-	{#if mounted}
-		<!-- Render TooltipProvider only after mounting on the client -->
-		<TooltipProvider {...restProps}>
-			{@render children?.()}
-		</TooltipProvider>
-	{:else}
-		<!-- Render children directly during SSR or before mount -->
-		{@render children?.()}
-	{/if}
+	<!-- Render children directly - NO TooltipPrimitive.Provider -->
+	{@render children?.()}
 </div>

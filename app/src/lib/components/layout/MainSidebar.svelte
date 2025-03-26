@@ -76,9 +76,6 @@
   // Make path a derived state that updates when page changes
   let path = $derived($page.url.pathname);
   
-  // Add state for sidebar collapsed
-  let collapsed = $state(false);
-  
   // Debug info for sidebar elements
   /** @type {Array<any>} */
   let icons = $state([]);
@@ -169,223 +166,11 @@
     console.log('[SidebarDebug] Collapsed state:', debugCollapsedState);
   }
   
-  // Toggle sidebar collapsed state
-  function toggleSidebar() {
-    collapsed = !collapsed;
-    console.log('[MainSidebar] Toggle state:', collapsed ? 'collapsed' : 'expanded');
-    
-    // Dispatch custom event for parent components
-    const event = new CustomEvent('sidebarToggle', { detail: { collapsed } });
-    document.dispatchEvent(event);
-    
-    // Add class to document body for layout adjustments
-    if (collapsed) {
-      document.body.classList.add('sidebar-collapsed');
-      
-      // Apply data-collapsed attribute to all sidebar components
-      setTimeout(() => {
-        // Set data-collapsed on all key sidebar elements
-        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
-          el.setAttribute('data-collapsed', 'true');
-        });
-        
-        // Apply inline styles to SVG elements when collapsed
-        const svgElements = document.querySelectorAll('svg');
-        svgElements.forEach(svg => {
-          svg.style.cssText = 'width: 1.25rem !important; height: 1.25rem !important; min-width: 1.25rem !important; min-height: 1.25rem !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
-        });
-        
-        // Apply inline styles to menu items
-        const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
-        menuItems.forEach(item => {
-          item.style.cssText = 'min-height: 2.5rem !important; display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; padding: 0.25rem 0 !important; z-index: 30 !important; position: relative !important; overflow: visible !important;';
-        });
-      }, 50);
-    } else {
-      document.body.classList.remove('sidebar-collapsed');
-      
-      // Remove data-collapsed attribute from all sidebar components
-      setTimeout(() => {
-        // Remove data-collapsed from all key sidebar elements
-        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
-          el.removeAttribute('data-collapsed');
-        });
-        
-        // Remove inline styles when expanded
-        const svgElements = document.querySelectorAll('svg');
-        svgElements.forEach(svg => {
-          svg.style.cssText = 'width: 1.25rem !important; height: 1.25rem !important; min-width: 1.25rem !important; min-height: 1.25rem !important; display: block !important; visibility: visible !important; opacity: 1 !important; flex-shrink: 0 !important; position: static !important; z-index: 50 !important; overflow: visible !important;';
-        });
-        
-        const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
-        menuItems.forEach(item => {
-          item.style.cssText = '';
-        });
-      }, 50);
-    }
-    
-    // Save state to localStorage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('sidebar-collapsed', String(collapsed));
-    }
-    
-    // Gather debug info after a short delay to allow DOM updates
-    setTimeout(gatherDebugInfo, 100);
-  }
-  
-  // New logging function to inspect sidebar element classes
-  function inspectSidebarElements() {
-    // Get all sidebar elements
-    const allSidebarElements = document.querySelectorAll('[data-sidebar]');
-    console.group('[SidebarDebug] Sidebar element inspection (collapsed=' + collapsed + ')');
-    
-    allSidebarElements.forEach((el) => {
-      const dataName = el.getAttribute('data-sidebar');
-      const styles = window.getComputedStyle(el);
-      console.log(`[SidebarDebug] Element: [data-sidebar="${dataName}"]`, {
-        width: styles.width,
-        display: styles.display,
-        opacity: styles.opacity,
-        visibility: styles.visibility,
-        computedClasses: styles
-      });
-    });
-    
-    // Inspect all menu items
-    const menuItems = document.querySelectorAll('[data-sidebar="menu-item"]');
-    console.log('[SidebarDebug] MenuItems:', menuItems.length);
-    
-    console.groupEnd();
-  }
-  
-  // Initialize collapsed state from localStorage if available
-  onMount(() => {
-    // Check if there's a stored preference in localStorage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const storedState = localStorage.getItem('sidebar-collapsed');
-      if (storedState === 'true') {
-        collapsed = true;
-        document.body.classList.add('sidebar-collapsed');
-        
-        // Initialize data-collapsed attributes
-        setTimeout(() => {
-          document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
-            el.setAttribute('data-collapsed', 'true');
-          });
-        }, 0);
-      }
-    }
-    
-    // Check if body already has sidebar-collapsed class from parent
-    if (typeof document !== 'undefined' && document.body.classList.contains('sidebar-collapsed') && !collapsed) {
-      collapsed = true;
-      
-      // Initialize data-collapsed attributes
-      setTimeout(() => {
-        document.querySelectorAll('[data-sidebar="content"], [data-sidebar="menu"]').forEach(el => {
-          el.setAttribute('data-collapsed', 'true');
-        });
-      }, 0);
-    }
-    
-    console.log('[MainSidebar] Component mounted');
-    console.log('[MainSidebar] Current path:', path);
-    console.log('[MainSidebar] Initial collapsed state:', collapsed);
-    
-    // Add a visibility guard element to ensure icons stay visible when collapsed
-    const visibilityGuard = document.createElement('style');
-    visibilityGuard.id = 'sidebar-visibility-guard';
-    visibilityGuard.textContent = `
-      /* Critical icons visibility overrides */
-      body.sidebar-collapsed [data-sidebar="sidebar"] svg,
-      body.sidebar-collapsed svg.lucide,
-      body.sidebar-collapsed svg.lucide-icon {
-        width: 20px !important;
-        height: 20px !important;
-        min-width: 20px !important;
-        min-height: 20px !important;
-        max-width: none !important;
-        max-height: none !important;
-        position: static !important;
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 1000 !important;
-        overflow: visible !important;
-        pointer-events: auto !important;
-        flex-shrink: 0 !important;
-      }
-      
-      body.sidebar-collapsed [data-sidebar="menu-button"],
-      body.sidebar-collapsed [data-sidebar="menu-item"] a,
-      body.sidebar-collapsed [data-sidebar="menu-item"] button {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        min-width: 32px !important;
-        min-height: 32px !important;
-        position: relative !important;
-        padding: 8px !important;
-        overflow: visible !important;
-        z-index: 999 !important;
-      }
-    `;
-    document.head.appendChild(visibilityGuard);
-    
-    // Listen for sidebar toggle events from the layout
-    /**
-     * @param {CustomEvent<{collapsed: boolean}>} event - The sidebar toggle event
-     */
-    const handleSidebarToggle = (event) => {
-      // Only update if the value is different to prevent infinite loops
-      if (collapsed !== event.detail.collapsed) {
-        collapsed = event.detail.collapsed;
-        console.log('[MainSidebar] State updated from parent:', collapsed ? 'collapsed' : 'expanded');
-        
-        // Gather debug info when sidebar state is updated from parent
-        setTimeout(gatherDebugInfo, 100);
-      }
-    };
-    
-    // @ts-ignore - Custom event is not in standard DocumentEventMap
-    document.addEventListener('sidebarToggle', handleSidebarToggle);
-    
-    // Set up handlers for dropdown positioning
-    const handleResize = () => {
-      if (isAvatarDropdownOpen) {
-        positionDropdown();
-      }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    // Close dropdown when clicking outside
-    /**
-     * @param {MouseEvent} event - The mouse event
-     */
-    const handleOutsideClick = (event) => {
-      if (isAvatarDropdownOpen && avatarDropdownElement && 
-         !avatarDropdownElement.contains(/** @type {Node} */ (event.target)) && 
-         !(/** @type {HTMLElement} */ (event.target)).closest('.avatar-container')) {
-        isAvatarDropdownOpen = false;
-      }
-    };
-    
-    document.addEventListener('click', handleOutsideClick);
-    
-    // Call initial debug info gathering after a delay to ensure DOM is ready
-    setTimeout(() => {
-      inspectSidebarElements();
-      gatherDebugInfo();
-    }, 500);
-    
-    return () => {
-      // @ts-ignore - Custom event is not in standard DocumentEventMap
-      document.removeEventListener('sidebarToggle', handleSidebarToggle);
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('click', handleOutsideClick);
-    };
-  });
+  // Accept collapsed state AND toggle function as props
+  let {
+    collapsed = false,
+    toggleSidebar = () => { console.error('toggleSidebar prop not provided to MainSidebar'); }
+  } = $props();
   
   // Main navigation items with reactive closures for 'active' property
   const mainNavItems = [
@@ -455,21 +240,7 @@
   // Add observer for element visibility
   let visibilityObserver = $state(null);
   onMount(() => {
-    // Create a visibility observer to monitor sidebar elements
-    visibilityObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.target.classList.contains('sidebar-icon')) {
-          const visible = entry.isIntersecting;
-          console.log(`[SidebarDebug] Icon visibility changed: ${visible ? 'visible' : 'hidden'}`, 
-            entry.target, entry.boundingClientRect);
-        }
-      });
-    }, { threshold: [0, 0.5, 1] });
-    
-    // Observe all sidebar icons
-    document.querySelectorAll('.sidebar-icon').forEach(icon => {
-      visibilityObserver.observe(icon);
-    });
+    console.log('[MainSidebar] Component mounted');
     
     // Cleanup on unmount
     return () => {
@@ -1007,7 +778,9 @@
       <!-- Enhanced toggle button with stronger styling -->
       <button 
         class="sidebar-toggle"
-        onclick={toggleSidebar}
+        onclick={() => {
+          toggleSidebar();
+        }}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {#if collapsed}
@@ -1028,7 +801,7 @@
             <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
               <a 
                 href={item.url} 
-                class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
+                class="relative group {item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
                 data-sveltekit-preload-data="hover"
                 style={collapsed ? 'justify-content: center !important;' : ''}
               >
@@ -1038,6 +811,15 @@
                   {/if}
                 </div>
                 <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
+
+                {#if collapsed}
+                  <div 
+                    role="tooltip" 
+                    class="absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-[hsl(var(--popover))] px-2 py-1 text-[0.75rem] font-semibold text-[hsl(var(--popover-foreground))] shadow-md hidden group-hover:block group-focus:block"
+                  >
+                    {item.label}
+                  </div>
+                {/if}
               </a>
             </MenuItem>
           {/each}
@@ -1054,7 +836,7 @@
               <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
                 <a 
                   href={item.url} 
-                  class="{item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
+                  class="relative group {item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
                   data-sveltekit-preload-data="hover"
                   style={collapsed ? 'justify-content: center !important;' : ''}
                 >
@@ -1064,6 +846,11 @@
                     {/if}
                   </div>
                   <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
+                  {#if collapsed}
+                    <div role="tooltip" class="absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-[hsl(var(--popover))] px-2 py-1 text-[0.75rem] font-semibold text-[hsl(var(--popover-foreground))] shadow-md hidden group-hover:block group-focus:block">
+                      {item.label}
+                    </div>
+                  {/if}
                 </a>
               </MenuItem>
             {/each}

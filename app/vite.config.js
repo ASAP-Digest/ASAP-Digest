@@ -68,7 +68,6 @@ export default defineConfig(({ mode }) => {
 			exclude: ['@sveltejs/kit'],
 			include: [
 				'tailwindcss',
-				'bits-ui',
 				'clsx',
 				'tailwind-merge',
 				'tailwind-variants',
