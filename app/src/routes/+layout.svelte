@@ -457,12 +457,12 @@
 {:else}
   <div class={`app-shell ${isMobile && !isSidebarCollapsed ? 'sidebar-open' : ''}`}>
     <!-- Header -->
-    <header class="header-area">
+    <header class="header-area px-3">
       <div class="container flex items-center justify-between h-full">
         <div class="flex items-center gap-3">
           <!-- Logo -->
           <span class="text-xl font-semibold">
-            <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
+            <span class="text-[hsl(var(--primary))]">⚡️ ASAP</span> Digest
           </span>
         </div>
         

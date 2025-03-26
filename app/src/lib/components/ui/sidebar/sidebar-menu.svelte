@@ -9,7 +9,7 @@
 	data-collapsed={collapsed}
 	class={cn(
 		"flex w-full min-w-0 flex-col gap-1 list-none", 
-		collapsed ? "p-0 items-center justify-center" : "",
+		collapsed ? "p-0 items-center justify-center" : "px-2",
 		className
 	)}
 	{...restProps}
