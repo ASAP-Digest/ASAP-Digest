@@ -797,5 +797,5 @@
   {/if}
 
   <!-- Add GlobalFAB at the end of the layout -->
-  <GlobalFAB on:add={handleAddContent} />
+  <GlobalFAB />
 {/if}

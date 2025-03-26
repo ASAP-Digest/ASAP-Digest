@@ -32,6 +32,7 @@
   // Toggle content selector visibility
   function toggleSelector() {
     showSelector = !showSelector;
+    console.log('Selector visibility:', showSelector);
   }
   
   // Handle when items are added through the selector
@@ -63,7 +64,7 @@
 </script>
 
 <!-- Floating Action Button -->
-<div class="fixed {fabPosition === 'center' ? 'bottom-[1.5rem] left-1/2 -translate-x-1/2' : 'bottom-[1.5rem] right-[1.5rem]'} z-50">
+<div class="fixed {fabPosition === 'center' ? 'bottom-[1.5rem] left-1/2 -translate-x-1/2' : 'bottom-[1.5rem] right-[1.5rem]'} z-[100]">
   <!-- Main FAB Button -->
   <button 
     class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[3.5rem] h-[3.5rem] flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
