@@ -393,6 +393,7 @@
   /* Custom styling for range inputs */
   input[type="range"] {
     -webkit-appearance: none;
+    appearance: none;
     height: 4px;
     border-radius: 4px;
     background: hsl(var(--muted));

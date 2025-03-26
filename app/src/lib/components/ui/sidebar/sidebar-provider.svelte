@@ -9,7 +9,7 @@
 	} from "./constants.js";
 	import { setSidebar } from "./context.svelte.js";
 	import { onMount } from 'svelte';
-	import { TooltipProvider } from '$lib/components/ui/tooltip';
+	import TooltipProvider from '$lib/components/ui/tooltip/tooltip-provider.svelte';
 
 	/**
 	 * @typedef {import('svelte').ComponentProps<TooltipProvider>} TooltipProviderProps

@@ -27,10 +27,10 @@
     <div class="text-center mb-6">
       <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
         <Icon icon={LogIn} size={24} />
-        <span>Sign In</span>
+        <span> ⚡️ ASAP Digest - Login </span>
       </h1>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-        Welcome back! Sign in to your account
+      <p class="text-sm text-center text-gray-600 dark:text-gray-400 mt-2">
+        Devour insights at AI speed
       </p>
     </div>
     
