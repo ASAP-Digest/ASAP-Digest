@@ -13,7 +13,7 @@
   } from '$lib/components/atoms';
 </script>
 
-<div class="max-w-[400px] mx-auto">
+<div class="max-w-[25rem] mx-auto">
   <Card hover={true}>
     <CardHeader>
       <CardTitle>Card Example</CardTitle>

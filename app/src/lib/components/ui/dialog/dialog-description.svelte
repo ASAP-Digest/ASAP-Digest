@@ -6,7 +6,7 @@
 </script>
 
 <DialogPrimitive.Description
-	class={cn("text-muted-foreground text-sm", className)}
+	class={cn("text-[hsl(var(--muted-foreground))] text-sm", className)}
 	{...$$restProps}
 >
 	<slot />

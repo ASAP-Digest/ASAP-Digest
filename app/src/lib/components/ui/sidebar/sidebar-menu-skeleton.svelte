@@ -1,5 +1,6 @@
 <script>
-	import { Skeleton } from "$lib/components/ui/skeleton/index.js";
+	// Import directly from the .svelte file
+	import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 	import { cn } from "$lib/utils.js";
 	let {
 		ref = $bindable(null),

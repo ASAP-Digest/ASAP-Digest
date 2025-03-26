@@ -730,16 +730,18 @@
   :global([role="button"].sidebar-toggle),
   :global(button.sidebar-toggle) {
     position: absolute !important;
-    right: -0.75rem !important; /* -12px */
-    top: 1.5rem !important; /* 24px */
+    right: -0.75rem !important; /* Arbitrary value */
+    top: 1.5rem !important; /* Arbitrary value */
     transform: translateY(-50%) !important;
-    z-index: 5 !important; /* Reduced z-index */
-    width: 1.5rem !important; /* 24px */
-    height: 1.5rem !important; /* 24px */
-    border-radius: 9999px !important; /* 50% */
+    z-index: 5 !important;
+    width: 1.5rem !important; /* Arbitrary value */
+    height: 1.5rem !important; /* Arbitrary value */
+    border-radius: 9999px !important; /* Tailwind rounded-full */
     background-color: hsl(var(--background)) !important;
-    border: 1px solid hsl(var(--border)) !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    border-width: 1px !important; /* Standard CSS */
+    border-style: solid !important;
+    border-color: hsl(var(--border)) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important; /* Tailwind shadow-sm or shadow */
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -753,8 +755,10 @@
   /* Button states */
   .sidebar-toggle:focus-visible,
   :global(.sidebar-toggle:focus-visible) {
-    outline: 2px solid hsl(var(--primary)) !important;
-    outline-offset: 2px !important;
+    outline-width: 2px !important; /* Standard CSS */
+    outline-style: solid !important;
+    outline-color: hsl(var(--primary)) !important;
+    outline-offset: 2px !important; /* Standard CSS */
   }
   
   .sidebar-toggle:hover,
@@ -797,13 +801,15 @@
   
   /* Avatar styling */
   .avatar {
-    width: 2.5rem; /* 40px */
-    height: 2.5rem; /* 40px */
-    min-width: 2.5rem; /* 40px */
-    min-height: 2.5rem; /* 40px */
-    border-radius: 9999px;
+    width: 2.5rem; /* Arbitrary value */
+    height: 2.5rem; /* Arbitrary value */
+    min-width: 2.5rem; /* Arbitrary value */
+    min-height: 2.5rem; /* Arbitrary value */
+    border-radius: 9999px; /* Tailwind rounded-full */
     overflow: hidden;
-    border: 1px solid hsl(var(--border));
+    border-width: 1px; /* Standard CSS */
+    border-style: solid;
+    border-color: hsl(var(--border));
     flex-shrink: 0;
     transition: all 0.3s ease-in-out;
   }
@@ -847,13 +853,15 @@
   .avatar-dropdown {
     position: fixed;
     z-index: 9999;
-    width: 16rem; /* 256px */
+    width: 16rem; /* Tailwind w-64 */
     background-color: hsl(var(--background));
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.375rem; /* 6px */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    padding: 0.5rem; /* 8px */
-    max-height: calc(100vh - 7.5rem); /* 120px */
+    border-width: 1px; /* Standard CSS */
+    border-style: solid;
+    border-color: hsl(var(--border));
+    border-radius: 0.375rem; /* Tailwind rounded-md */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* Tailwind shadow-lg */
+    padding: 0.5rem; /* Tailwind p-2 */
+    max-height: calc(100vh - 7.5rem); /* Uses rem */
     overflow-y: auto;
     animation: fadeIn 0.2s ease-out;
   }
@@ -1063,7 +1071,7 @@
         </Group>
       {/if}
       
-      <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-[1px]" />
+      <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-px" />
 
       <Group class="pb-[1rem] recent-digests">
         <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)]" child={() => "Recent Digests"}>

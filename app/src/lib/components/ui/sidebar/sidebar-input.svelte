@@ -1,5 +1,5 @@
 <script>
-	import { Input } from "$lib/components/ui/input/index.js";
+	import Input from "$lib/components/ui/input/input.svelte";
 	import { cn } from "$lib/utils.js";
 	let { ref = $bindable(null), value = $bindable(""), class: className, ...restProps } = $props();
 </script>

@@ -171,7 +171,7 @@
     {#if showFlyout}
       <div 
         transition:fly={{y: 20, duration: 200}} 
-        class="{fabPosition === 'center' ? 'left-1/2 -translate-x-1/2 bottom-[5rem]' : 'right-0 bottom-[5rem]'} absolute bg-[hsl(var(--background))] rounded-lg shadow-xl p-[1rem] grid grid-cols-4 gap-[0.75rem] min-w-[320px] border border-[hsl(var(--border))]"
+        class="{fabPosition === 'center' ? 'left-1/2 -translate-x-1/2 bottom-[5rem]' : 'right-0 bottom-[5rem]'} absolute bg-[hsl(var(--background))] rounded-lg shadow-xl p-[1rem] grid grid-cols-4 gap-[0.75rem] min-w-[20rem] border border-[hsl(var(--border))]"
       >
         {#each contentTypes as type}
           <button 

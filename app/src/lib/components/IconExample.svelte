@@ -17,33 +17,18 @@
 
 <section>
   <h2>Icon Examples</h2>
-  <div class="icons-container">
-    <div class="icon-example">
+  <div class="flex gap-8 mt-4">
+    <div class="flex flex-col items-center gap-2">
       <Icon icon={HomeIcon} />
       <span>Home</span>
     </div>
-    <div class="icon-example">
+    <div class="flex flex-col items-center gap-2">
       <Icon icon={UserIcon} size={32} color="blue" />
       <span>User (32px, blue)</span>
     </div>
-    <div class="icon-example">
+    <div class="flex flex-col items-center gap-2">
       <Icon icon={SettingsIcon} size={48} strokeWidth={1} />
       <span>Settings (48px, thin)</span>
     </div>
   </div>
-</section>
-
-<style>
-  .icons-container {
-    display: flex;
-    gap: 2rem;
-    margin-top: 1rem;
-  }
-  
-  .icon-example {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-</style> 
+</section> 

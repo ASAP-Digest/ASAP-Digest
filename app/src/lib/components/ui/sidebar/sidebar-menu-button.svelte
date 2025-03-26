@@ -23,7 +23,9 @@
 </script>
 
 <script>
-	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+	import Root from "$lib/components/ui/tooltip/tooltip.svelte";
+	import Trigger from "$lib/components/ui/tooltip/tooltip-trigger.svelte";
+	import Content from "$lib/components/ui/tooltip/tooltip-content.svelte";
 	import { cn } from "$lib/utils.js";
 	import { useSidebar } from "./context.svelte.js";
 
@@ -65,16 +67,16 @@
 {#if !tooltipContent}
 	{@render Button({ props: {} })}
 {:else}
-	<Tooltip.Root>
-		<Tooltip.Trigger>
+	<Root>
+		<Trigger>
 			{@render Button({ props: {} })}
-		</Tooltip.Trigger>
-		<Tooltip.Content
+		</Trigger>
+		<Content
 			side="right"
 			align="center"
 			hidden={sidebar.state !== "collapsed" || sidebar.isMobile}
 			children={tooltipContent}
 			{...tooltipContentProps}
 		/>
-	</Tooltip.Root>
+	</Root>
 {/if}

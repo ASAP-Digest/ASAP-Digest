@@ -175,7 +175,7 @@
 <style>
   /* Add animations for dropdowns */
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(-0.625rem); }
     to { opacity: 1; transform: translateY(0); }
   }
   
@@ -193,9 +193,11 @@
     background-color: hsl(var(--background));
     border-radius: 0.375rem;
     z-index: 50;
-    border: 1px solid hsl(var(--border));
+    border-width: 1px;
+    border-style: solid;
+    border-color: hsl(var(--border));
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
-    max-height: calc(100vh - 60px);
+    max-height: calc(100vh - 3.75rem);
     overflow-y: auto;
   }
 
@@ -207,11 +209,13 @@
 
   .avatar-dropdown-header {
     padding: 0.5rem;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: hsl(var(--border));
   }
 
   :global(.dark) .avatar-dropdown-header {
-    border-color: hsl(var(--muted-foreground)/0.2);
+    border-bottom-color: hsl(var(--muted-foreground)/0.2);
   }
 
   .avatar-dropdown-link {

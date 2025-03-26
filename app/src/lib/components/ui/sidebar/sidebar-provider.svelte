@@ -15,10 +15,11 @@
 	let TooltipProvider;
 
 	onMount(() => {
-		// Only import and use Tooltip in browser environment 
+		// Only import and use Tooltip in browser environment
 		if (browser) {
-			import("$lib/components/ui/tooltip/index.js").then(module => {
-				TooltipProvider = module.Provider;
+			// Import directly from the .svelte file
+			import("$lib/components/ui/tooltip/tooltip-provider.svelte").then(module => {
+				TooltipProvider = module.default; // Assuming default export for provider
 				console.log("[SidebarProvider] Tooltip provider loaded");
 			});
 		}
