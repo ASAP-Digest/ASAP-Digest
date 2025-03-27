@@ -2,7 +2,7 @@
   import { SITE_URL } from '$lib/api/wordpress.js';
 </script>
 
-<footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
+<footer class="mt-auto">
   <div class="container mx-auto px-[1rem] py-[1.5rem]">
     <div class="flex flex-col md:flex-row justify-between items-center">
       <div class="mb-[1rem] md:mb-0">

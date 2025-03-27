@@ -2,6 +2,7 @@
   import ArticleWidget from '$lib/components/widgets/ArticleWidget.svelte';
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores'; // Needed to check sidebar state via layout data if passed
   
   /**
    * @typedef {'normal'|'large'|'full-mobile'|'full-tablet'} WidgetSize
@@ -50,6 +51,15 @@
   
   /** @type {HTMLElement|null} */
   let dropTarget = null;
+  
+  // NEW: Get sidebar state from layout (assuming it's passed down or available globally)
+  // For simplicity, let's assume we can derive it from screen width for now
+  // A better approach might involve a shared store or context API
+  let hasSidebar = $state(false);
+  $effect(() => {
+    // Approximation: Sidebar is visible on desktop screens
+    hasSidebar = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  });
   
   /**
    * Setup drag and drop functionality
@@ -287,22 +297,60 @@
   }
 
   /**
-   * Get column span classes based on widget size and screen size
+   * NEW: Enhanced Get column span classes based on widget size and sidebar presence
    * @param {WidgetSize} size - Widget size
+   * @param {{ hasSidebar: boolean }} options - Options object
    * @returns {string} - Tailwind classes for column spans
    */
-  function getColSpanClasses(size) {
-    switch(size) {
-      case 'large':
-        return 'col-span-12 md:col-span-8 lg:col-span-8'; // Full width on mobile, 2/3 on larger screens
-      case 'full-mobile':
-        return 'col-span-12 md:col-span-6 lg:col-span-4'; // Full width on mobile, 1/2 on medium, 1/3 on large
-      case 'full-tablet':
-        return 'col-span-12 md:col-span-12 lg:col-span-6'; // Full width until large screens, then 1/2
-      case 'normal':
-      default:
-        return 'col-span-12 md:col-span-6 lg:col-span-4'; // Full width on mobile, 1/2 on medium, 1/3 on large
-    }
+  function getColSpanClasses(size, { hasSidebar = true } = {}) {
+    const baseClasses = 'transition-all duration-300';
+
+    // Define column spans for different breakpoints and sidebar states
+    const columnSpans = {
+      // Mobile first (base) - Sidebar not visible
+      base: {
+        large: 'col-span-12',
+        'full-mobile': 'col-span-12',
+        'full-tablet': 'col-span-12',
+        normal: 'col-span-12'
+      },
+      // Mobile landscape (sm) - Sidebar not visible
+      sm: {
+        large: 'sm:col-span-12',
+        'full-mobile': 'sm:col-span-6',
+        'full-tablet': 'sm:col-span-12',
+        normal: 'sm:col-span-6'
+      },
+      // Tablet (md) - Sidebar not visible
+      md: {
+        large: 'md:col-span-8',
+        'full-mobile': 'md:col-span-6',
+        'full-tablet': 'md:col-span-12',
+        normal: 'md:col-span-6'
+      },
+      // Desktop with sidebar (lg)
+      lgWithSidebar: {
+        large: 'lg:col-span-8', // Takes more space
+        'full-mobile': 'lg:col-span-4',
+        'full-tablet': 'lg:col-span-6',
+        normal: 'lg:col-span-4' // Standard 1/3
+      },
+      // Desktop without sidebar (lg) - Widgets can take more relative space
+      lgWithoutSidebar: {
+        large: 'lg:col-span-6', // Takes half
+        'full-mobile': 'lg:col-span-3', // Takes quarter
+        'full-tablet': 'lg:col-span-4', // Takes third
+        normal: 'lg:col-span-3' // Takes quarter
+      }
+    };
+
+    // Determine desktop classes based on sidebar presence
+    const lgClasses = hasSidebar
+      ? columnSpans.lgWithSidebar[size] || columnSpans.lgWithSidebar.normal
+      : columnSpans.lgWithoutSidebar[size] || columnSpans.lgWithoutSidebar.normal;
+
+    // Combine classes for all breakpoints
+    return `${baseClasses} ${columnSpans.base[size] || columnSpans.base.normal} ${columnSpans.sm[size] || columnSpans.sm.normal} ${columnSpans.md[size] || columnSpans.md.normal} ${lgClasses}`;
   }
   
   /**
@@ -314,122 +362,164 @@
     
     document.body.classList.toggle('debug-grid');
   }
+
+  // Enable grid debugging with a key press (Shift+Alt+D)
+  function setupDebugToggle() {
+    window.addEventListener('keydown', (e) => {
+      if (e.shiftKey && e.altKey && e.key === 'D') {
+        document.body.classList.toggle('debug-grid');
+      }
+    });
+  }
+
+  // Toggle debug mode with button
+  function toggleDebugGrid() {
+    document.body.classList.toggle('debug-grid');
+  }
+
+  // Set up debug toggle on mount
+  onMount(() => {
+    setupDebugToggle();
+    initDraggableWidgets(); // Ensure drag/drop is initialized
+    return () => {
+      cleanupDraggableWidgets(); // Cleanup listeners
+    };
+  });
 </script>
 
-<!-- Main layout container -->
-<div class="page-content max-w-[1440px] mx-auto px-6 sm:px-8 md:px-10 lg:px-12">
-  <!-- Section Headers -->
-  <div class="mb-10 space-y-3 p-3">
-    <h1 class="text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] mb-3 text-[hsl(var(--foreground))]">Your ASAP Digest</h1>
-    <p class="text-[hsl(var(--muted-foreground))] font-[var(--font-body)] text-[var(--font-size-base)]">Customized content based on your interests</p>
+<!-- NEW: Wrap everything in the content-grid -->
+<div class="content-grid">
+  <!-- Section Headers - Span full width of the content grid -->
+  <div class="col-span-12 mb-10 space-y-3 p-3">
+    <h1
+      class="mb-3 text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
+    >
+      Your ASAP Digest
+    </h1>
+    <p class="text-[var(--font-size-base)] font-[var(--font-body)] text-[hsl(var(--muted-foreground))]">
+      Customized content based on your interests
+    </p>
   </div>
 
-  <!-- Grid layout: Consistent 12-column grid across all breakpoints -->
-  <div 
-    class="grid w-full grid-cols-12 gap-4 md:gap-6 lg:gap-8"
-  >
-    <!-- News Section Header - Full width -->
-    <div class="col-span-12 mt-2 mb-4">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Latest News</h2>
-    </div>
-    
-    <!-- News Widgets -->
-    {#each newsWidgets as widget}
-      <div 
-        class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
-    
-    <!-- Finance Section Header - Full width -->
-    <div class="col-span-12 mt-6 mb-4">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Financial Updates</h2>
-    </div>
-    
-    <!-- Finance Widgets -->
-    {#each financeWidgets as widget}
-      <div 
-        class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
-    
-    <!-- Personalized Section Header - Full width -->
-    <div class="col-span-12 mt-6 mb-4">
-      <h2 class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]">Your Interests</h2>
-    </div>
-    
-    <!-- Personalized Widgets -->
-    {#each personalWidgets as widget}
-      <div 
-        class="cursor-move draggable-widget {getColSpanClasses(widget.size)}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
+  <!-- News Section Header - Full width -->
+  <div class="col-span-12 mb-4 mt-2">
+    <h2
+      class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
+    >
+      Latest News
+    </h2>
   </div>
+
+  <!-- News Widgets -->
+  {#each newsWidgets as widget (widget.id)}
+    <div
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+      data-id={widget.id}
+      data-size={widget.size}
+      draggable="true"
+    >
+      {#if widget.type === 'article'}
+        <ArticleWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  {/each}
+
+  <!-- Finance Section Header - Full width -->
+  <div class="col-span-12 mb-4 mt-6">
+    <h2
+      class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
+    >
+      Financial Updates
+    </h2>
+  </div>
+
+  <!-- Finance Widgets -->
+  {#each financeWidgets as widget (widget.id)}
+    <div
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+      data-id={widget.id}
+      data-size={widget.size}
+      draggable="true"
+    >
+      {#if widget.type === 'article'}
+        <ArticleWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  {/each}
+
+  <!-- Personalized Section Header - Full width -->
+  <div class="col-span-12 mb-4 mt-6">
+    <h2
+      class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
+    >
+      Your Interests
+    </h2>
+  </div>
+
+  <!-- Personalized Widgets -->
+  {#each personalWidgets as widget (widget.id)}
+    <div
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+      data-id={widget.id}
+      data-size={widget.size}
+      draggable="true"
+    >
+      {#if widget.type === 'article'}
+        <ArticleWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  {/each}
+
+  <!-- Debug button - Keep outside the grid if desired -->
+  <button class="debug-toggle col-span-12" on:click={toggleDebugGrid}>Toggle Grid Debug</button>
 </div>
 
 <style>
@@ -448,7 +538,7 @@
     user-select: none;
     width: 100%; /* Ensure widgets take full width of their grid cell */
     display: block; /* Ensure widgets display properly */
-    margin-bottom: calc(var(--spacing-unit) * 3); /* Add spacing between widgets */
+    /* Removed margin-bottom, gap is handled by content-grid */
   }
   
   .dragging {
@@ -463,13 +553,14 @@
   }
 
   /* Grid Debug Styles - Only active when body has debug-grid class */
-  :global(body.debug-grid .grid > *) {
+  /* :global selector needed as body class is outside component scope */
+  :global(body.debug-grid .content-grid > *) {
     outline: 1px solid hsl(var(--primary) / 0.5);
     position: relative;
   }
   
-  :global(body.debug-grid .grid > *::before) {
-    content: attr(class);
+  :global(body.debug-grid .content-grid > *::before) {
+    content: attr(class); /* Show classes */
     position: absolute;
     top: 0;
     left: 0;
@@ -482,15 +573,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    pointer-events: none; /* Prevent interference */
   }
   
-  :global(body.debug-grid .grid) {
+  :global(body.debug-grid .content-grid) {
     outline: 1px solid hsl(var(--secondary) / 0.7);
     position: relative;
   }
 
-  :global(body.debug-grid .grid::before) {
-    content: "GRID";
+  :global(body.debug-grid .content-grid::before) {
+    content: 'CONTENT-GRID';
     position: absolute;
     top: -16px;
     left: 0;
@@ -499,6 +591,7 @@
     padding: 2px;
     z-index: 9000;
     color: hsl(var(--secondary));
+    pointer-events: none; /* Prevent interference */
   }
   
   /* Add debug button to toggle grid debug mode */
@@ -522,6 +615,3 @@
     opacity: 1;
   }
 </style>
-
-<!-- Debug button for development - can be commented out for production -->
-<button class="debug-toggle" onclick={toggleGridDebug}>Toggle Grid Debug</button>

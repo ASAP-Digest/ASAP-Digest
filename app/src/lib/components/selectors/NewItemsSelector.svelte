@@ -28,6 +28,7 @@
   let selectedItems = $state([]);
   let showFlyout = $state(false);
   let fabPosition = $state('corner'); // 'corner' or 'center'
+  let isSidebarCollapsed = $state(false);
   
   // Define content type icons and colors
   const contentTypes = [
@@ -60,7 +61,7 @@
     // Add sample data for other content types as needed
   };
   
-  // Load stored FAB position preference
+  // Load stored FAB position preference and sidebar state
   onMount(() => {
     const storedPosition = localStorage.getItem('fab-position');
     if (storedPosition === 'center' || storedPosition === 'corner') {
@@ -71,6 +72,24 @@
     if (startOpen && initialType) {
       selectedType = initialType;
     }
+
+    // Check sidebar state
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const sidebarState = localStorage.getItem('sidebar-collapsed');
+      isSidebarCollapsed = sidebarState === 'true';
+    }
+
+    // Add listener for sidebar state changes
+    const handleSidebarChange = () => {
+      isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+    };
+
+    const observer = new MutationObserver(handleSidebarChange);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+    };
   });
   
   // Update content items when type is selected
@@ -149,10 +168,10 @@
 
 <!-- Content Type Selection Floating Action Button -->
 {#if !selectedType && showFab}
-  <div class="fixed {fabPosition === 'center' ? 'bottom-[1.5rem] left-1/2 -translate-x-1/2' : 'bottom-[1.5rem] right-[1.5rem]'} z-50">
+  <div class="selector-fab {fabPosition === 'center' ? 'center' : 'corner'} {isSidebarCollapsed ? 'sidebar-collapsed' : ''}" style={fabPosition === 'corner' && !isSidebarCollapsed ? 'right: calc(1.5rem + 240px);' : ''}>
     <!-- Main FAB Button -->
     <button 
-      class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[3.5rem] h-[3.5rem] flex items-center justify-center shadow-lg hover:bg-[hsl(var(--primary)/0.9)] transition-all"
+      class="selector-fab-button"
       onclick={() => showFlyout = !showFlyout}
     >
       <Icon icon={Plus} size={24} />
@@ -160,7 +179,7 @@
     
     <!-- Position Toggle (small button) -->
     <button 
-      class="absolute -left-[1.5rem] bottom-[0.25rem] bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center shadow-sm hover:bg-[hsl(var(--muted)/0.9)]"
+      class="selector-fab-position-toggle"
       onclick={toggleFabPosition}
       title="Toggle position"
     >
@@ -169,23 +188,20 @@
     
     <!-- Flyout Menu for Content Type Selection -->
     {#if showFlyout}
-      <div 
-        transition:fly={{y: 20, duration: 200}} 
-        class="{fabPosition === 'center' ? 'left-1/2 -translate-x-1/2 bottom-[5rem]' : 'right-0 bottom-[5rem]'} absolute bg-[hsl(var(--background))] rounded-lg shadow-xl p-[1rem] grid grid-cols-4 gap-[0.75rem] min-w-[20rem] border border-[hsl(var(--border))]"
-      >
+      <div transition:fly={{y: 20, duration: 200}} class="selector-flyout">
         {#each contentTypes as type}
           <button 
-            class="flex flex-col items-center p-[0.5rem] rounded-lg hover:bg-[hsl(var(--muted))] transition-colors"
+            class="selector-flyout-button"
             onclick={() => selectContentType(type.id)}
           >
-            <div class="w-[2.5rem] h-[2.5rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-[0.25rem]">
+            <div class="selector-flyout-icon">
               <Icon icon={type.icon} size={20} color="currentColor" class="text-[hsl(var(--primary))]" />
             </div>
-            <span class="text-[0.75rem]">{type.label}</span>
+            <span class="selector-flyout-label">{type.label}</span>
           </button>
         {/each}
         
-        <button onclick={closeFlyout} class="absolute top-[0.5rem] right-[0.5rem] text-[hsl(var(--muted-foreground))]">
+        <button onclick={closeFlyout} class="selector-flyout-close">
           <Icon icon={X} size={16} />
         </button>
       </div>
@@ -196,7 +212,7 @@
 {#if selectedType || startOpen}
   <!-- Visual Grid Selection Dialog -->
   <Dialog open={true} onClose={resetAndClose}>
-    <DialogContent class="max-w-4xl p-[1.5rem]">
+    <DialogContent class="selector-dialog-content">
       <DialogHeader>
         <DialogTitle class="text-[1.25rem] font-medium flex items-center gap-[0.5rem]">
           {#if selectedType}
@@ -217,56 +233,56 @@
       
       <!-- Type Selection (when opened directly without a type) -->
       {#if !selectedType}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-[1rem] py-[1rem]">
+        <div class="selector-grid">
           {#each contentTypes as type}
             <button 
-              class="flex flex-col items-center p-[1rem] rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))] transition-colors"
+              class="selector-grid-button"
               onclick={() => selectContentType(type.id)}
             >
-              <div class="w-[3rem] h-[3rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mb-[0.5rem]">
+              <div class="selector-grid-icon">
                 <Icon icon={type.icon} size={24} color="currentColor" class="text-[hsl(var(--primary))]" />
               </div>
-              <span class="text-[0.875rem] font-medium">{type.label}</span>
+              <span class="selector-grid-label">{type.label}</span>
             </button>
           {/each}
         </div>
       {:else}
         <!-- Search Bar -->
-        <div class="mb-[1rem] flex">
-          <div class="relative flex-grow">
-            <div class="absolute left-[0.75rem] top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+        <div class="selector-search">
+          <div class="selector-search-wrapper">
+            <div class="selector-search-icon">
               <Icon icon={Search} size={16} />
             </div>
             <Input 
               value={searchQuery}
               oninput={filterItems} 
               placeholder="Search content..." 
-              class="w-full pl-[2.25rem]"
+              class="selector-search-input"
             />
           </div>
         </div>
         
         <!-- Content Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1rem] max-h-[60vh] overflow-y-auto p-[0.25rem]">
+        <div class="selector-content-grid">
           {#each contentItems as item (item.id)}
             <div 
-              class="bg-[hsl(var(--card))] rounded-lg overflow-hidden shadow-sm border border-[hsl(var(--border))] transition-all cursor-pointer {isSelected(item) ? 'ring-2 ring-[hsl(var(--primary))]' : 'hover:shadow-md'}"
+              class="selector-content-item {isSelected(item) ? 'selected' : ''}"
               onclick={() => toggleItemSelection(item)}
             >
-              <div class="aspect-video relative bg-[hsl(var(--muted))]">
-                <img src={item.image} alt={item.title} class="w-full h-full object-cover" />
+              <div class="selector-content-image-wrapper">
+                <img src={item.image} alt={item.title} class="selector-content-image" />
                 {#if isSelected(item)}
-                  <div class="absolute top-[0.5rem] right-[0.5rem] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full w-[1.5rem] h-[1.5rem] flex items-center justify-center">
+                  <div class="selector-content-selected-badge">
                     <Icon icon={Check} size={16} />
                   </div>
                 {/if}
               </div>
-              <div class="p-[0.75rem]">
-                <h3 class="font-medium text-[0.875rem] line-clamp-1">{item.title}</h3>
-                <p class="text-[0.75rem] text-[hsl(var(--muted-foreground))] mt-[0.25rem] line-clamp-2">
+              <div class="selector-content-details">
+                <h3 class="selector-content-title">{item.title}</h3>
+                <p class="selector-content-excerpt">
                   {item.excerpt || (item.duration ? `Duration: ${item.duration}` : '')}
                 </p>
-                <div class="mt-[0.5rem] flex items-center text-[0.75rem] text-[hsl(var(--muted-foreground))]">
+                <div class="selector-content-source">
                   <span>{item.source}</span>
                 </div>
               </div>
@@ -274,19 +290,19 @@
           {/each}
           
           {#if contentItems.length === 0}
-            <div class="col-span-full text-center py-[3rem] text-[hsl(var(--muted-foreground))]">
+            <div class="selector-content-empty">
               No content found. Try adjusting your search.
             </div>
           {/if}
         </div>
         
         <!-- Action Buttons -->
-        <div class="mt-[1rem] flex justify-between items-center">
+        <div class="selector-actions">
           <Button variant="outline" onclick={() => selectedType = ''}>
             Back
           </Button>
-          <div>
-            <span class="mr-[0.5rem] text-[0.875rem]">{selectedItems.length} selected</span>
+          <div class="selector-selected-count">
+            <span class="selector-count-text">{selectedItems.length} selected</span>
             <Button 
               variant="default" 
               onclick={addSelectedItems} 
@@ -299,4 +315,366 @@
       {/if}
     </DialogContent>
   </Dialog>
-{/if} 
+{/if}
+
+<style>
+  /* Base FAB styling */
+  .selector-fab {
+    position: fixed;
+    bottom: 1.5rem;
+    z-index: var(--z-fab);
+    transition: all 0.3s var(--ease-out);
+  }
+
+  /* Corner positioning */
+  .selector-fab.corner {
+    right: 1.5rem;
+  }
+
+  /* Center positioning */
+  .selector-fab.center {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Adjust for sidebar on desktop */
+  @media (min-width: 1024px) {
+    /* When sidebar is expanded, shift FAB position to account for sidebar width */
+    .selector-fab.corner:not(.sidebar-collapsed) {
+      right: calc(1.5rem + 240px);
+    }
+  
+    /* When sidebar is collapsed, only account for collapsed sidebar width */
+    .selector-fab.corner.sidebar-collapsed {
+      right: calc(1.5rem + 64px);
+    }
+  }
+
+  /* Main FAB button */
+  .selector-fab-button {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-radius: 9999px;
+    width: 3.5rem;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s var(--ease-out);
+  }
+
+  .selector-fab-button:hover {
+    background-color: hsl(var(--primary)/0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Position toggle button */
+  .selector-fab-position-toggle {
+    position: absolute;
+    left: -1.5rem;
+    bottom: 0.25rem;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-radius: 9999px;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.2s var(--ease-out);
+  }
+
+  .selector-fab-position-toggle:hover {
+    background-color: hsl(var(--muted)/0.9);
+  }
+
+  /* Flyout menu */
+  .selector-flyout {
+    position: absolute;
+    background-color: hsl(var(--background));
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid hsl(var(--border));
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    min-width: 20rem;
+    z-index: var(--z-fab-flyout);
+  }
+
+  /* Position flyout based on FAB position */
+  .selector-fab.corner .selector-flyout {
+    right: 0;
+    bottom: 5rem;
+  }
+
+  .selector-fab.center .selector-flyout {
+    bottom: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Flyout buttons */
+  .selector-flyout-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: var(--radius-lg);
+    transition: background-color 0.2s var(--ease-out);
+  }
+
+  .selector-flyout-button:hover {
+    background-color: hsl(var(--muted));
+  }
+
+  .selector-flyout-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: hsl(var(--muted));
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .selector-flyout-label {
+    font-size: 0.75rem;
+  }
+
+  .selector-flyout-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Dialog content styling */
+  .selector-dialog-content {
+    max-width: 64rem;
+    padding: 1.5rem;
+    z-index: var(--z-modal);
+  }
+
+  /* Type selection grid */
+  .selector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  @media (min-width: 640px) {
+    .selector-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .selector-grid-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid hsl(var(--border));
+    transition: background-color 0.2s var(--ease-out);
+  }
+
+  .selector-grid-button:hover {
+    background-color: hsl(var(--muted));
+  }
+
+  .selector-grid-icon {
+    width: 3rem;
+    height: 3rem;
+    background-color: hsl(var(--muted));
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .selector-grid-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  /* Search bar */
+  .selector-search {
+    margin-bottom: 1rem;
+    display: flex;
+  }
+
+  .selector-search-wrapper {
+    position: relative;
+    flex-grow: 1;
+  }
+
+  .selector-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: hsl(var(--muted-foreground));
+  }
+
+  .selector-search-input {
+    width: 100%;
+    padding-left: 2.25rem;
+  }
+
+  /* Content grid */
+  .selector-content-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .selector-content-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .selector-content-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .selector-content-item {
+    background-color: hsl(var(--card));
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid hsl(var(--border));
+    transition: all 0.2s var(--ease-out);
+    cursor: pointer;
+  }
+
+  .selector-content-item:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .selector-content-item.selected {
+    box-shadow: 0 0 0 2px hsl(var(--primary));
+  }
+
+  .selector-content-image-wrapper {
+    position: relative;
+    background-color: hsl(var(--muted));
+    aspect-ratio: 16 / 9;
+  }
+
+  .selector-content-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .selector-content-selected-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .selector-content-details {
+    padding: 0.75rem;
+  }
+
+  .selector-content-title {
+    font-weight: 500;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .selector-content-excerpt {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.25rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .selector-content-source {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .selector-content-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 0;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Action buttons */
+  .selector-actions {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .selector-selected-count {
+    display: flex;
+    align-items: center;
+  }
+
+  .selector-count-text {
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    .selector-flyout {
+      min-width: calc(100vw - 3rem);
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
+    }
+
+    .selector-dialog-content {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+      padding: 1rem;
+    }
+  }
+
+  /* Mobile fixes */
+  @media (max-width: 1023px) {
+    .selector-fab.corner, 
+    .selector-fab.corner.sidebar-collapsed,
+    .selector-fab.corner:not(.sidebar-collapsed) {
+      right: 1.5rem;
+    }
+  }
+</style> 

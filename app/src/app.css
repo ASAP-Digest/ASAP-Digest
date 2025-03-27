@@ -57,35 +57,31 @@
     
     /* Supporting colors */
     --muted: 220 13% 28%;              /* Muted dark blue-gray */
-    --muted-foreground: 210 40% 80%;   /* Light gray */
-    
-    /* Accent neon */
-    --accent: 265 90% 65%;             /* Neon purple */
+    --muted-foreground: 210 40% 80%;   /* Light gray with blue tint */
+    --accent: 265 90% 65%;             /* Neon violet */
     --accent-foreground: 210 40% 98%;  /* Off-white */
-    
-    /* Alert colors */
     --destructive: 0 90% 60%;          /* Neon red */
     --destructive-foreground: 210 40% 98%; /* Off-white */
     
-    /* UI elements */
-    --border: 220 13% 30%;             /* Border color */
-    --input: 220 13% 30%;              /* Input border */
-    --ring: 326 100% 60%;              /* Focus ring (neon pink) */
-    --radius: 0.5rem;
-    
-    /* Additional neon accents */
-    --neon-yellow: 60 100% 60%;        /* Neon yellow */
-    --neon-green: 145 100% 60%;        /* Neon green */
-    --neon-blue: 210 100% 60%;         /* Neon blue */
+    /* UI boundaries */
+    --border: 220 13% 30%;
+    --input: 220 13% 30%;
+    --ring: 326 100% 60%;
+    --radius: 0.5rem; /* You can change this to match your design system */
+
+    /* Additional neon colors for various applications */
+    --neon-yellow: 60 100% 60%;
+    --neon-green: 145 100% 60%;
+    --neon-blue: 210 100% 60%;
     
     /* Link colors */
-    --link: var(--primary);            /* Default link color (unvisited) */
-    --link-hover: var(--primary);      /* Link hover color */
-    --link-active: var(--accent);      /* Link active/pressed color */
-    --link-visited: var(--primary);    /* Visited link color */
-
-    /* Sidebar specific variables */
-    --sidebar-background: 220 13% 20%;         /* Slightly lighter than main background */
+    --link: var(--primary);
+    --link-hover: var(--primary);
+    --link-active: var(--accent);
+    --link-visited: var(--primary);
+    
+    /* Sidebar-specific variables */
+    --sidebar-background: 220 13% 20%;
     --sidebar-foreground: var(--foreground);
     --sidebar-border: var(--border);
     --sidebar-primary: var(--primary);
@@ -96,10 +92,10 @@
     --sidebar-muted-foreground: var(--muted-foreground);
     --sidebar-ring: var(--ring);
     
-    /* Spacing Unit */
-    --spacing-unit: 0.25rem;           /* 4px at base font size */
+    /* Spacing variables */
+    --spacing-unit: 0.25rem;
     
-    /* Border Radius */
+    /* Border radius variables */
     --radius-none: 0;
     --radius-sm: 0.125rem;
     --radius-md: 0.25rem;
@@ -108,23 +104,23 @@
     --radius-2xl: 1rem;
     --radius-full: 9999px;
     
-    /* Typography */
+    /* Typography variables */
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-body: 'Rubik', 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-mono: 'JetBrains Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     
-    /* Font Sizes */
-    --font-size-xs: 0.75rem;      /* 12px */
-    --font-size-sm: 0.875rem;     /* 14px */
-    --font-size-base: 1rem;       /* 16px */
-    --font-size-lg: 1.125rem;     /* 18px */
-    --font-size-xl: 1.25rem;      /* 20px */
-    --font-size-2xl: 1.5rem;      /* 24px */
-    --font-size-3xl: 1.875rem;    /* 30px */
-    --font-size-4xl: 2.25rem;     /* 36px */
-    --font-size-5xl: 3rem;        /* 48px */
+    /* Font size */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    --font-size-5xl: 3rem;
     
-    /* Font Weights */
+    /* Font weight */
     --font-weight-thin: 100;
     --font-weight-light: 300;
     --font-weight-normal: 400;
@@ -133,34 +129,50 @@
     --font-weight-bold: 700;
     --font-weight-extrabold: 800;
     
-    /* Line Heights */
-    --line-height-none: 1;        /* tight */
-    --line-height-tight: 1.25;    /* headings */
-    --line-height-snug: 1.375;    
-    --line-height-normal: 1.5;    /* body text */
-    --line-height-relaxed: 1.75;  /* increased from 1.625 */
-    --line-height-loose: 2;       /* spacious text */
+    /* Line height */
+    --line-height-none: 1;
+    --line-height-tight: 1.25;
+    --line-height-snug: 1.375;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+    --line-height-loose: 2;
     
-    /* Letter Spacing / Tracking */
-    --tracking-tighter: -0.05em;  /* tighter than normal */
-    --tracking-tight: -0.025em;   /* slightly tighter */
-    --tracking-normal: 0em;       /* normal spacing */
-    --tracking-wide: 0.025em;     /* slightly wider */
-    --tracking-wider: 0.05em;     /* wider than normal */
-    --tracking-widest: 0.1em;     /* extra wide */
+    /* Letter spacing */
+    --tracking-tighter: -0.05em;
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.025em;
+    --tracking-wider: 0.05em;
+    --tracking-widest: 0.1em;
     
-    /* Animation Durations */
+    /* Animation timing */
     --duration-fast: 150ms;
     --duration-normal: 300ms;
     --duration-slow: 500ms;
     --duration-slower: 1000ms;
     
-    /* Animation Easings */
+    /* Easing functions */
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    
+    /* Z-Index Strategy - UPDATED FOR CLARITY */
+    --z-negative: -1;         /* Elements that should be below normal flow */
+    --z-base: 1;              /* Base level content */
+    --z-widgets: 10;          /* Content widgets, cards, etc. */
+    --z-sidebar: 20;          /* Navigation sidebar */
+    --z-header: 25;           /* App header */
+    --z-sidebar-trigger: 30;  /* Toggle button for sidebar */
+    --z-sidebar-tooltip: 35;  /* Tooltips for collapsed sidebar */
+    --z-dropdown: 40;         /* Dropdown menus and popover content */
+    --z-fab: 50;              /* Floating action button */
+    --z-fab-flyout: 55;       /* Flyout menu from FAB */
+    --z-modal-backdrop: 90;   /* Backdrop for modals */
+    --z-modal: 100;           /* Modal windows */
+    --z-notification: 200;    /* Notification alerts */
+    --z-max: 9999;            /* Absolute maximum z-index for critical elements */
     
     /* Neon Glow */
     --glow-sm: 0 0 2px;
@@ -289,9 +301,9 @@
 
   body.sidebar-collapsed .sidebar-area {
     /* @apply w-[64px] min-w-[64px] max-w-[64px]; */ /* Removed @apply */
-    width: 64px; /* Use standard CSS */
-    min-width: 64px; /* Use standard CSS */
-    max-width: 64px; /* Use standard CSS */
+    width: 64px !important; /* Use standard CSS */
+    min-width: 64px !important; /* Use standard CSS */
+    max-width: 64px !important; /* Use standard CSS */
   }
 
   .sidebar-icon svg {
@@ -326,10 +338,51 @@
   }
 }
 
-/* 
-   Removed custom utility classes like .space-*, .gap-*. 
-   Apply spacing/gap utilities directly in your markup using Tailwind 4 syntax, e.g., p-[1rem], gap-[1.5rem].
-*/
+/* Global FAB positioning with sidebar awareness */
+.global-fab {
+	position: fixed;
+	bottom: 1.5rem;
+	z-index: var(--z-fab);
+	transition: all 0.3s var(--ease-out);
+}
+
+.global-fab.corner {
+	right: 1.5rem;
+}
+
+.global-fab.center {
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+/* NEW: Adjust FAB based on .app-layout.sidebar-collapsed */
+@media (min-width: 1024px) {
+	/* Default state (sidebar expanded) */
+	.app-layout:not(.sidebar-collapsed) .global-fab.corner {
+		/* Adjust right based on expanded sidebar width variable */
+		right: calc(1.5rem + var(--sidebar-width-expanded));
+		/* Or keep simple if edge is okay: right: 1.5rem; */
+	}
+
+	/* When sidebar is collapsed */
+	.app-layout.sidebar-collapsed .global-fab.corner {
+		/* Adjust right based on collapsed sidebar width variable */
+		right: calc(1.5rem + var(--sidebar-width-collapsed));
+		/* Or keep simple if edge is okay: right: 1.5rem; */
+	}
+
+	/* Center position might also need adjustment if sidebar affects horizontal centering */
+	/* .app-layout:not(.sidebar-collapsed) .global-fab.center { ... } */
+	/* .app-layout.sidebar-collapsed .global-fab.center { ... } */
+}
+
+/* Mobile FAB positioning (no sidebar adjustment needed) */
+@media (max-width: 1023px) {
+	.global-fab.corner {
+		right: 1.5rem;
+	}
+	/* Center position remains the same */
+}
 
 /* Universal sidebar icon fix */
 body.sidebar-collapsed svg,
@@ -342,9 +395,218 @@ body.sidebar-collapsed .sidebar-icon svg {
   display: block !important;
 }
 
-/* 
-   Removed @layer utilities section. 
-   Apply utilities like flex, flex-col, border, padding directly in markup.
-   Removed debug grid styles and direct HSL color utilities (.text-var-*, .bg-var-*).
-   Use Tailwind 4's arbitrary value syntax like text-[hsl(var(--primary))] directly.
-*/
+/* Add these styles to your global CSS file */
+
+/* 1. Z-Index Variables (Optional but recommended) */
+:root {
+	--z-base: 1;
+	--z-widget: 10;
+	--z-header-footer: 15;
+	--z-sidebar: 20;
+	--z-sidebar-trigger: 25;
+	--z-sidebar-tooltip: 30;
+	--z-dropdown: 40;
+	--z-fab: 50;
+	--z-fab-flyout: 55;
+	--z-mobile-menu-backdrop: 89; /* Below mobile menu */
+	--z-mobile-menu: 90; /* Or higher if needed */
+	--z-modal-backdrop: 90;
+	--z-modal: 100;
+	--z-notification: 200;
+
+	/* Transition Variables */
+	--ease-out: cubic-bezier(0, 0, 0.2, 1); /* Example easing */
+	--transition-sidebar: width 0.3s var(--ease-out),
+												min-width 0.3s var(--ease-out),
+												max-width 0.3s var(--ease-out);
+	--transition-layout: grid-template-columns 0.3s var(--ease-out);
+	--transition-transform: transform 0.3s var(--ease-out);
+	--transition-opacity: opacity 0.2s var(--ease-out);
+	--transition-all-ease-out: all 0.3s var(--ease-out);
+
+	/* Sidebar Dimensions */
+	--sidebar-width-expanded: 15rem; /* 240px */
+	--sidebar-width-collapsed: 4rem;  /* 64px */
+}
+
+/* 2. Base Layout Structure */
+.app-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr); /* Mobile default: 1 column */
+	grid-template-rows: auto 1fr auto; /* Header, Content (flexible), Footer */
+	grid-template-areas:
+		"header"
+		"content"
+		"footer";
+	min-height: 100vh; /* Use min-height instead of height */
+	width: 100%;
+	overflow-x: hidden;
+	transition: var(--transition-layout);
+}
+
+/* Desktop with sidebar (≥1024px) */
+@media (min-width: 1024px) {
+	.app-layout {
+		/* Sidebar width variable controls the first column */
+		grid-template-columns: var(--sidebar-width-expanded) minmax(0, 1fr);
+		grid-template-areas:
+			"header  header"
+			"sidebar content"
+			"footer  footer";
+	}
+
+	/* When sidebar is collapsed */
+	.app-layout.sidebar-collapsed {
+		grid-template-columns: var(--sidebar-width-collapsed) minmax(0, 1fr);
+	}
+}
+
+/* 3. Area Assignments & Base Z-Indices */
+.app-header {
+	grid-area: header;
+	z-index: var(--z-header-footer);
+	/* Add other header styles like height, border etc. */
+	position: sticky; /* Make header sticky */
+	top: 0;
+	background-color: hsl(var(--background)); /* Ensure background */
+}
+
+.app-sidebar {
+	grid-area: sidebar;
+	z-index: var(--z-sidebar);
+	/* Sidebar specific styles (width, background, etc.) will be in the component or here */
+	/* Ensure it fills the height of its grid row */
+	height: 100%;
+	/* Hide by default, shown via media query */
+	display: none;
+}
+
+.app-content {
+	grid-area: content;
+	z-index: var(--z-base);
+	/* Add padding or other styles as needed */
+	overflow-y: auto; /* Allow content scrolling */
+	position: relative; /* Needed for absolutely positioned children like FAB */
+}
+
+.app-footer {
+	grid-area: footer;
+	z-index: var(--z-header-footer);
+	/* Add other footer styles like border etc. */
+}
+
+/* Show sidebar on desktop */
+@media (min-width: 1024px) {
+	.app-sidebar {
+		display: block; /* Or flex/grid depending on internal structure */
+		/* Add transition */
+		transition: var(--transition-sidebar);
+	}
+}
+
+/* 4. Content Grid Structure */
+.content-grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 1rem; /* 16px */
+	width: 100%;
+	max-width: 1440px; /* Or your desired max width */
+	margin-left: auto;
+	margin-right: auto;
+	padding: 1rem; /* 16px */
+}
+
+/* Responsive gap/padding adjustments */
+@media (min-width: 478px) { /* mobile */
+	.content-grid {
+		gap: 1.25rem; /* 20px */
+		padding: 1.25rem; /* 20px */
+	}
+}
+@media (min-width: 767px) { /* mobile-landscape */
+	.content-grid {
+		gap: 1.5rem; /* 24px */
+		padding: 1.5rem; /* 24px */
+	}
+}
+@media (min-width: 991px) { /* tablet */
+	.content-grid {
+		gap: 2rem; /* 32px */
+		padding: 2rem; /* 32px */
+	}
+}
+@media (min-width: 1440px) { /* desktop */
+	.content-grid {
+		gap: 2.5rem; /* 40px */
+		padding: 2.5rem; /* 40px */
+	}
+}
+
+/* 5. Mobile Menu Styles */
+.mobile-menu {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: var(--sidebar-width-expanded); /* Use the expanded width */
+	max-width: 80vw; /* Prevent full width on larger mobile */
+	height: 100vh; /* Full viewport height */
+	background-color: hsl(var(--background)); /* Ensure it has a background */
+	z-index: var(--z-mobile-menu); /* Ensure it's above the backdrop */
+	transform: translateX(-100%); /* Start off-screen */
+	transition: var(--transition-transform); /* Use transform transition */
+	border-right: 1px solid hsl(var(--border));
+	overflow-y: auto; /* Allow scrolling within the menu */
+	display: flex; /* Needed if MainSidebar uses flex */
+	flex-direction: column; /* Needed if MainSidebar uses flex */
+}
+
+.mobile-menu.open {
+	transform: translateX(0); /* Slide in */
+}
+
+.mobile-menu-backdrop {
+	position: fixed;
+	inset: 0;
+	/* CHANGE: Use a darker, semi-transparent background for the backdrop */
+	background-color: hsl(0 0% 0% / 0.5); /* Black with 50% opacity */
+	/* Or use theme variables if preferred: hsl(var(--foreground) / 0.5) might be too light */
+	z-index: var(--z-mobile-menu-backdrop); /* Below mobile menu */
+	opacity: 0;
+	pointer-events: none;
+	transition: var(--transition-opacity);
+}
+
+/* Keep this rule */
+.mobile-menu.open + .mobile-menu-backdrop {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* 6. Base Modal/Dialog Styles */
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background-color: hsl(var(--background)/0.8);
+	backdrop-filter: blur(4px);
+	z-index: var(--z-modal-backdrop);
+	/* Add opacity transition if needed */
+}
+
+.dialog-content {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	/* Add default width/max-width, padding, background, border-radius, shadow */
+	background-color: hsl(var(--background));
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-xl);
+	border: 1px solid hsl(var(--border));
+	z-index: var(--z-modal);
+	max-width: 90vw;
+	max-height: 90vh;
+	overflow: auto;
+	/* Add scale/opacity transition if needed */
+}
+
+/* Add other base styles from your plan as needed */

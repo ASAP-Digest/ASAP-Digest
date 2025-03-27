@@ -20,7 +20,7 @@ export function generateSrcset(baseUrl, sizes = DEFAULT_SIZES, format = 'webp') 
     const basePath = urlParts.join('.');
 
     // If format is not specified, use the original extension
-    const outputFormat = format || extension;
+    const outputFormat = format || extension || '';
 
     // Generate srcset string
     return sizes
@@ -38,7 +38,7 @@ export function generateSrcset(baseUrl, sizes = DEFAULT_SIZES, format = 'webp') 
  * @param {number} options.height - Image height
  * @param {string} options.srcset - Image srcset attribute
  * @param {string} options.sizes - Image sizes attribute
- * @returns {HTMLImageElement} - Image element
+ * @returns {HTMLImageElement|null} - Image element or null if in SSR context
  */
 export function createLazyImage({
     src,
@@ -49,6 +49,8 @@ export function createLazyImage({
     srcset = '',
     sizes = '100vw'
 }) {
+    if (typeof window === 'undefined') return null;
+
     // Create image element
     const img = document.createElement('img');
 
@@ -100,11 +102,15 @@ export function generatePlaceholder(width = 100, height = 100, color = '#f0f0f0'
  * @param {HTMLElement} container - Container element
  */
 export function optimizeImagesInContainer(container) {
+    if (!container || typeof window === 'undefined') return;
+
     // Find all images in container
     const images = container.querySelectorAll('img:not([loading="lazy"])');
 
     // Add lazy loading to each image
     images.forEach(img => {
+        if (!(img instanceof HTMLImageElement)) return;
+
         // Skip images that already have lazy loading
         if (img.hasAttribute('loading')) return;
 
@@ -132,13 +138,15 @@ export function optimizeImagesInContainer(container) {
  * @returns {string} - WebP URL if supported, original URL otherwise
  */
 export function getWebPImageUrl(url) {
+    if (typeof window === 'undefined') return url;
+
     // Check if WebP is supported
     const supportsWebP = localStorage.getItem('supportsWebP');
 
     if (supportsWebP === 'true') {
         // Convert URL to WebP
         const urlParts = url.split('.');
-        const extension = urlParts.pop();
+        const extension = urlParts.pop() || '';
 
         // Only convert common image formats
         if (['jpg', 'jpeg', 'png'].includes(extension.toLowerCase())) {
@@ -186,8 +194,8 @@ export function initImageOptimization() {
         mutations.forEach(mutation => {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        if (node.tagName === 'IMG') {
+                    if (node instanceof HTMLElement) {
+                        if (node instanceof HTMLImageElement) {
                             // Single image added
                             if (!node.hasAttribute('loading')) {
                                 node.loading = 'lazy';
@@ -210,4 +218,56 @@ export function initImageOptimization() {
     });
 
     return observer;
+}
+
+/**
+ * Handle lazy loading of images using Intersection Observer
+ * @returns {Function} Cleanup function to remove observers
+ */
+export function handleLazyLoading() {
+    if (typeof window === 'undefined') return () => {};
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && entry.target instanceof HTMLImageElement) {
+                const img = entry.target;
+                
+                // Load the actual image
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                }
+                if (img.dataset.srcset) {
+                    img.srcset = img.dataset.srcset;
+                }
+                if (img.dataset.sizes) {
+                    img.sizes = img.dataset.sizes;
+                }
+                
+                // Remove data attributes to prevent double-loading
+                delete img.dataset.src;
+                delete img.dataset.srcset;
+                delete img.dataset.sizes;
+                
+                // Stop observing the image
+                observer.unobserve(img);
+            }
+        });
+    });
+
+    // Find all images with lazy class and observe them
+    document.querySelectorAll('img.lazy').forEach(img => {
+        if (img instanceof HTMLImageElement) {
+            observer.observe(img);
+        }
+    });
+
+    // Return cleanup function
+    return () => {
+        document.querySelectorAll('img.lazy').forEach(img => {
+            if (img instanceof HTMLImageElement) {
+                observer.unobserve(img);
+            }
+        });
+        observer.disconnect();
+    };
 } 

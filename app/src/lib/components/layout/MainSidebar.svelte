@@ -169,7 +169,9 @@
   // Accept collapsed state AND toggle function as props
   let {
     collapsed = false,
-    toggleSidebar = () => { console.error('toggleSidebar prop not provided to MainSidebar'); }
+    toggleSidebar = () => { console.error('toggleSidebar prop not provided to MainSidebar'); },
+    isMobile = false, // Receive isMobile prop
+    closeMobileMenu = () => {} // Receive closeMobileMenu prop
   } = $props();
   
   // Main navigation items with reactive closures for 'active' property
@@ -392,67 +394,83 @@
       imgElement.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
     }
   }
+
+  // Function to handle menu item clicks, closing mobile menu if needed
+  /**
+   * @param {MouseEvent} event
+   */
+  function handleMenuItemClick(event) {
+    if (isMobile) {
+      // Check if the click target is an anchor tag
+      const target = event.target;
+      if (target instanceof HTMLAnchorElement && target.closest('a')) {
+         closeMobileMenu();
+      }
+    }
+    // Allow default navigation
+  }
 </script>
 
 <style lang="postcss">
 	/* Core sidebar styles */
 	.sidebar-wrapper {
 		position: relative;
-		width: 15rem; /* 240px */
-		min-width: 15rem; /* 240px */
-		max-width: 15rem; /* 240px */
+		width: var(--sidebar-width-expanded); /* Use CSS variable */
+		min-width: var(--sidebar-width-expanded);
+		max-width: var(--sidebar-width-expanded);
 		height: 100%;
-		transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		transition: width 0.3s var(--ease-out), min-width 0.3s var(--ease-out), max-width 0.3s var(--ease-out);
 		overflow-x: hidden;
-		overflow-y: hidden;
+		overflow-y: hidden; /* Let internal content scroll */
 		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
 	}
 	
-	/* Collapsed state dimensions */
-	:global(body.sidebar-collapsed) .sidebar-wrapper,
-	:global(body.sidebar-collapsed) *[data-testid="sidebar"] {
-		width: 4rem !important; /* 64px */
-		min-width: 4rem !important; /* 64px */
-		max-width: 4rem !important; /* 64px */
+	/* Collapsed state dimensions - Applied via class:collapsed */
+	.sidebar-wrapper.collapsed {
+		width: var(--sidebar-width-collapsed);
+		min-width: var(--sidebar-width-collapsed);
+		max-width: var(--sidebar-width-collapsed);
 	}
-	
-	/* Reset width calculations for shadcn components */
-	:global(body.sidebar-collapsed) [data-sidebar="sidebar"],
-	:global(body.sidebar-collapsed) *[data-sidebar="sidebar"] {
-		width: 4rem !important; /* 64px */
-		min-width: 4rem !important; /* 64px */
-		max-width: 4rem !important; /* 64px */
-		box-sizing: border-box !important;
-		overflow-x: hidden !important;
+
+	/* Target Shadcn Root component when wrapper is collapsed */
+	.sidebar-wrapper.collapsed :global([data-sidebar="sidebar"]) {
+		width: var(--sidebar-width-collapsed);
+		min-width: var(--sidebar-width-collapsed);
+		max-width: var(--sidebar-width-collapsed);
+		box-sizing: border-box;
+		overflow-x: hidden;
 	}
 	
 	/* Fix menu items when collapsed */
-	:global(body.sidebar-collapsed) [data-sidebar="menu"] li {
-		width: 100% !important;
-		display: flex !important;
-		justify-content: center !important;
-		align-items: center !important;
+	.sidebar-wrapper.collapsed :global([data-sidebar="menu"] li) {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
-	
-	:global(body.sidebar-collapsed) [data-sidebar="menu"] li a {
-		width: 100% !important;
-		padding: 0.75rem 0 !important; /* 12px */
-		justify-content: center !important;
-		align-items: center !important;
+
+	.sidebar-wrapper.collapsed :global([data-sidebar="menu"] li a) {
+		width: 100%;
+		padding: 0.75rem 0; /* 12px */
+		justify-content: center;
+		align-items: center;
 	}
 	
 	/* Hide collapsible content in collapsed state */
-	:global(body.sidebar-collapsed) .sidebar-content-collapsible {
-		display: none !important;
-		width: 0 !important;
-		height: 0 !important;
-		opacity: 0 !important;
-		visibility: hidden !important;
-		position: absolute !important;
-		overflow: hidden !important;
-		pointer-events: none !important;
+	.sidebar-wrapper.collapsed .sidebar-content-collapsible {
+		display: none;
+		/* Use more robust hiding techniques */
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
 	}
 	
 	/* Base sidebar icon styles */
@@ -469,7 +487,7 @@
 	}
 	
 	/* Icon SVG sizing */
-	.sidebar-icon svg {
+	.sidebar-icon :global(svg) { /* Target SVG inside */
 		width: 1.25rem; /* 20px */
 		height: 1.25rem; /* 20px */
 		flex-shrink: 0;
@@ -477,41 +495,36 @@
 	}
 	
 	/* Collapsed state icon styling */
-	:global(body.sidebar-collapsed) .sidebar-icon {
-		margin: 0 auto !important;
-		padding: 0 !important;
-		width: 1.5rem !important; /* 24px */
-		height: 1.5rem !important; /* 24px */
-		display: flex !important;
-		align-items: center !important;
-		justify-content: center !important;
-		position: relative !important;
-		flex-shrink: 0 !important;
+	.sidebar-wrapper.collapsed .sidebar-icon {
+		margin: 0 auto; /* Center horizontally */
+		padding: 0;
+		width: 1.5rem; /* 24px */
+		height: 1.5rem; /* 24px */
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		flex-shrink: 0;
 	}
-	
-	:global(body.sidebar-collapsed) .sidebar-icon svg {
-		width: 1.25rem !important; /* 20px */
-		height: 1.25rem !important; /* 20px */
-		flex-shrink: 0 !important;
+
+	.sidebar-wrapper.collapsed .sidebar-icon :global(svg) { /* Target SVG inside */
+		width: 1.25rem; /* 20px */
+		height: 1.25rem; /* 20px */
+		flex-shrink: 0;
 	}
 	
 	/* Sidebar toggle button */
-	.sidebar-toggle,
-	:global(.sidebar-toggle),
-	:global([role="button"].sidebar-toggle),
-	:global(button.sidebar-toggle) {
-		position: absolute !important;
-		right: -0.75rem !important; /* Arbitrary value */
-		top: 1.5rem !important; /* Arbitrary value */
+	.sidebar-toggle {
+		position: absolute !important; /* Keep !important if needed to override shadcn */
+		right: -0.75rem !important;
+		top: 1.5rem !important;
 		transform: translateY(-50%) !important;
-		width: 1.5rem !important; /* Arbitrary value */
-		height: 1.5rem !important; /* Arbitrary value */
-		border-radius: 9999px !important; /* Tailwind rounded-full */
+		width: 1.5rem !important;
+		height: 1.5rem !important;
+		border-radius: 9999px !important;
 		background-color: hsl(var(--background)) !important;
-		border-width: 1px !important; /* Standard CSS */
-		border-style: solid !important;
-		border-color: hsl(var(--border)) !important;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important; /* Tailwind shadow-sm or shadow */
+		border: 1px solid hsl(var(--border)) !important;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 		display: flex !important;
 		align-items: center !important;
 		justify-content: center !important;
@@ -520,39 +533,36 @@
 		opacity: 1 !important;
 		visibility: visible !important;
 		pointer-events: auto !important;
+		z-index: var(--z-sidebar-trigger); /* Ensure it's above sidebar content */
 	}
 	
 	/* Button states */
-	.sidebar-toggle:focus-visible,
-	:global(.sidebar-toggle:focus-visible) {
-		outline-width: 2px !important; /* Standard CSS */
-		outline-style: solid !important;
-		outline-color: hsl(var(--primary)) !important;
-		outline-offset: 2px !important; /* Standard CSS */
+	.sidebar-toggle:focus-visible {
+		outline: 2px solid hsl(var(--primary));
+		outline-offset: 2px;
 	}
-	
-	.sidebar-toggle:hover,
-	:global(.sidebar-toggle:hover) {
-		background-color: hsl(var(--muted)) !important;
+
+	.sidebar-toggle:hover {
+		background-color: hsl(var(--muted));
 		transform: translateY(-50%) scale(1.05) !important;
 	}
 	
-	.sidebar-toggle:active,
-	:global(.sidebar-toggle:active) {
+	.sidebar-toggle:active {
 		transform: translateY(-50%) scale(0.95) !important;
 	}
 	
 	/* Container padding in collapsed state */
-	:global(body.sidebar-collapsed) [data-sidebar="header"],
-	:global(body.sidebar-collapsed) [data-sidebar="content"],
-	:global(body.sidebar-collapsed) [data-sidebar="footer"] {
-		padding-left: 0.5rem !important; /* 8px */
-		padding-right: 0.5rem !important; /* 8px */
-		width: 4rem !important; /* 64px */
+	.sidebar-wrapper.collapsed :global([data-sidebar="header"]),
+	.sidebar-wrapper.collapsed :global([data-sidebar="content"]),
+	.sidebar-wrapper.collapsed :global([data-sidebar="footer"]) {
+		padding-left: 0.5rem; /* 8px */
+		padding-right: 0.5rem; /* 8px */
+		width: var(--sidebar-width-collapsed);
 	}
-	
-	:global(body.sidebar-collapsed) [data-sidebar="content"] {
-		padding: 0 !important;
+
+	.sidebar-wrapper.collapsed :global([data-sidebar="content"]) {
+		padding-top: 0; /* Adjust as needed */
+		padding-bottom: 0;
 	}
 	
 	/* Logo styling */
@@ -561,25 +571,36 @@
 		align-items: center;
 		margin-right: auto;
 		transition: margin 0.3s ease-in-out;
+		overflow: hidden; /* Prevent text showing during transition */
+		white-space: nowrap;
 	}
 	
-	:global(body.sidebar-collapsed) .header-logo {
+	.sidebar-wrapper.collapsed .header-logo {
 		margin: 0 auto;
 		justify-content: center;
 		width: 100%;
 	}
+	/* Hide logo text when collapsed */
+	.sidebar-wrapper.collapsed .header-logo span {
+		 display: none; /* Simple hide */
+	}
+	/* Show only icon part of logo when collapsed */
+	.sidebar-wrapper.collapsed .header-logo::before {
+		content: '⚡️'; /* Or use an SVG icon */
+		display: block;
+		font-size: 1.5rem; /* Adjust size */
+	}
+
 	
 	/* Avatar styling */
 	.avatar {
-		width: 2.5rem; /* Arbitrary value */
-		height: 2.5rem; /* Arbitrary value */
-		min-width: 2.5rem; /* Arbitrary value */
-		min-height: 2.5rem; /* Arbitrary value */
-		border-radius: 9999px; /* Tailwind rounded-full */
+		width: 2.5rem; /* 40px */
+		height: 2.5rem; /* 40px */
+		min-width: 2.5rem;
+		min-height: 2.5rem;
+		border-radius: 9999px;
 		overflow: hidden;
-		border-width: 1px; /* Standard CSS */
-		border-style: solid;
-		border-color: hsl(var(--border));
+		border: 1px solid hsl(var(--border));
 		flex-shrink: 0;
 		transition: all 0.3s ease-in-out;
 	}
@@ -590,12 +611,12 @@
 		object-fit: cover;
 	}
 	
-	:global(body.sidebar-collapsed) .avatar {
-		width: 2rem !important; /* 32px */
-		height: 2rem !important; /* 32px */
-		min-width: 2rem !important; /* 32px */
-		min-height: 2rem !important; /* 32px */
-		border-radius: 0.375rem !important; /* 6px */
+	.sidebar-wrapper.collapsed .avatar {
+		width: 2rem; /* 32px */
+		height: 2rem; /* 32px */
+		min-width: 2rem;
+		min-height: 2rem;
+		border-radius: 0.375rem; /* 6px */
 	}
 	
 	/* Avatar container */
@@ -609,7 +630,7 @@
 		width: 100%;
 	}
 	
-	:global(body.sidebar-collapsed) .avatar-container {
+	.sidebar-wrapper.collapsed .avatar-container {
 		padding: 0.5rem 0; /* 8px */
 		justify-content: center;
 		width: 100%;
@@ -621,17 +642,16 @@
 	
 	/* Dropdown menu */
 	.avatar-dropdown {
-		position: fixed;
+		position: fixed; /* Keep fixed for positioning relative to viewport */
 		width: 16rem; /* Tailwind w-64 */
 		background-color: hsl(var(--background));
-		border-width: 1px; /* Standard CSS */
-		border-style: solid;
-		border-color: hsl(var(--border));
+		border: 1px solid hsl(var(--border));
 		border-radius: 0.375rem; /* Tailwind rounded-md */
 		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* Tailwind shadow-lg */
 		padding: 0.5rem; /* Tailwind p-2 */
 		max-height: calc(100vh - 7.5rem); /* Uses rem */
 		overflow-y: auto;
+		z-index: var(--z-dropdown); /* Use z-index variable */
 		animation: fadeIn 0.2s ease-out;
 	}
 	
@@ -641,76 +661,81 @@
 	}
 	
 	/* Hide group label in collapsed state */
-	:global(body.sidebar-collapsed) .sidebar-group-label {
-		display: none !important;
+	.sidebar-wrapper.collapsed .sidebar-group-label {
+		display: none;
 	}
 	
 	/* Hide recent digests in collapsed state */
-	:global(body.sidebar-collapsed) .recent-digests {
-		display: none !important;
+	.sidebar-wrapper.collapsed .recent-digests {
+		display: none;
 	}
 	
 	/* Menu item styling */
-	.sidebar-menu-item a,
-	[data-sidebar="menu-item"] a {
+	.sidebar-menu-item a { /* Target link within menu item */
 		display: flex;
 		align-items: center;
 		width: 100%;
-		padding-top: 0.5rem !important; /* 8px */
-		padding-bottom: 0.5rem !important; /* 8px */
-		padding-left: 0 !important;
-		padding-right: 0 !important;
+		padding: 0.5rem 0.75rem; /* Adjust padding */
 		border-radius: 0.375rem; /* 6px */
 		transition: all 0.3s ease-in-out;
-		text-decoration: none !important;
+		text-decoration: none;
+		gap: 0.75rem; /* Add gap for spacing */
+		white-space: nowrap;
 	}
-	
-	/* Menu hover effects */
+
+	/* Ensure text span doesn't shrink */
+	.sidebar-menu-item a span.sidebar-content-collapsible {
+		flex-shrink: 1; /* Allow text to shrink if needed, but prefer not to wrap */
+		overflow: hidden; /* Hide overflow if it does shrink */
+		text-overflow: ellipsis; /* Add ellipsis if text overflows */
+	}
+
+	/* Menu hover/active effects */
 	.menu-item-hover:hover,
-	[data-sidebar="menu-item"] a:hover {
+	.sidebar-menu-item a:hover {
 		background-color: hsl(var(--muted)/0.3);
 	}
 	
-	.menu-item-hover.active,
-	[data-sidebar="menu-item"] a.active {
+	.sidebar-menu-item a.active {
 		background-color: hsl(var(--primary)/0.1);
 		color: hsl(var(--primary));
 		font-weight: 600;
 	}
+	/* Ensure active icon color matches text */
+	.sidebar-menu-item a.active .sidebar-icon svg {
+		color: hsl(var(--primary));
+	}
+
 	
 	/* Collapsed state menu item styling */
-	:global(body.sidebar-collapsed) [data-sidebar="menu-item"] a,
-	:global(body.sidebar-collapsed) .sidebar-menu-item a {
-		justify-content: center !important;
-		padding-top: 0.5rem !important; /* 8px */
-		padding-bottom: 0.5rem !important; /* 8px */
-		padding-left: 0 !important;
-		padding-right: 0 !important;
-		gap: 0 !important;
-		width: 100% !important;
+	.sidebar-wrapper.collapsed .sidebar-menu-item a {
+		justify-content: center;
+		padding: 0.75rem 0; /* Adjust vertical padding */
+		gap: 0;
+		width: 100%;
+		display: flex;
+		align-items: center;
 	}
-	
-	/* Hide spans in collapsed mode */
-	:global(body.sidebar-collapsed) span:not(.sidebar-icon span) {
-		display: none !important;
-		visibility: hidden !important;
-		position: absolute !important;
-		overflow: hidden !important;
-		width: 0 !important;
-		height: 0 !important;
-		opacity: 0 !important;
-		pointer-events: none !important;
+
+	/* Hide spans (text labels) in collapsed mode - More specific */
+	.sidebar-wrapper.collapsed .sidebar-menu-item a span:not(.sidebar-icon span) {
+		display: none;
 	}
+	/* Ensure the tooltip span itself is not hidden if it's nested differently */
+	.sidebar-wrapper.collapsed .sidebar-menu-item a .sidebar-content-collapsible {
+		display: none;
+	}
+
 	
 	/* List item styling */
-	:global(body.sidebar-collapsed) ul,
-	:global(body.sidebar-collapsed) li {
-		margin: 0 !important;
-		padding: 0 !important;
-		width: 100% !important;
-		display: flex !important;
-		justify-content: center !important;
-		align-items: center !important;
+	.sidebar-wrapper.collapsed :global(ul),
+	.sidebar-wrapper.collapsed :global(li) {
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 	
 	/* Dropdown item styling */
@@ -748,37 +773,59 @@
 		opacity: 0.9;
 	}
 	
-	/* Force svg visibility in collapsed mode */
-	:global(body.sidebar-collapsed) svg {
-		display: block !important;
-		visibility: visible !important;
-		opacity: 1 !important;
+	/* Force svg visibility in collapsed mode - Ensure icons are always visible */
+	.sidebar-wrapper.collapsed .sidebar-icon :global(svg) {
+		display: block;
+		visibility: visible;
+		opacity: 1;
 	}
+
+	/* Tooltip Styling */
+	.tooltip {
+		position: absolute;
+		left: 100%; /* Position to the right of the item */
+		top: 50%;
+		transform: translateY(-50%);
+		margin-left: 0.75rem; /* Space from icon */
+		background-color: hsl(var(--popover));
+		color: hsl(var(--popover-foreground));
+		padding: 0.25rem 0.5rem; /* Smaller padding */
+		border-radius: var(--radius-md);
+		font-size: var(--font-size-xs); /* Smaller font */
+		font-weight: var(--font-weight-medium);
+		white-space: nowrap;
+		z-index: var(--z-sidebar-tooltip);
+		opacity: 0; /* Hidden by default */
+		visibility: hidden;
+		transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+		pointer-events: none; /* Prevent tooltip from blocking hover */
+	}
+
+	/* Show tooltip on hover of the parent link when sidebar is collapsed */
+	.sidebar-wrapper.collapsed .sidebar-menu-item a:hover .tooltip {
+		opacity: 1;
+		visibility: visible;
+	}
+
 </style>
 
 <div 
   class="sidebar-wrapper" 
   data-testid="sidebar" 
   class:collapsed={collapsed} 
-  style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : 'width: 15rem; min-width: 15rem; max-width: 15rem;'}
 >
   <Root 
-    class="h-full border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
-    style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : ''}
-    data-collapsed={collapsed}
+    class="flex h-full flex-col border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
   >
-    <Header class="py-[1rem] px-[0.75rem] border-b border-[hsl(var(--sidebar-border)/0.8)] relative">
+    <Header class="relative border-b border-[hsl(var(--sidebar-border)/0.8)] px-[0.75rem] py-[1rem]">
       <div class="flex items-center justify-between px-[0.5rem]">
         <a href="/" class="header-logo">
-          <span class="font-[600] text-[1.125rem]">⚡️ ASAP</span>
+          <span class="font-[600] text-[1.125rem]"> ASAP</span>
         </a>
       </div>
-      <!-- Enhanced toggle button with stronger styling -->
       <button 
         class="sidebar-toggle"
-        onclick={() => {
-          toggleSidebar();
-        }}
+        onclick={toggleSidebar}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {#if collapsed}
@@ -789,35 +836,28 @@
       </button>
     </Header>
     
-    <Content 
-      class="overflow-y-auto" 
-      collapsed={collapsed}
-      style={collapsed ? 'width: 4rem !important; min-width: 4rem !important; max-width: 4rem !important;' : ''}>
+    <Content class="flex-grow overflow-y-auto" {collapsed}>
       <Group class="pb-[1rem] pt-[1rem]">
-        <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
+        <Menu class="space-y-[0.75rem]" {collapsed}>
           {#each mainNavItems as item (item.label)}
-            <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
+            <MenuItem class="sidebar-menu-item" {collapsed}>
               <a 
                 href={item.url} 
-                class="relative group {item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
+                class="relative menu-item-hover"
+                class:active={item.active}
                 data-sveltekit-preload-data="hover"
-                style={collapsed ? 'justify-content: center !important;' : ''}
+                onclick={handleMenuItemClick}
               >
-                <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+                <div class="sidebar-icon">
                   {#if item.icon}
                     <Icon icon={item.icon} size={20} color="currentColor" />
                   {/if}
                 </div>
                 <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
 
-                {#if collapsed}
-                  <div 
-                    role="tooltip" 
-                    class="absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-[hsl(var(--popover))] px-2 py-1 text-[0.75rem] font-semibold text-[hsl(var(--popover-foreground))] shadow-md hidden group-hover:block group-focus:block"
-                  >
+                <div role="tooltip" class="tooltip">
                     {item.label}
                   </div>
-                {/if}
               </a>
             </MenuItem>
           {/each}
@@ -826,29 +866,28 @@
       
       {#if isDev}
         <Group class="pb-[1rem] pt-[0.5rem]">
-          <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)]">
+          <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
             Developer Tools
           </GroupLabel>
-          <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
+          <Menu class="space-y-[0.75rem]" {collapsed}>
             {#each devNavItems as item (item.label)}
-              <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
+              <MenuItem class="sidebar-menu-item" {collapsed}>
                 <a 
                   href={item.url} 
-                  class="relative group {item.active ? 'active' : ''} menu-item-hover flex items-center gap-[calc(var(--spacing-unit)*2)] w-full"
+                  class="relative menu-item-hover"
+                  class:active={item.active}
                   data-sveltekit-preload-data="hover"
-                  style={collapsed ? 'justify-content: center !important;' : ''}
+                  onclick={handleMenuItemClick}
                 >
-                  <div class="sidebar-icon" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+                  <div class="sidebar-icon">
                     {#if item.icon}
                       <Icon icon={item.icon} size={20} color="currentColor" />
                     {/if}
                   </div>
                   <span class="sidebar-content-collapsible font-[600]">{item.label}</span>
-                  {#if collapsed}
-                    <div role="tooltip" class="absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded bg-[hsl(var(--popover))] px-2 py-1 text-[0.75rem] font-semibold text-[hsl(var(--popover-foreground))] shadow-md hidden group-hover:block group-focus:block">
+                  <div role="tooltip" class="tooltip">
                       {item.label}
                     </div>
-                  {/if}
                 </a>
               </MenuItem>
             {/each}
@@ -856,21 +895,21 @@
         </Group>
       {/if}
       
-      <Separator class="my-[0.75rem] bg-[hsl(var(--sidebar-border)/0.8)] h-px" />
+      <Separator class="my-[0.75rem] h-px bg-[hsl(var(--sidebar-border)/0.8)]" />
 
-      <Group class="pb-[1rem] recent-digests">
-        <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] uppercase font-[700] text-[hsl(var(--sidebar-foreground)/0.7)]" child={() => "Recent Digests"}>
+      <Group class="recent-digests pb-[1rem]">
+        <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
           Recent Digests
         </GroupLabel>
         <GroupContent class="space-y-[0.75rem] sidebar-content-collapsible">
-          <Menu class="space-y-[0.75rem]" collapsed={collapsed}>
+          <Menu class="space-y-[0.75rem]" {collapsed}>
             {#each ['Tech Digest', 'Finance Update', 'Health News'] as digest}
-              <MenuItem class="sidebar-menu-item" collapsed={collapsed}>
+              <MenuItem class="sidebar-menu-item" {collapsed}>
                 <a 
                   href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex items-center w-full justify-start py-[0.625rem] text-[0.875rem]"
+                  class="menu-item-hover flex w-full items-center justify-start py-[0.625rem] text-[0.875rem]"
                   data-sveltekit-preload-data="hover"
-                  style={collapsed ? 'justify-content: center !important;' : ''}
+                  onclick={handleMenuItemClick}
                 >
                   <span class="font-[600]">{digest}</span>
                 </a>
@@ -881,19 +920,18 @@
       </Group>
     </Content>
     
-    <Footer class="mt-auto py-[1rem] px-[1rem] border-t border-[hsl(var(--sidebar-border)/0.8)]">
-      <!-- User profile area with dropdown -->
+    <Footer class="mt-auto border-t border-[hsl(var(--sidebar-border)/0.8)] px-[1rem] py-[1rem]">
       <div class="relative">
-        <button class="w-full text-left avatar-container" onclick={toggleAvatarDropdown} aria-haspopup="true" aria-expanded={isAvatarDropdownOpen}>
+        <button class="avatar-container w-full text-left" onclick={toggleAvatarDropdown} aria-haspopup="true" aria-expanded={isAvatarDropdownOpen}>
           <div class="avatar">
-            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="object-cover w-full h-full" />
+            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="h-full w-full object-cover" />
           </div>
-          <div class="ml-[0.5rem] sidebar-content-collapsible">
+          <div class="sidebar-content-collapsible ml-[0.5rem]">
             <div class="font-semibold">{user.name}</div>
             <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.plan}</div>
           </div>
-          <div class="ml-auto sidebar-content-collapsible">
-            {@html renderIcon(ChevronRight, 16, `transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-90' : ''}`)}
+          <div class="sidebar-content-collapsible ml-auto">
+            <Icon icon={ChevronDown} size={16} class={`transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-180' : ''}`} />
           </div>
         </button>
         
@@ -907,23 +945,23 @@
             
             <div class="py-[0.25rem]">
               <a href="/profile" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(User, 16)}</span>
+                <span class="sidebar-icon"><Icon icon={User} size={16} /></span>
                 <span>Profile</span>
               </a>
               <a href="/notifications" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(Bell, 16)}</span>
+                <span class="sidebar-icon"><Icon icon={Bell} size={16} /></span>
                 <span>Notifications</span>
               </a>
               <a href="/billing" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(CreditCardIcon, 16)}</span>
+                <span class="sidebar-icon"><Icon icon={CreditCardIcon} size={16} /></span>
                 <span>Billing</span>
               </a>
               <a href="/settings" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(Settings, 16)}</span>
+                <span class="sidebar-icon"><Icon icon={Settings} size={16} /></span>
                 <span>Settings</span>
               </a>
               <a href="/logout" class="dropdown-item">
-                <span class="sidebar-icon">{@html renderIcon(LogOut, 16)}</span>
+                <span class="sidebar-icon"><Icon icon={LogOut} size={16} /></span>
                 <span>Sign Out</span>
               </a>
             </div>
