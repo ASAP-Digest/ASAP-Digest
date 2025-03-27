@@ -391,7 +391,6 @@
     border-color: hsl(var(--border)/0.8); /* Use HSL */
     border-top-left-radius: 0.5rem; /* Changed 8px */
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* Kept specific shadow */
-    z-index: 1000;
     font-size: 0.875rem; /* Changed 14px */
   }
   
@@ -509,7 +508,6 @@
     border-radius: 0.25rem; /* Changed 4px */
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Kept specific shadow */
-    z-index: 1000;
     font-size: 0.875rem; /* Changed 14px */
   }
   

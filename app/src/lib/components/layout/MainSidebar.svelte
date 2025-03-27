@@ -504,7 +504,6 @@
 		right: -0.75rem !important; /* Arbitrary value */
 		top: 1.5rem !important; /* Arbitrary value */
 		transform: translateY(-50%) !important;
-		z-index: 5 !important;
 		width: 1.5rem !important; /* Arbitrary value */
 		height: 1.5rem !important; /* Arbitrary value */
 		border-radius: 9999px !important; /* Tailwind rounded-full */
@@ -623,7 +622,6 @@
 	/* Dropdown menu */
 	.avatar-dropdown {
 		position: fixed;
-		z-index: 9999;
 		width: 16rem; /* Tailwind w-64 */
 		background-color: hsl(var(--background));
 		border-width: 1px; /* Standard CSS */

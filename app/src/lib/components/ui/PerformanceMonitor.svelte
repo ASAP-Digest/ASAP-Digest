@@ -127,7 +127,6 @@
     position: fixed;
     bottom: 5rem;
     right: 1rem;
-    z-index: 1000;
     background-color: hsl(var(--background)/0.8);
     color: hsl(var(--foreground));
     border: 1px solid hsl(var(--border));
@@ -208,7 +207,6 @@
     position: fixed;
     bottom: 25rem;
     right: 1rem;
-    z-index: 1000;
     background-color: hsl(var(--background)/0.8);
     color: hsl(var(--foreground));
     border: 1px solid hsl(var(--border));

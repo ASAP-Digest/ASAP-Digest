@@ -367,7 +367,6 @@
     max-width: 240px;
     position: relative;
     transition: all 0.3s ease-in-out;
-    z-index: 10;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -406,7 +405,6 @@
       left: 0;
       top: 0;
       bottom: 0;
-      z-index: 50;
       transform: translateX(-100%);
       transition: transform 0.3s ease;
       width: 240px !important; /* Override any other width settings */
@@ -418,12 +416,11 @@
       transform: translateX(0);
     }
     
-    /* Mobile trigger button - ensure high z-index */
+    /* Mobile trigger button */
     .mobile-menu-trigger {
       position: fixed;
       top: 1rem;
       left: 1rem;
-      z-index: 999;
       display: block;
       padding: 0.5rem;
       border-radius: 0.375rem;

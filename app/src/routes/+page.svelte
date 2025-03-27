@@ -476,7 +476,7 @@
     font-size: 10px;
     background: hsl(var(--background));
     padding: 2px;
-    z-index: 10;
+    z-index: 9000;
     color: hsl(var(--primary));
     max-width: 100%;
     overflow: hidden;
@@ -497,7 +497,7 @@
     font-size: 10px;
     background: hsl(var(--background));
     padding: 2px;
-    z-index: 10;
+    z-index: 9000;
     color: hsl(var(--secondary));
   }
   
@@ -505,7 +505,7 @@
   :global(.debug-toggle) {
     position: fixed;
     bottom: 10px;
-    right: 10px;
+    left: 10px;
     background: hsl(var(--background));
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));

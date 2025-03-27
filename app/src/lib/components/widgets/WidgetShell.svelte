@@ -294,6 +294,5 @@
   /* Ensure proper stacking of elements */
   .widget-loading, .widget-error, .widget-offline {
     position: relative;
-    z-index: 1;
   }
 </style> 

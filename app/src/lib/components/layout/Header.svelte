@@ -192,7 +192,6 @@
     width: 12rem;
     background-color: hsl(var(--background));
     border-radius: 0.375rem;
-    z-index: 50;
     border-width: 1px;
     border-style: solid;
     border-color: hsl(var(--border));
