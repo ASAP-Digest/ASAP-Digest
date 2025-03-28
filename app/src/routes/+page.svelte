@@ -408,115 +408,115 @@
     >
       Latest News
     </h2>
-  </div>
-
-  <!-- News Widgets -->
-  {#each newsWidgets as widget (widget.id)}
-    <div
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-      data-id={widget.id}
-      data-size={widget.size}
-      draggable="true"
-    >
-      {#if widget.type === 'article'}
-        <ArticleWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          excerpt={widget.excerpt || ''}
-          source={widget.source || ''}
-          date={widget.date || ''}
-          tags={widget.tags || []}
-          sourceUrl={widget.sourceUrl || ''}
-        />
-      {:else if widget.type === 'podcast'}
-        <PodcastWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          episode={typeof widget.episode === 'number' ? widget.episode : 1}
-          duration={typeof widget.duration === 'number' ? widget.duration : 0}
-          summary={widget.summary || ''}
-        />
-      {/if}
     </div>
-  {/each}
-
-  <!-- Finance Section Header - Full width -->
+    
+    <!-- News Widgets -->
+  {#each newsWidgets as widget (widget.id)}
+      <div 
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+        data-id={widget.id} 
+        data-size={widget.size}
+      draggable="true"
+      >
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
+    
+    <!-- Finance Section Header - Full width -->
   <div class="col-span-12 mb-4 mt-6">
     <h2
       class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
     >
       Financial Updates
     </h2>
-  </div>
-
-  <!-- Finance Widgets -->
-  {#each financeWidgets as widget (widget.id)}
-    <div
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-      data-id={widget.id}
-      data-size={widget.size}
-      draggable="true"
-    >
-      {#if widget.type === 'article'}
-        <ArticleWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          excerpt={widget.excerpt || ''}
-          source={widget.source || ''}
-          date={widget.date || ''}
-          tags={widget.tags || []}
-          sourceUrl={widget.sourceUrl || ''}
-        />
-      {:else if widget.type === 'podcast'}
-        <PodcastWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          episode={typeof widget.episode === 'number' ? widget.episode : 1}
-          duration={typeof widget.duration === 'number' ? widget.duration : 0}
-          summary={widget.summary || ''}
-        />
-      {/if}
     </div>
-  {/each}
-
-  <!-- Personalized Section Header - Full width -->
+    
+    <!-- Finance Widgets -->
+  {#each financeWidgets as widget (widget.id)}
+      <div 
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+        data-id={widget.id} 
+        data-size={widget.size}
+      draggable="true"
+      >
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
+    
+    <!-- Personalized Section Header - Full width -->
   <div class="col-span-12 mb-4 mt-6">
     <h2
       class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
     >
       Your Interests
     </h2>
-  </div>
-
-  <!-- Personalized Widgets -->
-  {#each personalWidgets as widget (widget.id)}
-    <div
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-      data-id={widget.id}
-      data-size={widget.size}
-      draggable="true"
-    >
-      {#if widget.type === 'article'}
-        <ArticleWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          excerpt={widget.excerpt || ''}
-          source={widget.source || ''}
-          date={widget.date || ''}
-          tags={widget.tags || []}
-          sourceUrl={widget.sourceUrl || ''}
-        />
-      {:else if widget.type === 'podcast'}
-        <PodcastWidget
-          id={widget.id || ''}
-          title={widget.title || ''}
-          episode={typeof widget.episode === 'number' ? widget.episode : 1}
-          duration={typeof widget.duration === 'number' ? widget.duration : 0}
-          summary={widget.summary || ''}
-        />
-      {/if}
     </div>
-  {/each}
+    
+    <!-- Personalized Widgets -->
+  {#each personalWidgets as widget (widget.id)}
+      <div 
+      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
+        data-id={widget.id} 
+        data-size={widget.size}
+      draggable="true"
+      >
+        {#if widget.type === 'article'}
+          <ArticleWidget 
+            id={widget.id || ''}
+            title={widget.title || ''}
+            excerpt={widget.excerpt || ''}
+            source={widget.source || ''}
+            date={widget.date || ''}
+            tags={widget.tags || []}
+            sourceUrl={widget.sourceUrl || ''}
+          />
+        {:else if widget.type === 'podcast'}
+          <PodcastWidget
+            id={widget.id || ''}
+            title={widget.title || ''}
+            episode={typeof widget.episode === 'number' ? widget.episode : 1}
+            duration={typeof widget.duration === 'number' ? widget.duration : 0}
+            summary={widget.summary || ''}
+          />
+        {/if}
+      </div>
+    {/each}
 
   <!-- Debug button - Keep outside the grid if desired -->
   <button class="debug-toggle col-span-12" on:click={toggleDebugGrid}>Toggle Grid Debug</button>

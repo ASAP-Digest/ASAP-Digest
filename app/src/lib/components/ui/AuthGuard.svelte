@@ -10,26 +10,17 @@
 <script>
   import { authStore, isLoading } from '$lib/auth';
   import { onMount } from 'svelte';
+  import { cn } from '$lib/utils';
   
   /**
    * Component props
+   * @typedef {Object} Props
+   * @property {boolean} [showLoading=true] - Whether to display a loading spinner while checking auth status
+   * @property {boolean} [requireAuth=false] - Whether to redirect unauthenticated users to login page
+   * @property {string} [redirectUrl='/login'] - URL to redirect to if user is not authenticated
    */
-  let { 
-    /**
-     * When true, displays a loading spinner while checking auth status
-     */
-    showLoading = true,
-    
-    /**
-     * Whether to redirect unauthenticated users to login page
-     */
-    requireAuth = false,
-    
-    /**
-     * URL to redirect to if user is not authenticated (when requireAuth is true)
-     */
-    redirectUrl = '/login'
-  } = $props();
+  
+  const { showLoading = true, requireAuth = false, redirectUrl = '/login' } = $props();
   
   onMount(async () => {
     // Check session validity on component mount
@@ -48,8 +39,17 @@
 </script>
 
 {#if $isLoading && showLoading}
-  <div class="flex justify-center items-center p-4">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[hsl(var(--primary))]"></div>
+  <div class={cn(
+    "flex justify-center items-center",
+    "p-[calc(var(--spacing-unit)*4)]"
+  )}>
+    <div class={cn(
+      "animate-spin rounded-full",
+      "h-[calc(var(--spacing-unit)*8)] w-[calc(var(--spacing-unit)*8)]",
+      "border-[2px] border-[hsl(var(--muted))]",
+      "border-t-[hsl(var(--primary))]",
+      "transition-colors duration-[var(--duration-normal)]"
+    )}></div>
   </div>
 {:else if $authStore.user}
   <slot name="authenticated"></slot>

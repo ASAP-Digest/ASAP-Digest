@@ -1,111 +1,118 @@
+<!-- Login Page -->
 <script>
-  import { preventDefault } from 'svelte/legacy';
   import { goto } from '$app/navigation';
-  import { LogIn, Mail, Lock, ArrowRight } from '$lib/utils/lucide-icons.js';
+  import { authStore } from '$lib/auth';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Alert, AlertDescription } from '$lib/components/ui/alert';
+  import { LogIn } from '$lib/utils/lucide-icons.js';
   import Icon from "$lib/components/ui/Icon.svelte";
-  import { authStore, isLoading } from '$lib/auth';
-  
+
   let email = $state('');
   let password = $state('');
   let rememberMe = $state(false);
   let errorMessage = $state('');
-  
+  let isLoading = $state(false);
+
   async function handleSubmit() {
     try {
+      isLoading = true;
       errorMessage = '';
       await authStore.signIn(email, password, rememberMe);
-      goto('/dashboard'); // Redirect to dashboard on success
+      goto('/dashboard');
     } catch (error) {
-      errorMessage = error.message || 'Login failed. Please check your credentials.';
+      errorMessage = error.message || 'Login failed.';
       console.error('Login error:', error);
+    } finally {
+      isLoading = false;
     }
   }
 </script>
 
-<div class="flex flex-col items-center justify-center py-8">
-  <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-    <div class="text-center mb-6">
-      <h1 class="text-2xl font-bold flex items-center justify-center gap-2">
-        <Icon icon={LogIn} size={24} />
-        <span> ⚡️ ASAP Digest - Login </span>
+<div class="flex min-h-screen items-center justify-center bg-[hsl(var(--background))]">
+  <div class="w-full max-w-md space-y-8 px-4 py-8">
+    <div class="text-center">
+      <h1 class="text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+        Welcome back
       </h1>
-      <p class="text-sm text-center text-gray-600 dark:text-gray-400 mt-2">
-        Devour insights at AI speed
+      <p class="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+        Sign in to your account
       </p>
     </div>
-    
-    {#if errorMessage}
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
-        <span class="block sm:inline">{errorMessage}</span>
-      </div>
-    {/if}
-    
-    <form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
-      <div class="space-y-2">
-        <label for="email" class="text-sm font-medium">Email</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icon icon={Mail} size={16} class="text-gray-400" />
-          </div>
-          <input 
-            type="email" 
-            id="email" 
-            bind:value={email} 
+
+    <form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
+      {#if errorMessage}
+        <Alert variant="destructive">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      {/if}
+
+      <div class="space-y-4">
+        <div>
+          <Label for="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            bind:value={email}
+            placeholder="Enter your email"
             required
-            class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="you@example.com"
+            autocomplete="email"
           />
         </div>
-      </div>
-      
-      <div class="space-y-2">
-        <label for="password" class="text-sm font-medium">Password</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icon icon={Lock} size={16} class="text-gray-400" />
-          </div>
-          <input 
-            type="password" 
-            id="password" 
-            bind:value={password} 
+
+        <div>
+          <Label for="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            bind:value={password}
+            placeholder="Enter your password"
             required
-            class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
-            placeholder="••••••••"
+            autocomplete="current-password"
           />
         </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <Checkbox
+              id="remember-me"
+              bind:checked={rememberMe}
+            />
+            <Label for="remember-me" class="text-sm">Remember me</Label>
+          </div>
+          <a
+            href="/forgot-password"
+            class="text-sm text-[hsl(var(--primary))] hover:text-opacity-90"
+          >
+            Forgot password?
+          </a>
+        </div>
       </div>
-      
-      <div class="flex items-center justify-between">
-        <label class="flex items-center">
-          <input 
-            type="checkbox" 
-            bind:checked={rememberMe}
-            class="w-4 h-4 text-[hsl(var(--primary))] border-gray-300 rounded focus:ring-[hsl(var(--primary))]"
-          />
-          <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-        </label>
-        
-        <a href="/auth/reset-password" class="text-sm text-[hsl(var(--primary))] hover:underline">
-          Forgot password?
-        </a>
-      </div>
-      
-      <button 
-        type="submit" 
-        class="w-full flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-white py-2 px-4 rounded-md hover:bg-[hsl(var(--primary))]/90 transition-colors"
+
+      <Button
+        type="submit"
+        class="w-full"
+        disabled={isLoading}
       >
-        <span>Sign In</span>
-        <Icon icon={ArrowRight} size={16} />
-      </button>
-    </form>
-    
-    <div class="mt-6 text-center">
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Don't have an account? 
-        <a href="/register" class="text-[hsl(var(--primary))] hover:underline">
+        {#if isLoading}
+          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+        {:else}
+          <Icon icon={LogIn} class="mr-2" size={18} />
+        {/if}
+        {isLoading ? 'Signing in...' : 'Sign in'}
+      </Button>
+
+      <p class="mt-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
+        Don't have an account?
+        <a
+          href="/register"
+          class="text-[hsl(var(--primary))] hover:text-opacity-90"
+        >
           Sign up
         </a>
       </p>
-    </div>
+    </form>
   </div>
 </div> 

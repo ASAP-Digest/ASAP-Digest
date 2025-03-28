@@ -188,6 +188,17 @@
     --direct-muted: hsl(220 13% 28%);
     --direct-card: hsl(220 13% 23%);
     --direct-border: hsl(220 13% 30%);
+
+    /* Adding highlight color for sidebar icons */
+    --highlight: 326 100% 60%;          /* Same as primary for now */
+    --highlight-foreground: 210 40% 98%; /* Off-white */
+    
+    /* Updated sidebar variables with highlight */
+    --sidebar-highlight: var(--highlight);
+    --sidebar-highlight-foreground: var(--highlight-foreground);
+    
+    /* Active menu item - toned down background */
+    --active-menu-bg: 326 100% 60% / 0.3; /* Primary with 70% opacity */
   }
 
   .dark {

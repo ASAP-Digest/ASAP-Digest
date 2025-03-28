@@ -1,5 +1,9 @@
 import { browser } from '$app/environment';
 import { writable, derived } from 'svelte/store';
+import { createAuthClient } from "better-auth/svelte";
+import { betterAuth } from "better-auth";
+import { toSvelteKitHandler } from "better-auth/svelte-kit";
+import mysql from 'mysql2/promise';
 
 /** @type {string|null} */
 let wpNonce = null;
@@ -14,6 +18,11 @@ let nonceExpiry = null;
  * @property {boolean} loading - Whether authentication is in progress
  * @property {string|null} error - Error message or null
  */
+
+/** @type {import('better-auth/svelte').BetterAuthClient} */
+export const betterAuthClient = createAuthClient({
+    baseURL: browser ? window.location.origin : 'https://asapdigest.local'
+});
 
 // User session store
 const createAuthStore = () => {
@@ -57,37 +66,29 @@ const createAuthStore = () => {
         signIn: async (email, password, rememberMe = false) => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                // Use relative URL for API calls
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, rememberMe })
+                const response = await betterAuthClient.signIn.credentials({ 
+                    email, 
+                    password,
+                    rememberMe
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Authentication failed');
-                }
-
-                const data = await response.json();
                 const session = {
-                    user: data.user,
-                    token: data.token
+                    user: response.user,
+                    token: response.token
                 };
 
-                // Save to localStorage if rememberMe is enabled
                 if (rememberMe && browser) {
                     localStorage.setItem('auth_session', JSON.stringify(session));
                 }
 
                 set({
-                    user: data.user,
-                    token: data.token,
+                    user: response.user,
+                    token: response.token,
                     loading: false,
                     error: null
                 });
 
-                return data;
+                return response;
             } catch (error) {
                 console.error('Sign in error:', error);
                 set({ user: null, token: null, loading: false, error: error instanceof Error ? error.message : String(error) });
@@ -104,48 +105,30 @@ const createAuthStore = () => {
         register: async (email, password, name) => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                console.log('Initiating registration for:', email);
-
-                // Use relative URL to ensure requests go to the correct domain
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, name })
+                const response = await betterAuthClient.signUp.credentials({
+                    email,
+                    password,
+                    name
                 });
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    console.error('Registration API error:', data);
-                    const errorMessage = data.message || 'Registration failed';
-                    update(state => ({ ...state, loading: false, error: errorMessage }));
-                    throw new Error(errorMessage);
-                }
-
-                console.log('Registration successful, setting user data');
-
                 set({
-                    user: data.user,
-                    token: data.token,
+                    user: response.user,
+                    token: response.token,
                     loading: false,
                     error: null
                 });
 
-                // Save session to localStorage
                 if (browser) {
                     localStorage.setItem('auth_session', JSON.stringify({
-                        user: data.user,
-                        token: data.token
+                        user: response.user,
+                        token: response.token
                     }));
                 }
 
-                return data;
+                return response;
             } catch (error) {
                 console.error('Registration error:', error);
-                // Only update the error if it hasn't been set already
-                if (!(error instanceof Error) || !error.message?.includes('Registration failed')) {
-                    set({ user: null, token: null, loading: false, error: error instanceof Error ? error.message : String(error) });
-                }
+                set({ user: null, token: null, loading: false, error: error instanceof Error ? error.message : String(error) });
                 throw error;
             }
         },
@@ -156,14 +139,10 @@ const createAuthStore = () => {
         signOut: async () => {
             update(state => ({ ...state, loading: true }));
             try {
-                // Call the sign-out endpoint
-                await fetch('/api/auth/logout', {
-                    method: 'POST'
-                });
+                await betterAuthClient.signOut();
             } catch (error) {
                 console.error('Sign out error:', error);
             } finally {
-                // Clear the session regardless of API response
                 if (browser) {
                     localStorage.removeItem('auth_session');
                 }
@@ -177,27 +156,9 @@ const createAuthStore = () => {
         checkSession: async () => {
             update(state => ({ ...state, loading: true }));
             try {
-                // Get the current token from the store
-                let token = null;
-                subscribe(state => {
-                    token = state.token;
-                })();
+                const session = await betterAuthClient.getSession();
 
-                if (!token) {
-                    set({ user: null, token: null, loading: false, error: null });
-                    return false;
-                }
-
-                const response = await fetch('/api/auth/session', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    // Session invalid, clear local storage
+                if (!session) {
                     if (browser) {
                         localStorage.removeItem('auth_session');
                     }
@@ -205,25 +166,10 @@ const createAuthStore = () => {
                     return false;
                 }
 
-                const data = await response.json();
-
-                // If token was refreshed, update it
-                if (data.refreshed) {
-                    const updatedSession = {
-                        user: data.user,
-                        token: data.token
-                    };
-
-                    // Save to localStorage
-                    if (browser) {
-                        localStorage.setItem('auth_session', JSON.stringify(updatedSession));
-                    }
-                }
-
                 update(state => ({
                     ...state,
-                    user: data.user,
-                    token: data.token || state.token,
+                    user: session.user,
+                    token: session.token,
                     loading: false,
                     error: null
                 }));
@@ -242,8 +188,7 @@ const createAuthStore = () => {
         requestPasswordReset: async (email) => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                // This endpoint hasn't been implemented in our JWT auth system yet
-                // Will need to be added to the WordPress plugin later
+                await betterAuthClient.requestPasswordReset(email);
                 update(state => ({ ...state, loading: false }));
                 return true;
             } catch (error) {
@@ -261,8 +206,7 @@ const createAuthStore = () => {
         resetPassword: async (token, password) => {
             update(state => ({ ...state, loading: true, error: null }));
             try {
-                // This endpoint hasn't been implemented in our JWT auth system yet
-                // Will need to be added to the WordPress plugin later
+                await betterAuthClient.resetPassword(token, password);
                 update(state => ({ ...state, loading: false }));
                 return true;
             } catch (error) {
@@ -364,4 +308,37 @@ if (browser) {
     } catch (e) {
         console.error('Failed to read nonce from sessionStorage:', e);
     }
-} 
+}
+
+// Export Better Auth client for direct access if needed
+export { betterAuthClient };
+
+// Configure Better Auth
+export const auth = betterAuth({
+    database: mysql.createPool({
+        host: 'localhost',
+        port: 10040,
+        user: 'root',
+        password: 'root',
+        database: 'local',
+        charset: 'utf8',
+        ssl: undefined
+    }),
+    session: {
+        modelName: 'wp_better_auth_sessions',
+        expiresIn: 30 * 24 * 60 * 60,
+        updateAge: 24 * 60 * 60
+    },
+    cookies: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.asapdigest.com' : '.asapdigest.local'
+    },
+    providers: ['credentials'],
+    security: {
+        trackIp: process.env.NODE_ENV === 'production'
+    }
+});
+
+// Export handler for SvelteKit endpoint
+export const handler = toSvelteKitHandler(auth); 
