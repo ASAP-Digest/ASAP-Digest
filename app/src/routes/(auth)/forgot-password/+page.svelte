@@ -1,6 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
-  import { authClient } from '$lib/auth-client';
+  import { auth } from '$lib/auth-client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -18,7 +18,7 @@
       errorMessage = '';
       successMessage = '';
       
-      await authClient.sendPasswordResetEmail(email);
+      await auth.sendPasswordResetEmail(email);
       successMessage = 'Password reset instructions have been sent to your email';
       
       // Redirect to login after 3 seconds

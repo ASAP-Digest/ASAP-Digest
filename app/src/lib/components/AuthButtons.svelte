@@ -1,16 +1,16 @@
 <!-- AuthButtons.svelte -->
 <script>
-    import { authClient } from '$lib/auth-client';
+    import { auth, useSession } from '$lib/auth-client';
     import { Button } from '$lib/components/ui/button';
     import { LogIn, LogOut, Loader2 } from 'lucide-svelte';
     
-    const { data: session, signIn, signOut } = authClient.useSession();
+    const session = useSession();
     let loading = $state(false);
     
     async function handleSignIn() {
         loading = true;
         try {
-            await signIn('google');
+            await auth.signIn('google');
         } catch (error) {
             console.error('Sign in error:', error);
         } finally {
@@ -21,7 +21,7 @@
     async function handleSignOut() {
         loading = true;
         try {
-            await signOut();
+            await auth.signOut();
         } catch (error) {
             console.error('Sign out error:', error);
         } finally {

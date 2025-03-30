@@ -13,17 +13,74 @@ function getWordPressBaseURL() {
     return 'https://asapdigest.com';
 }
 
+/**
+ * Validate CSRF token
+ * @param {Request} request - The request object
+ * @returns {boolean} - Whether the CSRF token is valid
+ */
+function validateCSRFToken(request) {
+    const csrfToken = request.headers.get('X-CSRF-Token');
+    const storedToken = request.headers.get('cookie')?.match(/csrf_token=([^;]+)/)?.[1];
+    
+    if (!csrfToken || !storedToken) {
+        return false;
+    }
+    
+    return csrfToken === storedToken;
+}
+
 /** @type {import('@sveltejs/kit').Handle} */
 const betterAuthHandle = async ({ event, resolve }) => {
     try {
-        // Ignore HMR routes and non-auth routes
-        if (event.url.pathname.startsWith('/@') || 
-            !event.url.pathname.startsWith('/api/auth/')) {
+sc        // Only ignore Vite's internal HMR websocket connection
+        if (event.url.pathname === '/@vite/client' || 
+            event.url.pathname.startsWith('/@fs/')) {
             return resolve(event);
         }
+
+        // Check CSRF token for mutating requests to auth endpoints
+        if (event.url.pathname.startsWith('/api/auth/') && 
+            ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method)) {
+            if (!validateCSRFToken(event.request)) {
+                return new Response(JSON.stringify({ error: 'Invalid CSRF token' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
+
+        // Get session token from secure cookie
+        const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
+        if (sessionToken) {
+            const headers = new Headers(event.request.headers);
+            headers.set('Authorization', `Bearer ${sessionToken}`);
+            event.request = new Request(event.request.url, {
+                method: event.request.method,
+                headers,
+                body: event.request.body,
+                mode: event.request.mode,
+                credentials: event.request.credentials,
+                cache: event.request.cache,
+                redirect: event.request.redirect,
+                referrer: event.request.referrer,
+                integrity: event.request.integrity
+            });
+        }
+
+        // Handle auth routes with Better Auth
+        if (event.url.pathname.startsWith('/api/auth/')) {
+            try {
+                const response = await auth.handler(event.request);
+                if (response) return response;
+            } catch (error) {
+                console.error('Better Auth handler error:', error);
+                return new Response(JSON.stringify({ error: 'Authentication error' }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+        }
         
-        const response = await auth.handler(event.request);
-        if (response) return response;
         return resolve(event);
     } catch (error) {
         console.error('Auth error:', error);
@@ -42,8 +99,8 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
         }
 
         // Check for existing Better Auth session
-        const authHeader = event.request.headers.get('Authorization');
-        if (authHeader?.startsWith('Bearer ')) {
+        const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
+        if (sessionToken) {
             // We have a Better Auth token, no need to check WordPress
             return resolve(event);
         }

@@ -1,7 +1,7 @@
 <!-- Registration Page -->
 <script>
   import { goto } from '$app/navigation';
-  import { signUp, useSession } from '$lib/auth-client';
+  import { auth, useSession } from '$lib/auth-client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -10,6 +10,7 @@
   import { UserPlus } from '$lib/utils/lucide-icons.js';
   import Icon from "$lib/components/ui/Icon.svelte";
 
+  const session = useSession();
   let name = $state('');
   let email = $state('');
   let password = $state('');
@@ -17,6 +18,13 @@
   let acceptTerms = $state(false);
   let errorMessage = $state('');
   let isLoading = $state(false);
+
+  // Redirect if already authenticated
+  $effect(() => {
+    if ($session) {
+      goto('/dashboard');
+    }
+  });
 
   async function handleSubmit() {
     try {
@@ -33,7 +41,7 @@
         return;
       }
 
-      await signUp(email, password, name);
+      await auth.signUp(email, password, name);
       goto('/dashboard');
     } catch (error) {
       errorMessage = error.message || 'Registration failed.';

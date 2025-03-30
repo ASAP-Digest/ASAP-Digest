@@ -17,7 +17,8 @@
 		"test": "vitest",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
-		"test:auth": "node scripts/test-auth.js"
+		"test:auth": "node scripts/test-auth.js",
+		"test:auth:connection": "node scripts/test-auth-connection.js"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "^1.2.5",

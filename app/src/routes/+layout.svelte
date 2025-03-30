@@ -197,12 +197,12 @@
     }, 1000);
   });
 
-  import { authClient } from '$lib/auth-client';
+  import { auth, useSession } from '$lib/auth-client';
   import AuthButtons from '$lib/components/AuthButtons.svelte';
   import { navigating } from '$app/stores';
   import { Loader2 } from 'lucide-svelte';
 
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
 </script>
 
 <svelte:head>

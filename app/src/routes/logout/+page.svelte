@@ -1,11 +1,11 @@
 <script>
-  import { signOut } from '$lib/auth-client';
+  import { auth } from '$lib/auth-client';
   import { goto } from '$app/navigation';
 
   /** @type {import('./$types').PageLoad} */
   export async function load() {
     try {
-      await signOut();
+      await auth.signOut();
       goto('/login');
     } catch (error) {
       console.error('Error signing out:', error);

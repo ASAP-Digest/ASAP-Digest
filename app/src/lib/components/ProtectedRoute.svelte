@@ -1,10 +1,10 @@
 <!-- ProtectedRoute.svelte -->
 <script>
-    import { authClient } from '$lib/auth-client';
+    import { useSession } from '$lib/auth-client';
     import { goto } from '$app/navigation';
     import { Loader2 } from 'lucide-svelte';
     
-    const { data: session } = authClient.useSession();
+    const session = useSession();
     let { children } = $props();
     
     // Redirect to login if not authenticated

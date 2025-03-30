@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
-import { MysqlDialect } from 'kysely';
 import mysql from 'mysql2/promise';
+import { Kysely } from 'kysely';
+import { MysqlDialect } from 'kysely';
 import { 
     DB_HOST,
     DB_PORT,
@@ -94,8 +95,15 @@ const DB_CONFIG = {
     queueLimit: 0
 };
 
-// Create MySQL connection pool
-const pool = mysql.createPool(DB_CONFIG);
+// Create MySQL connection pool with proven settings
+const pool = mysql.createPool({
+    ...DB_CONFIG,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0
+});
 
 // Create Kysely dialect
 const dialect = new MysqlDialect({
@@ -300,7 +308,7 @@ async function createHmacSha256(timestamp, secret) {
         .join('');
 }
 
-// Configure Better Auth with proper MySQL database configuration for version 1.2.5
+// Better Auth configuration
 export const auth = betterAuth({
     secret: BETTER_AUTH_SECRET,
     baseURL: BETTER_AUTH_URL || 'http://localhost:5173',
@@ -312,16 +320,16 @@ export const auth = betterAuth({
         verifications: 'ba_verifications'
     },
     emailAndPassword: {
-        enabled: true
+        enabled: true,
+        autoSignIn: true
     },
     cookies: {
         sessionToken: {
-            name: 'ba_session_token',
+            name: 'asap_session',
             options: {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/'
+                sameSite: 'lax'
             }
         }
     },

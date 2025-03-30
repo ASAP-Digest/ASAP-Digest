@@ -1,7 +1,7 @@
 <!-- Login Page -->
 <script>
   import { goto } from '$app/navigation';
-  import { authClient } from '$lib/auth-client';
+  import { auth, useSession } from '$lib/auth-client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -9,7 +9,7 @@
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { LogIn, Mail, Loader2 } from 'lucide-svelte';
 
-  const { data: session, signIn } = authClient.useSession();
+  const session = useSession();
   let email = $state('');
   let password = $state('');
   let rememberMe = $state(false);
@@ -27,7 +27,7 @@
     try {
       isLoading = true;
       errorMessage = '';
-      await signIn('email', { email, password, rememberMe });
+      await auth.signIn('email', { email, password, rememberMe });
       goto('/dashboard');
     } catch (error) {
       errorMessage = error.message || 'Login failed.';
@@ -41,7 +41,7 @@
     try {
       isLoading = true;
       errorMessage = '';
-      await signIn('google');
+      await auth.signIn('google');
       goto('/dashboard');
     } catch (error) {
       errorMessage = error.message || 'Login failed.';
@@ -130,7 +130,7 @@
 
       <div class="relative">
         <div class="absolute inset-0 flex items-center">
-          <span class="w-full border-t border-[hsl(var(--border))]" />
+          <span class="w-full border-t border-[hsl(var(--border))]"></span>
         </div>
         <div class="relative flex justify-center text-xs uppercase">
           <span class="bg-[hsl(var(--background))] px-2 text-[hsl(var(--muted-foreground))]">
