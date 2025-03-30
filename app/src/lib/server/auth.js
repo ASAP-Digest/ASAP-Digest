@@ -19,24 +19,25 @@ import mysql from 'mysql2/promise';
  */
 
 /**
- * @typedef {Object} BetterAuthUserMetadata
+ * @typedef {Object} UserMetadata 
  * @property {number} [wp_user_id] - WordPress user ID
  */
 
 /**
- * @typedef {Object} BetterAuthUser
+ * Custom type definitions for Better Auth User and Session
+ * @typedef {Object} User
  * @property {string} id - User ID
  * @property {string} email - User email
  * @property {string} [username] - Optional username
  * @property {string} [name] - Optional display name
- * @property {BetterAuthUserMetadata} metadata - User metadata
+ * @property {UserMetadata} metadata - User metadata
  */
 
 /**
- * @typedef {Object} BetterAuthSession
+ * @typedef {Object} Session
  * @property {string} id - Session ID
  * @property {string} userId - User ID
- * @property {BetterAuthUser} user - Session user
+ * @property {User} user - Session user
  */
 
 /**
@@ -79,7 +80,6 @@ const DB_CONFIG = {
     password: requiredEnvVars.DB_PASS,
     database: requiredEnvVars.DB_NAME,
     charset: 'utf8mb4',
-    connectTimeout: 120000,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -90,7 +90,7 @@ const pool = mysql.createPool(DB_CONFIG);
 
 // Create Kysely dialect
 const dialect = new MysqlDialect({
-    pool: pool
+    pool
 });
 
 /**
@@ -120,8 +120,26 @@ function logConfig(message, level = 'info') {
 const dbEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS', 'DB_NAME'];
 dbEnvVars.forEach(envVar => {
     if (!process.env[envVar]) {
-        const configKey = envVar.toLowerCase().replace('db_', '');
-        logConfig(`${envVar} environment variable is not set, using default: ${DB_CONFIG[configKey]}`, 'warn');
+        // Use a type-safe approach to handle config keys
+        let defaultValue = '';
+        switch(envVar) {
+            case 'DB_HOST':
+                defaultValue = DB_CONFIG.host;
+                break;
+            case 'DB_PORT':
+                defaultValue = DB_CONFIG.port.toString();
+                break;
+            case 'DB_USER':
+                defaultValue = DB_CONFIG.user;
+                break;
+            case 'DB_PASS':
+                defaultValue = DB_CONFIG.password;
+                break;
+            case 'DB_NAME':
+                defaultValue = DB_CONFIG.database;
+                break;
+        }
+        logConfig(`${envVar} environment variable is not set, using default: ${defaultValue}`, 'warn');
     }
 });
 
@@ -142,7 +160,7 @@ if (!process.env.BETTER_AUTH_URL) {
  * Create a WordPress user for the Better Auth user
  * This is called after a user signs up in Better Auth
  * 
- * @param {BetterAuthUser} user Better Auth user object
+ * @param {User} user Better Auth user object
  * @returns {Promise<object|null>} WordPress API response or null on error
  */
 async function createWordPressUser(user) {
@@ -194,12 +212,18 @@ async function createWordPressUser(user) {
  * Create a WordPress session for the Better Auth user
  * This is called after a user signs in to Better Auth
  * 
- * @param {BetterAuthSession} session Better Auth session object with user property
+ * @param {Session} session Better Auth session object with user property
  * @returns {Promise<object|null>} WordPress API response or null on error
  */
 async function createWordPressSession(session) {
     if (!session || !session.user || !session.user.id) {
         logConfig(`Cannot create WordPress session: Invalid session data`, 'error');
+        return null;
+    }
+
+    // Make sure we have a WordPress user ID in the metadata
+    if (!session.user.metadata?.wp_user_id) {
+        logConfig(`Cannot create WordPress session: No WordPress user ID found in metadata`, 'warn');
         return null;
     }
 
@@ -220,7 +244,7 @@ async function createWordPressSession(session) {
                 'X-Better-Auth-Signature': signature
             },
             body: JSON.stringify({
-                wp_user_id: session.user.wp_user_id
+                wp_user_id: session.user.metadata.wp_user_id
             })
         });
         
@@ -267,28 +291,51 @@ async function createHmacSha256(timestamp, secret) {
         .join('');
 }
 
-// Configure Better Auth
-const auth = betterAuth({
-    adapter: {
-        config: {
-            dialect: new MysqlDialect({
-                pool: mysql.createPool(DB_CONFIG)
-            }),
-            tables: {
-                users: 'ba_users',
-                sessions: 'ba_sessions',
-                accounts: 'ba_accounts',
-                verifications: 'ba_verifications'
-            }
-        }
+// Configure Better Auth with proper MySQL database configuration for version 1.2.5
+export const auth = betterAuth({
+    secret: requiredEnvVars.BETTER_AUTH_SECRET,
+    baseURL: requiredEnvVars.BETTER_AUTH_URL,
+    // Better Auth expects a mysql pool directly for MySQL connections
+    database: pool,
+    tableNames: {
+        users: 'ba_users',
+        sessions: 'ba_sessions',
+        accounts: 'ba_accounts',
+        verifications: 'ba_verifications'
     },
     emailAndPassword: {
-        enabled: true,
-        autoSignIn: true
+        enabled: true
     },
-    secret: process.env.BETTER_AUTH_SECRET,
-    baseUrl: process.env.BETTER_AUTH_URL
+    cookies: {
+        sessionToken: {
+            name: 'ba_session_token',
+        }
+    },
+    onUserCreated: async (/** @type {User} */ user) => {
+        // Create corresponding WordPress user
+        const wpUser = /** @type {WordPressUser} */ (await createWordPressUser(user));
+        if (wpUser?.wp_user_id) {
+            // Update Better Auth user metadata with WordPress user ID
+            return {
+                ...user,
+                metadata: {
+                    ...user.metadata,
+                    wp_user_id: wpUser.wp_user_id
+                }
+            };
+        }
+        return user;
+    },
+    onSessionCreated: async (/** @type {Session} */ session) => {
+        // Create corresponding WordPress session
+        if (session.user.metadata?.wp_user_id) {
+            await createWordPressSession(session);
+        }
+        return session;
+    }
 });
+
+export default auth;
 
 /**
  * Get a WordPress nonce for authenticated requests
@@ -315,4 +362,4 @@ async function getNonce() {
     }
 }
 
-export { auth, getNonce };
+export { getNonce };
