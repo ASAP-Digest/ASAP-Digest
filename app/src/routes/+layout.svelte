@@ -196,6 +196,13 @@
         document.querySelectorAll('[class*="sidebar"]').length);
     }, 1000);
   });
+
+  import { authClient } from '$lib/auth-client';
+  import AuthButtons from '$lib/components/AuthButtons.svelte';
+  import { navigating } from '$app/stores';
+  import { Loader2 } from 'lucide-svelte';
+
+  const { data: session } = authClient.useSession();
 </script>
 
 <svelte:head>
@@ -409,7 +416,13 @@
       
       <!-- Main content -->
       <div>
-        {@render children?.()}
+        {#if $navigating}
+          <div class="flex justify-center items-center min-h-[50vh]">
+            <Loader2 class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
+          </div>
+        {:else}
+          {@render children?.()}
+        {/if}
       </div>
     </main>
     
@@ -430,6 +443,15 @@
   {/if}
 
   <GlobalFAB {isSidebarCollapsed} />
+
+  {#if $session}
+    <div class="fixed bottom-4 right-4 p-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full shadow-lg">
+      <span class="flex items-center gap-2">
+        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+        Connected
+      </span>
+    </div>
+  {/if}
 {/if}
 
 <style>
