@@ -14,6 +14,9 @@
 
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 
+// Include Better Auth configuration
+require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
+
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
 global $wpdb;
@@ -838,4 +841,239 @@ function asap_register_user(WP_REST_Request $request) {
     'token' => $jwt,
     'exp' => $expiration,
   ]);
+}
+
+// Register Better Auth settings page in admin
+add_action('admin_menu', 'asap_add_better_auth_settings_page');
+
+// Register Better Auth integration endpoints
+function asap_register_better_auth_routes() {
+  // Endpoint for creating WordPress user from Better Auth
+  register_rest_route('asap/v1', '/auth/create-wp-user', [
+    'methods' => 'POST',
+    'callback' => 'asap_create_wp_user',
+    'permission_callback' => 'asap_validate_better_auth_request',
+    'args' => [
+      'ba_user_id' => [
+        'required' => true,
+        'type' => 'string',
+        'validate_callback' => function($param) {
+          return !empty($param);
+        }
+      ],
+      'email' => [
+        'required' => true,
+        'type' => 'string',
+        'validate_callback' => function($param) {
+          return is_email($param);
+        }
+      ],
+      'username' => [
+        'required' => true,
+        'type' => 'string',
+        'validate_callback' => function($param) {
+          return !empty($param);
+        }
+      ],
+      'name' => [
+        'required' => false,
+        'type' => 'string'
+      ]
+    ]
+  ]);
+
+  // Endpoint for creating WordPress session from Better Auth
+  register_rest_route('asap/v1', '/auth/create-wp-session', [
+    'methods' => 'POST',
+    'callback' => 'asap_create_wp_session',
+    'permission_callback' => 'asap_validate_better_auth_request',
+    'args' => [
+      'ba_user_id' => [
+        'required' => true,
+        'type' => 'string',
+        'validate_callback' => function($param) {
+          return !empty($param);
+        }
+      ]
+    ]
+  ]);
+}
+add_action('rest_api_init', 'asap_register_better_auth_routes');
+
+/**
+ * Validate request from Better Auth
+ * Uses shared secret for security
+ *
+ * @param WP_REST_Request $request
+ * @return bool
+ */
+function asap_validate_better_auth_request(WP_REST_Request $request) {
+  // Get the shared secret from WordPress config
+  $better_auth_shared_secret = '';
+  
+  // First, try to get from constant if defined
+  if (defined('BETTER_AUTH_SHARED_SECRET')) {
+    $better_auth_shared_secret = BETTER_AUTH_SHARED_SECRET;
+  } 
+  // Second, try to get from option if stored
+  else if (get_option('better_auth_shared_secret')) {
+    $better_auth_shared_secret = get_option('better_auth_shared_secret');
+  } 
+  // Finally, fallback to AUTH_KEY
+  else {
+    error_log('[ASAP Better Auth] No shared secret defined. Using AUTH_KEY as fallback.');
+    $better_auth_shared_secret = defined('AUTH_KEY') ? AUTH_KEY : '';
+  }
+
+  if (empty($better_auth_shared_secret)) {
+    error_log('[ASAP Better Auth] CRITICAL: No valid shared secret available for authentication!');
+    return false;
+  }
+
+  // Get the authorization header
+  $auth_header = $request->get_header('Authorization');
+  if (empty($auth_header) || strpos($auth_header, 'Bearer ') !== 0) {
+    return false;
+  }
+
+  // Extract the token
+  $token = str_replace('Bearer ', '', $auth_header);
+  
+  // Validate the token (simple HMAC verification for now)
+  $timestamp = $request->get_header('X-Better-Auth-Timestamp');
+  $expected_token = hash_hmac('sha256', $timestamp . '|' . $request->get_param('ba_user_id'), $better_auth_shared_secret);
+  
+  // Check if token is valid and not expired (within 5 minutes)
+  $is_valid_token = hash_equals($expected_token, $token);
+  $is_recent = (time() - intval($timestamp)) < 300; // 5 minutes
+  
+  return $is_valid_token && $is_recent;
+}
+
+/**
+ * Create WordPress user from Better Auth
+ *
+ * @param WP_REST_Request $request
+ * @return WP_REST_Response
+ */
+function asap_create_wp_user(WP_REST_Request $request) {
+  global $wpdb;
+  
+  $ba_user_id = $request->get_param('ba_user_id');
+  $email = $request->get_param('email');
+  $username = $request->get_param('username');
+  $name = $request->get_param('name') ?: $username;
+  
+  // Check if user exists by email
+  $existing_user = get_user_by('email', $email);
+  if ($existing_user) {
+    // User exists, update the mapping
+    $wpdb->replace(
+      $wpdb->prefix . 'ba_wp_user_map',
+      [
+        'ba_user_id' => $ba_user_id,
+        'wp_user_id' => $existing_user->ID
+      ],
+      ['%s', '%d']
+    );
+    
+    return new WP_REST_Response([
+      'success' => true,
+      'wp_user_id' => $existing_user->ID,
+      'message' => 'User mapping updated successfully',
+      'existing' => true
+    ], 200);
+  }
+  
+  // Generate a random password
+  $random_password = wp_generate_password(24, true, true);
+  
+  // Create new WordPress user
+  $wp_user_id = wp_create_user($username, $random_password, $email);
+  
+  if (is_wp_error($wp_user_id)) {
+    return new WP_REST_Response([
+      'success' => false,
+      'message' => $wp_user_id->get_error_message()
+    ], 400);
+  }
+  
+  // Update user meta
+  wp_update_user([
+    'ID' => $wp_user_id,
+    'display_name' => $name,
+    'nickname' => $username,
+    'first_name' => $name,
+    'show_admin_bar_front' => false
+  ]);
+  
+  // Add role
+  $user = new WP_User($wp_user_id);
+  $user->set_role('subscriber');
+  
+  // Create user mapping in the database
+  $wpdb->insert(
+    $wpdb->prefix . 'ba_wp_user_map',
+    [
+      'ba_user_id' => $ba_user_id,
+      'wp_user_id' => $wp_user_id
+    ],
+    ['%s', '%d']
+  );
+  
+  return new WP_REST_Response([
+    'success' => true,
+    'wp_user_id' => $wp_user_id,
+    'message' => 'User created successfully'
+  ], 201);
+}
+
+/**
+ * Create WordPress session from Better Auth
+ *
+ * @param WP_REST_Request $request
+ * @return WP_REST_Response
+ */
+function asap_create_wp_session(WP_REST_Request $request) {
+  global $wpdb;
+  
+  $ba_user_id = $request->get_param('ba_user_id');
+  
+  // Get WordPress user ID from mapping
+  $wp_user_id = $wpdb->get_var($wpdb->prepare(
+    "SELECT wp_user_id FROM {$wpdb->prefix}ba_wp_user_map WHERE ba_user_id = %s",
+    $ba_user_id
+  ));
+  
+  if (!$wp_user_id) {
+    return new WP_REST_Response([
+      'success' => false,
+      'message' => 'No WordPress user found for this Better Auth user'
+    ], 404);
+  }
+  
+  // Get user object
+  $user = get_user_by('ID', $wp_user_id);
+  if (!$user) {
+    return new WP_REST_Response([
+      'success' => false,
+      'message' => 'WordPress user not found'
+    ], 404);
+  }
+  
+  // Generate authentication cookies for the user
+  wp_clear_auth_cookie();
+  wp_set_auth_cookie($wp_user_id, true);
+  wp_set_current_user($wp_user_id);
+  
+  // Return session info
+  return new WP_REST_Response([
+    'success' => true,
+    'wp_user_id' => $wp_user_id,
+    'message' => 'WordPress session created successfully',
+    'cookie_info' => [
+      'name' => AUTH_COOKIE,
+      'logged_in_cookie' => LOGGED_IN_COOKIE
+    ]
+  ], 200);
 }
