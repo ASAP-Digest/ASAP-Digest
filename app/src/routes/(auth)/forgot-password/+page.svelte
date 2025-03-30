@@ -43,7 +43,7 @@
       </p>
     </div>
 
-    <form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
+    <form class="mt-8 space-y-6" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>

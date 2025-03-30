@@ -63,7 +63,7 @@
       </p>
     </div>
 
-    <form class="mt-8 space-y-6" on:submit|preventDefault={handleEmailSignIn}>
+    <form class="mt-8 space-y-6" onsubmit={(e) => { e.preventDefault(); handleEmailSignIn(); }}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>

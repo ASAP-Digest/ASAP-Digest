@@ -404,7 +404,13 @@
     
     <!-- NEW: Mobile Menu Backdrop -->
     {#if isMobile && isSidebarOpen}
-      <div class="mobile-menu-backdrop" onclick={() => (isSidebarOpen = false)}></div>
+      <button 
+        type="button"
+        class="mobile-menu-backdrop" 
+        onclick={() => (isSidebarOpen = false)}
+        onkeydown={(e) => e.key === 'Escape' && (isSidebarOpen = false)}
+        aria-label="Close mobile menu"
+      ></button>
     {/if}
     
     <!-- Main content area -->

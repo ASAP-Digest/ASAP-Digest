@@ -5,6 +5,7 @@
     import { Loader2 } from 'lucide-svelte';
     
     const { data: session } = authClient.useSession();
+    let { children } = $props();
     
     // Redirect to login if not authenticated
     $effect(() => {
@@ -19,5 +20,5 @@
         <Loader2 class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
     </div>
 {:else if $session}
-    <slot />
+    {@render children?.()}
 {/if} 
