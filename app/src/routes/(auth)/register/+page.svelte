@@ -1,7 +1,7 @@
 <!-- Registration Page -->
 <script>
   import { goto } from '$app/navigation';
-  import { authStore } from '$lib/auth';
+  import { signUp, useSession } from '$lib/auth-client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -33,7 +33,7 @@
         return;
       }
 
-      await authStore.register(email, password, name);
+      await signUp(email, password, name);
       goto('/dashboard');
     } catch (error) {
       errorMessage = error.message || 'Registration failed.';
@@ -55,7 +55,7 @@
       </p>
     </div>
 
-    <form class="mt-8 space-y-6" on:submit|preventDefault={handleSubmit}>
+    <form class="mt-8 space-y-6" onsubmit={(e) => { e.preventDefault(); handleSubmit(e); }}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>

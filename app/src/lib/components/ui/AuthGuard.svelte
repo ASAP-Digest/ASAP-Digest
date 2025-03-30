@@ -8,7 +8,7 @@
   </AuthGuard>
 -->
 <script>
-  import { authStore, isLoading } from '$lib/auth';
+  import { useSession } from '$lib/auth-client';
   import { onMount } from 'svelte';
   import { cn } from '$lib/utils';
   
@@ -20,39 +20,36 @@
    * @property {string} [redirectUrl='/login'] - URL to redirect to if user is not authenticated
    */
   
-  const { showLoading = true, requireAuth = false, redirectUrl = '/login' } = $props();
+  /** @type {string} */
+  export let redirectUrl = '/login';
+  /** @type {boolean} */
+  export let requireAuth = true;
+  /** @type {string} */
+  export let class_ = '';
+  
+  const session = useSession();
+  let isLoading = true;
   
   onMount(async () => {
-    // Check session validity on component mount
     if (requireAuth) {
       try {
-        const isValid = await authStore.checkSession();
+        const isValid = $session !== null;
         if (!isValid) {
           window.location.href = redirectUrl;
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('Error checking session:', error);
         window.location.href = redirectUrl;
       }
     }
+    isLoading = false;
   });
 </script>
 
-{#if $isLoading && showLoading}
-  <div class={cn(
-    "flex justify-center items-center",
-    "p-[calc(var(--spacing-unit)*4)]"
-  )}>
-    <div class={cn(
-      "animate-spin rounded-full",
-      "h-[calc(var(--spacing-unit)*8)] w-[calc(var(--spacing-unit)*8)]",
-      "border-[2px] border-[hsl(var(--muted))]",
-      "border-t-[hsl(var(--primary))]",
-      "transition-colors duration-[var(--duration-normal)]"
-    )}></div>
+{#if isLoading}
+  <div class={cn('flex items-center justify-center min-h-screen', class_)}>
+    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
   </div>
-{:else if $authStore.user}
-  <slot name="authenticated"></slot>
 {:else}
-  <slot name="unauthenticated"></slot>
+  <slot />
 {/if} 

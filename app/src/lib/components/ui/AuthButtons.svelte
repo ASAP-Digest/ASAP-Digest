@@ -3,7 +3,7 @@
   Shows login/register or logout buttons based on authentication status
 -->
 <script>
-  import { authStore } from '$lib/auth';
+  import { signOut, useSession } from '$lib/auth-client';
   import { goto } from '$app/navigation';
   import Icon from "$lib/components/ui/Icon.svelte";
   import { LogIn, LogOut, UserPlus } from '$lib/utils/lucide-icons.js';
@@ -27,6 +27,8 @@
     lg: 'px-6 py-3 text-base'
   };
   
+  const session = useSession();
+  
   /**
    * Navigate to login page
    */
@@ -46,7 +48,7 @@
    */
   async function logout() {
     try {
-      await authStore.signOut();
+      await signOut();
       goto('/');
     } catch (error) {
       console.error('Logout error:', error);
@@ -54,9 +56,9 @@
   }
 </script>
 
-{#if $authStore.user}
+{#if $session}
   <div class="flex items-center gap-2">
-    <span class="text-sm mr-2 hidden md:inline">{$authStore.user.name || $authStore.user.email}</span>
+    <span class="text-sm mr-2 hidden md:inline">{$session.user.name || $session.user.email}</span>
     <button 
       on:click={logout}
       class="bg-[hsl(var(--primary))] text-white rounded-md hover:bg-opacity-90 transition-colors flex items-center gap-1 {sizeClasses[size]}"

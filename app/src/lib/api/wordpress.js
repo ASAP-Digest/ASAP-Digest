@@ -3,7 +3,7 @@
  * @module api/wordpress
  */
 
-import { getNonce } from '$lib/auth';
+import { getSession } from '$lib/auth-client';
 
 /**
  * Environment type from Vite environment variables
@@ -87,7 +87,7 @@ export { SITE_URL };
  * @param {RequestInit} [options]
  */
 export async function wpFetch(url, options = {}) {
-    const security = await getNonce();
+    const security = await getSession();
 
     const headers = {
         'X-WP-Nonce': security,

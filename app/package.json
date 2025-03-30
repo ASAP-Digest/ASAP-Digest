@@ -16,6 +16,7 @@
 		"build:analyze": "NODE_ENV=production VITE_APP_ENV=production vite build --mode analyze"
 	},
 	"devDependencies": {
+		"@better-auth/cli": "^1.2.5",
 		"@lucide/svelte": "^0.483.0",
 		"@melt-ui/pp": "^0.3.0",
 		"@sveltejs/adapter-auto": "^5.0.0",
@@ -27,6 +28,7 @@
 		"bits-ui": "^0.22.0",
 		"clsx": "^2.1.1",
 		"cssnano": "^7.0.6",
+		"dotenv-cli": "^8.0.0",
 		"esm-env": "^1.2.2",
 		"postcss": "^8.5.3",
 		"prettier": "^3.5.3",
@@ -35,6 +37,7 @@
 		"rollup-plugin-visualizer": "^5.12.0",
 		"svelte": "^5.25.2",
 		"svelte-check": "^4.1.5",
+		"svelte-radix": "^2.0.1",
 		"svelte-sequential-preprocessor": "^2.0.1",
 		"tailwind-merge": "^3.0.2",
 		"tailwind-variants": "^1.0.0",
@@ -59,6 +62,7 @@
 		"@urql/svelte": "^4.2.3",
 		"better-auth": "^1.2.5",
 		"kysely": "^0.27.6",
+		"mysql2": "^3.14.0",
 		"radix-svelte": "^0.9.0",
 		"svelte-chart": "^1.0.0",
 		"svelte-dnd-action": "^0.9.60",

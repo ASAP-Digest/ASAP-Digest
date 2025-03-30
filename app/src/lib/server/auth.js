@@ -4,39 +4,31 @@ import { Kysely, MysqlDialect } from 'kysely';
 
 /**
  * Database configuration object for MySQL.
- * Defines connection parameters for the MySQL database.
+ * Reads connection parameters from environment variables.
  *
  * @typedef {object} DBConfig
- * @property {string} host - MySQL server hostname or IP address (e.g., 'localhost' or '127.0.0.1').
- * @property {number} port - MySQL server port number (e.g., 3306 or 10018).
- * @property {string} user - MySQL username for database access (e.g., 'root').
- * @property {string} password - MySQL password for the specified user (e.g., 'root').
- * @property {string} database - Name of the MySQL database to connect to (e.g., 'local').
- * @property {string} charset - Character set for the connection (e.g., 'utf8mb4').
- * @property {number} connectTimeout - Connection timeout in milliseconds (e.g., 120000 for 2 minutes).
- * @property {boolean} waitForConnections - Whether to wait for connections if the pool is full.
- * @property {number} connectionLimit - Maximum number of connections in the pool.
- * @property {number} queueLimit - Maximum number of connection requests to queue.
- * @property {boolean} debug - Enable debug logging for development (e.g., true in development, false in production).
- * @property {boolean} trace - Enable connection tracing for detailed debugging (e.g., true in development, false in production).
+ * @property {string} socketPath - MySQL Unix socket path
+ * @property {string} user - MySQL username for database access.
+ * @property {string} password - MySQL password for the specified user.
+ * @property {string} database - Name of the MySQL database to connect to.
+ * @property {string} [charset] - Character set for the connection.
+ * @property {number} [connectTimeout] - Connection timeout in milliseconds.
+ * @property {boolean} [waitForConnections] - Whether to wait for connections if the pool is full.
+ * @property {number} [connectionLimit] - Maximum number of connections in the pool.
+ * @property {number} [queueLimit] - Maximum number of connection requests to queue.
  */
 const DB_CONFIG = {
-    host: '127.0.0.1',
-    port: 10018,      // Port from AdminerEvo database variables
+    socketPath: '/Volumes/Macintosh HD/Users/vsmith/Library/Application Support/Local/run/AFTH2oxzp/mysql/mysqld.sock',
     user: 'root',
     password: 'root',
     database: 'local',
-    charset: 'utf8mb4', // Recommended charset for modern applications
+    charset: 'utf8mb4',
 
-    connectTimeout: 120000, // 120 seconds (2 minutes) - Increased timeout
-
+    // You might want to make these configurable via env vars too, or keep defaults
+    connectTimeout: 120000,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-
-    // Kysely dialect doesn't directly use these mysql2 pool options here
-    // debug: process.env.NODE_ENV !== 'production', // Debug mode based on environment
-    // trace: process.env.NODE_ENV !== 'production'  // Trace mode based on environment
 };
 
 // Create a Kysely dialect using the mysql2 pool
@@ -46,16 +38,16 @@ const dialect = new MysqlDialect({
 
 /**
  * Initializes and exports the Better Auth configuration object.
- * Configures Better Auth with MySQL database adapter and connection pool.
+ * Configures Better Auth with MySQL database adapter using environment variables.
  */
-export const auth = betterAuth({
+const auth = betterAuth({
     // Use the Kysely dialect
     database: {
         dialect: dialect,
         type: "mysql" // Explicitly tell better-auth the database type
     },
-    secret: process.env.BETTER_AUTH_SECRET,
-    baseURL: process.env.BETTER_AUTH_URL,
+    secret: process.env.BETTER_AUTH_SECRET, // Make sure this is set in your .env file
+    baseURL: process.env.BETTER_AUTH_URL,   // Make sure this is set in your .env file
     // Ensure email & password auth is enabled if you plan to use it
     emailAndPassword: {
         enabled: true,
@@ -63,3 +55,39 @@ export const auth = betterAuth({
     },
     // ... other Better Auth configurations from the documentation if needed ...
 });
+
+// Add a check for essential Better Auth env vars
+if (!process.env.BETTER_AUTH_SECRET) {
+    console.error('[Auth Setup] CRITICAL: BETTER_AUTH_SECRET environment variable is not set!');
+}
+if (!process.env.BETTER_AUTH_URL) {
+    console.error('[Auth Setup] CRITICAL: BETTER_AUTH_URL environment variable is not set!');
+}
+
+/**
+ * Get a WordPress nonce for authenticated requests
+ * @returns {Promise<string>} - WordPress nonce
+ */
+export async function getNonce() {
+    // Check if we have a cached nonce
+    const cachedNonce = sessionStorage.getItem('wp_nonce');
+    if (cachedNonce) {
+        return cachedNonce;
+    }
+
+    try {
+        const response = await fetch('/wp-json/wp/v2/nonce');
+        if (!response.ok) {
+            throw new Error('Failed to fetch nonce');
+        }
+        const nonce = await response.text();
+        sessionStorage.setItem('wp_nonce', nonce);
+        return nonce;
+    } catch (error) {
+        console.error('Error fetching nonce:', error);
+        return '';
+    }
+}
+
+export { auth };
+export default auth;
