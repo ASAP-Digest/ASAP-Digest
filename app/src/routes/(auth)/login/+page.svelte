@@ -1,26 +1,47 @@
 <!-- Login Page -->
 <script>
   import { goto } from '$app/navigation';
-  import { signIn, useSession } from '$lib/auth-client';
+  import { authClient } from '$lib/auth-client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { LogIn } from '$lib/utils/lucide-icons.js';
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { LogIn, Mail, Loader2 } from 'lucide-svelte';
 
+  const { data: session, signIn } = authClient.useSession();
   let email = $state('');
   let password = $state('');
   let rememberMe = $state(false);
   let errorMessage = $state('');
   let isLoading = $state(false);
 
-  async function handleSubmit() {
+  // Redirect if already authenticated
+  $effect(() => {
+    if ($session) {
+      goto('/dashboard');
+    }
+  });
+
+  async function handleEmailSignIn() {
     try {
       isLoading = true;
       errorMessage = '';
-      await signIn(email, password, rememberMe);
+      await signIn('email', { email, password, rememberMe });
+      goto('/dashboard');
+    } catch (error) {
+      errorMessage = error.message || 'Login failed.';
+      console.error('Login error:', error);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      isLoading = true;
+      errorMessage = '';
+      await signIn('google');
       goto('/dashboard');
     } catch (error) {
       errorMessage = error.message || 'Login failed.';
@@ -42,7 +63,7 @@
       </p>
     </div>
 
-    <form class="mt-8 space-y-6" onsubmit={(e) => { e.preventDefault(); handleSubmit(e); }}>
+    <form class="mt-8 space-y-6" on:submit|preventDefault={handleEmailSignIn}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -59,6 +80,7 @@
             placeholder="Enter your email"
             required
             autocomplete="email"
+            disabled={isLoading}
           />
         </div>
 
@@ -71,6 +93,7 @@
             placeholder="Enter your password"
             required
             autocomplete="current-password"
+            disabled={isLoading}
           />
         </div>
 
@@ -79,6 +102,7 @@
             <Checkbox
               id="remember-me"
               bind:checked={rememberMe}
+              disabled={isLoading}
             />
             <Label for="remember-me" class="text-sm">Remember me</Label>
           </div>
@@ -93,15 +117,41 @@
 
       <Button
         type="submit"
-        class="w-full"
+        class="w-full flex items-center justify-center gap-2"
         disabled={isLoading}
       >
         {#if isLoading}
-          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+          <Loader2 class="w-4 h-4 animate-spin" />
         {:else}
-          <Icon icon={LogIn} class="mr-2" size={18} />
+          <Mail class="w-4 h-4" />
         {/if}
-        {isLoading ? 'Signing in...' : 'Sign in'}
+        {isLoading ? 'Signing in...' : 'Sign in with Email'}
+      </Button>
+
+      <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+          <span class="w-full border-t border-[hsl(var(--border))]" />
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-[hsl(var(--background))] px-2 text-[hsl(var(--muted-foreground))]">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
+      <Button 
+        type="button"
+        variant="outline"
+        class="w-full flex items-center justify-center gap-2"
+        on:click={handleGoogleSignIn}
+        disabled={isLoading}
+      >
+        {#if isLoading}
+          <Loader2 class="w-4 h-4 animate-spin" />
+        {:else}
+          <LogIn class="w-4 h-4" />
+        {/if}
+        Google
       </Button>
 
       <p class="mt-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
