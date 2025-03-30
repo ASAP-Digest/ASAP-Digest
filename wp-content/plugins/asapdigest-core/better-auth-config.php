@@ -392,5 +392,92 @@ function asap_handle_create_wp_session($request) {
     ]);
 }
 
+/**
+ * Check for existing WordPress session and create Better Auth session if needed
+ * 
+ * @return array|WP_Error Response data or error
+ */
+function asap_check_wp_session() {
+    // Check if user is logged into WordPress
+    if (!is_user_logged_in()) {
+        return new WP_Error('not_logged_in', 'No WordPress session found', ['status' => 401]);
+    }
+    
+    // Get current WordPress user
+    $wp_user = wp_get_current_user();
+    
+    // Get Better Auth user ID from user meta
+    $better_auth_user_id = get_user_meta($wp_user->ID, 'better_auth_user_id', true);
+    
+    if (!$better_auth_user_id) {
+        // Create Better Auth user if it doesn't exist
+        $response = wp_remote_post(asap_get_better_auth_base_url() . '/api/auth/create-user', [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Better-Auth-Timestamp' => time(),
+                'X-Better-Auth-Signature' => hash_hmac('sha256', time(), BETTER_AUTH_SHARED_SECRET)
+            ],
+            'body' => json_encode([
+                'email' => $wp_user->user_email,
+                'name' => $wp_user->display_name,
+                'username' => $wp_user->user_login,
+                'metadata' => [
+                    'wp_user_id' => $wp_user->ID
+                ]
+            ])
+        ]);
+        
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        if (!$body || !isset($body['id'])) {
+            return new WP_Error('create_user_failed', 'Failed to create Better Auth user');
+        }
+        
+        $better_auth_user_id = $body['id'];
+        update_user_meta($wp_user->ID, 'better_auth_user_id', $better_auth_user_id);
+    }
+    
+    // Create Better Auth session
+    $response = wp_remote_post(asap_get_better_auth_base_url() . '/api/auth/create-session', [
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'X-Better-Auth-Timestamp' => time(),
+            'X-Better-Auth-Signature' => hash_hmac('sha256', time(), BETTER_AUTH_SHARED_SECRET)
+        ],
+        'body' => json_encode([
+            'userId' => $better_auth_user_id
+        ])
+    ]);
+    
+    if (is_wp_error($response)) {
+        return $response;
+    }
+    
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    if (!$body || !isset($body['sessionToken'])) {
+        return new WP_Error('create_session_failed', 'Failed to create Better Auth session');
+    }
+    
+    return [
+        'sessionToken' => $body['sessionToken'],
+        'userId' => $better_auth_user_id
+    ];
+}
+
+/**
+ * Register endpoint to check WordPress session
+ */
+function asap_register_wp_session_check() {
+    register_rest_route('asap/v1/auth', '/check-wp-session', [
+        'methods' => 'GET',
+        'callback' => 'asap_check_wp_session',
+        'permission_callback' => '__return_true'
+    ]);
+}
+
 // Register REST endpoints
-add_action('rest_api_init', 'asap_register_better_auth_endpoints'); 
+add_action('rest_api_init', 'asap_register_better_auth_endpoints');
+add_action('rest_api_init', 'asap_register_wp_session_check'); 

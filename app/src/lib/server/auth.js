@@ -1,6 +1,15 @@
 import { betterAuth } from 'better-auth';
 import { MysqlDialect } from 'kysely';
 import mysql from 'mysql2/promise';
+import { 
+    DB_HOST,
+    DB_PORT,
+    DB_USER,
+    DB_PASS,
+    DB_NAME,
+    BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL
+} from '$env/static/private';
 
 /**
  * @typedef {Object} RequiredEnvVars
@@ -74,11 +83,11 @@ Object.entries(requiredEnvVars).forEach(([key, value]) => {
 
 // Database configuration
 const DB_CONFIG = {
-    host: requiredEnvVars.DB_HOST,
-    port: requiredEnvVars.DB_PORT,
-    user: requiredEnvVars.DB_USER,
-    password: requiredEnvVars.DB_PASS,
-    database: requiredEnvVars.DB_NAME,
+    host: DB_HOST || 'localhost',
+    port: parseInt(DB_PORT || '10018', 10),
+    user: DB_USER || 'root',
+    password: DB_PASS || 'root',
+    database: DB_NAME || 'local',
     charset: 'utf8mb4',
     waitForConnections: true,
     connectionLimit: 10,
@@ -293,9 +302,8 @@ async function createHmacSha256(timestamp, secret) {
 
 // Configure Better Auth with proper MySQL database configuration for version 1.2.5
 export const auth = betterAuth({
-    secret: requiredEnvVars.BETTER_AUTH_SECRET,
-    baseURL: requiredEnvVars.BETTER_AUTH_URL,
-    // Better Auth expects a mysql pool directly for MySQL connections
+    secret: BETTER_AUTH_SECRET,
+    baseURL: BETTER_AUTH_URL || 'http://localhost:5173',
     database: pool,
     tableNames: {
         users: 'ba_users',
@@ -309,6 +317,12 @@ export const auth = betterAuth({
     cookies: {
         sessionToken: {
             name: 'ba_session_token',
+            options: {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/'
+            }
         }
     },
     onUserCreated: async (/** @type {User} */ user) => {
