@@ -1061,10 +1061,15 @@ function asap_create_wp_session(WP_REST_Request $request) {
     ], 404);
   }
   
-  // Generate authentication cookies for the user
-  wp_clear_auth_cookie();
-  wp_set_auth_cookie($wp_user_id, true);
-  wp_set_current_user($wp_user_id);
+  // Create session using core implementation
+  $result = asap_create_wp_session_core($wp_user_id);
+  
+  if (is_wp_error($result)) {
+    return new WP_REST_Response([
+      'success' => false,
+      'message' => $result->get_error_message()
+    ], 400);
+  }
   
   // Return session info
   return new WP_REST_Response([

@@ -187,7 +187,7 @@ function asap_render_better_auth_settings() {
  * @param string $signature Request signature
  * @return bool Whether the signature is valid
  */
-function asap_validate_better_auth_request($timestamp, $signature) {
+function asap_validate_better_auth_signature($timestamp, $signature) {
     // Ensure we have required data
     if (empty($timestamp) || empty($signature)) {
         return false;
@@ -277,12 +277,12 @@ function asap_create_wp_user_from_better_auth($user_data) {
 }
 
 /**
- * Create WordPress session for Better Auth user
+ * Create WordPress session for Better Auth user (core implementation)
  * 
  * @param int $wp_user_id WordPress user ID
  * @return bool|WP_Error True on success, WP_Error on failure
  */
-function asap_create_wp_session($wp_user_id) {
+function asap_create_wp_session_core($wp_user_id) {
     $user = get_user_by('id', $wp_user_id);
     if (!$user) {
         return new WP_Error('invalid_user', 'Invalid WordPress user ID');
@@ -330,7 +330,7 @@ function asap_handle_create_wp_user($request) {
     $timestamp = $request->get_header('X-Better-Auth-Timestamp');
     $signature = $request->get_header('X-Better-Auth-Signature');
     
-    if (!asap_validate_better_auth_request($timestamp, $signature)) {
+    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
         return new WP_REST_Response([
             'error' => 'Invalid request signature'
         ], 401);
@@ -364,7 +364,7 @@ function asap_handle_create_wp_session($request) {
     $timestamp = $request->get_header('X-Better-Auth-Timestamp');
     $signature = $request->get_header('X-Better-Auth-Signature');
     
-    if (!asap_validate_better_auth_request($timestamp, $signature)) {
+    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
         return new WP_REST_Response([
             'error' => 'Invalid request signature'
         ], 401);
@@ -379,7 +379,7 @@ function asap_handle_create_wp_session($request) {
     }
     
     // Create session
-    $result = asap_create_wp_session($wp_user_id);
+    $result = asap_create_wp_session_core($wp_user_id);
     
     if (is_wp_error($result)) {
         return new WP_REST_Response([
@@ -478,6 +478,552 @@ function asap_register_wp_session_check() {
     ]);
 }
 
+/**
+ * Sync WordPress user to Better Auth
+ * @created 03.29.25 | 03:34 PM PDT
+ * 
+ * @param int $wp_user_id WordPress user ID to sync
+ * @return array|WP_Error Array with success status and Better Auth user ID on success, WP_Error on failure
+ */
+function asap_sync_wp_user_to_better_auth($wp_user_id) {
+    global $wpdb;
+
+    // Get WordPress user data
+    $wp_user = get_userdata($wp_user_id);
+    if (!$wp_user) {
+        return new WP_Error('invalid_user', 'WordPress user not found');
+    }
+
+    // Check if user is already synced
+    $existing_ba_user = $wpdb->get_row($wpdb->prepare(
+        "SELECT ba_user_id FROM {$wpdb->prefix}ba_wp_user_map WHERE wp_user_id = %d",
+        $wp_user_id
+    ));
+
+    if ($existing_ba_user) {
+        return array(
+            'success' => true,
+            'ba_user_id' => $existing_ba_user->ba_user_id,
+            'message' => 'User already synced'
+        );
+    }
+
+    try {
+        // Connect to Better Auth database
+        $ba_db = new PDO(
+            sprintf(
+                'mysql:host=%s;port=%s;dbname=%s',
+                defined('DB_HOST') ? DB_HOST : 'localhost',
+                '10018', // Local by Flywheel MySQL port
+                DB_NAME
+            ),
+            DB_USER,
+            DB_PASSWORD,
+            array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+        );
+
+        // Start transaction
+        $ba_db->beginTransaction();
+
+        // Create Better Auth user
+        $stmt = $ba_db->prepare("
+            INSERT INTO ba_users (
+                email,
+                username,
+                name,
+                metadata,
+                created_at,
+                updated_at
+            ) VALUES (
+                :email,
+                :username,
+                :name,
+                :metadata,
+                NOW(),
+                NOW()
+            )
+        ");
+
+        // Get all user roles and capabilities
+        $roles = $wp_user->roles;
+        $all_caps = $wp_user->allcaps;
+
+        $metadata = json_encode(array(
+            'wp_user_id' => $wp_user_id,
+            'wp_roles' => $roles,
+            'wp_capabilities' => $all_caps,
+            'wp_user_level' => $wp_user->user_level,
+            'wp_user_status' => get_user_meta($wp_user_id, 'wp_user_status', true),
+            'wp_display_name' => $wp_user->display_name,
+            'wp_nickname' => $wp_user->nickname,
+            'wp_first_name' => $wp_user->first_name,
+            'wp_last_name' => $wp_user->last_name,
+            'wp_description' => $wp_user->description,
+            'wp_user_registered' => $wp_user->user_registered
+        ));
+
+        $stmt->execute(array(
+            ':email' => $wp_user->user_email,
+            ':username' => $wp_user->user_login,
+            ':name' => $wp_user->display_name,
+            ':metadata' => $metadata
+        ));
+
+        $ba_user_id = $ba_db->lastInsertId();
+
+        // Create mapping record
+        $wpdb->insert(
+            $wpdb->prefix . 'ba_wp_user_map',
+            array(
+                'wp_user_id' => $wp_user_id,
+                'ba_user_id' => $ba_user_id,
+                'created_at' => current_time('mysql')
+            ),
+            array('%d', '%s', '%s')
+        );
+
+        // Commit transaction
+        $ba_db->commit();
+
+        return array(
+            'success' => true,
+            'ba_user_id' => $ba_user_id,
+            'message' => 'User synced successfully'
+        );
+
+    } catch (Exception $e) {
+        if (isset($ba_db) && $ba_db->inTransaction()) {
+            $ba_db->rollBack();
+        }
+        return new WP_Error('sync_failed', $e->getMessage());
+    }
+}
+
+/**
+ * Sync all WordPress users to Better Auth
+ * @created 03.29.25 | 03:34 PM PDT
+ * 
+ * @return array Array with success status and results
+ */
+function asap_sync_all_wp_users_to_better_auth() {
+    $results = array(
+        'success' => true,
+        'synced' => array(),
+        'failed' => array(),
+        'skipped' => array()
+    );
+
+    // Get all WordPress users
+    $wp_users = get_users(array('fields' => 'ID'));
+
+    foreach ($wp_users as $wp_user_id) {
+        $sync_result = asap_sync_wp_user_to_better_auth($wp_user_id);
+        
+        if (is_wp_error($sync_result)) {
+            $results['failed'][] = array(
+                'wp_user_id' => $wp_user_id,
+                'error' => $sync_result->get_error_message()
+            );
+        } else if ($sync_result['message'] === 'User already synced') {
+            $results['skipped'][] = array(
+                'wp_user_id' => $wp_user_id,
+                'ba_user_id' => $sync_result['ba_user_id']
+            );
+        } else {
+            $results['synced'][] = array(
+                'wp_user_id' => $wp_user_id,
+                'ba_user_id' => $sync_result['ba_user_id']
+            );
+        }
+    }
+
+    return $results;
+}
+
+/**
+ * Hook to sync new WordPress users to Better Auth automatically
+ * @created 03.29.25 | 03:34 PM PDT
+ */
+add_action('user_register', 'asap_sync_wp_user_to_better_auth');
+
+/**
+ * Add REST API endpoint to trigger manual sync
+ * @created 03.29.25 | 03:34 PM PDT
+ */
+add_action('rest_api_init', function() {
+    register_rest_route('asap/v1', '/auth/sync-wp-users', array(
+        'methods' => 'POST',
+        'callback' => function(WP_REST_Request $request) {
+            // Verify admin privileges
+            if (!current_user_can('administrator')) {
+                return new WP_Error(
+                    'rest_forbidden',
+                    'Only administrators can sync users',
+                    array('status' => 403)
+                );
+            }
+
+            // Get specific user ID from request or sync all if not provided
+            $wp_user_id = $request->get_param('wp_user_id');
+            
+            if ($wp_user_id) {
+                return asap_sync_wp_user_to_better_auth($wp_user_id);
+            } else {
+                return asap_sync_all_wp_users_to_better_auth();
+            }
+        },
+        'permission_callback' => function() {
+            return current_user_can('administrator');
+        }
+    ));
+});
+
+/**
+ * Create the WordPress to Better Auth user mapping table
+ * @created 03.29.25 | 03:34 PM PDT
+ */
+function asap_create_ba_wp_user_map_table() {
+    global $wpdb;
+
+    $charset_collate = $wpdb->get_charset_collate();
+    $table_name = $wpdb->prefix . 'ba_wp_user_map';
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        wp_user_id bigint(20) unsigned NOT NULL,
+        ba_user_id varchar(255) NOT NULL,
+        created_at datetime NOT NULL,
+        PRIMARY KEY  (id),
+        UNIQUE KEY wp_user_id (wp_user_id),
+        UNIQUE KEY ba_user_id (ba_user_id)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+
+// Create mapping table on plugin activation
+register_activation_hook(__FILE__, 'asap_create_ba_wp_user_map_table');
+
 // Register REST endpoints
 add_action('rest_api_init', 'asap_register_better_auth_endpoints');
-add_action('rest_api_init', 'asap_register_wp_session_check'); 
+add_action('rest_api_init', 'asap_register_wp_session_check');
+
+/**
+ * Add ASAP Digest Central Command menu and submenus
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_add_central_command_menu() {
+    // Add the main menu item
+    add_menu_page(
+        '⚡️ Central Command', // Page title
+        '⚡️ Central Command', // Menu title
+        'administrator',      // Capability
+        'asap-central-command', // Menu slug
+        'asap_render_central_command_dashboard', // Callback function
+        'dashicons-superhero', // Icon
+        3 // Position after Dashboard and Posts
+    );
+
+    // Add Better Auth Sync submenu
+    add_submenu_page(
+        'asap-central-command',
+        'Better Auth Sync',
+        'Auth Sync',
+        'administrator',
+        'asap-auth-sync',
+        'asap_render_better_auth_sync_page'
+    );
+
+    // Add Digest Management submenu
+    add_submenu_page(
+        'asap-central-command',
+        'Digest Management',
+        'Digests',
+        'administrator',
+        'asap-digest-management',
+        'asap_render_digest_management'
+    );
+
+    // Add User Stats submenu
+    add_submenu_page(
+        'asap-central-command',
+        'User Statistics',
+        'User Stats',
+        'administrator',
+        'asap-user-stats',
+        'asap_render_user_stats'
+    );
+
+    // Add Settings submenu
+    add_submenu_page(
+        'asap-central-command',
+        'ASAP Settings',
+        'Settings',
+        'administrator',
+        'asap-settings',
+        'asap_render_settings'
+    );
+}
+add_action('admin_menu', 'asap_add_central_command_menu');
+
+/**
+ * Render the Central Command dashboard
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_render_central_command_dashboard() {
+    global $wpdb;
+
+    // Create the mapping table if it doesn't exist
+    asap_create_ba_wp_user_map_table();
+    
+    ?>
+    <div class="wrap">
+        <h1>⚡️ ASAP Digest Central Command</h1>
+        
+        <div class="card">
+            <h2>Quick Stats</h2>
+            <p>Welcome to ASAP Digest Central Command. This dashboard provides an overview of your system.</p>
+            
+            <?php
+            // Get some basic stats
+            $total_users = count_users();
+            
+            // Check if table exists before counting
+            $table_name = $wpdb->prefix . 'ba_wp_user_map';
+            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
+            $synced_users = $table_exists ? $wpdb->get_var("SELECT COUNT(*) FROM $table_name") : 0;
+            
+            // Check if digest post type exists before counting
+            $digest_counts = post_type_exists('digest') ? wp_count_posts('digest') : null;
+            $total_digests = $digest_counts ? ($digest_counts->publish ?? 0) : 0;
+            ?>
+            
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3>Total Users</h3>
+                    <p style="font-size: 24px; font-weight: bold;"><?php echo $total_users['total_users']; ?></p>
+                </div>
+                
+                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3>Synced Users</h3>
+                    <p style="font-size: 24px; font-weight: bold;"><?php echo $synced_users; ?></p>
+                    <?php if (!$table_exists): ?>
+                        <p style="color: #e67e22;"><span class="dashicons dashicons-warning"></span> Sync table not found. Please deactivate and reactivate the plugin.</p>
+                    <?php endif; ?>
+                </div>
+                
+                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <h3>Total Digests</h3>
+                    <p style="font-size: 24px; font-weight: bold;"><?php echo $total_digests; ?></p>
+                    <?php if (!post_type_exists('digest')): ?>
+                        <p style="color: #e67e22;"><span class="dashicons dashicons-warning"></span> Digest post type not registered.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-top: 20px;">
+            <h2>Quick Actions</h2>
+            <p>Access common tasks and management tools:</p>
+            
+            <div class="quick-actions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                <a href="<?php echo admin_url('admin.php?page=asap-auth-sync'); ?>" class="button button-primary">
+                    Manage Auth Sync
+                </a>
+                <a href="<?php echo admin_url('admin.php?page=asap-digest-management'); ?>" class="button button-primary">
+                    Manage Digests
+                </a>
+                <a href="<?php echo admin_url('admin.php?page=asap-user-stats'); ?>" class="button button-primary">
+                    View User Stats
+                </a>
+                <a href="<?php echo admin_url('admin.php?page=asap-settings'); ?>" class="button button-primary">
+                    Configure Settings
+                </a>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * Render the digest management page
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_render_digest_management() {
+    ?>
+    <div class="wrap">
+        <h1>Digest Management</h1>
+        <p>Manage your ASAP Digests here. This feature is coming soon.</p>
+    </div>
+    <?php
+}
+
+/**
+ * Render the user stats page
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_render_user_stats() {
+    ?>
+    <div class="wrap">
+        <h1>User Statistics</h1>
+        <p>View detailed user statistics here. This feature is coming soon.</p>
+    </div>
+    <?php
+}
+
+/**
+ * Render the settings page
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_render_settings() {
+    ?>
+    <div class="wrap">
+        <h1>ASAP Settings</h1>
+        <p>Configure ASAP Digest settings here. This feature is coming soon.</p>
+    </div>
+    <?php
+}
+
+/**
+ * Render Better Auth Sync admin page
+ * @created 03.29.25 | 03:34 PM PDT
+ */
+function asap_render_better_auth_sync_page() {
+    // Handle form submission
+    if (isset($_POST['sync_action']) && check_admin_referer('better_auth_sync')) {
+        if ($_POST['sync_action'] === 'sync_all') {
+            $results = asap_sync_all_wp_users_to_better_auth();
+        } else if ($_POST['sync_action'] === 'sync_selected' && !empty($_POST['user_ids'])) {
+            $results = array(
+                'success' => true,
+                'synced' => array(),
+                'failed' => array(),
+                'skipped' => array()
+            );
+            
+            foreach ($_POST['user_ids'] as $user_id) {
+                $sync_result = asap_sync_wp_user_to_better_auth(intval($user_id));
+                if (is_wp_error($sync_result)) {
+                    $results['failed'][] = array(
+                        'wp_user_id' => $user_id,
+                        'error' => $sync_result->get_error_message()
+                    );
+                } else if ($sync_result['message'] === 'User already synced') {
+                    $results['skipped'][] = array(
+                        'wp_user_id' => $user_id,
+                        'ba_user_id' => $sync_result['ba_user_id']
+                    );
+                } else {
+                    $results['synced'][] = array(
+                        'wp_user_id' => $user_id,
+                        'ba_user_id' => $sync_result['ba_user_id']
+                    );
+                }
+            }
+        }
+    }
+
+    // Get all WordPress users
+    $users = get_users(array(
+        'orderby' => 'registered',
+        'order' => 'DESC'
+    ));
+
+    // Get sync status for each user
+    global $wpdb;
+    $sync_statuses = $wpdb->get_results("
+        SELECT wp_user_id, ba_user_id, created_at
+        FROM {$wpdb->prefix}ba_wp_user_map
+    ", OBJECT_K);
+
+    ?>
+    <div class="wrap">
+        <h1>Better Auth User Sync</h1>
+        
+        <?php if (isset($results)): ?>
+            <div class="notice notice-info">
+                <h3>Sync Results:</h3>
+                <?php if (!empty($results['synced'])): ?>
+                    <p>Successfully synced <?php echo count($results['synced']); ?> users.</p>
+                <?php endif; ?>
+                <?php if (!empty($results['skipped'])): ?>
+                    <p>Skipped <?php echo count($results['skipped']); ?> already synced users.</p>
+                <?php endif; ?>
+                <?php if (!empty($results['failed'])): ?>
+                    <p>Failed to sync <?php echo count($results['failed']); ?> users:</p>
+                    <ul>
+                        <?php foreach ($results['failed'] as $failure): ?>
+                            <li>User ID <?php echo esc_html($failure['wp_user_id']); ?>: <?php echo esc_html($failure['error']); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('better_auth_sync'); ?>
+            
+            <p>
+                <button type="submit" name="sync_action" value="sync_all" class="button button-primary">
+                    Sync All Users
+                </button>
+            </p>
+
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th scope="col" class="manage-column column-cb check-column">
+                            <input type="checkbox" id="users-select-all">
+                        </th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Better Auth Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($users as $user): ?>
+                        <tr>
+                            <td>
+                                <input type="checkbox" name="user_ids[]" value="<?php echo esc_attr($user->ID); ?>">
+                            </td>
+                            <td><?php echo esc_html($user->user_login); ?></td>
+                            <td><?php echo esc_html($user->user_email); ?></td>
+                            <td><?php echo esc_html(implode(', ', $user->roles)); ?></td>
+                            <td>
+                                <?php if (isset($sync_statuses[$user->ID])): ?>
+                                    <span class="dashicons dashicons-yes" style="color: green;"></span>
+                                    Synced (BA ID: <?php echo esc_html($sync_statuses[$user->ID]->ba_user_id); ?>)
+                                    <br>
+                                    <small>Synced on: <?php echo esc_html($sync_statuses[$user->ID]->created_at); ?></small>
+                                <?php else: ?>
+                                    <span class="dashicons dashicons-no" style="color: red;"></span>
+                                    Not synced
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+
+            <p>
+                <button type="submit" name="sync_action" value="sync_selected" class="button button-secondary">
+                    Sync Selected Users
+                </button>
+            </p>
+        </form>
+
+        <script>
+        jQuery(document).ready(function($) {
+            $('#users-select-all').on('change', function() {
+                $('input[name="user_ids[]"]').prop('checked', $(this).prop('checked'));
+            });
+        });
+        </script>
+    </div>
+    <?php
+}
+
+// Remove the old menu item since it's now under Central Command
+remove_action('admin_menu', 'asap_add_better_auth_sync_menu'); 

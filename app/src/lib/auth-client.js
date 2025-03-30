@@ -62,26 +62,47 @@ async function setSessionToken(token) {
 
 /**
  * Check for existing WordPress session and convert to Better Auth session
+ * @param {number} [retries=3] - Number of retry attempts
  * @returns {Promise<void>}
  */
-export async function checkWordPressSession() {
-    try {
-        const response = await fetch('/wp-json/asap/v1/auth/check-wp-session', {
-            credentials: 'include',
-            headers: {
-                'X-CSRF-Token': await getCSRFToken()
-            }
-        });
+export async function checkWordPressSession(retries = 3) {
+    let lastError;
+    
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch('/wp-json/asap/v1/auth/check-wp-session', {
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': await getCSRFToken()
+                }
+            });
 
-        if (response.ok) {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
             if (data.sessionToken) {
                 await setSessionToken(data.sessionToken);
+                return; // Success - exit function
+            }
+            
+            // If we get here with no session token, no WordPress session exists
+            return;
+            
+        } catch (error) {
+            lastError = error;
+            console.warn(`[Auth] Attempt ${attempt + 1} failed checking WordPress session:`, error);
+            
+            // Wait before retrying (exponential backoff)
+            if (attempt < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
             }
         }
-    } catch (error) {
-        console.error('[Auth] Error checking WordPress session:', error);
     }
+
+    // All retries failed
+    console.error('[Auth] Failed to check WordPress session after', retries, 'attempts:', lastError);
 }
 
 // Initialize Better Auth client with secure cookie configuration
@@ -107,9 +128,6 @@ export const auth = createAuthClient({
     }
 });
 
-// Export auth functions
-export const { login, register, logout, isAuthenticated } = auth;
-
 /**
  * Export commonly used authentication methods
  * These can be imported individually in components:
@@ -125,14 +143,15 @@ export const {
 
 /**
  * Get current user data with WordPress session check
+ * @param {number} [retries=3] - Number of retry attempts for WordPress session check
  * @returns {Promise<{id: string, email: string} | null>} - User data or null if not authenticated
  */
-export async function getCurrentUser() {
+export async function getCurrentUser(retries = 3) {
     try {
         const session = await getSession();
         if (!session || typeof session !== 'object' || !('user' in session)) {
             // Check for WordPress session if no Better Auth session exists
-            await checkWordPressSession();
+            await checkWordPressSession(retries);
             const newSession = await getSession();
             if (!newSession || typeof newSession !== 'object' || !('user' in newSession)) {
                 return null;

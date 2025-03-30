@@ -178,105 +178,155 @@ if (!process.env.BETTER_AUTH_URL) {
  * This is called after a user signs up in Better Auth
  * 
  * @param {User} user Better Auth user object
+ * @param {number} [retries=3] Number of retry attempts
  * @returns {Promise<object|null>} WordPress API response or null on error
  */
-async function createWordPressUser(user) {
+async function createWordPressUser(user, retries = 3) {
     if (!user || !user.id) {
         logConfig(`Cannot create WordPress user: Invalid user data`, 'error');
         return null;
     }
 
-    try {
-        const baseURL = process.env.WORDPRESS_API_URL || 'http://localhost/wp-json';
-        const endpoint = `${baseURL}/asap/v1/auth/create-wp-user`;
-        
-        // Create timestamp and signature for security
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const sharedSecret = process.env.BETTER_AUTH_SHARED_SECRET || process.env.BETTER_AUTH_SECRET || '';
-        const signature = await createHmacSha256(timestamp, sharedSecret);
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Better-Auth-Timestamp': timestamp,
-                'X-Better-Auth-Signature': signature
-            },
-            body: JSON.stringify({
-                id: user.id,
-                email: user.email,
-                username: user.username || user.email.split('@')[0],
-                name: user.name || user.username || user.email.split('@')[0]
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create WordPress user');
+    let lastError;
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const baseURL = process.env.WORDPRESS_API_URL || 'http://localhost/wp-json';
+            const endpoint = `${baseURL}/asap/v1/auth/create-wp-user`;
+            
+            // Create timestamp and signature for security
+            const timestamp = Math.floor(Date.now() / 1000).toString();
+            const sharedSecret = process.env.BETTER_AUTH_SHARED_SECRET || process.env.BETTER_AUTH_SECRET || '';
+            const signature = await createHmacSha256(timestamp, sharedSecret);
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Better-Auth-Timestamp': timestamp,
+                    'X-Better-Auth-Signature': signature
+                },
+                body: JSON.stringify({
+                    ba_user_id: user.id,
+                    email: user.email,
+                    username: user.username || user.email.split('@')[0],
+                    name: user.name || user.username || user.email.split('@')[0]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to create WordPress user');
+            }
+
+            // Store WordPress user ID in Better Auth user metadata
+            if (data.wp_user_id) {
+                await updateUserMetadata(user.id, { wp_user_id: data.wp_user_id });
+            }
+
+            return data;
+
+        } catch (error) {
+            lastError = error;
+            logConfig(`Attempt ${attempt + 1} failed creating WordPress user: ${error instanceof Error ? error.message : String(error)}`, 'warn');
+            
+            // Wait before retrying (exponential backoff)
+            if (attempt < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            }
         }
-        
-        const data = await response.json();
-        logConfig(`WordPress user created/mapped successfully. WP User ID: ${data.wp_user_id}`, 'info');
-        return data;
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logConfig(`Error creating WordPress user: ${errorMessage}`, 'error');
-        return null;
     }
+
+    logConfig(`Failed to create WordPress user after ${retries} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`, 'error');
+    return null;
 }
 
 /**
- * Create a WordPress session for the Better Auth user
- * This is called after a user signs in to Better Auth
+ * Create a WordPress session for the Better Auth session
  * 
- * @param {Session} session Better Auth session object with user property
- * @returns {Promise<object|null>} WordPress API response or null on error
+ * @param {Session} session Better Auth session object
+ * @param {number} [retries=3] Number of retry attempts
+ * @returns {Promise<boolean>} Success status
  */
-async function createWordPressSession(session) {
-    if (!session || !session.user || !session.user.id) {
-        logConfig(`Cannot create WordPress session: Invalid session data`, 'error');
-        return null;
+async function createWordPressSession(session, retries = 3) {
+    if (!session?.user?.metadata?.wp_user_id) {
+        logConfig('Cannot create WordPress session: No WordPress user ID in metadata', 'error');
+        return false;
     }
 
-    // Make sure we have a WordPress user ID in the metadata
-    if (!session.user.metadata?.wp_user_id) {
-        logConfig(`Cannot create WordPress session: No WordPress user ID found in metadata`, 'warn');
-        return null;
-    }
+    let lastError;
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const baseURL = process.env.WORDPRESS_API_URL || 'http://localhost/wp-json';
+            const endpoint = `${baseURL}/asap/v1/auth/create-wp-session`;
+            
+            // Create timestamp and signature for security
+            const timestamp = Math.floor(Date.now() / 1000).toString();
+            const sharedSecret = process.env.BETTER_AUTH_SHARED_SECRET || process.env.BETTER_AUTH_SECRET || '';
+            const signature = await createHmacSha256(timestamp, sharedSecret);
+            
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Better-Auth-Timestamp': timestamp,
+                    'X-Better-Auth-Signature': signature
+                },
+                body: JSON.stringify({
+                    wp_user_id: session.user.metadata.wp_user_id
+                })
+            });
 
-    try {
-        const baseURL = process.env.WORDPRESS_API_URL || 'http://localhost/wp-json';
-        const endpoint = `${baseURL}/asap/v1/auth/create-wp-session`;
-        
-        // Create timestamp and signature for security
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const sharedSecret = process.env.BETTER_AUTH_SHARED_SECRET || process.env.BETTER_AUTH_SECRET || '';
-        const signature = await createHmacSha256(timestamp, sharedSecret);
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Better-Auth-Timestamp': timestamp,
-                'X-Better-Auth-Signature': signature
-            },
-            body: JSON.stringify({
-                wp_user_id: session.user.metadata.wp_user_id
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create WordPress session');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to create WordPress session');
+            }
+
+            return true;
+
+        } catch (error) {
+            lastError = error;
+            logConfig(`Attempt ${attempt + 1} failed creating WordPress session: ${error instanceof Error ? error.message : String(error)}`, 'warn');
+            
+            // Wait before retrying (exponential backoff)
+            if (attempt < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            }
         }
+    }
+
+    logConfig(`Failed to create WordPress session after ${retries} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`, 'error');
+    return false;
+}
+
+/**
+ * Update user metadata in Better Auth
+ * 
+ * @param {string} userId User ID
+ * @param {UserMetadata} metadata Metadata to update
+ * @returns {Promise<boolean>} Success status
+ */
+async function updateUserMetadata(userId, metadata) {
+    try {
+        const db = new Kysely({ dialect });
         
-        const data = await response.json();
-        logConfig(`WordPress session created successfully`, 'info');
-        return data;
+        await db
+            .updateTable('ba_users')
+            .set({ metadata: JSON.stringify(metadata) })
+            .where('id', '=', userId)
+            .execute();
+            
+        return true;
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logConfig(`Error creating WordPress session: ${errorMessage}`, 'error');
-        return null;
+        logConfig(`Failed to update user metadata: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return false;
     }
 }
 
