@@ -1,7 +1,7 @@
 <script>
   import { page } from '$app/stores';
   import { Button } from '$lib/components/ui/button';
-  import { ArrowLeft } from 'lucide-svelte';
+  import { ArrowLeft } from '$lib/utils/lucide-icons';
   import { goto } from '$app/navigation';
 
   /** @type {string} */

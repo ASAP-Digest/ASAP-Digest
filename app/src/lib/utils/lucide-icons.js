@@ -44,6 +44,7 @@ export const BookmarkCheck = createIconObject('bookmark-check', '<path d="M19 21
 export const ChevronLeft = createIconObject('chevron-left', '<polyline points="15 18 9 12 15 6"></polyline>');
 export const ChevronRight = createIconObject('chevron-right', '<polyline points="9 18 15 12 9 6"></polyline>');
 export const ChevronDown = createIconObject('chevron-down', '<polyline points="6 9 12 15 18 9"></polyline>');
+export const ArrowLeft = createIconObject('arrow-left', '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 19 12 12 5"></polyline>');
 export const ArrowRight = createIconObject('arrow-right', '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>');
 export const ArrowUpRight = createIconObject('arrow-up-right', '<line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline>');
 export const ExternalLink = createIconObject('external-link', '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>');
@@ -116,6 +117,7 @@ export default {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   ExternalLink,

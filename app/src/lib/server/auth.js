@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth";
+import { betterAuth } from 'better-auth';
+import { MysqlDialect } from 'kysely';
 import mysql from 'mysql2/promise';
-import { Kysely, MysqlDialect } from 'kysely';
 
 /**
  * @typedef {Object} RequiredEnvVars
@@ -267,94 +267,28 @@ async function createHmacSha256(timestamp, secret) {
         .join('');
 }
 
-// Initialize Better Auth
+// Configure Better Auth
 const auth = betterAuth({
-    // Database configuration
     adapter: {
-        type: 'kysely',
-        dialect: dialect,
-        tables: {
-            users: 'ba_users',
-            sessions: 'ba_sessions',
-            accounts: 'ba_accounts',
-            verifications: 'ba_verifications'
+        config: {
+            dialect: new MysqlDialect({
+                pool: mysql.createPool(DB_CONFIG)
+            }),
+            tables: {
+                users: 'ba_users',
+                sessions: 'ba_sessions',
+                accounts: 'ba_accounts',
+                verifications: 'ba_verifications'
+            }
         }
     },
-
-    // Core configuration
-    baseURL: requiredEnvVars.BETTER_AUTH_URL,
-    secret: requiredEnvVars.BETTER_AUTH_SECRET,
-
-    // Email configuration
-    email: {
+    emailAndPassword: {
         enabled: true,
-        verifyEmail: true,
-        from: 'noreply@asapdigest.com',
-        templates: {
-            verifyEmail: {
-                subject: 'Verify your email for ASAP Digest',
-                text: 'Click the link below to verify your email:\n{{{verifyLink}}}',
-                html: '<p>Click the link below to verify your email:</p><p><a href="{{{verifyLink}}}">Verify Email</a></p>'
-            },
-            resetPassword: {
-                subject: 'Reset your ASAP Digest password',
-                text: 'Click the link below to reset your password:\n{{{resetLink}}}',
-                html: '<p>Click the link below to reset your password:</p><p><a href="{{{resetLink}}}">Reset Password</a></p>'
-            }
-        }
+        autoSignIn: true
     },
-
-    // Password configuration
-    password: {
-        minLength: 8,
-        maxLength: 100,
-        requireNumbers: true,
-        requireSpecialChars: true
-    },
-
-    // Session configuration
-    session: {
-        lifetime: '7d',
-        renewalThreshold: '1d',
-        cookieName: 'ba_session'
-    },
-
-    // WordPress integration hooks
-    hooks: {
-        /** @param {BetterAuthUser} user */
-        onUserCreated: async (user) => {
-            try {
-                /** @type {WordPressUser} */
-                const wpUser = await createWordPressUser(user);
-                if (wpUser?.wp_user_id) {
-                    await auth.updateUser(user.id, {
-                        metadata: {
-                            ...user.metadata,
-                            wp_user_id: wpUser.wp_user_id
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error in onUserCreated hook:', error);
-            }
-        },
-        /** @param {BetterAuthSession} session */
-        onSessionCreated: async (session) => {
-            try {
-                const user = await auth.getUser(session.userId);
-                if (user?.metadata?.wp_user_id) {
-                    session.user.metadata = session.user.metadata || {};
-                    session.user.metadata.wp_user_id = user.metadata.wp_user_id;
-                    await createWordPressSession(session);
-                }
-            } catch (error) {
-                console.error('Error in onSessionCreated hook:', error);
-            }
-        }
-    }
+    secret: process.env.BETTER_AUTH_SECRET,
+    baseUrl: process.env.BETTER_AUTH_URL
 });
-
-export default auth;
 
 /**
  * Get a WordPress nonce for authenticated requests
@@ -381,4 +315,4 @@ async function getNonce() {
     }
 }
 
-export { getNonce };
+export { auth, getNonce };
