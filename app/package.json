@@ -13,7 +13,11 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
 		"build:prod": "NODE_ENV=production VITE_APP_ENV=production vite build",
-		"build:analyze": "NODE_ENV=production VITE_APP_ENV=production vite build --mode analyze"
+		"build:analyze": "NODE_ENV=production VITE_APP_ENV=production vite build --mode analyze",
+		"test": "vitest",
+		"test:ui": "vitest --ui",
+		"test:coverage": "vitest run --coverage",
+		"test:auth": "node scripts/test-auth.js"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "^1.2.5",

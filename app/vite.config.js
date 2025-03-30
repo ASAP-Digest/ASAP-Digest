@@ -1,5 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -9,6 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig(({ mode }) => {
+	// Load env file based on mode
+	const env = loadEnv(mode, process.cwd(), '');
+
 	const isAnalyze = mode === 'analyze';
 
 	return {
@@ -29,15 +32,16 @@ export default defineConfig(({ mode }) => {
 				strict: false,
 				allow: ['..', '../..', '../../node_modules', '.', './node_modules']
 			},
-			host: '0.0.0.0',
-			port: 5173,
+			host: env.HOST || 'localhost',
+			port: parseInt(env.PORT || '5173', 10),
 			hmr: {
 				clientPort: process.env.HMR_HOST ? 5173 : null,
 				overlay: false,
 				timeout: 300000,
 				protocol: 'ws',
 				host: 'localhost'
-			}
+			},
+			strictPort: true
 		},
 		build: {
 			target: 'esnext',
@@ -79,6 +83,10 @@ export default defineConfig(({ mode }) => {
 		},
 		ssr: {
 			noExternal: ['esm-env']
+		},
+		// Expose all environment variables to the client
+		define: {
+			'process.env': env
 		}
 	};
 });

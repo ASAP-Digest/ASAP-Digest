@@ -3,20 +3,40 @@ import mysql from 'mysql2/promise';
 import { Kysely, MysqlDialect } from 'kysely';
 
 /**
+ * @typedef {Object} RequiredEnvVars
+ * @property {string} DB_HOST - Database host
+ * @property {number} DB_PORT - Database port
+ * @property {string} DB_USER - Database user
+ * @property {string} DB_PASS - Database password
+ * @property {string} DB_NAME - Database name
+ * @property {string} BETTER_AUTH_SECRET - Better Auth secret key
+ * @property {string} BETTER_AUTH_URL - Better Auth base URL
+ */
+
+/**
+ * @typedef {Object} WordPressUser
+ * @property {number} wp_user_id - WordPress user ID
+ */
+
+/**
+ * @typedef {Object} BetterAuthUserMetadata
+ * @property {number} [wp_user_id] - WordPress user ID
+ */
+
+/**
  * @typedef {Object} BetterAuthUser
  * @property {string} id - User ID
  * @property {string} email - User email
  * @property {string} [username] - Optional username
  * @property {string} [name] - Optional display name
- * @property {Object} metadata - User metadata
- * @property {string} [metadata.wp_user_id] - WordPress user ID
+ * @property {BetterAuthUserMetadata} metadata - User metadata
  */
 
 /**
  * @typedef {Object} BetterAuthSession
  * @property {string} id - Session ID
  * @property {string} userId - User ID
- * @property {BetterAuthUser} user - User object
+ * @property {BetterAuthUser} user - Session user
  */
 
 /**
@@ -33,19 +53,45 @@ import { Kysely, MysqlDialect } from 'kysely';
  * @property {number} queueLimit - Queue limit
  */
 
-/** @type {DBConfig} */
+// Ensure required environment variables are available
+const requiredEnvVars = {
+    DB_HOST: process.env.DB_HOST || 'localhost',
+    DB_PORT: parseInt(process.env.DB_PORT || '10018', 10),
+    DB_USER: process.env.DB_USER || 'root',
+    DB_PASS: process.env.DB_PASS || 'root',
+    DB_NAME: process.env.DB_NAME || 'local',
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'http://localhost:5173'
+};
+
+// Validate environment variables
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+    if (!value) {
+        throw new Error(`${key} environment variable is required but not set`);
+    }
+});
+
+// Database configuration
 const DB_CONFIG = {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '10018', 10),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASS || 'root',
-    database: process.env.DB_NAME || 'local',
+    host: requiredEnvVars.DB_HOST,
+    port: requiredEnvVars.DB_PORT,
+    user: requiredEnvVars.DB_USER,
+    password: requiredEnvVars.DB_PASS,
+    database: requiredEnvVars.DB_NAME,
     charset: 'utf8mb4',
     connectTimeout: 120000,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
+    queueLimit: 0
 };
+
+// Create MySQL connection pool
+const pool = mysql.createPool(DB_CONFIG);
+
+// Create Kysely dialect
+const dialect = new MysqlDialect({
+    pool: pool
+});
 
 /**
  * Log configuration issues with appropriate severity levels
@@ -90,18 +136,6 @@ if (!authSecret) {
 
 if (!process.env.BETTER_AUTH_URL) {
     logConfig(`BETTER_AUTH_URL environment variable is not set, using default: ${authBaseURL}`, 'warn');
-}
-
-// Create a Kysely dialect using the mysql2 pool
-let dialect;
-try {
-    dialect = new MysqlDialect({
-        pool: mysql.createPool(DB_CONFIG)
-    });
-    logConfig('MySQL connection pool created successfully');
-} catch (error) {
-    logConfig(`Failed to create MySQL connection pool: ${error.message}`, 'critical');
-    throw new Error(`Failed to initialize database connection: ${error.message}`);
 }
 
 /**
@@ -233,9 +267,9 @@ async function createHmacSha256(timestamp, secret) {
         .join('');
 }
 
-// Initialize Better Auth with hooks for WordPress integration
-const config = {
-    // Use the Kysely dialect for database access
+// Initialize Better Auth
+const auth = betterAuth({
+    // Database configuration
     adapter: {
         type: 'kysely',
         dialect: dialect,
@@ -246,21 +280,53 @@ const config = {
             verifications: 'ba_verifications'
         }
     },
-    
-    // Base URL for Better Auth
-    baseURL: authBaseURL,
-    
-    // Secret key for encryption and signing
-    secret: authSecret,
-    
-    // Hooks for WordPress integration
+
+    // Core configuration
+    baseURL: requiredEnvVars.BETTER_AUTH_URL,
+    secret: requiredEnvVars.BETTER_AUTH_SECRET,
+
+    // Email configuration
+    email: {
+        enabled: true,
+        verifyEmail: true,
+        from: 'noreply@asapdigest.com',
+        templates: {
+            verifyEmail: {
+                subject: 'Verify your email for ASAP Digest',
+                text: 'Click the link below to verify your email:\n{{{verifyLink}}}',
+                html: '<p>Click the link below to verify your email:</p><p><a href="{{{verifyLink}}}">Verify Email</a></p>'
+            },
+            resetPassword: {
+                subject: 'Reset your ASAP Digest password',
+                text: 'Click the link below to reset your password:\n{{{resetLink}}}',
+                html: '<p>Click the link below to reset your password:</p><p><a href="{{{resetLink}}}">Reset Password</a></p>'
+            }
+        }
+    },
+
+    // Password configuration
+    password: {
+        minLength: 8,
+        maxLength: 100,
+        requireNumbers: true,
+        requireSpecialChars: true
+    },
+
+    // Session configuration
+    session: {
+        lifetime: '7d',
+        renewalThreshold: '1d',
+        cookieName: 'ba_session'
+    },
+
+    // WordPress integration hooks
     hooks: {
-        // After user creation
+        /** @param {BetterAuthUser} user */
         onUserCreated: async (user) => {
             try {
+                /** @type {WordPressUser} */
                 const wpUser = await createWordPressUser(user);
-                if (wpUser && wpUser.wp_user_id) {
-                    // Store WordPress user ID in Better Auth user metadata
+                if (wpUser?.wp_user_id) {
                     await auth.updateUser(user.id, {
                         metadata: {
                             ...user.metadata,
@@ -269,14 +335,12 @@ const config = {
                     });
                 }
             } catch (error) {
-                logConfig(`Error in onUserCreated hook: ${error instanceof Error ? error.message : String(error)}`, 'error');
+                console.error('Error in onUserCreated hook:', error);
             }
         },
-        
-        // After session creation (login)
+        /** @param {BetterAuthSession} session */
         onSessionCreated: async (session) => {
             try {
-                // Get WordPress user ID from user metadata
                 const user = await auth.getUser(session.userId);
                 if (user?.metadata?.wp_user_id) {
                     session.user.metadata = session.user.metadata || {};
@@ -284,16 +348,12 @@ const config = {
                     await createWordPressSession(session);
                 }
             } catch (error) {
-                logConfig(`Error in onSessionCreated hook: ${error instanceof Error ? error.message : String(error)}`, 'error');
+                console.error('Error in onSessionCreated hook:', error);
             }
         }
     }
-};
+});
 
-// Initialize Better Auth with our configuration
-const auth = betterAuth(config);
-
-// Export the auth instance
 export default auth;
 
 /**
