@@ -65,6 +65,7 @@
 		"@tailwindcss/postcss": "^4.0.15",
 		"@urql/svelte": "^4.2.3",
 		"better-auth": "^1.2.5",
+		"dotenv": "^16.4.7",
 		"kysely": "^0.27.6",
 		"mysql2": "^3.14.0",
 		"radix-svelte": "^0.9.0",
