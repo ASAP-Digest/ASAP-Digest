@@ -14,8 +14,12 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Set up Better Auth shared secret
- * This will be used to validate requests from Better Auth to WordPress
+ * @description Set up Better Auth shared secret for WordPress integration
+ * @return void
+ * @example
+ * // Called during plugin initialization
+ * asap_setup_better_auth_shared_secret();
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_setup_better_auth_shared_secret() {
     // First, check if the constant is already defined in wp-config.php
@@ -43,19 +47,25 @@ function asap_setup_better_auth_shared_secret() {
 asap_setup_better_auth_shared_secret();
 
 /**
- * Safely get a constant value
- * 
- * @param string $constant_name Constant name
- * @return mixed Constant value or null if not defined
+ * @description Safely get a constant value with null fallback
+ * @param {string} constant_name The name of the constant to retrieve
+ * @return {mixed|null} Constant value or null if not defined
+ * @example
+ * // Get a constant value safely
+ * $value = asap_get_constant('BETTER_AUTH_URL');
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_get_constant($constant_name) {
     return defined($constant_name) ? constant($constant_name) : null;
 }
 
 /**
- * Get the base URL for SvelteKit app in the current environment
- * 
- * @return string Base URL for SvelteKit app
+ * @description Get the base URL for SvelteKit app based on environment
+ * @return {string} Base URL for SvelteKit app
+ * @example
+ * // Get the SvelteKit app URL
+ * $base_url = asap_get_better_auth_base_url();
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_get_better_auth_base_url() {
     // Check if URL is defined in wp-config.php
@@ -80,112 +90,14 @@ function asap_get_better_auth_base_url() {
 }
 
 /**
- * Add admin settings page for Better Auth configuration
- * This will be called from the main plugin file
- */
-function asap_add_better_auth_settings_page() {
-    add_options_page(
-        'Better Auth Settings',
-        'Better Auth',
-        'manage_options',
-        'better-auth-settings',
-        'asap_render_better_auth_settings'
-    );
-}
-
-/**
- * Render the Better Auth settings page
- */
-function asap_render_better_auth_settings() {
-    // Security check
-    if (!current_user_can('manage_options')) {
-        return;
-    }
-    
-    // Save settings if form is submitted
-    if (isset($_POST['better_auth_settings_submit'])) {
-        check_admin_referer('better_auth_settings_nonce');
-        
-        $better_auth_url = sanitize_text_field($_POST['better_auth_url']);
-        update_option('better_auth_url', $better_auth_url);
-        
-        // Only update shared secret if provided and not empty
-        if (!empty($_POST['better_auth_shared_secret'])) {
-            $shared_secret = sanitize_text_field($_POST['better_auth_shared_secret']);
-            update_option('better_auth_shared_secret', $shared_secret);
-        }
-        
-        echo '<div class="notice notice-success"><p>Settings saved successfully!</p></div>';
-    }
-    
-    // Display the settings form
-    ?>
-    <div class="wrap">
-        <h1>Better Auth Integration Settings</h1>
-        <form method="post" action="">
-            <?php wp_nonce_field('better_auth_settings_nonce'); ?>
-            <table class="form-table">
-                <tr>
-                    <th scope="row">
-                        <label for="better_auth_url">Better Auth URL</label>
-                    </th>
-                    <td>
-                        <input type="url" name="better_auth_url" id="better_auth_url" 
-                               value="<?php echo esc_attr(asap_get_better_auth_base_url()); ?>" 
-                               class="regular-text">
-                        <p class="description">The base URL for your SvelteKit application (e.g., http://localhost:5173 or https://app.asapdigest.com)</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="better_auth_shared_secret">Shared Secret</label>
-                    </th>
-                    <td>
-                        <input type="password" name="better_auth_shared_secret" id="better_auth_shared_secret" 
-                               placeholder="Leave empty to keep current value" class="regular-text">
-                        <p class="description">Secret key for validating requests between Better Auth and WordPress. 
-                        For maximum security, define BETTER_AUTH_SHARED_SECRET in wp-config.php instead.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">Current Configuration</th>
-                    <td>
-                        <p><strong>Shared Secret:</strong> 
-                        <?php 
-                        if (defined('BETTER_AUTH_SHARED_SECRET')) {
-                            echo '<span style="color:green;">Defined in wp-config.php ✓</span>';
-                        } else {
-                            echo '<span style="color:orange;">Using stored value or fallback</span>';
-                        }
-                        ?>
-                        </p>
-                        <p><strong>Base URL:</strong> 
-                        <?php 
-                        if (defined('BETTER_AUTH_URL')) {
-                            echo '<span style="color:green;">Defined in wp-config.php ✓</span>';
-                        } else {
-                            echo '<span style="color:orange;">Using stored value or fallback</span>';
-                        }
-                        ?>
-                        </p>
-                    </td>
-                </tr>
-            </table>
-            <p class="submit">
-                <input type="submit" name="better_auth_settings_submit" id="submit" class="button button-primary" 
-                       value="Save Changes">
-            </p>
-        </form>
-    </div>
-    <?php
-}
-
-/**
- * Validate Better Auth request signature
- * 
- * @param string $timestamp Request timestamp
- * @param string $signature Request signature
- * @return bool Whether the signature is valid
+ * @description Validate Better Auth request signature using shared secret
+ * @param {string} timestamp Request timestamp
+ * @param {string} signature Request signature
+ * @return {boolean} Whether the signature is valid
+ * @example
+ * // Validate an incoming request
+ * $is_valid = asap_validate_better_auth_signature($timestamp, $signature);
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_validate_better_auth_signature($timestamp, $signature) {
     // Ensure we have required data
@@ -213,10 +125,17 @@ function asap_validate_better_auth_signature($timestamp, $signature) {
 }
 
 /**
- * Create or update WordPress user from Better Auth user data
- * 
- * @param array $user_data Better Auth user data
- * @return int|WP_Error WordPress user ID or error
+ * @description Create or update WordPress user from Better Auth user data
+ * @param {array} user_data Better Auth user data containing email, id, and optional fields
+ * @return {int|WP_Error} WordPress user ID or error
+ * @example
+ * // Create a WordPress user from Better Auth data
+ * $wp_user_id = asap_create_wp_user_from_better_auth([
+ *     'email' => 'user@example.com',
+ *     'id' => 'ba_123',
+ *     'username' => 'username'
+ * ]);
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_create_wp_user_from_better_auth($user_data) {
     // Validate required data
@@ -277,27 +196,72 @@ function asap_create_wp_user_from_better_auth($user_data) {
 }
 
 /**
- * Create WordPress session for Better Auth user (core implementation)
- * 
- * @param int $wp_user_id WordPress user ID
- * @return bool|WP_Error True on success, WP_Error on failure
+ * @description Create WordPress session for Better Auth user (core implementation)
+ * @param {int} wp_user_id WordPress user ID
+ * @return {bool|WP_Error} True on success, WP_Error on failure
+ * @created 03.30.25 | 03:37 PM PDT
  */
 function asap_create_wp_session_core($wp_user_id) {
-    $user = get_user_by('id', $wp_user_id);
+    // Verify user exists
+    $user = get_user_by('ID', $wp_user_id);
     if (!$user) {
-        return new WP_Error('invalid_user', 'Invalid WordPress user ID');
+        return new WP_Error('invalid_user', 'User does not exist');
+    }
+
+    // Set auth cookie
+    wp_set_auth_cookie($wp_user_id, true);
+    
+    // Set current user
+    wp_set_current_user($wp_user_id);
+    
+    // Update user meta with session info
+    $session_token = wp_get_session_token();
+    update_user_meta($wp_user_id, 'better_auth_session_token', $session_token);
+    update_user_meta($wp_user_id, 'better_auth_last_login', current_time('mysql'));
+    
+    // Fire action for other integrations
+    do_action('better_auth_session_created', $wp_user_id, $session_token);
+    
+    return true;
+}
+
+/**
+ * @description Validate WordPress session and Better Auth token
+ * @param {WP_REST_Request} request The request object
+ * @return {bool|WP_Error} True if valid, WP_Error if invalid
+ * @created 03.30.25 | 03:37 PM PDT
+ */
+function asap_check_wp_session($request) {
+    // Get Better Auth token from header
+    $better_auth_token = $request->get_header('X-Better-Auth-Token');
+    if (empty($better_auth_token)) {
+        return new WP_Error('missing_token', 'Better Auth token is required');
     }
     
-    // Clear any existing sessions for user
-    WP_Session_Tokens::get_instance($user->ID)->destroy_all();
+    // Validate token timestamp and signature
+    $parts = explode('.', $better_auth_token);
+    if (count($parts) !== 2) {
+        return new WP_Error('invalid_token', 'Invalid token format');
+    }
     
-    // Create new session
-    $session = WP_Session_Tokens::get_instance($user->ID);
-    $token = $session->create(time() + DAY_IN_SECONDS);
+    list($timestamp, $signature) = $parts;
+    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
+        return new WP_Error('invalid_signature', 'Invalid token signature');
+    }
     
-    // Set auth cookies
-    wp_set_auth_cookie($user->ID, true, is_ssl());
-    wp_set_current_user($user->ID);
+    // Check WordPress session
+    $wp_session = wp_get_session_token();
+    if (empty($wp_session)) {
+        return new WP_Error('no_session', 'No WordPress session found');
+    }
+    
+    // Verify session matches Better Auth
+    $user_id = get_current_user_id();
+    $stored_token = get_user_meta($user_id, 'better_auth_session_token', true);
+    
+    if ($stored_token !== $wp_session) {
+        return new WP_Error('session_mismatch', 'Session token mismatch');
+    }
     
     return true;
 }
@@ -393,81 +357,6 @@ function asap_handle_create_wp_session($request) {
 }
 
 /**
- * Check for existing WordPress session and create Better Auth session if needed
- * 
- * @return array|WP_Error Response data or error
- */
-function asap_check_wp_session() {
-    // Check if user is logged into WordPress
-    if (!is_user_logged_in()) {
-        return new WP_Error('not_logged_in', 'No WordPress session found', ['status' => 401]);
-    }
-    
-    // Get current WordPress user
-    $wp_user = wp_get_current_user();
-    
-    // Get Better Auth user ID from user meta
-    $better_auth_user_id = get_user_meta($wp_user->ID, 'better_auth_user_id', true);
-    
-    if (!$better_auth_user_id) {
-        // Create Better Auth user if it doesn't exist
-        $response = wp_remote_post(asap_get_better_auth_base_url() . '/api/auth/create-user', [
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'X-Better-Auth-Timestamp' => time(),
-                'X-Better-Auth-Signature' => hash_hmac('sha256', time(), BETTER_AUTH_SHARED_SECRET)
-            ],
-            'body' => json_encode([
-                'email' => $wp_user->user_email,
-                'name' => $wp_user->display_name,
-                'username' => $wp_user->user_login,
-                'metadata' => [
-                    'wp_user_id' => $wp_user->ID
-                ]
-            ])
-        ]);
-        
-        if (is_wp_error($response)) {
-            return $response;
-        }
-        
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        if (!$body || !isset($body['id'])) {
-            return new WP_Error('create_user_failed', 'Failed to create Better Auth user');
-        }
-        
-        $better_auth_user_id = $body['id'];
-        update_user_meta($wp_user->ID, 'better_auth_user_id', $better_auth_user_id);
-    }
-    
-    // Create Better Auth session
-    $response = wp_remote_post(asap_get_better_auth_base_url() . '/api/auth/create-session', [
-        'headers' => [
-            'Content-Type' => 'application/json',
-            'X-Better-Auth-Timestamp' => time(),
-            'X-Better-Auth-Signature' => hash_hmac('sha256', time(), BETTER_AUTH_SHARED_SECRET)
-        ],
-        'body' => json_encode([
-            'userId' => $better_auth_user_id
-        ])
-    ]);
-    
-    if (is_wp_error($response)) {
-        return $response;
-    }
-    
-    $body = json_decode(wp_remote_retrieve_body($response), true);
-    if (!$body || !isset($body['sessionToken'])) {
-        return new WP_Error('create_session_failed', 'Failed to create Better Auth session');
-    }
-    
-    return [
-        'sessionToken' => $body['sessionToken'],
-        'userId' => $better_auth_user_id
-    ];
-}
-
-/**
  * Register endpoint to check WordPress session
  */
 function asap_register_wp_session_check() {
@@ -479,11 +368,13 @@ function asap_register_wp_session_check() {
 }
 
 /**
- * Sync WordPress user to Better Auth
- * @created 03.29.25 | 03:34 PM PDT
- * 
- * @param int $wp_user_id WordPress user ID to sync
- * @return array|WP_Error Array with success status and Better Auth user ID on success, WP_Error on failure
+ * @description Sync WordPress user to Better Auth
+ * @param {int} wp_user_id WordPress user ID to sync
+ * @return {array|WP_Error} Array with success status and Better Auth user ID on success, WP_Error on failure
+ * @example
+ * // Sync a WordPress user to Better Auth
+ * $result = asap_sync_wp_user_to_better_auth(123);
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_sync_wp_user_to_better_auth($wp_user_id) {
     global $wpdb;
@@ -600,10 +491,12 @@ function asap_sync_wp_user_to_better_auth($wp_user_id) {
 }
 
 /**
- * Sync all WordPress users to Better Auth
- * @created 03.29.25 | 03:34 PM PDT
- * 
- * @return array Array with success status and results
+ * @description Sync all WordPress users to Better Auth
+ * @return {array} Array with success status and results for synced, failed, and skipped users
+ * @example
+ * // Sync all WordPress users to Better Auth
+ * $results = asap_sync_all_wp_users_to_better_auth();
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_sync_all_wp_users_to_better_auth() {
     $results = array(
@@ -679,8 +572,12 @@ add_action('rest_api_init', function() {
 });
 
 /**
- * Create the WordPress to Better Auth user mapping table
- * @created 03.29.25 | 03:34 PM PDT
+ * @description Create WordPress to Better Auth user mapping table
+ * @return void
+ * @example
+ * // Create the mapping table
+ * asap_create_ba_wp_user_map_table();
+ * @created 03.29.25 | 03:45 PM PDT
  */
 function asap_create_ba_wp_user_map_table() {
     global $wpdb;
@@ -710,62 +607,30 @@ add_action('rest_api_init', 'asap_register_better_auth_endpoints');
 add_action('rest_api_init', 'asap_register_wp_session_check');
 
 /**
- * Add ASAP Digest Central Command menu and submenus
+ * @description Add Better Auth settings submenu under Central Command
+ * @return void
+ * @example
+ * // Called during admin_menu action
+ * asap_add_better_auth_settings_submenu();
  * @created 03.29.25 | 03:45 PM PDT
  */
-function asap_add_central_command_menu() {
-    // Add the main menu item
-    add_menu_page(
-        '⚡️ Central Command', // Page title
-        '⚡️ Central Command', // Menu title
-        'administrator',      // Capability
-        'asap-central-command', // Menu slug
-        'asap_render_central_command_dashboard', // Callback function
-        'dashicons-superhero', // Icon
-        3 // Position after Dashboard and Posts
-    );
-
-    // Add Better Auth Sync submenu
-    add_submenu_page(
-        'asap-central-command',
-        'Better Auth Sync',
-        'Auth Sync',
-        'administrator',
-        'asap-auth-sync',
-        'asap_render_better_auth_sync_page'
-    );
-
-    // Add Digest Management submenu
-    add_submenu_page(
-        'asap-central-command',
-        'Digest Management',
-        'Digests',
-        'administrator',
-        'asap-digest-management',
-        'asap_render_digest_management'
-    );
-
-    // Add User Stats submenu
-    add_submenu_page(
-        'asap-central-command',
-        'User Statistics',
-        'User Stats',
-        'administrator',
-        'asap-user-stats',
-        'asap_render_user_stats'
-    );
-
-    // Add Settings submenu
-    add_submenu_page(
-        'asap-central-command',
-        'ASAP Settings',
-        'Settings',
-        'administrator',
-        'asap-settings',
-        'asap_render_settings'
-    );
+function asap_add_better_auth_settings_submenu() {
+    // Only add submenu if parent menu exists
+    global $submenu;
+    if (isset($submenu['asap-central-command'])) {
+        add_submenu_page(
+            'asap-central-command',
+            'Better Auth Settings',
+            'Auth Settings',
+            'manage_options',
+            'asap-auth-settings',
+            'asap_render_better_auth_settings'
+        );
+    }
 }
-add_action('admin_menu', 'asap_add_central_command_menu');
+
+// Add the settings page under Central Command with lower priority to ensure parent menu exists
+add_action('admin_menu', 'asap_add_better_auth_settings_submenu', 30);
 
 /**
  * Render the Central Command dashboard
@@ -1025,5 +890,160 @@ function asap_render_better_auth_sync_page() {
     <?php
 }
 
-// Remove the old menu item since it's now under Central Command
-remove_action('admin_menu', 'asap_add_better_auth_sync_menu'); 
+/**
+ * @description Render the Better Auth settings page with Central Command styling
+ * @return void
+ * @example
+ * // Called when viewing the Better Auth settings page
+ * asap_render_better_auth_settings();
+ * @created 03.29.25 | 03:45 PM PDT
+ */
+function asap_render_better_auth_settings() {
+    // Security check
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    
+    // Save settings if form is submitted
+    if (isset($_POST['better_auth_settings_submit'])) {
+        check_admin_referer('better_auth_settings_nonce');
+        
+        $better_auth_url = sanitize_text_field($_POST['better_auth_url']);
+        update_option('better_auth_url', $better_auth_url);
+        
+        // Only update shared secret if provided and not empty
+        if (!empty($_POST['better_auth_shared_secret'])) {
+            $shared_secret = sanitize_text_field($_POST['better_auth_shared_secret']);
+            update_option('better_auth_shared_secret', $shared_secret);
+        }
+        
+        echo '<div class="notice notice-success is-dismissible"><p>✅ Better Auth settings updated successfully!</p></div>';
+    }
+    
+    // Get current status indicators
+    $secret_status = defined('BETTER_AUTH_SHARED_SECRET') 
+        ? '<span class="asap-status-good">Defined in wp-config.php ✓</span>'
+        : '<span class="asap-status-warning">Using stored value</span>';
+    
+    $url_status = defined('BETTER_AUTH_URL')
+        ? '<span class="asap-status-good">Defined in wp-config.php ✓</span>'
+        : '<span class="asap-status-warning">Using stored value</span>';
+    
+    // Display the settings form with Central Command styling
+    ?>
+    <div class="wrap asap-central-command">
+        <h1><i class="dashicons dashicons-shield"></i> Better Auth Integration</h1>
+        
+        <div class="asap-card">
+            <h2>Configuration Status</h2>
+            <div class="asap-status-grid">
+                <div class="asap-status-item">
+                    <strong>Shared Secret:</strong> <?php echo $secret_status; ?>
+                </div>
+                <div class="asap-status-item">
+                    <strong>Base URL:</strong> <?php echo $url_status; ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="asap-card">
+            <h2>Settings</h2>
+            <form method="post" action="">
+                <?php wp_nonce_field('better_auth_settings_nonce'); ?>
+                
+                <div class="asap-form-row">
+                    <label for="better_auth_url">Better Auth URL</label>
+                    <input type="url" name="better_auth_url" id="better_auth_url" 
+                           value="<?php echo esc_attr(asap_get_better_auth_base_url()); ?>" 
+                           class="regular-text">
+                    <p class="description">The base URL for your SvelteKit application (e.g., http://localhost:5173 or https://app.asapdigest.com)</p>
+                </div>
+
+                <div class="asap-form-row">
+                    <label for="better_auth_shared_secret">Shared Secret</label>
+                    <input type="password" name="better_auth_shared_secret" id="better_auth_shared_secret" 
+                           placeholder="Leave empty to keep current value" class="regular-text">
+                    <p class="description">Secret key for validating requests between Better Auth and WordPress. 
+                    For maximum security, define BETTER_AUTH_SHARED_SECRET in wp-config.php instead.</p>
+                </div>
+
+                <div class="asap-form-actions">
+                    <input type="submit" name="better_auth_settings_submit" class="button button-primary" 
+                           value="Save Changes">
+                </div>
+            </form>
+        </div>
+
+        <div class="asap-card">
+            <h2>Documentation</h2>
+            <p>Better Auth is the authentication system used by ASAP Digest to manage user sessions across WordPress and SvelteKit.</p>
+            <ul class="asap-doc-list">
+                <li><strong>wp-config.php Constants:</strong> For enhanced security, define BETTER_AUTH_SHARED_SECRET and BETTER_AUTH_URL in wp-config.php</li>
+                <li><strong>Environment Variables:</strong> Make sure these match your SvelteKit .env configuration</li>
+                <li><strong>Session Handling:</strong> Better Auth manages sessions across both platforms automatically</li>
+            </ul>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * @description Handle token exchange between Better Auth and WordPress
+ * @param {WP_REST_Request} request The request object
+ * @return {WP_REST_Response|WP_Error} Response with exchanged token or error
+ * @created 03.30.25 | 03:37 PM PDT
+ */
+function asap_handle_token_exchange($request) {
+    $better_auth_token = $request->get_header('X-Better-Auth-Token');
+    if (empty($better_auth_token)) {
+        return new WP_Error('missing_token', 'Better Auth token is required', ['status' => 400]);
+    }
+
+    // Validate Better Auth token
+    $validation = asap_validate_better_auth_signature(
+        $request->get_header('X-Better-Auth-Timestamp'),
+        $better_auth_token
+    );
+
+    if (is_wp_error($validation)) {
+        return $validation;
+    }
+
+    // Get user from token
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        return new WP_Error('no_user', 'No user found for token', ['status' => 401]);
+    }
+
+    // Create WordPress session
+    $session_result = asap_create_wp_session_core($user_id);
+    if (is_wp_error($session_result)) {
+        return $session_result;
+    }
+
+    // Get WordPress session token
+    $wp_session_token = wp_get_session_token();
+    
+    // Return both tokens
+    return rest_ensure_response([
+        'wp_token' => $wp_session_token,
+        'better_auth_token' => $better_auth_token,
+        'user_id' => $user_id
+    ]);
+}
+
+/**
+ * @description Register token exchange endpoint
+ * @return void
+ * @created 03.30.25 | 03:37 PM PDT
+ */
+function asap_register_token_exchange() {
+    register_rest_route('asap/v1', '/auth/exchange-token', [
+        'methods' => 'POST',
+        'callback' => 'asap_handle_token_exchange',
+        'permission_callback' => function() {
+            return true; // We'll validate in the handler
+        }
+    ]);
+}
+add_action('rest_api_init', 'asap_register_token_exchange'); 

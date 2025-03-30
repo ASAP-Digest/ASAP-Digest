@@ -168,4 +168,33 @@ SELECT * FROM wp_ba_wp_user_map;
 
 # Check user roles
 SELECT * FROM wp_usermeta WHERE meta_key = 'wp_capabilities';
-``` 
+```
+
+## Recent Changes (03.30.25 | 03:45 PM PDT)
+
+### Menu Structure Reorganization
+- ✅ Moved Better Auth settings under Central Command menu
+- ✅ Implemented proper menu priority (30) for Better Auth submenu
+- ✅ Resolved function redeclaration conflicts
+- ✅ Enhanced code organization and documentation
+
+### Function Organization
+1. **Core Functions (`asapdigest-core.php`)**
+   - `asap_init_better_auth_admin()`: Handles legacy settings page removal
+   - `asap_add_central_command_menu()`: Main menu registration (priority 10)
+
+2. **Better Auth Functions (`better-auth-config.php`)**
+   - `asap_add_better_auth_settings_submenu()`: Adds settings under Central Command (priority 30)
+   - `asap_render_better_auth_settings()`: Renders settings page content
+
+### Documentation Updates
+- All functions now follow new-function-protocol.mdc standards
+- Added proper JSDoc/PHP DocBlock comments
+- Included creation timestamps and example usage
+- Enhanced error handling documentation
+
+### Next Steps
+1. Complete database schema design
+2. Implement SvelteKit integration
+3. Update frontend components
+4. Test end-to-end authentication flow 
