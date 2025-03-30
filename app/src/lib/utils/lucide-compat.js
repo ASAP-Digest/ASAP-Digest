@@ -3,6 +3,7 @@
 // It allows existing imports from 'lucide-svelte' to continue working with Svelte 5 runes
 
 import { createIconObject } from './icon-utils.js';
+import Icon from '$components/ui/icon/icon.svelte';
 
 // Import raw SVG paths for common icons
 // In a full implementation, you would import all icons from @lucide/svelte
@@ -18,7 +19,7 @@ const iconPaths = {
   // Add more icons as needed
 };
 
-// Create icon objects for each icon
+// Create Svelte components for each icon
 export const Home = createIconObject('home', iconPaths.home);
 export const User = createIconObject('user', iconPaths.user);
 export const Settings = createIconObject('settings', iconPaths.settings);
@@ -30,10 +31,10 @@ export const LogOut = createIconObject('logOut', iconPaths.logOut);
 // Add more exports as needed
 
 /**
- * Create a custom icon object from a name and SVG content
+ * Create a custom icon component from a name and SVG content
  * @param {string} name The name of the icon
  * @param {string} svgContent The SVG content as a string 
- * @returns {{name: string, svgContent: string}} An icon object
+ * @returns {typeof Icon} A Svelte component that renders the icon
  */
 export function createCustomIcon(name, svgContent) {
   return createIconObject(name, svgContent);

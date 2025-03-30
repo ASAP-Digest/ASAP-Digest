@@ -5,7 +5,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { Mail, Loader2 } from 'lucide-svelte';
+  import { Mail, Loader2 } from '$lib/utils/lucide-compat.js';
 
   let email = $state('');
   let isLoading = $state(false);

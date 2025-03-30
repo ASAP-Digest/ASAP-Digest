@@ -7,7 +7,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { LogIn, Mail, Loader2 } from 'lucide-svelte';
+  import { LogIn, Mail, Loader2 } from '$lib/utils/lucide-compat.js';
 
   const session = useSession();
   let email = $state('');

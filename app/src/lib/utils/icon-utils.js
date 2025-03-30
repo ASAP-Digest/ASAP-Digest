@@ -1,15 +1,19 @@
 // Utility functions for working with Lucide icons in Svelte 5 runes mode
+import { browser } from '$app/environment';
 
 /**
- * Transforms a Lucide SVG icon component into a format that our Icon wrapper can use
+ * Creates a Svelte component from an icon definition
  * @param {string} name The name of the icon
  * @param {string} svgContent The SVG content as a string (typically the paths)
- * @returns {{name: string, svgContent: string}} An object containing the icon name and SVG content
+ * @returns {any} A Svelte component that renders the icon
  */
 export function createIconObject(name, svgContent) {
   return {
     name,
-    svgContent
+    svgContent,
+    toString() {
+      return svgContent;
+    }
   };
 }
 
