@@ -1,21 +1,21 @@
 import { auth } from '$lib/server/auth';
-import { toSvelteKitHandler } from 'better-auth';
+import { svelteKitHandler } from 'better-auth/svelte-kit';
 
-// Create a handler that processes all Better Auth requests
-const betterAuthHandle = toSvelteKitHandler(auth, {
-    // Configure options for the handler
-    options: {
-        // Use the request URL as is
-        useOriginalUrl: true,
-        // Don't strip the /api/auth prefix
-        stripPrefix: false
-    }
-});
+/** @type {import('@sveltejs/kit').RequestHandler} */
+const handler = (event) => {
+    return svelteKitHandler({
+        event: {
+            request: event.request,
+            url: event.url
+        },
+        resolve: () => {},
+        auth
+    });
+};
 
-// Export all HTTP methods to handle any type of request
-export const GET = betterAuthHandle;
-export const POST = betterAuthHandle;
-export const PUT = betterAuthHandle;
-export const DELETE = betterAuthHandle;
-export const PATCH = betterAuthHandle;
-export const OPTIONS = betterAuthHandle; 
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const DELETE = handler;
+export const PATCH = handler;
+export const OPTIONS = handler; 

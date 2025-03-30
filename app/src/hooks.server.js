@@ -32,7 +32,7 @@ function validateCSRFToken(request) {
 /** @type {import('@sveltejs/kit').Handle} */
 const betterAuthHandle = async ({ event, resolve }) => {
     try {
-sc        // Only ignore Vite's internal HMR websocket connection
+        // Only ignore Vite's internal HMR websocket connection
         if (event.url.pathname === '/@vite/client' || 
             event.url.pathname.startsWith('/@fs/')) {
             return resolve(event);
