@@ -1,5 +1,7 @@
 <script>
+  import { page } from '$app/stores';
   import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from '$lib/utils/lucide-icons.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   // Mock notification data
   let notifications = $state([
@@ -90,70 +92,34 @@
 
 <div class="space-y-[2rem]">
   <section>
-    <div class="flex justify-between items-center mb-[1.5rem]">
-      <h1 class="text-[1.5rem] font-bold flex items-center gap-[0.5rem]">
-        <Bell size={20} />
-        <span>Notifications</span>
-      </h1>
-      
-      <div class="flex items-center gap-[1rem]">
-        <button 
-          onclick={markAllAsRead}
-          class="text-[0.875rem] text-[hsl(var(--primary))] hover:underline flex items-center gap-[0.25rem]"
-        >
-          <Check size={16} />
-          <span>Mark all as read</span>
-        </button>
-        
-        <a href="/profile" class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
-          <Settings size={18} />
-        </a>
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-2">
+        <Icon icon={Bell} class="w-5 h-5" />
+        <h1 class="text-2xl font-bold">Notifications</h1>
       </div>
+      <a
+        href="/settings/notifications"
+        class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+      >
+        <Icon icon={Settings} class="w-[1.125rem] h-[1.125rem]" />
+      </a>
     </div>
     
     {#if notifications.length === 0}
-      <div class="bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-md p-[1.5rem] text-center border border-[hsl(var(--border))]">
-        <Bell size={32} class="mx-auto mb-[0.75rem] text-[hsl(var(--muted-foreground))]" />
-        <p class="text-[hsl(var(--muted-foreground))]">You don't have any notifications yet.</p>
+      <div class="text-center py-12">
+        <Icon icon={Bell} class="w-8 h-8 mx-auto mb-3 text-[hsl(var(--muted-foreground))]" />
+        <p class="text-[hsl(var(--muted-foreground))]">No notifications yet</p>
       </div>
     {:else}
-      <div class="space-y-[1rem]">
+      <div class="space-y-4">
         {#each notifications as notification}
-          {@const SvelteComponent = getIcon(notification.type)}
-          <div class="bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-[0_1px_2px_0_rgba(0,0,0,0.05)] p-[1rem] border border-[hsl(var(--border))] {notification.read ? '' : 'border-l-4 border-l-[hsl(var(--primary))]'}">
-            <div class="flex items-start gap-[0.75rem]">
-              <div class="mt-[0.25rem] {notification.read ? 'text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--primary))]'}">
-                <SvelteComponent size={20} />
-              </div>
-              
-              <div class="flex-1">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <h3 class="font-medium {notification.read ? 'text-[hsl(var(--muted-foreground))]' : 'text-[hsl(var(--foreground))]'}">{notification.title}</h3>
-                    <p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mt-[0.25rem]">{notification.message}</p>
-                  </div>
-                  
-                  {#if !notification.read}
-                    <button 
-                      onclick={() => markAsRead(notification.id)} 
-                      class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                    >
-                      <X size={16} />
-                    </button>
-                  {/if}
-                </div>
-                
-                <div class="flex justify-between items-center mt-[0.75rem]">
-                  <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] flex items-center gap-[0.25rem]">
-                    <Clock size={14} />
-                    <span>{formatRelativeTime(notification.date)}</span>
-                  </div>
-                  
-                  <a href="/" class="text-[hsl(var(--primary))] hover:underline text-[0.875rem] flex items-center gap-[0.25rem]">
-                    <span>View</span>
-                    <ArrowUpRight size={14} />
-                  </a>
-                </div>
+          <div class="flex items-start gap-4 p-4 bg-[hsl(var(--card))] rounded-lg">
+            <div class="flex-1">
+              <p class="font-medium">{notification.title}</p>
+              <p class="text-sm text-[hsl(var(--muted-foreground))]">{notification.message}</p>
+              <div class="flex items-center gap-1 mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+                <Icon icon={Clock} class="w-[0.875rem] h-[0.875rem]" />
+                <span>{formatRelativeTime(notification.date)}</span>
               </div>
             </div>
           </div>

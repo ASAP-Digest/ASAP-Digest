@@ -1,8 +1,10 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Home, User, LogIn, Menu, Search, Bell } from '$lib/utils/lucide-icons.js';
+  import { Home, User, LogIn, Menu, Search } from '$lib/utils/lucide-icons.js';
   import { Input } from '$lib/components/ui/input';
   import { onMount } from 'svelte';
+  import { Bell } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   // Avatar dropdown open state
   let isAvatarDropdownOpen = $state(false);
@@ -106,14 +108,15 @@
     <div class="flex items-center space-x-[1rem]">
       <!-- Notifications -->
       <div class="relative">
-        <button class="p-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] transition-colors">
-          <Bell size={20} />
+        <a
+          href="/notifications"
+          class="relative p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        >
+          <Icon icon={Bell} class="w-5 h-5" />
           {#if notificationCount > 0}
-            <div class="absolute top-0 right-0 bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] rounded-full w-[1.25rem] h-[1.25rem] flex items-center justify-center text-[0.75rem] font-bold">
-              {notificationCount}
-            </div>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-[hsl(var(--destructive))] rounded-full"></span>
           {/if}
-        </button>
+        </a>
       </div>
       
       <!-- Avatar with dropdown -->

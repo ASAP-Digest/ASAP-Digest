@@ -2,7 +2,8 @@
 <script>
     import { useSession } from '$lib/auth-client';
     import { goto } from '$app/navigation';
-    import { Loader2 } from 'lucide-svelte';
+    import { Loader2 } from '$lib/utils/lucide-compat.js';
+    import Icon from '$lib/components/ui/icon/icon.svelte';
     
     const session = useSession();
     let { children } = $props();

@@ -2,8 +2,9 @@
 	// Import directly from the .svelte file
 	import Button from "$lib/components/ui/button/button.svelte";
 	import { cn } from "$lib/utils.js";
-	import { PanelLeft } from "$lib/utils/lucide-icons.js";
+	import { PanelLeft } from "$lib/utils/lucide-compat.js";
 	import { useSidebar } from "./context.svelte.js";
+	import Icon from '$lib/components/ui/icon/icon.svelte';
 
 	let { ref = $bindable(null), class: className, onclick, ...restProps } = $props();
 
@@ -22,6 +23,6 @@
 	class={cn("h-7 w-7", className)}
 	{...restProps}
 >
-	<PanelLeft />
+	<Icon icon={PanelLeft} class="w-4 h-4" />
 	<span class="sr-only">Toggle Sidebar</span>
 </Button>

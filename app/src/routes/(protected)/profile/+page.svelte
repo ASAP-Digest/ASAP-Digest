@@ -1,8 +1,9 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
+  import { page } from '$app/stores';
+  import { User, Settings, Bell, LogOut } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
 
-  import { User, Bell, Settings, BookOpen, Share2, Moon, Sun, LogOut } from '$lib/utils/lucide-icons.js';
-  
   // Mock user data
   let user = $state({
     name: 'John Doe',
@@ -71,28 +72,28 @@
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'profile' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('profile')}
       >
-        <User size={18} />
+        <Icon icon={User} class="w-[1.125rem] h-[1.125rem]" />
         <span>Profile</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'preferences' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('preferences')}
       >
-        <Settings size={18} />
+        <Icon icon={Settings} class="w-[1.125rem] h-[1.125rem]" />
         <span>Preferences</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'notifications' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('notifications')}
       >
-        <Bell size={18} />
+        <Icon icon={Bell} class="w-[1.125rem] h-[1.125rem]" />
         <span>Notifications</span>
       </button>
       <button 
         class="px-4 py-3 font-medium flex items-center gap-2 {activeTab === 'digests' ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}"
         onclick={() => setActiveTab('digests')}
       >
-        <BookOpen size={18} />
+        <Icon icon={BookOpen} class="w-[1.125rem] h-[1.125rem]" />
         <span>My Digests</span>
       </button>
     </div>
@@ -236,10 +237,10 @@
                   </div>
                   <div class="flex space-x-2">
                     <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                      <Share2 size={16} />
+                      <Icon icon={Share2} class="w-[1.125rem] h-[1.125rem]" />
                     </button>
                     <button class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                      <BookOpen size={16} />
+                      <Icon icon={BookOpen} class="w-[1.125rem] h-[1.125rem]" />
                     </button>
                   </div>
                 </div>
@@ -253,7 +254,7 @@
   
   <div class="mt-6 flex justify-end">
     <button class="flex items-center gap-2 text-red-600 hover:text-red-700">
-      <LogOut size={18} />
+      <Icon icon={LogOut} class="w-[1.125rem] h-[1.125rem]" />
       <span>Sign Out</span>
     </button>
   </div>

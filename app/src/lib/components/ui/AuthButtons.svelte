@@ -5,8 +5,11 @@
 <script>
   import { signOut, useSession } from '$lib/auth-client';
   import { goto } from '$app/navigation';
-  import Icon from "$lib/components/ui/Icon.svelte";
-  import { LogIn, LogOut, UserPlus } from '$lib/utils/lucide-icons.js';
+  import { auth } from '$lib/auth-client';
+  import { Button } from '$lib/components/ui/button';
+  import { LogIn, LogOut, Loader2 } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { UserPlus } from '$lib/utils/lucide-icons.js';
   
   /**
    * Component props
@@ -57,27 +60,36 @@
 </script>
 
 {#if $session}
-  <div class="flex items-center gap-2">
-    <span class="text-sm mr-2 hidden md:inline">{$session.user.name || $session.user.email}</span>
-    <button 
-      on:click={logout}
-      class="bg-[hsl(var(--primary))] text-white rounded-md hover:bg-opacity-90 transition-colors flex items-center gap-1 {sizeClasses[size]}"
-      aria-label="Log out"
-    >
-      <Icon icon={LogOut} size={size === 'sm' ? 14 : size === 'md' ? 16 : 18} />
-      <span>Logout</span>
-    </button>
-  </div>
+  <Button
+    variant="ghost"
+    size="sm"
+    on:click={logout}
+    disabled={isLoading}
+    class="flex items-center gap-2"
+  >
+    {#if isLoading}
+      <Icon icon={Loader2} class="w-4 h-4 animate-spin" />
+    {:else}
+      <Icon icon={LogOut} class="w-4 h-4" />
+    {/if}
+    Sign Out
+  </Button>
 {:else}
   <div class="flex items-center gap-2">
-    <button 
-      on:click={login}
-      class="bg-[hsl(var(--primary))] text-white rounded-md hover:bg-opacity-90 transition-colors flex items-center gap-1 {sizeClasses[size]}"
-      aria-label="Log in"
+    <Button
+      variant="ghost"
+      size="sm"
+      on:click={() => goto('/login')}
+      disabled={isLoading}
+      class="flex items-center gap-2"
     >
-      <Icon icon={LogIn} size={size === 'sm' ? 14 : size === 'md' ? 16 : 18} />
-      <span>Login</span>
-    </button>
+      {#if isLoading}
+        <Icon icon={Loader2} class="w-4 h-4 animate-spin" />
+      {:else}
+        <Icon icon={LogIn} class="w-4 h-4" />
+      {/if}
+      Sign In
+    </Button>
     
     <button 
       on:click={register}

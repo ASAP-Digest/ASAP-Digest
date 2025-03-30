@@ -6,6 +6,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Mail, Loader2 } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
 
   let email = $state('');
   let isLoading = $state(false);
@@ -71,16 +72,15 @@
 
       <Button
         type="submit"
-        class="w-full"
+        class="w-full flex items-center justify-center gap-2"
         disabled={isLoading}
       >
         {#if isLoading}
-          <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-          Sending...
+          <Icon icon={Loader2} class="w-4 h-4 animate-spin" />
         {:else}
-          <Mail class="w-4 h-4 mr-2" />
-          Send Reset Link
+          <Icon icon={Mail} class="w-4 h-4 mr-2" />
         {/if}
+        {isLoading ? 'Sending...' : 'Send Reset Link'}
       </Button>
 
       <div class="text-center">

@@ -1,6 +1,8 @@
 <script>
   import { Menu, X, Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-icons.js';
   import { page } from '$app/stores';
+  import { Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   /** @type {boolean} */
   let isOpen = $state(false);
@@ -98,4 +100,59 @@
       </nav>
     </div>
   {/if}
-</div> 
+</div>
+
+<nav class="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--background))] border-t border-[hsl(var(--border))]">
+  <ul class="flex justify-around items-center p-2">
+    <li>
+      <a
+        href="/"
+        class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        class:text-[hsl(var(--foreground))]={$page.url.pathname === '/'}
+      >
+        <Icon icon={Home} class="w-[1.25rem] h-[1.25rem]" />
+        <span class="text-xs">Home</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/profile"
+        class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        class:text-[hsl(var(--foreground))]={$page.url.pathname === '/profile'}
+      >
+        <Icon icon={User} class="w-[1.25rem] h-[1.25rem]" />
+        <span class="text-xs">Profile</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/today"
+        class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        class:text-[hsl(var(--foreground))]={$page.url.pathname === '/today'}
+      >
+        <Icon icon={Calendar} class="w-[1.25rem] h-[1.25rem]" />
+        <span class="text-xs">Today</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/notifications"
+        class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        class:text-[hsl(var(--foreground))]={$page.url.pathname === '/notifications'}
+      >
+        <Icon icon={Bell} class="w-[1.25rem] h-[1.25rem]" />
+        <span class="text-xs">Alerts</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/settings"
+        class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+        class:text-[hsl(var(--foreground))]={$page.url.pathname === '/settings'}
+      >
+        <Icon icon={Settings} class="w-[1.25rem] h-[1.25rem]" />
+        <span class="text-xs">Settings</span>
+      </a>
+    </li>
+  </ul>
+</nav> 

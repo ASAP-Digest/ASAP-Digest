@@ -8,6 +8,7 @@
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { LogIn, Mail, Loader2 } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
 
   const session = useSession();
   let email = $state('');
@@ -121,9 +122,9 @@
         disabled={isLoading}
       >
         {#if isLoading}
-          <Loader2 class="w-4 h-4 animate-spin" />
+          <Icon icon={Loader2} class="w-4 h-4 animate-spin" />
         {:else}
-          <Mail class="w-4 h-4" />
+          <Icon icon={Mail} class="w-4 h-4" />
         {/if}
         {isLoading ? 'Signing in...' : 'Sign in with Email'}
       </Button>
@@ -147,9 +148,9 @@
         disabled={isLoading}
       >
         {#if isLoading}
-          <Loader2 class="w-4 h-4 animate-spin" />
+          <Icon icon={Loader2} class="w-4 h-4 animate-spin" />
         {:else}
-          <LogIn class="w-4 h-4" />
+          <Icon icon={LogIn} class="w-4 h-4" />
         {/if}
         Google
       </Button>
