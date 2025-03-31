@@ -1,5 +1,30 @@
 <?php
 /**
+ * ASAP Digest User Actions Management
+ * 
+ * @package ASAPDigest_Core
+ * @created 03.31.25 | 03:34 PM PDT
+ * @file-marker ASAP_Digest_User_Actions
+ */
+
+namespace ASAPDigest\Core;
+
+use WP_Error;
+use WP_Session_Tokens;
+use function add_action;
+use function current_user_can;
+use function get_password_reset_key;
+use function get_user_by;
+use function network_site_url;
+use function update_user_meta;
+use function wp_mail;
+use function wp_verify_nonce;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
  * Class ASAP_Digest_User_Actions
  * 
  * Handles user management actions for the Better Auth integration

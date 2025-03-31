@@ -8,9 +8,15 @@
  * Text Domain:     adc
  * Domain Path:     /languages
  * Version:         0.1.0
- *
+ * 
  * @package         ASAPDigest_Core
+ * @created         03.31.25 | 03:34 PM PDT
+ * @file-marker     ASAP_Digest_Core_Plugin
  */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 

@@ -1,0 +1,240 @@
+/**
+ * ASAP Digest Admin Styles
+ * 
+ * @package ASAPDigest_Core
+ * @created 03.31.25 | 03:34 PM PDT
+ */
+
+/* Card Component */
+.asap-digest-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin-bottom: 20px;
+    padding: 20px;
+    position: relative;
+}
+
+.asap-digest-card h2 {
+    border-bottom: 1px solid #c3c4c7;
+    margin: 0 0 15px;
+    padding: 0 0 8px;
+    font-size: 14px;
+}
+
+/* Stats Grid */
+.asap-digest-stats,
+.asap-digest-settings-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.stat-item,
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stat-label,
+.setting-label {
+    color: #646970;
+    font-size: 13px;
+}
+
+.stat-value,
+.setting-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+/* Quick Actions */
+.asap-digest-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.asap-digest-actions .button {
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Settings Form */
+.asap-digest-settings .form-table th {
+    width: 200px;
+    padding: 20px 10px 20px 0;
+}
+
+.asap-digest-settings .form-table td {
+    padding: 15px 10px;
+}
+
+.asap-digest-settings .form-table .description {
+    margin-top: 5px;
+    color: #646970;
+}
+
+/* Category Checkboxes */
+.asap-digest-settings fieldset label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Stats Tables */
+.asap-digest-stats-overview .wp-list-table {
+    margin-bottom: 15px;
+}
+
+.asap-digest-stats-overview .wp-list-table th {
+    font-weight: 600;
+}
+
+/* Status Indicators */
+.asap-status-indicator {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #1d2327;
+}
+
+/* Status Colors */
+.status-good {
+    background-color: #00a32a;
+}
+
+.status-warning {
+    background-color: #dba617;
+}
+
+.status-error {
+    background-color: #d63638;
+}
+
+.status-inactive {
+    background-color: #646970;
+}
+
+/* Status Card */
+.status-card {
+    margin-bottom: 20px;
+}
+
+.status-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.status-item:last-child {
+    border-bottom: none;
+}
+
+/* Export Buttons */
+.export-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 782px) {
+    .asap-digest-stats,
+    .asap-digest-settings-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .asap-digest-settings .form-table th {
+        width: 100%;
+        padding-bottom: 0;
+    }
+
+    .asap-digest-actions {
+        flex-direction: column;
+    }
+
+    .asap-digest-actions .button {
+        width: 100%;
+    }
+
+    .stat-value,
+    .setting-value {
+        font-size: 18px;
+    }
+}
+
+/* Loading States */
+.asap-digest-loading {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+}
+
+.asap-digest-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #2271b1;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: asap-digest-spin 1s linear infinite;
+}
+
+@keyframes asap-digest-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Success/Error Messages */
+.asap-digest-notice {
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-left: 4px solid;
+    background: #fff;
+}
+
+.asap-digest-notice-success {
+    border-color: #00a32a;
+}
+
+.asap-digest-notice-error {
+    border-color: #d63638;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .admin-color-midnight .asap-digest-card {
+        background: #1d2327;
+        border-color: #2c3338;
+    }
+
+    .admin-color-midnight .stat-value,
+    .admin-color-midnight .setting-value {
+        color: #fff;
+    }
+
+    .admin-color-midnight .stat-label,
+    .admin-color-midnight .setting-label {
+        color: #c3c4c7;
+    }
+} 

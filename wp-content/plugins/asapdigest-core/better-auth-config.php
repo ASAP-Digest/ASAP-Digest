@@ -6,6 +6,8 @@
  * It should be included in the main plugin file.
  * 
  * @package ASAPDigest_Core
+ * @created 03.31.25 | 03:34 PM PDT
+ * @file-marker ASAP_Digest_Better_Auth_Config
  */
 
 // Prevent direct file access
@@ -15,7 +17,7 @@ if (!defined('ABSPATH')) {
 
 // Include Admin UI class
 use ASAPDigest\Core\ASAP_Digest_Admin_UI;
-require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
 
 /**
  * @description Set up Better Auth shared secret for WordPress integration
@@ -727,14 +729,16 @@ function asap_render_better_auth_settings() {
         // Configuration Card
         $config_content = '<div class="asap-form">';
         
-        $config_content .= ASAP_Digest_Admin_UI::create_form_field([
-            'type' => 'text',
-            'name' => 'asap_better_auth_base_url',
-            'value' => get_option('asap_better_auth_base_url', ''),
-            'label' => __('Better Auth Base URL'),
-            'description' => __('The base URL for the Better Auth service'),
-            'placeholder' => 'https://auth.example.com'
-        ]);
+        $config_content .= ASAP_Digest_Admin_UI::create_form_field(
+            'asap_better_auth_base_url',
+            __('Better Auth Base URL'),
+            'text',
+            [
+                'value' => get_option('asap_better_auth_base_url', ''),
+                'description' => __('The base URL for the Better Auth service'),
+                'placeholder' => 'https://auth.example.com'
+            ]
+        );
         
         // Add role selection with locked roles
         $roles = wp_roles();
