@@ -13,6 +13,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Include Admin UI class
+use ASAPDigest\Core\ASAP_Digest_Admin_UI;
+require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+
 /**
  * @description Set up Better Auth shared secret for WordPress integration
  * @return void
@@ -198,8 +202,11 @@ function asap_create_wp_user_from_better_auth($user_data) {
 /**
  * @description Create WordPress session for Better Auth user (core implementation)
  * @param {int} wp_user_id WordPress user ID
- * @return {bool|WP_Error} True on success, WP_Error on failure
- * @created 03.30.25 | 03:37 PM PDT
+ * @return {WP_Error|array} Session data or error
+ * @example
+ * // Create a WordPress session for user ID 123
+ * $session = asap_create_wp_session_core(123);
+ * @created 03.30.25 | 04:37 PM PDT
  */
 function asap_create_wp_session_core($wp_user_id) {
     // Verify user exists
@@ -208,66 +215,98 @@ function asap_create_wp_session_core($wp_user_id) {
         return new WP_Error('invalid_user', 'User does not exist');
     }
 
-    // Set auth cookie
+    // Get Better Auth user ID
+    $better_auth_user_id = get_user_meta($wp_user_id, 'better_auth_user_id', true);
+    if (empty($better_auth_user_id)) {
+        return new WP_Error('no_better_auth_id', 'User not linked to Better Auth');
+    }
+
+    // Set authentication cookies
     wp_set_auth_cookie($wp_user_id, true);
-    
-    // Set current user
     wp_set_current_user($wp_user_id);
-    
+
     // Update user meta with session info
     $session_token = wp_get_session_token();
     update_user_meta($wp_user_id, 'better_auth_session_token', $session_token);
     update_user_meta($wp_user_id, 'better_auth_last_login', current_time('mysql'));
-    
-    // Fire action for other integrations
-    do_action('better_auth_session_created', $wp_user_id, $session_token);
-    
-    return true;
+
+    // Fire action for integrations
+    do_action('asap_better_auth_session_created', $wp_user_id, $better_auth_user_id);
+
+    return [
+        'user_id' => $wp_user_id,
+        'better_auth_user_id' => $better_auth_user_id,
+        'session_token' => $session_token
+    ];
 }
 
 /**
- * @description Validate WordPress session and Better Auth token
- * @param {WP_REST_Request} request The request object
- * @return {bool|WP_Error} True if valid, WP_Error if invalid
- * @created 03.30.25 | 03:37 PM PDT
+ * @description Check WordPress session and Better Auth token
+ * @param {WP_REST_Request} $request REST request object
+ * @return {WP_Error|bool} True if session is valid, WP_Error otherwise
+ * @example
+ * // Check session from REST request
+ * $is_valid = asap_check_wp_session($request);
+ * @created 03.30.25 | 04:37 PM PDT
  */
 function asap_check_wp_session($request) {
     // Get Better Auth token from header
     $better_auth_token = $request->get_header('X-Better-Auth-Token');
     if (empty($better_auth_token)) {
-        return new WP_Error('missing_token', 'Better Auth token is required');
+        return new WP_Error('missing_token', 'Better Auth token not provided');
     }
-    
-    // Validate token timestamp and signature
-    $parts = explode('.', $better_auth_token);
-    if (count($parts) !== 2) {
-        return new WP_Error('invalid_token', 'Invalid token format');
+
+    // Validate token format and signature
+    $token_parts = explode('.', $better_auth_token);
+    if (count($token_parts) !== 3) {
+        return new WP_Error('invalid_token_format', 'Invalid token format');
     }
-    
-    list($timestamp, $signature) = $parts;
-    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
-        return new WP_Error('invalid_signature', 'Invalid token signature');
+
+    // Get user from session token
+    $user = wp_get_current_user();
+    if (!$user || !$user->ID) {
+        return new WP_Error('no_session', 'No active WordPress session');
     }
-    
-    // Check WordPress session
-    $wp_session = wp_get_session_token();
-    if (empty($wp_session)) {
-        return new WP_Error('no_session', 'No WordPress session found');
-    }
-    
-    // Verify session matches Better Auth
-    $user_id = get_current_user_id();
-    $stored_token = get_user_meta($user_id, 'better_auth_session_token', true);
-    
-    if ($stored_token !== $wp_session) {
-        return new WP_Error('session_mismatch', 'Session token mismatch');
+
+    // Verify Better Auth token matches stored token
+    $stored_token = get_user_meta($user->ID, 'better_auth_session_token', true);
+    if (empty($stored_token) || $stored_token !== wp_get_session_token()) {
+        return new WP_Error('invalid_session', 'Invalid or expired session');
     }
     
     return true;
 }
 
 /**
- * Register Better Auth REST endpoints
+ * Initialize Better Auth hooks and features
+ * 
+ * @description Register all Better Auth related hooks with proper priorities
+ * @hook add_action('plugins_loaded', 'asap_init_better_auth', 10)
+ * @since 1.0.0
+ * @return void
+ * @created 03.30.25 | 04:25 PM PDT
+ */
+function asap_init_better_auth() {
+    // Core functionality (priority 10)
+    add_action('init', 'asap_setup_better_auth_shared_secret', 10);
+    
+    // Feature-specific hooks (priority 20-29)
+    add_action('user_register', 'asap_sync_wp_user_to_better_auth', 20);
+    add_action('rest_api_init', 'asap_register_better_auth_endpoints', 20);
+    add_action('rest_api_init', 'asap_register_wp_session_check', 20);
+    add_action('rest_api_init', 'asap_register_token_exchange', 20);
+}
+
+// Initialize Better Auth system
+add_action('plugins_loaded', 'asap_init_better_auth', 10);
+
+/**
+ * @description Register Better Auth REST endpoints
+ * @hook add_action('rest_api_init', 'asap_register_better_auth_endpoints', 20)
+ * @dependencies asap_init_better_auth must run first (priority 10)
+ * @since 1.0.0
+ * @return void
+ * @created 03.30.25 | 03:45 PM PDT
  */
 function asap_register_better_auth_endpoints() {
     register_rest_route('asap/v1', '/auth/create-wp-user', [
@@ -357,7 +396,12 @@ function asap_handle_create_wp_session($request) {
 }
 
 /**
- * Register endpoint to check WordPress session
+ * @description Register WordPress session check endpoint
+ * @hook add_action('rest_api_init', 'asap_register_wp_session_check', 20)
+ * @dependencies asap_init_better_auth must run first (priority 10)
+ * @since 1.0.0
+ * @return void
+ * @created 03.30.25 | 03:45 PM PDT
  */
 function asap_register_wp_session_check() {
     register_rest_route('asap/v1/auth', '/check-wp-session', [
@@ -365,6 +409,16 @@ function asap_register_wp_session_check() {
         'callback' => 'asap_check_wp_session',
         'permission_callback' => '__return_true'
     ]);
+}
+
+/**
+ * @description Track the source of auto-sync for a user
+ * @param int $wp_user_id WordPress user ID
+ * @param string $source Source of the sync (e.g., 'role_auto_sync', 'manual', 'subscription')
+ * @return void
+ */
+function asap_track_sync_source($wp_user_id, $source) {
+    update_user_meta($wp_user_id, 'better_auth_sync_source', $source);
 }
 
 /**
@@ -376,7 +430,7 @@ function asap_register_wp_session_check() {
  * $result = asap_sync_wp_user_to_better_auth(123);
  * @created 03.29.25 | 03:45 PM PDT
  */
-function asap_sync_wp_user_to_better_auth($wp_user_id) {
+function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
     global $wpdb;
 
     // Get WordPress user data
@@ -384,6 +438,9 @@ function asap_sync_wp_user_to_better_auth($wp_user_id) {
     if (!$wp_user) {
         return new WP_Error('invalid_user', 'WordPress user not found');
     }
+
+    // Track sync source before proceeding
+    asap_track_sync_source($wp_user_id, $source);
 
     // Check if user is already synced
     $existing_ba_user = $wpdb->get_row($wpdb->prepare(
@@ -534,50 +591,794 @@ function asap_sync_all_wp_users_to_better_auth() {
 }
 
 /**
- * Hook to sync new WordPress users to Better Auth automatically
- * @created 03.29.25 | 03:34 PM PDT
+ * @description Render Better Auth settings page with modern UI components
+ * @return void
+ * @example
+ * // Called by add_menu_page callback
+ * asap_render_better_auth_settings();
+ * @created 03.30.25 | 04:45 PM PDT
  */
-add_action('user_register', 'asap_sync_wp_user_to_better_auth');
+function asap_render_better_auth_settings() {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('You do not have sufficient permissions to access this page.'));
+    }
 
-/**
- * Add REST API endpoint to trigger manual sync
- * @created 03.29.25 | 03:34 PM PDT
- */
-add_action('rest_api_init', function() {
-    register_rest_route('asap/v1', '/auth/sync-wp-users', array(
-        'methods' => 'POST',
-        'callback' => function(WP_REST_Request $request) {
-            // Verify admin privileges
-            if (!current_user_can('administrator')) {
-                return new WP_Error(
-                    'rest_forbidden',
-                    'Only administrators can sync users',
-                    array('status' => 403)
+    $ui = new ASAP_Digest_Admin_UI();
+    ?>
+    <div class="wrap asap-central-command">
+        <h1><?php _e('Better Auth Settings'); ?></h1>
+        
+        <?php
+        // Add Test Admin Creation Button for Development
+        if (strpos($_SERVER['HTTP_HOST'] ?? '', 'local') !== false) {
+            echo '<div class="asap-card">';
+            echo '<h2>' . __('Development Tools') . '</h2>';
+            echo '<div class="asap-form-actions">';
+            echo sprintf(
+                '<button class="button button-secondary create-test-admin" data-nonce="%s">%s</button>',
+                wp_create_nonce('create_test_admin'),
+                __('Create Test Admin User')
+            );
+            echo '</div>';
+            
+            // Add JavaScript for the create test admin button
+            ?>
+            <script>
+            jQuery(document).ready(function($) {
+                $('.create-test-admin').on('click', function(e) {
+                    e.preventDefault();
+                    var button = $(this);
+                    var nonce = button.data('nonce');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'asap_create_test_admin',
+                            nonce: nonce
+                        },
+                        beforeSend: function() {
+                            button.addClass('asap-loading').prop('disabled', true);
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                alert(response.data.message);
+                                location.reload();
+                            } else {
+                                alert(response.data.message || 'Error creating test admin');
+                            }
+                        },
+                        error: function() {
+                            alert('Error communicating with server');
+                        },
+                        complete: function() {
+                            button.removeClass('asap-loading').prop('disabled', false);
+                        }
+                    });
+                });
+            });
+            </script>
+            <?php
+            echo '</div>';
+        }
+        
+        // Status Overview Card
+        $status_content = '<div class="asap-status-grid">';
+        
+        // Check if shared secret is set
+        $shared_secret = asap_get_constant('ASAP_BETTER_AUTH_SHARED_SECRET');
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            $shared_secret ? 'good' : 'error',
+            'Shared Secret: ' . ($shared_secret ? 'Configured' : 'Not Set')
+        );
+        $status_content .= '</div>';
+        
+        // Check base URL
+        $base_url = asap_get_better_auth_base_url();
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            $base_url ? 'good' : 'warning',
+            'Base URL: ' . ($base_url ?: 'Not Configured')
+        );
+        $status_content .= '</div>';
+        
+        // Get synced users count
+        $synced_users = count(get_users(['meta_key' => 'better_auth_user_id']));
+        $total_users = count(get_users());
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            $synced_users > 0 ? 'good' : 'inactive',
+            sprintf('Synced Users: %d/%d', $synced_users, $total_users)
+        );
+        $status_content .= '</div>';
+
+        // Get active sessions count
+        $active_sessions = count(get_users(['meta_key' => 'better_auth_session_token']));
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            'good',
+            sprintf('Active Sessions: %d', $active_sessions)
+        );
+        $status_content .= '</div>';
+
+        // Check environment
+        $is_local = (strpos($_SERVER['HTTP_HOST'] ?? '', 'local') !== false);
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            'inactive',
+            'Environment: ' . ($is_local ? 'Local Development' : 'Production')
+        );
+        $status_content .= '</div>';
+
+        // Check last sync time
+        $last_sync = get_option('asap_better_auth_last_sync');
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            $last_sync ? 'good' : 'warning',
+            'Last Sync: ' . ($last_sync ? human_time_diff(strtotime($last_sync)) . ' ago' : 'Never')
+        );
+        $status_content .= '</div>';
+        
+        $status_content .= '</div>';
+        
+        echo ASAP_Digest_Admin_UI::create_card('System Status', $status_content, 'status-card');
+        
+        // Configuration Card
+        $config_content = '<div class="asap-form">';
+        
+        $config_content .= ASAP_Digest_Admin_UI::create_form_field([
+            'type' => 'text',
+            'name' => 'asap_better_auth_base_url',
+            'value' => get_option('asap_better_auth_base_url', ''),
+            'label' => __('Better Auth Base URL'),
+            'description' => __('The base URL for the Better Auth service'),
+            'placeholder' => 'https://auth.example.com'
+        ]);
+        
+        // Add role selection with locked roles
+        $roles = wp_roles();
+        $auto_sync_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
+        $locked_roles = get_option('asap_better_auth_locked_roles', ['subscriber']);
+        
+        // Create two-column layout container
+        $config_content .= '<div class="roles-layout-wrapper">';
+        $config_content .= '<div class="roles-layout">';
+        
+        // Auto-sync roles column
+        $config_content .= '<div class="roles-section auto-sync-section">';
+        $config_content .= '<h3 class="section-heading">' . __('Auto-Sync Roles') . '</h3>';
+        $config_content .= '<div class="roles-container">';
+        
+        foreach ($roles->roles as $role_slug => $role_info) {
+            $is_locked = in_array($role_slug, $locked_roles);
+            $checked = in_array($role_slug, $auto_sync_roles) ? ' checked="checked"' : '';
+            $disabled = $is_locked ? ' disabled="disabled"' : '';
+            $class = $is_locked ? ' class="locked-role"' : '';
+            
+            $config_content .= sprintf(
+                '<label%s><input type="checkbox" class="auto-sync-role-checkbox" data-role="%s"%s%s> %s%s</label>',
+                $class,
+                esc_attr($role_slug),
+                $checked,
+                $disabled,
+                esc_html(translate_user_role($role_info['name'])),
+                $is_locked ? ' 🔒' : ''
+            );
+        }
+        
+        $config_content .= '</div>';
+        $config_content .= '<p class="description">' . __('Select which user roles should automatically sync with Better Auth.') . '</p>';
+        $config_content .= '<div class="save-status"></div>';
+        $config_content .= '</div>';
+
+        // Locked roles column for super admins
+        if (is_super_admin()) {
+            $config_content .= '<div class="roles-section locked-section">';
+            $config_content .= '<h3 class="section-heading">' . __('Locked Roles') . ' 🔒</h3>';
+            $config_content .= '<div class="roles-container">';
+            
+            foreach ($roles->roles as $role_slug => $role_info) {
+                $checked = in_array($role_slug, $locked_roles) ? ' checked="checked"' : '';
+                $config_content .= sprintf(
+                    '<label><input type="checkbox" class="locked-role-checkbox" data-role="%s"%s> %s</label>',
+                    esc_attr($role_slug),
+                    $checked,
+                    esc_html(translate_user_role($role_info['name']))
+                );
+            }
+            
+            $config_content .= '</div>';
+            $config_content .= '<p class="description">' . __('Select which roles should be locked from auto-sync selection.') . '</p>';
+            $config_content .= '<div class="save-status"></div>';
+            $config_content .= '</div>';
+        }
+
+        $config_content .= '</div>'; // Close roles-layout
+        $config_content .= '</div>'; // Close roles-layout-wrapper
+
+        // Add AJAX saving JavaScript
+        $config_content .= '<script>
+        jQuery(document).ready(function($) {
+            let saveTimeout;
+            const SAVE_DELAY = 500; // Debounce delay in ms
+
+            function showSaveStatus(container, status, message) {
+                const statusDiv = container.find(".save-status");
+                statusDiv.html(`<div class="save-message ${status}">${message}</div>`);
+                setTimeout(() => statusDiv.empty(), 3000);
+            }
+
+            function saveRoles(type) {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    const container = type === "auto" ? $(".auto-sync-section") : $(".locked-section");
+                    const checkboxes = type === "auto" ? $(".auto-sync-role-checkbox") : $(".locked-role-checkbox");
+                    const roles = [];
+                    
+                    checkboxes.each(function() {
+                        if ($(this).is(":checked")) {
+                            roles.push($(this).data("role"));
+                        }
+                    });
+
+                    console.log(`[Better Auth] Saving ${type} roles:`, roles);
+
+                    $.ajax({
+                        url: ajaxurl,
+                        type: "POST",
+                        data: {
+                            action: type === "auto" ? "asap_save_auto_sync_roles" : "asap_save_locked_roles",
+                            roles: roles,
+                            nonce: "' . wp_create_nonce('asap_save_roles') . '"
+                        },
+                        beforeSend: function() {
+                            console.log(`[Better Auth] Initiating ${type} roles save...`);
+                            showSaveStatus(container, "saving", "Saving...");
+                        },
+                        success: function(response) {
+                            console.log(`[Better Auth] Save response:`, response);
+                            if (response.success) {
+                                showSaveStatus(container, "success", "Saved!");
+                                if (type === "auto") {
+                                    console.log("[Better Auth] Processing role updates...");
+                                    // Update locked states
+                                    $(".auto-sync-role-checkbox").each(function() {
+                                        const role = $(this).data("role");
+                                        const isLocked = response.data.locked_roles.includes(role);
+                                        $(this).prop("disabled", isLocked);
+                                        $(this).closest("label").toggleClass("locked-role", isLocked);
+                                    });
+                                    
+                                    if (response.data.sync_results) {
+                                        console.log("[Better Auth] Sync Results:", response.data.sync_results);
+                                        const {synced, unsynced, errors} = response.data.sync_results;
+                                        if (synced.length > 0) {
+                                            console.log("[Better Auth] Synced users:", synced);
+                                        }
+                                        if (unsynced.length > 0) {
+                                            console.log("[Better Auth] Unsynced users:", unsynced);
+                                        }
+                                        if (errors.length > 0) {
+                                            console.warn("[Better Auth] Sync errors:", errors);
+                                        }
+                                    }
+                                }
+                            } else {
+                                console.error("[Better Auth] Save error:", response.data.message);
+                                showSaveStatus(container, "error", response.data.message || "Error saving");
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("[Better Auth] AJAX error:", {status, error, xhr});
+                            showSaveStatus(container, "error", "Error saving changes");
+                        }
+                    });
+                }, SAVE_DELAY);
+            }
+
+            // Auto-sync role changes
+            $(".auto-sync-role-checkbox").on("change", function() {
+                saveRoles("auto");
+            });
+
+            // Locked role changes
+            $(".locked-role-checkbox").on("change", function() {
+                saveRoles("locked");
+            });
+        });
+        </script>';
+
+        // Add status message styling
+        $config_content .= '<style>
+            .save-status {
+                margin-top: 10px;
+                min-height: 24px;
+            }
+            .save-message {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 3px;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+            .save-message.saving {
+                background: #f0f6fc;
+                color: #1d2327;
+            }
+            .save-message.success {
+                background: #edfaef;
+                color: #0a5c16;
+            }
+            .save-message.error {
+                background: #fcf0f1;
+                color: #cc1818;
+            }
+        </style>';
+
+        $config_content .= '</div>'; // Close asap-form
+
+        // Add sync button
+        $config_content .= '<div class="asap-form-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid hsl(var(--asap-card-border));">';
+        $config_content .= sprintf(
+            '<button class="button button-secondary sync-users" data-nonce="%s">%s</button>',
+            wp_create_nonce('sync_users'),
+            __('Sync Users with Better Auth')
+        );
+        $config_content .= '</div>';
+
+        // Add sync JavaScript
+        $config_content .= '<script>
+            jQuery(document).ready(function($) {
+                $(".sync-users").on("click", function(e) {
+                    e.preventDefault();
+                    var button = $(this);
+                    var nonce = button.data("nonce");
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: "POST",
+                        data: {
+                            action: "asap_sync_users",
+                            nonce: nonce
+                        },
+                        beforeSend: function() {
+                            button.addClass("asap-loading").prop("disabled", true);
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                alert(response.data.message);
+                                location.reload();
+            } else {
+                                alert(response.data.message || "Error syncing users");
+                            }
+                        },
+                        error: function() {
+                            alert("Error communicating with server");
+                        },
+                        complete: function() {
+                            button.removeClass("asap-loading").prop("disabled", false);
+                        }
+                    });
+                });
+            });
+        </script>';
+        
+        echo ASAP_Digest_Admin_UI::create_card('Configuration', $config_content, 'config-card');
+        
+        // Session Management Card
+        $sessions_content = '<div class="asap-sessions-table">';
+        $sessions_content .= '<table class="wp-list-table widefat fixed striped">';
+        $sessions_content .= '<thead><tr>';
+        $sessions_content .= '<th>' . __('User') . '</th>';
+        $sessions_content .= '<th>' . __('Role') . '</th>';
+        $sessions_content .= '<th>' . __('Last Login') . '</th>';
+        $sessions_content .= '<th>' . __('Status') . '</th>';
+        $sessions_content .= '<th>' . __('Actions') . '</th>';
+        $sessions_content .= '</tr></thead>';
+        $sessions_content .= '<tbody>';
+        
+        // Get all users ordered by role
+        $users = get_users([
+            'orderby' => 'role',
+            'order' => 'ASC'
+        ]);
+        
+        foreach ($users as $user) {
+            $last_login = get_user_meta($user->ID, 'better_auth_last_login', true);
+            $session_token = get_user_meta($user->ID, 'better_auth_session_token', true);
+            $better_auth_id = get_user_meta($user->ID, 'better_auth_user_id', true);
+            
+            $sessions_content .= '<tr>';
+            $sessions_content .= '<td>' . esc_html($user->user_login) . '<br><small>' . esc_html($user->user_email) . '</small></td>';
+            $sessions_content .= '<td>' . ucfirst(implode(', ', $user->roles)) . '</td>';
+            $sessions_content .= '<td>' . ($last_login ? human_time_diff(strtotime($last_login)) . ' ago' : 'Never') . '</td>';
+            $sessions_content .= '<td>' . ASAP_Digest_Admin_UI::create_status_indicator(
+                $better_auth_id ? ($session_token ? 'good' : 'warning') : 'inactive',
+                $better_auth_id ? ($session_token ? 'Active' : 'Synced') : 'Not Synced'
+            ) . '</td>';
+            $sessions_content .= '<td>';
+            if ($session_token) {
+                $sessions_content .= sprintf(
+                    '<button class="button button-secondary end-session" data-user-id="%d" data-nonce="%s">%s</button>',
+                    $user->ID,
+                    wp_create_nonce('end_session_' . $user->ID),
+                    __('End Session')
+                );
+            } else if ($better_auth_id) {
+                $sessions_content .= sprintf(
+                    '<button class="button button-secondary unsync-user" data-user-id="%d" data-nonce="%s">%s</button>',
+                    $user->ID,
+                    wp_create_nonce('unsync_user_' . $user->ID),
+                    __('Unsync')
                 );
             }
 
-            // Get specific user ID from request or sync all if not provided
-            $wp_user_id = $request->get_param('wp_user_id');
-            
-            if ($wp_user_id) {
-                return asap_sync_wp_user_to_better_auth($wp_user_id);
-            } else {
-                return asap_sync_all_wp_users_to_better_auth();
-            }
-        },
-        'permission_callback' => function() {
-            return current_user_can('administrator');
+            // Add new user management actions
+                $sessions_content .= sprintf(
+                '<button class="button button-secondary ban-user" data-user-id="%d" data-nonce="%s">%s</button>',
+                    $user->ID,
+                wp_create_nonce('ban_user_' . $user->ID),
+                __('Ban User')
+            );
+
+            $sessions_content .= sprintf(
+                '<button class="button button-secondary lock-account" data-user-id="%d" data-nonce="%s">%s</button>',
+                $user->ID,
+                wp_create_nonce('lock_account_' . $user->ID),
+                __('Lock Account')
+            );
+
+            $sessions_content .= sprintf(
+                '<button class="button button-secondary reset-password" data-user-id="%d" data-nonce="%s">%s</button>',
+                $user->ID,
+                wp_create_nonce('reset_password_' . $user->ID),
+                __('Reset Password')
+            );
+
+            $sessions_content .= sprintf(
+                '<button class="button button-secondary view-activity" data-user-id="%d" data-nonce="%s">%s</button>',
+                $user->ID,
+                wp_create_nonce('view_activity_' . $user->ID),
+                __('View Activity')
+            );
+
+            $sessions_content .= '</td>';
+            $sessions_content .= '</tr>';
         }
-    ));
-});
+        
+        $sessions_content .= '</tbody></table></div>';
+        
+        // Add JavaScript for session management
+        $sessions_content .= '<script>
+            jQuery(document).ready(function($) {
+                $(".end-session").on("click", function(e) {
+                    e.preventDefault();
+                    var button = $(this);
+                    var userId = button.data("user-id");
+                    var nonce = button.data("nonce");
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: "POST",
+                        data: {
+                            action: "asap_end_session",
+                            user_id: userId,
+                            nonce: nonce
+                        },
+                        beforeSend: function() {
+                            button.addClass("asap-loading").prop("disabled", true);
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                button.closest("tr").find(".asap-status-good")
+                                    .removeClass("asap-status-good")
+                                    .addClass("asap-status-inactive")
+                                    .text("Inactive");
+                                button.remove();
+                            } else {
+                                alert(response.data.message || "Error ending session");
+                            }
+                        },
+                        error: function() {
+                            alert("Error communicating with server");
+                        },
+                        complete: function() {
+                            button.removeClass("asap-loading").prop("disabled", false);
+                        }
+                    });
+                });
+            });
+        </script>';
+        
+        // Add JavaScript for new user management actions using HEREDOC
+        $user_actions_js = <<<JS
+<script>
+    jQuery(document).ready(function($) {
+        // Ban User Action
+        $(".ban-user").on("click", function(e) {
+            e.preventDefault();
+            if (!confirm("Are you sure you want to ban this user? This action cannot be undone.")) {
+                return;
+            }
+            var button = $(this);
+            var userId = button.data("user-id");
+            var nonce = button.data("nonce");
+            
+            $.ajax({
+                url: ajaxurl,
+                type: "POST",
+                data: {
+                    action: "asap_ban_user",
+                    user_id: userId,
+                    nonce: nonce
+                },
+                beforeSend: function() {
+                    button.addClass("asap-loading").prop("disabled", true);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data.message || "Error banning user");
+                    }
+                },
+                error: function() {
+                    alert("Error communicating with server");
+                },
+                complete: function() {
+                    button.removeClass("asap-loading").prop("disabled", false);
+                }
+            });
+        });
+
+        // Lock Account Action
+        $(".lock-account").on("click", function(e) {
+            e.preventDefault();
+            if (!confirm("Are you sure you want to lock this account?")) {
+                return;
+            }
+            var button = $(this);
+            var userId = button.data("user-id");
+            var nonce = button.data("nonce");
+            
+            $.ajax({
+                url: ajaxurl,
+                type: "POST",
+                data: {
+                    action: "asap_lock_account",
+                    user_id: userId,
+                    nonce: nonce
+                },
+                beforeSend: function() {
+                    button.addClass("asap-loading").prop("disabled", true);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        location.reload();
+                    } else {
+                        alert(response.data.message || "Error locking account");
+                    }
+                },
+                error: function() {
+                    alert("Error communicating with server");
+                },
+                complete: function() {
+                    button.removeClass("asap-loading").prop("disabled", false);
+                }
+            });
+        });
+
+        // Reset Password Action
+        $(".reset-password").on("click", function(e) {
+            e.preventDefault();
+            if (!confirm("Are you sure you want to send a password reset email to this user?")) {
+                return;
+            }
+            var button = $(this);
+            var userId = button.data("user-id");
+            var nonce = button.data("nonce");
+            
+            $.ajax({
+                url: ajaxurl,
+                type: "POST",
+                data: {
+                    action: "asap_reset_password",
+                    user_id: userId,
+                    nonce: nonce
+                },
+                beforeSend: function() {
+                    button.addClass("asap-loading").prop("disabled", true);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                    } else {
+                        alert(response.data.message || "Error sending password reset");
+                    }
+                },
+                error: function() {
+                    alert("Error communicating with server");
+                },
+                complete: function() {
+                    button.removeClass("asap-loading").prop("disabled", false);
+                }
+            });
+        });
+
+        // View Activity Action
+        $(".view-activity").on("click", function(e) {
+            e.preventDefault();
+            var button = $(this);
+            var userId = button.data("user-id");
+            var nonce = button.data("nonce");
+            
+            $.ajax({
+                url: ajaxurl,
+                type: "POST",
+                data: {
+                    action: "asap_view_activity",
+                    user_id: userId,
+                    nonce: nonce
+                },
+                beforeSend: function() {
+                    button.addClass("asap-loading").prop("disabled", true);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Create and show modal with activity data
+                        var modal = $('<div class="asap-modal">')
+                            .append($('<div class="asap-modal-content">')
+                                .append($('<h2>').text("User Activity"))
+                                .append($('<div class="asap-activity-log">').html(response.data.activity))
+                                .append($('<button class="button">').text("Close").click(function() {
+                                    modal.remove();
+                                }))
+                            );
+                        $("body").append(modal);
+                    } else {
+                        alert(response.data.message || "Error retrieving activity");
+                    }
+                },
+                error: function() {
+                    alert("Error communicating with server");
+                },
+                complete: function() {
+                    button.removeClass("asap-loading").prop("disabled", false);
+                }
+            });
+        });
+    });
+</script>
+JS;
+        $sessions_content .= $user_actions_js;
+        
+        echo ASAP_Digest_Admin_UI::create_card('Active Sessions', $sessions_content, 'sessions-card');
+        ?>
+    </div>
+            <?php
+}
+
+/**
+ * @description AJAX handler for ending Better Auth sessions
+ * @return void
+ * @example
+ * // Called via AJAX
+ * add_action('wp_ajax_asap_end_session', 'asap_end_better_auth_session');
+ * @created 03.30.25 | 04:45 PM PDT
+ */
+function asap_end_better_auth_session() {
+    // Verify nonce and permissions
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+    
+    $user_id = intval($_POST['user_id'] ?? 0);
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    
+    if (!wp_verify_nonce($nonce, 'end_session_' . $user_id)) {
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+    
+    // Get user and verify they exist
+    $user = get_user_by('ID', $user_id);
+    if (!$user) {
+        wp_send_json_error(['message' => 'User not found']);
+    }
+    
+    // Delete session token
+    delete_user_meta($user_id, 'better_auth_session_token');
+    
+    // Fire action for integrations
+    do_action('asap_better_auth_session_ended', $user_id);
+    
+    wp_send_json_success(['message' => 'Session ended successfully']);
+}
+
+// Register AJAX handler
+add_action('wp_ajax_asap_end_session', 'asap_end_better_auth_session');
+
+/**
+ * @description Handle token exchange between Better Auth and WordPress
+ * @param {WP_REST_Request} $request REST request object
+ * @return {WP_REST_Response|WP_Error} Response with tokens or error
+ * @example
+ * // Exchange Better Auth token for WordPress session
+ * $response = asap_handle_token_exchange($request);
+ * @created 03.30.25 | 04:37 PM PDT
+ */
+function asap_handle_token_exchange($request) {
+    // Get Better Auth token from header
+    $better_auth_token = $request->get_header('X-Better-Auth-Token');
+    if (empty($better_auth_token)) {
+        return new WP_Error('missing_token', 'Better Auth token not provided', ['status' => 400]);
+    }
+
+    // Validate token signature
+    $timestamp = $request->get_header('X-Better-Auth-Timestamp');
+    $signature = $request->get_header('X-Better-Auth-Signature');
+    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
+        return new WP_Error('invalid_signature', 'Invalid request signature', ['status' => 401]);
+    }
+
+    // Get user ID from token payload
+    $token_parts = explode('.', $better_auth_token);
+    $payload = json_decode(base64_decode($token_parts[1]), true);
+    if (!$payload || empty($payload['sub'])) {
+        return new WP_Error('invalid_token', 'Invalid token payload', ['status' => 400]);
+    }
+
+    // Get WordPress user ID from Better Auth ID
+    $users = get_users([
+        'meta_key' => 'better_auth_user_id',
+        'meta_value' => $payload['sub'],
+        'number' => 1
+    ]);
+
+    if (empty($users)) {
+        return new WP_Error('user_not_found', 'No WordPress user found for Better Auth ID', ['status' => 404]);
+    }
+
+    // Create WordPress session
+    $session = asap_create_wp_session_core($users[0]->ID);
+    if (is_wp_error($session)) {
+        return $session;
+    }
+
+    // Return both tokens
+    return new WP_REST_Response([
+        'wp_session_token' => $session['session_token'],
+        'better_auth_token' => $better_auth_token
+    ], 200);
+}
+
+/**
+ * @description Register token exchange endpoint
+ * @return void
+ * @example
+ * // Register the token exchange endpoint
+ * asap_register_token_exchange();
+ * @created 03.30.25 | 04:37 PM PDT
+ */
+function asap_register_token_exchange() {
+    register_rest_route('asap/v1', '/auth/exchange-token', [
+        'methods' => 'POST',
+        'callback' => 'asap_handle_token_exchange',
+        'permission_callback' => '__return_true', // Public endpoint, security handled in callback
+    ]);
+}
+
+// Register the endpoint
+add_action('rest_api_init', 'asap_register_token_exchange');
 
 /**
  * @description Create WordPress to Better Auth user mapping table
+ * @hook register_activation_hook(__FILE__, 'asap_create_ba_wp_user_map_table')
+ * @since 1.0.0
  * @return void
- * @example
- * // Create the mapping table
- * asap_create_ba_wp_user_map_table();
- * @created 03.29.25 | 03:45 PM PDT
+ * @created 03.30.25 | 03:45 PM PDT
  */
 function asap_create_ba_wp_user_map_table() {
     global $wpdb;
@@ -602,448 +1403,962 @@ function asap_create_ba_wp_user_map_table() {
 // Create mapping table on plugin activation
 register_activation_hook(__FILE__, 'asap_create_ba_wp_user_map_table');
 
-// Register REST endpoints
-add_action('rest_api_init', 'asap_register_better_auth_endpoints');
-add_action('rest_api_init', 'asap_register_wp_session_check');
-
 /**
- * @description Add Better Auth settings submenu under Central Command
+ * @description Register Better Auth settings
  * @return void
  * @example
- * // Called during admin_menu action
- * asap_add_better_auth_settings_submenu();
- * @created 03.29.25 | 03:45 PM PDT
+ * // Called during admin_init
+ * asap_register_better_auth_settings();
+ * @created 03.30.25 | 04:45 PM PDT
  */
-function asap_add_better_auth_settings_submenu() {
-    // Only add submenu if parent menu exists
-    global $submenu;
-    if (isset($submenu['asap-central-command'])) {
-        add_submenu_page(
-            'asap-central-command',
-            'Better Auth Settings',
-            'Auth Settings',
-            'manage_options',
-            'asap-auth-settings',
-            'asap_render_better_auth_settings'
-        );
+function asap_register_better_auth_settings() {
+    // Existing settings
+    register_setting(
+        'asap_better_auth_options',
+        'asap_better_auth_base_url',
+        [
+            'type' => 'string',
+            'description' => 'Base URL for Better Auth service',
+            'sanitize_callback' => 'esc_url_raw',
+            'show_in_rest' => true,
+            'default' => ''
+        ]
+    );
+
+    // Add auto-sync roles setting
+    register_setting(
+        'asap_better_auth_options',
+        'asap_better_auth_auto_sync_roles',
+        [
+            'type' => 'array',
+            'description' => 'WordPress roles that should automatically sync with Better Auth',
+            'sanitize_callback' => 'asap_sanitize_auto_sync_roles',
+            'show_in_rest' => true,
+            'default' => ['administrator']
+        ]
+    );
+
+    // Add locked roles setting
+    register_setting(
+        'asap_better_auth_options',
+        'asap_better_auth_locked_roles',
+        [
+            'type' => 'array',
+            'description' => 'WordPress roles that should be locked from auto-sync selection',
+            'sanitize_callback' => 'asap_sanitize_locked_roles',
+            'show_in_rest' => true,
+            'default' => ['subscriber'] // Lock subscriber role by default
+        ]
+    );
+}
+
+/**
+ * @description Sanitize auto-sync roles array
+ * @param array $roles Array of role slugs
+ * @return array Sanitized array of role slugs
+ */
+function asap_sanitize_auto_sync_roles($roles) {
+    if (!is_array($roles)) {
+        return ['administrator'];
+    }
+    
+    $valid_roles = array_keys(wp_roles()->roles);
+    return array_intersect($roles, $valid_roles);
+}
+
+/**
+ * @description Sanitize locked roles array
+ * @param array $roles Array of role slugs
+ * @return array Sanitized array of role slugs
+ */
+function asap_sanitize_locked_roles($roles) {
+    if (!is_array($roles)) {
+        return ['subscriber'];
+    }
+    
+    $valid_roles = array_keys(wp_roles()->roles);
+    return array_intersect($roles, $valid_roles);
+}
+
+/**
+ * @description AJAX handler for syncing users with Better Auth
+ * @return void
+ * @example
+ * // Called via AJAX
+ * add_action('wp_ajax_asap_sync_users', 'asap_sync_better_auth_users');
+ * @created 03.30.25 | 04:45 PM PDT
+ */
+function asap_sync_better_auth_users() {
+    // Verify nonce and permissions
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+    
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    if (!wp_verify_nonce($nonce, 'sync_users')) {
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+    
+    // Get base URL
+    $base_url = asap_get_better_auth_base_url();
+    if (empty($base_url)) {
+        wp_send_json_error(['message' => 'Better Auth base URL not configured']);
+    }
+    
+    // Make request to Better Auth API
+    $response = wp_remote_get(
+        $base_url . '/api/users',
+        [
+            'headers' => [
+                'X-Better-Auth-Timestamp' => time(),
+                'X-Better-Auth-Signature' => hash_hmac(
+                    'sha256',
+                    time(),
+                    defined('BETTER_AUTH_SHARED_SECRET') ? BETTER_AUTH_SHARED_SECRET : get_option('better_auth_shared_secret')
+                )
+            ]
+        ]
+    );
+    
+    if (is_wp_error($response)) {
+        wp_send_json_error(['message' => 'Error connecting to Better Auth: ' . $response->get_error_message()]);
+    }
+    
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($body) || !is_array($body)) {
+        wp_send_json_error(['message' => 'Invalid response from Better Auth']);
+    }
+    
+    $synced = 0;
+    $errors = [];
+    
+    foreach ($body as $user_data) {
+        $result = asap_create_wp_user_from_better_auth($user_data);
+        if (is_wp_error($result)) {
+            $errors[] = sprintf(
+                'Error syncing user %s: %s',
+                $user_data['email'] ?? 'unknown',
+                $result->get_error_message()
+            );
+        } else {
+            $synced++;
+        }
+    }
+    
+    // Update last sync time
+    update_option('asap_better_auth_last_sync', current_time('mysql'));
+    
+    if (!empty($errors)) {
+        wp_send_json_error([
+            'message' => sprintf(
+                'Synced %d users with %d errors: %s',
+                $synced,
+                count($errors),
+                implode(', ', $errors)
+            )
+        ]);
+    }
+    
+    wp_send_json_success([
+        'message' => sprintf('Successfully synced %d users', $synced)
+    ]);
+}
+
+// Register AJAX handler
+add_action('wp_ajax_asap_sync_users', 'asap_sync_better_auth_users');
+
+/**
+ * @description Handle Better Auth session webhook notifications
+ * @param WP_REST_Request $request REST request object
+ * @return WP_REST_Response Response with status
+ * @created 03.30.25 | 04:55 PM PDT
+ */
+function asap_handle_session_webhook($request) {
+    // Validate request signature
+    $timestamp = $request->get_header('X-Better-Auth-Timestamp');
+    $signature = $request->get_header('X-Better-Auth-Signature');
+    if (!asap_validate_better_auth_signature($timestamp, $signature)) {
+        return new WP_REST_Response(['error' => 'Invalid signature'], 401);
+    }
+
+    $data = $request->get_json_params();
+    if (empty($data['event']) || empty($data['user_id'])) {
+        return new WP_REST_Response(['error' => 'Missing required data'], 400);
+    }
+
+    // Get WordPress user from Better Auth ID
+    $users = get_users([
+        'meta_key' => 'better_auth_user_id',
+        'meta_value' => $data['user_id'],
+        'number' => 1
+    ]);
+
+    if (empty($users)) {
+        return new WP_REST_Response(['error' => 'User not found'], 404);
+    }
+
+    $wp_user_id = $users[0]->ID;
+
+    switch ($data['event']) {
+        case 'session.created':
+            // Update session token if provided
+            if (!empty($data['session_token'])) {
+                update_user_meta($wp_user_id, 'better_auth_session_token', $data['session_token']);
+                update_user_meta($wp_user_id, 'better_auth_last_login', current_time('mysql'));
+            }
+            break;
+
+        case 'session.ended':
+            // Remove session token
+            delete_user_meta($wp_user_id, 'better_auth_session_token');
+            break;
+
+        case 'user.deleted':
+            // Optionally handle user deletion
+            wp_delete_user($wp_user_id);
+            break;
+    }
+
+    do_action('asap_better_auth_webhook_' . str_replace('.', '_', $data['event']), $wp_user_id, $data);
+
+    return new WP_REST_Response(['success' => true]);
+}
+
+// Register webhook endpoint
+add_action('rest_api_init', function() {
+    register_rest_route('asap/v1', '/auth/webhook', [
+        'methods' => 'POST',
+        'callback' => 'asap_handle_session_webhook',
+        'permission_callback' => '__return_true'
+    ]);
+});
+
+/**
+ * @description Sync user roles between Better Auth and WordPress
+ * @param int $wp_user_id WordPress user ID
+ * @param array $better_auth_roles Better Auth roles array
+ * @return bool True on success, false on failure
+ * @created 03.30.25 | 04:57 PM PDT
+ */
+function asap_sync_user_roles($wp_user_id, $better_auth_roles) {
+    // Role mapping between Better Auth and WordPress
+    $role_map = [
+        'admin' => 'administrator',
+        'editor' => 'editor',
+        'author' => 'author',
+        'subscriber' => 'subscriber'
+    ];
+
+    $user = get_user_by('ID', $wp_user_id);
+    if (!$user) {
+        return false;
+    }
+
+    // Remove all existing roles
+    $user->set_role('');
+
+    // Add mapped roles
+    foreach ($better_auth_roles as $ba_role) {
+        if (isset($role_map[$ba_role])) {
+            $user->add_role($role_map[$ba_role]);
+        }
+    }
+
+    // If no roles were mapped, set default subscriber role
+    if (empty($user->roles)) {
+        $user->set_role('subscriber');
+    }
+
+    do_action('asap_better_auth_roles_synced', $wp_user_id, $better_auth_roles);
+    return true;
+}
+
+// Add role sync to webhook handler
+add_action('asap_better_auth_webhook_user_updated', function($wp_user_id, $data) {
+    if (!empty($data['roles'])) {
+        asap_sync_user_roles($wp_user_id, $data['roles']);
+    }
+}, 10, 2);
+
+/**
+ * @description Sync user metadata between Better Auth and WordPress
+ * @param int $wp_user_id WordPress user ID
+ * @param array $better_auth_metadata Better Auth metadata array
+ * @return bool True on success, false on failure
+ * @created 03.30.25 | 04:59 PM PDT
+ */
+function asap_sync_user_metadata($wp_user_id, $better_auth_metadata) {
+    // Metadata mapping between Better Auth and WordPress
+    $meta_map = [
+        'name' => 'display_name',
+        'first_name' => 'first_name',
+        'last_name' => 'last_name',
+        'avatar_url' => 'better_auth_avatar_url',
+        'preferences' => 'better_auth_preferences',
+        'last_login_at' => 'better_auth_last_login',
+        'subscription_status' => 'better_auth_subscription_status',
+        'subscription_plan' => 'better_auth_subscription_plan'
+    ];
+
+    $user = get_user_by('ID', $wp_user_id);
+    if (!$user) {
+        return false;
+    }
+
+    foreach ($better_auth_metadata as $ba_key => $value) {
+        if (isset($meta_map[$ba_key])) {
+            $wp_key = $meta_map[$ba_key];
+            
+            // Handle special cases
+            if ($wp_key === 'display_name') {
+                wp_update_user([
+                    'ID' => $wp_user_id,
+                    'display_name' => sanitize_text_field($value)
+                ]);
+                } else {
+                update_user_meta($wp_user_id, $wp_key, $value);
+            }
+        }
+    }
+
+    // Store complete metadata snapshot
+    update_user_meta(
+        $wp_user_id,
+        'better_auth_metadata_snapshot',
+        wp_json_encode($better_auth_metadata)
+    );
+
+    do_action('asap_better_auth_metadata_synced', $wp_user_id, $better_auth_metadata);
+    return true;
+}
+
+// Add metadata sync to webhook handler
+add_action('asap_better_auth_webhook_user_updated', function($wp_user_id, $data) {
+    if (!empty($data['metadata'])) {
+        asap_sync_user_metadata($wp_user_id, $data['metadata']);
+    }
+}, 20, 2);
+
+/**
+ * @description Add Better Auth sync column to users list table
+ * @return void
+ */
+function asap_add_better_auth_user_column($columns) {
+    $columns['better_auth_sync'] = __('Better Auth');
+    return $columns;
+}
+add_filter('manage_users_columns', 'asap_add_better_auth_user_column');
+
+/**
+ * @description Display Better Auth sync status and actions for each user
+ * @return void
+ */
+function asap_manage_better_auth_user_column($value, $column_name, $user_id) {
+    if ($column_name !== 'better_auth_sync') {
+        return $value;
+    }
+
+    $better_auth_id = get_user_meta($user_id, 'better_auth_user_id', true);
+    $sync_status = $better_auth_id ? 'synced' : 'not-synced';
+    $last_sync = get_user_meta($user_id, 'better_auth_last_sync', true);
+
+    ob_start();
+    ?>
+    <div class="better-auth-status">
+        <?php echo ASAP_Digest_Admin_UI::create_status_indicator(
+            $better_auth_id ? 'good' : 'warning',
+            $better_auth_id ? __('Synced') : __('Not Synced')
+        ); ?>
+        
+        <?php if ($last_sync): ?>
+            <small class="last-sync">
+                <?php printf(__('Last: %s ago'), human_time_diff(strtotime($last_sync))); ?>
+            </small>
+                <?php endif; ?>
+
+        <div class="row-actions">
+            <?php if ($better_auth_id): ?>
+                <span class="unsync">
+                    <a href="#" class="unsync-user" 
+                       data-user-id="<?php echo esc_attr($user_id); ?>"
+                       data-nonce="<?php echo wp_create_nonce('unsync_user_' . $user_id); ?>">
+                        <?php _e('Unsync'); ?>
+                    </a>
+                </span>
+            <?php else: ?>
+                <span class="sync">
+                    <a href="#" class="sync-user" 
+                       data-user-id="<?php echo esc_attr($user_id); ?>"
+                       data-nonce="<?php echo wp_create_nonce('sync_user_' . $user_id); ?>">
+                        <?php _e('Sync Now'); ?>
+                    </a>
+                </span>
+                <?php endif; ?>
+            </div>
+    </div>
+
+    <?php if (!isset($GLOBALS['better_auth_column_js_added'])): ?>
+        <script>
+        jQuery(document).ready(function($) {
+            $('.sync-user').on('click', function(e) {
+                e.preventDefault();
+                var link = $(this);
+                var userId = link.data('user-id');
+                var nonce = link.data('nonce');
+                var statusContainer = link.closest('.better-auth-status');
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'asap_sync_single_user',
+                        user_id: userId,
+                        nonce: nonce
+                    },
+                    beforeSend: function() {
+                        statusContainer.addClass('asap-loading');
+                        link.prop('disabled', true);
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            statusContainer.find('.asap-status-indicator')
+                                .removeClass('asap-status-warning')
+                                .addClass('asap-status-good')
+                                .find('span').text('Synced');
+                            
+                            if (response.data.last_sync) {
+                                var lastSyncText = sprintf(
+                                    '<?php _e('Last: %s ago'); ?>', 
+                                    response.data.last_sync
+                                );
+                                statusContainer.find('.last-sync').text(lastSyncText);
+                            }
+
+                            // Replace sync button with unsync button
+                            var unsyncButton = $('<span class="unsync"><a href="#" class="unsync-user" data-user-id="' + userId + '" data-nonce="' + 
+                                wp_create_nonce('unsync_user_' + userId) + '"><?php _e('Unsync'); ?></a></span>');
+                            link.closest('.row-actions').html(unsyncButton);
+                            initUnsyncHandlers();
+                        } else {
+                            alert(response.data.message || 'Error syncing user');
+                        }
+                    },
+                    error: function() {
+                        alert('Error communicating with server');
+                    },
+                    complete: function() {
+                        statusContainer.removeClass('asap-loading');
+                        link.prop('disabled', false);
+                    }
+                });
+            });
+
+            function initUnsyncHandlers() {
+                $('.unsync-user').off('click').on('click', function(e) {
+                    e.preventDefault();
+                    var link = $(this);
+                    var userId = link.data('user-id');
+                    var nonce = link.data('nonce');
+                    var statusContainer = link.closest('.better-auth-status');
+                    
+                    if (!confirm('<?php _e('Are you sure you want to unsync this user from Better Auth?'); ?>')) {
+                        return;
+                    }
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'asap_unsync_single_user',
+                            user_id: userId,
+                            nonce: nonce
+                        },
+                        beforeSend: function() {
+                            statusContainer.addClass('asap-loading');
+                            link.prop('disabled', true);
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                statusContainer.find('.asap-status-indicator')
+                                    .removeClass('asap-status-good')
+                                    .addClass('asap-status-warning')
+                                    .find('span').text('Not Synced');
+                                
+                                statusContainer.find('.last-sync').remove();
+                                
+                                // Replace unsync button with sync button
+                                var syncButton = $('<span class="sync"><a href="#" class="sync-user" data-user-id="' + userId + '" data-nonce="' + 
+                                    wp_create_nonce('sync_user_' + userId) + '"><?php _e('Sync Now'); ?></a></span>');
+                                link.closest('.row-actions').html(syncButton);
+                            } else {
+                                alert(response.data.message || 'Error unsyncing user');
+                            }
+                        },
+                        error: function() {
+                            alert('Error communicating with server');
+                        },
+                        complete: function() {
+                            statusContainer.removeClass('asap-loading');
+                            link.prop('disabled', false);
+                        }
+                    });
+                });
+            }
+
+            // Initialize unsync handlers
+            initUnsyncHandlers();
+        });
+        </script>
+        <?php $GLOBALS['better_auth_column_js_added'] = true; ?>
+    <?php endif; ?>
+    <?php
+    return ob_get_clean();
+}
+add_action('manage_users_custom_column', 'asap_manage_better_auth_user_column', 10, 3);
+
+/**
+ * @description AJAX handler for syncing a single user with Better Auth
+ * @return void
+ */
+function asap_sync_single_user() {
+    // Verify permissions
+    if (!current_user_can('edit_users')) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+    
+    // Verify nonce
+    $user_id = intval($_POST['user_id'] ?? 0);
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    if (!wp_verify_nonce($nonce, 'sync_user_' . $user_id)) {
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+    
+    // Sync user
+    $result = asap_sync_wp_user_to_better_auth($user_id);
+    if (is_wp_error($result)) {
+        wp_send_json_error(['message' => $result->get_error_message()]);
+    }
+    
+    // Update last sync time
+    $now = current_time('mysql');
+    update_user_meta($user_id, 'better_auth_last_sync', $now);
+    
+    wp_send_json_success([
+        'message' => 'User synced successfully',
+        'last_sync' => human_time_diff(strtotime($now))
+    ]);
+}
+add_action('wp_ajax_asap_sync_single_user', 'asap_sync_single_user');
+
+/**
+ * @description Unsync a WordPress user from Better Auth
+ * @param int $wp_user_id WordPress user ID to unsync
+ * @return bool|WP_Error True on success, WP_Error on failure
+ */
+function asap_unsync_wp_user_from_better_auth($wp_user_id) {
+    global $wpdb;
+
+    // Get WordPress user data
+    $wp_user = get_userdata($wp_user_id);
+    if (!$wp_user) {
+        return new WP_Error('invalid_user', 'WordPress user not found');
+    }
+
+    // Get Better Auth user ID
+    $better_auth_id = get_user_meta($wp_user_id, 'better_auth_user_id', true);
+    if (empty($better_auth_id)) {
+        return new WP_Error('not_synced', 'User is not synced with Better Auth');
+    }
+
+    // Remove mapping from database
+    $wpdb->delete(
+        $wpdb->prefix . 'ba_wp_user_map',
+        ['wp_user_id' => $wp_user_id],
+        ['%d']
+    );
+
+    // Remove Better Auth metadata
+    delete_user_meta($wp_user_id, 'better_auth_user_id');
+    delete_user_meta($wp_user_id, 'better_auth_session_token');
+    delete_user_meta($wp_user_id, 'better_auth_last_login');
+    delete_user_meta($wp_user_id, 'better_auth_last_sync');
+    delete_user_meta($wp_user_id, 'better_auth_metadata_snapshot');
+
+    // Fire action for integrations
+    do_action('asap_better_auth_user_unsynced', $wp_user_id, $better_auth_id);
+
+    return true;
+}
+
+/**
+ * @description AJAX handler for unsyncing a user from Better Auth
+ * @return void
+ */
+function asap_unsync_single_user() {
+    // Verify permissions
+    if (!current_user_can('edit_users')) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+    
+    // Verify nonce
+    $user_id = intval($_POST['user_id'] ?? 0);
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    if (!wp_verify_nonce($nonce, 'unsync_user_' . $user_id)) {
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+    
+    // Unsync user
+    $result = asap_unsync_wp_user_from_better_auth($user_id);
+    if (is_wp_error($result)) {
+        wp_send_json_error(['message' => $result->get_error_message()]);
+    }
+    
+    wp_send_json_success([
+        'message' => 'User unsynced successfully'
+    ]);
+}
+add_action('wp_ajax_asap_unsync_single_user', 'asap_unsync_single_user');
+
+/**
+ * @description Create a test admin user for development
+ * @return void
+ */
+function asap_create_test_admin() {
+    // Verify we're in a development environment
+    if (strpos($_SERVER['HTTP_HOST'] ?? '', 'local') === false) {
+        wp_send_json_error(['message' => 'This action is only available in development']);
+        return;
+    }
+
+    // Create admin user if it doesn't exist
+    $admin_email = 'admin@asapdigest.local';
+    $user = get_user_by('email', $admin_email);
+    
+    if (!$user) {
+        $user_id = wp_insert_user([
+            'user_login' => 'admin',
+            'user_email' => $admin_email,
+            'user_pass' => 'admin123', // This is just for testing
+            'role' => 'administrator',
+            'display_name' => 'Test Admin'
+        ]);
+
+        if (is_wp_error($user_id)) {
+            wp_send_json_error(['message' => $user_id->get_error_message()]);
+            return;
+        }
+
+        // Create Better Auth user and link it
+        $better_auth_result = asap_sync_wp_user_to_better_auth($user_id);
+        if (is_wp_error($better_auth_result)) {
+            wp_send_json_error(['message' => $better_auth_result->get_error_message()]);
+            return;
+        }
+
+        wp_send_json_success([
+            'message' => 'Test admin user created successfully',
+            'user_id' => $user_id,
+            'better_auth_id' => $better_auth_result['ba_user_id']
+        ]);
+    } else {
+        // User exists, ensure they're an admin
+        $user->set_role('administrator');
+        
+        // Sync with Better Auth if needed
+        if (!get_user_meta($user->ID, 'better_auth_user_id', true)) {
+            $better_auth_result = asap_sync_wp_user_to_better_auth($user->ID);
+            if (is_wp_error($better_auth_result)) {
+                wp_send_json_error(['message' => $better_auth_result->get_error_message()]);
+                return;
+            }
+        }
+
+        wp_send_json_success([
+            'message' => 'Test admin user already exists and is synced',
+            'user_id' => $user->ID,
+            'better_auth_id' => get_user_meta($user->ID, 'better_auth_user_id', true)
+        ]);
     }
 }
 
-// Add the settings page under Central Command with lower priority to ensure parent menu exists
-add_action('admin_menu', 'asap_add_better_auth_settings_submenu', 30);
+// Register the AJAX action for creating test admin
+add_action('wp_ajax_asap_create_test_admin', 'asap_create_test_admin');
+add_action('wp_ajax_nopriv_asap_create_test_admin', 'asap_create_test_admin'); // Allow unauthenticated for initial setup 
 
 /**
- * Render the Central Command dashboard
- * @created 03.29.25 | 03:45 PM PDT
+ * @description Check if a user should be auto-synced based on their roles
+ * @param int|WP_User $user User ID or WP_User object
+ * @return bool Whether the user should be auto-synced
  */
-function asap_render_central_command_dashboard() {
-    global $wpdb;
+function asap_should_auto_sync_user($user) {
+    $user = is_numeric($user) ? get_user_by('id', $user) : $user;
+    if (!$user) {
+        return false;
+    }
 
-    // Create the mapping table if it doesn't exist
-    asap_create_ba_wp_user_map_table();
+    $auto_sync_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
     
-    ?>
-    <div class="wrap">
-        <h1>⚡️ ASAP Digest Central Command</h1>
-        
-        <div class="card">
-            <h2>Quick Stats</h2>
-            <p>Welcome to ASAP Digest Central Command. This dashboard provides an overview of your system.</p>
-            
-            <?php
-            // Get some basic stats
-            $total_users = count_users();
-            
-            // Check if table exists before counting
-            $table_name = $wpdb->prefix . 'ba_wp_user_map';
-            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") == $table_name;
-            $synced_users = $table_exists ? $wpdb->get_var("SELECT COUNT(*) FROM $table_name") : 0;
-            
-            // Check if digest post type exists before counting
-            $digest_counts = post_type_exists('digest') ? wp_count_posts('digest') : null;
-            $total_digests = $digest_counts ? ($digest_counts->publish ?? 0) : 0;
-            ?>
-            
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
-                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <h3>Total Users</h3>
-                    <p style="font-size: 24px; font-weight: bold;"><?php echo $total_users['total_users']; ?></p>
-                </div>
-                
-                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <h3>Synced Users</h3>
-                    <p style="font-size: 24px; font-weight: bold;"><?php echo $synced_users; ?></p>
-                    <?php if (!$table_exists): ?>
-                        <p style="color: #e67e22;"><span class="dashicons dashicons-warning"></span> Sync table not found. Please deactivate and reactivate the plugin.</p>
-                    <?php endif; ?>
-                </div>
-                
-                <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <h3>Total Digests</h3>
-                    <p style="font-size: 24px; font-weight: bold;"><?php echo $total_digests; ?></p>
-                    <?php if (!post_type_exists('digest')): ?>
-                        <p style="color: #e67e22;"><span class="dashicons dashicons-warning"></span> Digest post type not registered.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card" style="margin-top: 20px;">
-            <h2>Quick Actions</h2>
-            <p>Access common tasks and management tools:</p>
-            
-            <div class="quick-actions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
-                <a href="<?php echo admin_url('admin.php?page=asap-auth-sync'); ?>" class="button button-primary">
-                    Manage Auth Sync
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=asap-digest-management'); ?>" class="button button-primary">
-                    Manage Digests
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=asap-user-stats'); ?>" class="button button-primary">
-                    View User Stats
-                </a>
-                <a href="<?php echo admin_url('admin.php?page=asap-settings'); ?>" class="button button-primary">
-                    Configure Settings
-                </a>
-            </div>
-        </div>
-    </div>
-    <?php
+    // Check if user has any auto-sync roles
+    foreach ($user->roles as $role) {
+        if (in_array($role, $auto_sync_roles)) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 /**
- * Render the digest management page
- * @created 03.29.25 | 03:45 PM PDT
+ * @description Handle auto-sync when user logs in
+ * @param string $user_login Username
+ * @param WP_User $user User object
  */
-function asap_render_digest_management() {
-    ?>
-    <div class="wrap">
-        <h1>Digest Management</h1>
-        <p>Manage your ASAP Digests here. This feature is coming soon.</p>
-    </div>
-    <?php
+function asap_handle_login_auto_sync($user_login, $user) {
+    if (!asap_should_auto_sync_user($user)) {
+        return;
+    }
+
+    // Check if user is already synced
+    $better_auth_id = get_user_meta($user->ID, 'better_auth_user_id', true);
+    if (!$better_auth_id) {
+        // Sync user with Better Auth
+        $result = asap_sync_wp_user_to_better_auth($user->ID);
+        if (!is_wp_error($result)) {
+            $better_auth_id = $result['ba_user_id'];
+        }
+    }
+
+    // If we have a Better Auth ID, create a session
+    if ($better_auth_id) {
+        asap_create_wp_session_core($user->ID);
+    }
 }
 
 /**
- * Render the user stats page
- * @created 03.29.25 | 03:45 PM PDT
+ * @description Handle auto-sync when user's roles change
+ * @param int $user_id User ID
+ * @param string $role Role being added
+ * @param array $old_roles Old roles
  */
-function asap_render_user_stats() {
-    ?>
-    <div class="wrap">
-        <h1>User Statistics</h1>
-        <p>View detailed user statistics here. This feature is coming soon.</p>
-    </div>
-    <?php
+function asap_handle_role_change_auto_sync($user_id, $role, $old_roles) {
+    if (asap_should_auto_sync_user($user_id)) {
+        // Check if user is already synced
+        $better_auth_id = get_user_meta($user_id, 'better_auth_user_id', true);
+        if (!$better_auth_id) {
+            // Sync user with Better Auth
+            asap_sync_wp_user_to_better_auth($user_id);
+        }
+    }
 }
 
-/**
- * Render the settings page
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_render_settings() {
-    ?>
-    <div class="wrap">
-        <h1>ASAP Settings</h1>
-        <p>Configure ASAP Digest settings here. This feature is coming soon.</p>
-    </div>
-    <?php
-}
+// Hook into login and role change actions
+add_action('wp_login', 'asap_handle_login_auto_sync', 10, 2);
+add_action('set_user_role', 'asap_handle_role_change_auto_sync', 10, 3);
+
+// Add auto-sync action to Better Auth initialization
+add_action('init', function() {
+    // Check if user is logged in
+    $current_user = wp_get_current_user();
+    if ($current_user->ID && asap_should_auto_sync_user($current_user)) {
+        // Check if user is already synced
+        $better_auth_id = get_user_meta($current_user->ID, 'better_auth_user_id', true);
+        if (!$better_auth_id) {
+            // Sync user with Better Auth
+            $result = asap_sync_wp_user_to_better_auth($current_user->ID);
+            if (!is_wp_error($result)) {
+                $better_auth_id = $result['ba_user_id'];
+            }
+        }
+
+        // Ensure session is active
+        if ($better_auth_id && !get_user_meta($current_user->ID, 'better_auth_session_token', true)) {
+            asap_create_wp_session_core($current_user->ID);
+        }
+    }
+}, 20);
 
 /**
- * Render Better Auth Sync admin page
- * @created 03.29.25 | 03:34 PM PDT
+ * Handle bulk sync/unsync when auto-sync roles are updated
+ * @param array $new_roles New array of roles selected for auto-sync
+ * @param array $old_roles Previous array of roles selected for auto-sync
  */
-function asap_render_better_auth_sync_page() {
-    // Handle form submission
-    if (isset($_POST['sync_action']) && check_admin_referer('better_auth_sync')) {
-        if ($_POST['sync_action'] === 'sync_all') {
-            $results = asap_sync_all_wp_users_to_better_auth();
-        } else if ($_POST['sync_action'] === 'sync_selected' && !empty($_POST['user_ids'])) {
-            $results = array(
-                'success' => true,
-                'synced' => array(),
-                'failed' => array(),
-                'skipped' => array()
-            );
-            
-            foreach ($_POST['user_ids'] as $user_id) {
-                $sync_result = asap_sync_wp_user_to_better_auth(intval($user_id));
-                if (is_wp_error($sync_result)) {
-                    $results['failed'][] = array(
-                        'wp_user_id' => $user_id,
-                        'error' => $sync_result->get_error_message()
-                    );
-                } else if ($sync_result['message'] === 'User already synced') {
-                    $results['skipped'][] = array(
-                        'wp_user_id' => $user_id,
-                        'ba_user_id' => $sync_result['ba_user_id']
-                    );
-                } else {
-                    $results['synced'][] = array(
-                        'wp_user_id' => $user_id,
-                        'ba_user_id' => $sync_result['ba_user_id']
-                    );
+function asap_handle_auto_sync_roles_update($new_roles, $old_roles) {
+    // Get added and removed roles
+    $added_roles = array_diff($new_roles, $old_roles);
+    $removed_roles = array_diff($old_roles, $new_roles);
+
+    // Handle newly added roles - sync all users in these roles
+    if (!empty($added_roles)) {
+        foreach ($added_roles as $role) {
+            $users = get_users(['role' => $role]);
+            foreach ($users as $user) {
+                // Only sync if not already synced
+                if (!asap_is_user_synced($user->ID)) {
+                    asap_sync_wp_user_to_better_auth($user->ID, 'role_auto_sync');
                 }
             }
         }
     }
 
-    // Get all WordPress users
-    $users = get_users(array(
-        'orderby' => 'registered',
-        'order' => 'DESC'
-    ));
-
-    // Get sync status for each user
-    global $wpdb;
-    $sync_statuses = $wpdb->get_results("
-        SELECT wp_user_id, ba_user_id, created_at
-        FROM {$wpdb->prefix}ba_wp_user_map
-    ", OBJECT_K);
-
-    ?>
-    <div class="wrap">
-        <h1>Better Auth User Sync</h1>
-        
-        <?php if (isset($results)): ?>
-            <div class="notice notice-info">
-                <h3>Sync Results:</h3>
-                <?php if (!empty($results['synced'])): ?>
-                    <p>Successfully synced <?php echo count($results['synced']); ?> users.</p>
-                <?php endif; ?>
-                <?php if (!empty($results['skipped'])): ?>
-                    <p>Skipped <?php echo count($results['skipped']); ?> already synced users.</p>
-                <?php endif; ?>
-                <?php if (!empty($results['failed'])): ?>
-                    <p>Failed to sync <?php echo count($results['failed']); ?> users:</p>
-                    <ul>
-                        <?php foreach ($results['failed'] as $failure): ?>
-                            <li>User ID <?php echo esc_html($failure['wp_user_id']); ?>: <?php echo esc_html($failure['error']); ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="post" action="">
-            <?php wp_nonce_field('better_auth_sync'); ?>
-            
-            <p>
-                <button type="submit" name="sync_action" value="sync_all" class="button button-primary">
-                    Sync All Users
-                </button>
-            </p>
-
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th scope="col" class="manage-column column-cb check-column">
-                            <input type="checkbox" id="users-select-all">
-                        </th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Better Auth Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($users as $user): ?>
-                        <tr>
-                            <td>
-                                <input type="checkbox" name="user_ids[]" value="<?php echo esc_attr($user->ID); ?>">
-                            </td>
-                            <td><?php echo esc_html($user->user_login); ?></td>
-                            <td><?php echo esc_html($user->user_email); ?></td>
-                            <td><?php echo esc_html(implode(', ', $user->roles)); ?></td>
-                            <td>
-                                <?php if (isset($sync_statuses[$user->ID])): ?>
-                                    <span class="dashicons dashicons-yes" style="color: green;"></span>
-                                    Synced (BA ID: <?php echo esc_html($sync_statuses[$user->ID]->ba_user_id); ?>)
-                                    <br>
-                                    <small>Synced on: <?php echo esc_html($sync_statuses[$user->ID]->created_at); ?></small>
-                                <?php else: ?>
-                                    <span class="dashicons dashicons-no" style="color: red;"></span>
-                                    Not synced
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <p>
-                <button type="submit" name="sync_action" value="sync_selected" class="button button-secondary">
-                    Sync Selected Users
-                </button>
-            </p>
-        </form>
-
-        <script>
-        jQuery(document).ready(function($) {
-            $('#users-select-all').on('change', function() {
-                $('input[name="user_ids[]"]').prop('checked', $(this).prop('checked'));
-            });
-        });
-        </script>
-    </div>
-    <?php
+    // Handle removed roles - unsync users who were auto-synced via role
+    if (!empty($removed_roles)) {
+        foreach ($removed_roles as $role) {
+            $users = get_users(['role' => $role]);
+            foreach ($users as $user) {
+                // Only unsync if user was synced via role auto-sync
+                $sync_source = get_user_meta($user->ID, 'better_auth_sync_source', true);
+                if ($sync_source === 'role_auto_sync') {
+                    asap_unsync_wp_user_from_better_auth($user->ID);
+                }
+            }
+        }
+    }
 }
 
-/**
- * @description Render the Better Auth settings page with Central Command styling
- * @return void
- * @example
- * // Called when viewing the Better Auth settings page
- * asap_render_better_auth_settings();
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_render_better_auth_settings() {
-    // Security check
+// Modify the settings update handler
+function asap_update_better_auth_settings() {
     if (!current_user_can('manage_options')) {
         return;
     }
-    
-    // Save settings if form is submitted
-    if (isset($_POST['better_auth_settings_submit'])) {
-        check_admin_referer('better_auth_settings_nonce');
+
+    if (isset($_POST['asap_better_auth_auto_sync_roles'])) {
+        $old_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
+        $new_roles = asap_sanitize_auto_sync_roles($_POST['asap_better_auth_auto_sync_roles']);
         
-        $better_auth_url = sanitize_text_field($_POST['better_auth_url']);
-        update_option('better_auth_url', $better_auth_url);
+        // Update the option
+        update_option('asap_better_auth_auto_sync_roles', $new_roles);
         
-        // Only update shared secret if provided and not empty
-        if (!empty($_POST['better_auth_shared_secret'])) {
-            $shared_secret = sanitize_text_field($_POST['better_auth_shared_secret']);
-            update_option('better_auth_shared_secret', $shared_secret);
-        }
-        
-        echo '<div class="notice notice-success is-dismissible"><p>✅ Better Auth settings updated successfully!</p></div>';
+        // Handle bulk sync/unsync
+        asap_handle_auto_sync_roles_update($new_roles, $old_roles);
     }
-    
-    // Get current status indicators
-    $secret_status = defined('BETTER_AUTH_SHARED_SECRET') 
-        ? '<span class="asap-status-good">Defined in wp-config.php ✓</span>'
-        : '<span class="asap-status-warning">Using stored value</span>';
-    
-    $url_status = defined('BETTER_AUTH_URL')
-        ? '<span class="asap-status-good">Defined in wp-config.php ✓</span>'
-        : '<span class="asap-status-warning">Using stored value</span>';
-    
-    // Display the settings form with Central Command styling
-    ?>
-    <div class="wrap asap-central-command">
-        <h1><i class="dashicons dashicons-shield"></i> Better Auth Integration</h1>
-        
-        <div class="asap-card">
-            <h2>Configuration Status</h2>
-            <div class="asap-status-grid">
-                <div class="asap-status-item">
-                    <strong>Shared Secret:</strong> <?php echo $secret_status; ?>
-                </div>
-                <div class="asap-status-item">
-                    <strong>Base URL:</strong> <?php echo $url_status; ?>
-                </div>
-            </div>
-        </div>
 
-        <div class="asap-card">
-            <h2>Settings</h2>
-            <form method="post" action="">
-                <?php wp_nonce_field('better_auth_settings_nonce'); ?>
-                
-                <div class="asap-form-row">
-                    <label for="better_auth_url">Better Auth URL</label>
-                    <input type="url" name="better_auth_url" id="better_auth_url" 
-                           value="<?php echo esc_attr(asap_get_better_auth_base_url()); ?>" 
-                           class="regular-text">
-                    <p class="description">The base URL for your SvelteKit application (e.g., http://localhost:5173 or https://app.asapdigest.com)</p>
-                </div>
-
-                <div class="asap-form-row">
-                    <label for="better_auth_shared_secret">Shared Secret</label>
-                    <input type="password" name="better_auth_shared_secret" id="better_auth_shared_secret" 
-                           placeholder="Leave empty to keep current value" class="regular-text">
-                    <p class="description">Secret key for validating requests between Better Auth and WordPress. 
-                    For maximum security, define BETTER_AUTH_SHARED_SECRET in wp-config.php instead.</p>
-                </div>
-
-                <div class="asap-form-actions">
-                    <input type="submit" name="better_auth_settings_submit" class="button button-primary" 
-                           value="Save Changes">
-                </div>
-            </form>
-        </div>
-
-        <div class="asap-card">
-            <h2>Documentation</h2>
-            <p>Better Auth is the authentication system used by ASAP Digest to manage user sessions across WordPress and SvelteKit.</p>
-            <ul class="asap-doc-list">
-                <li><strong>wp-config.php Constants:</strong> For enhanced security, define BETTER_AUTH_SHARED_SECRET and BETTER_AUTH_URL in wp-config.php</li>
-                <li><strong>Environment Variables:</strong> Make sure these match your SvelteKit .env configuration</li>
-                <li><strong>Session Handling:</strong> Better Auth manages sessions across both platforms automatically</li>
-            </ul>
-        </div>
-    </div>
-    <?php
+    // Rest of the existing settings update code...
 }
 
 /**
- * @description Handle token exchange between Better Auth and WordPress
- * @param {WP_REST_Request} request The request object
- * @return {WP_REST_Response|WP_Error} Response with exchanged token or error
- * @created 03.30.25 | 03:37 PM PDT
+ * Check if a WordPress user is synced with Better Auth
+ * @param int $wp_user_id WordPress user ID
+ * @return bool True if user is synced, false otherwise
  */
-function asap_handle_token_exchange($request) {
-    $better_auth_token = $request->get_header('X-Better-Auth-Token');
-    if (empty($better_auth_token)) {
-        return new WP_Error('missing_token', 'Better Auth token is required', ['status' => 400]);
-    }
-
-    // Validate Better Auth token
-    $validation = asap_validate_better_auth_signature(
-        $request->get_header('X-Better-Auth-Timestamp'),
-        $better_auth_token
-    );
-
-    if (is_wp_error($validation)) {
-        return $validation;
-    }
-
-    // Get user from token
-    $user_id = get_current_user_id();
-    if (!$user_id) {
-        return new WP_Error('no_user', 'No user found for token', ['status' => 401]);
-    }
-
-    // Create WordPress session
-    $session_result = asap_create_wp_session_core($user_id);
-    if (is_wp_error($session_result)) {
-        return $session_result;
-    }
-
-    // Get WordPress session token
-    $wp_session_token = wp_get_session_token();
+function asap_is_user_synced($wp_user_id) {
+    global $wpdb;
     
-    // Return both tokens
-    return rest_ensure_response([
-        'wp_token' => $wp_session_token,
-        'better_auth_token' => $better_auth_token,
-        'user_id' => $user_id
-    ]);
+    $table_name = $wpdb->prefix . 'asap_better_auth_users';
+    $result = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_name WHERE wp_user_id = %d",
+        $wp_user_id
+    ));
+    
+    return (int)$result > 0;
 }
 
 /**
- * @description Register token exchange endpoint
- * @return void
- * @created 03.30.25 | 03:37 PM PDT
+ * AJAX handler for saving auto-sync roles
  */
-function asap_register_token_exchange() {
-    register_rest_route('asap/v1', '/auth/exchange-token', [
-        'methods' => 'POST',
-        'callback' => 'asap_handle_token_exchange',
-        'permission_callback' => function() {
-            return true; // We'll validate in the handler
+function asap_ajax_save_auto_sync_roles() {
+    if (!current_user_can('manage_options')) {
+        error_log('[Better Auth] Permission denied for auto-sync roles save');
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+
+    if (!wp_verify_nonce($_POST['nonce'], 'asap_save_roles')) {
+        error_log('[Better Auth] Invalid nonce for auto-sync roles save');
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+
+    $roles = isset($_POST['roles']) ? (array)$_POST['roles'] : [];
+    $old_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
+    $roles = asap_sanitize_auto_sync_roles($roles);
+
+    error_log(sprintf('[Better Auth] Processing auto-sync roles update. Old: %s, New: %s', 
+        implode(',', $old_roles), 
+        implode(',', $roles)
+    ));
+
+    update_option('asap_better_auth_auto_sync_roles', $roles);
+    
+    // Track sync results
+    $sync_results = [
+        'synced' => [],
+        'unsynced' => [],
+        'errors' => []
+    ];
+
+    // Handle bulk sync for added roles
+    $added_roles = array_diff($roles, $old_roles);
+    if (!empty($added_roles)) {
+        error_log(sprintf('[Better Auth] Processing new roles for sync: %s', implode(',', $added_roles)));
+        foreach ($added_roles as $role) {
+            $users = get_users(['role' => $role]);
+            foreach ($users as $user) {
+                if (!asap_is_user_synced($user->ID)) {
+                    $result = asap_sync_wp_user_to_better_auth($user->ID, 'role_auto_sync');
+                    if (is_wp_error($result)) {
+                        error_log(sprintf('[Better Auth] Error syncing user %d: %s', $user->ID, $result->get_error_message()));
+                        $sync_results['errors'][] = [
+                            'user_id' => $user->ID,
+                            'error' => $result->get_error_message()
+                        ];
+                    } else {
+                        error_log(sprintf('[Better Auth] Successfully synced user %d', $user->ID));
+                        $sync_results['synced'][] = $user->ID;
+                    }
+                }
+            }
         }
+    }
+
+    // Handle bulk unsync for removed roles
+    $removed_roles = array_diff($old_roles, $roles);
+    if (!empty($removed_roles)) {
+        error_log(sprintf('[Better Auth] Processing roles for unsync: %s', implode(',', $removed_roles)));
+        foreach ($removed_roles as $role) {
+            $users = get_users(['role' => $role]);
+            foreach ($users as $user) {
+                $sync_source = get_user_meta($user->ID, 'better_auth_sync_source', true);
+                if ($sync_source === 'role_auto_sync') {
+                    $result = asap_unsync_wp_user_from_better_auth($user->ID);
+                    if (is_wp_error($result)) {
+                        error_log(sprintf('[Better Auth] Error unsyncing user %d: %s', $user->ID, $result->get_error_message()));
+                        $sync_results['errors'][] = [
+                            'user_id' => $user->ID,
+                            'error' => $result->get_error_message()
+                        ];
+                    } else {
+                        error_log(sprintf('[Better Auth] Successfully unsynced user %d', $user->ID));
+                        $sync_results['unsynced'][] = $user->ID;
+                    }
+                }
+            }
+        }
+    }
+
+    wp_send_json_success([
+        'message' => 'Roles saved successfully',
+        'locked_roles' => get_option('asap_better_auth_locked_roles', ['subscriber']),
+        'sync_results' => $sync_results
     ]);
 }
-add_action('rest_api_init', 'asap_register_token_exchange'); 
+add_action('wp_ajax_asap_save_auto_sync_roles', 'asap_ajax_save_auto_sync_roles');
+
+/**
+ * AJAX handler for saving locked roles
+ */
+function asap_ajax_save_locked_roles() {
+    if (!is_super_admin()) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+
+    if (!wp_verify_nonce($_POST['nonce'], 'asap_save_roles')) {
+        wp_send_json_error(['message' => 'Invalid nonce']);
+    }
+
+    $roles = isset($_POST['roles']) ? (array)$_POST['roles'] : [];
+    $roles = asap_sanitize_locked_roles($roles);
+
+    update_option('asap_better_auth_locked_roles', $roles);
+
+    wp_send_json_success(['message' => 'Locked roles saved successfully']);
+}
+add_action('wp_ajax_asap_save_locked_roles', 'asap_ajax_save_locked_roles');
+  

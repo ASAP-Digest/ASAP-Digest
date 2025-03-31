@@ -15,11 +15,16 @@ This document tracks the implementation progress of Better Auth integration with
 - [x] Added REST API endpoint for manual sync (`/asap/v1/auth/sync-wp-users`)
 - [x] Implemented automatic sync for new WordPress users
 - [x] Added role and capability synchronization
+- [x] Enhanced user list display with role-based sorting
+- [x] Implemented user sync status indicators
+- [x] Added individual user sync/unsync actions
 
 #### Admin Interface
 - [x] Created Central Command dashboard with quick stats
 - [x] Implemented Auth Sync management page
 - [x] Added user sync status tracking
+- [x] Enhanced user list with role column and status indicators
+- [x] Added context-aware action buttons (End Session, Sync, Unsync)
 - [x] Created placeholder pages for future features:
   - Digest Management
   - User Statistics
@@ -62,16 +67,41 @@ This document tracks the implementation progress of Better Auth integration with
 The WordPress to Better Auth user mapping table is structured as follows:
 
 ```sql
-CREATE TABLE wp_ba_wp_user_map (
-    id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-    wp_user_id bigint(20) unsigned NOT NULL,
-    ba_user_id varchar(255) NOT NULL,
-    created_at datetime NOT NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY wp_user_id (wp_user_id),
-    UNIQUE KEY ba_user_id (ba_user_id)
-);
+CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}ba_wp_user_map` (
+  `wp_user_id` bigint(20) unsigned NOT NULL,
+  `better_auth_user_id` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`wp_user_id`),
+  UNIQUE KEY `better_auth_user_id` (`better_auth_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+### User Management Interface
+The Better Auth settings page now includes:
+
+1. User List Table
+   - User information (username, email)
+   - Role column with role display
+   - Last login time
+   - Sync status indicators:
+     - Green: Active (synced with session)
+     - Yellow: Synced (no active session)
+     - Gray: Not Synced
+   - Context-aware action buttons:
+     - "End Session" for users with active sessions
+     - "Unsync" for synced users without sessions
+     - "Sync Now" for unsynced users
+
+2. Status Indicators
+   - Uses WordPress admin UI compatible styling
+   - Clear visual feedback for user states
+   - Consistent color coding across interface
+
+3. User Actions
+   - Individual user sync/unsync functionality
+   - Session management capabilities
+   - Role-based sorting for better organization
 
 ### User Synchronization
 User synchronization preserves the following WordPress data in Better Auth:
@@ -135,10 +165,11 @@ Local development database configuration:
 3. Session synchronization not yet implemented
 
 ## Next Steps
-1. Create Better Auth database schema
-2. Configure Better Auth client in SvelteKit
-3. Implement session synchronization
-4. Update frontend components
+1. Complete remaining database schema implementation
+2. Integrate with SvelteKit authentication
+3. Implement frontend components
+4. Test cross-domain authentication
+5. Add user migration tools
 
 ## Resources
 - [Better Auth Documentation](https://better-auth.dev)
