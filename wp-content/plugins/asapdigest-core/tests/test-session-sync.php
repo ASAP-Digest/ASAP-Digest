@@ -73,7 +73,7 @@ class TestSessionSync {
      * 
      * @return array Test results
      */
-    public function test_check_wp_session() {
+    public function test_validate_wp_session_token() {
         $results = [];
 
         // Create mock request with valid token
@@ -86,7 +86,7 @@ class TestSessionSync {
         // Test 1: Check valid session
         asap_create_wp_session_core($this->test_user_id);
         wp_set_current_user($this->test_user_id);
-        $result = asap_check_wp_session($request);
+        $result = asap_validate_wp_session_token($request);
         $results['valid_session'] = [
             'test' => 'Check valid session',
             'passed' => $result === true,
@@ -95,7 +95,7 @@ class TestSessionSync {
 
         // Test 2: Check invalid token
         $request->set_header('X-Better-Auth-Token', 'invalid.token');
-        $result = asap_check_wp_session($request);
+        $result = asap_validate_wp_session_token($request);
         $results['invalid_token'] = [
             'test' => 'Check invalid token',
             'passed' => is_wp_error($result),
@@ -153,7 +153,7 @@ class TestSessionSync {
         
         $results = [
             'session_creation' => $this->test_create_wp_session(),
-            'session_validation' => $this->test_check_wp_session(),
+            'session_validation' => $this->test_validate_wp_session_token(),
             'token_exchange' => $this->test_token_exchange()
         ];
         

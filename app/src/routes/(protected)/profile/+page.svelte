@@ -3,20 +3,14 @@
   import { page } from '$app/stores';
   import { User, Settings, Bell, LogOut } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
+  import * as Avatar from '$lib/components/ui/avatar';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { UserCircle, Mail, Globe, Shield } from '$lib/utils/lucide-compat.js';
 
-  // Mock user data
-  let user = $state({
-    name: 'John Doe',
-    email: 'john@example.com',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    joined: '2024-01-15',
-    preferences: {
-      darkMode: false,
-      notifications: true,
-      emailDigest: true,
-      categories: ['AI', 'Web3', 'Finance', 'Tech']
-    }
-  });
+  /** @type {import('./$types').PageData} */
+  const { data } = $props();
+
+  const user = $derived(data.user);
   
   // Tab management
   let activeTab = $state('profile');
@@ -47,6 +41,74 @@
     // TODO: Implement actual save functionality
   }
 </script>
+
+<div class="container mx-auto py-8">
+  <Card>
+    <CardHeader>
+      <CardTitle>Profile Information</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div class="flex flex-col items-center space-y-4 md:flex-row md:space-x-6 md:space-y-0">
+        <div class="relative h-24 w-24">
+          {#if user.avatarUrl}
+            <Avatar.Root class="h-full w-full">
+              <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
+              <Avatar.Fallback>
+                <Icon icon={UserCircle} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
+              </Avatar.Fallback>
+            </Avatar.Root>
+          {:else}
+            <div class="avatar-placeholder h-full w-full">
+              <Icon icon={UserCircle} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
+            </div>
+          {/if}
+        </div>
+        
+        <div class="flex flex-col space-y-4">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <Icon icon={UserCircle} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <span class="text-sm font-medium">Name</span>
+            </div>
+            <p class="text-lg font-semibold">{user.displayName}</p>
+          </div>
+          
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <Icon icon={Mail} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <span class="text-sm font-medium">Email</span>
+            </div>
+            <p class="text-[hsl(var(--muted-foreground))]">{user.email}</p>
+          </div>
+          
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <Icon icon={Shield} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <span class="text-sm font-medium">Roles</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {#each user.roles as role}
+                <span class="rounded-full bg-[hsl(var(--muted))] px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                  {role}
+                </span>
+              {/each}
+            </div>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</div>
+
+<style>
+  .avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+  }
+</style>
 
 <div class="max-w-4xl mx-auto">
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">

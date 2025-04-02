@@ -243,15 +243,16 @@ function asap_create_wp_session_core($wp_user_id) {
 }
 
 /**
- * @description Check WordPress session and Better Auth token
- * @param {WP_REST_Request} $request REST request object
- * @return {WP_Error|bool} True if session is valid, WP_Error otherwise
+ * @description Validate WordPress session token against Better Auth token with auto-sync
+ * @param WP_REST_Request $request REST request object
+ * @return WP_Error|array Validation result with user data or error
  * @example
- * // Check session from REST request
- * $is_valid = asap_check_wp_session($request);
+ * // Check session token from REST request
+ * $result = asap_validate_wp_session_token($request);
  * @created 03.30.25 | 04:37 PM PDT
+ * @renamed 07.23.24 | 11:00 AM PDT (was asap_check_wp_session)
  */
-function asap_check_wp_session($request) {
+function asap_validate_wp_session_token($request) {
     // Get Better Auth token from header
     $better_auth_token = $request->get_header('X-Better-Auth-Token');
     if (empty($better_auth_token)) {
@@ -264,19 +265,63 @@ function asap_check_wp_session($request) {
         return new WP_Error('invalid_token_format', 'Invalid token format');
     }
 
-    // Get user from session token
-    $user = wp_get_current_user();
-    if (!$user || !$user->ID) {
-        return new WP_Error('no_session', 'No active WordPress session');
-    }
+    try {
+        // Decode token payload
+        $payload = json_decode(base64_decode($token_parts[1]), true);
+        if (!$payload || empty($payload['sub'])) {
+            return new WP_Error('invalid_token_payload', 'Invalid token payload');
+        }
 
-    // Verify Better Auth token matches stored token
-    $stored_token = get_user_meta($user->ID, 'better_auth_session_token', true);
-    if (empty($stored_token) || $stored_token !== wp_get_session_token()) {
-        return new WP_Error('invalid_session', 'Invalid or expired session');
+        // Get WordPress user from Better Auth ID
+        $users = get_users([
+            'meta_key' => 'better_auth_user_id',
+            'meta_value' => $payload['sub'],
+            'number' => 1
+        ]);
+
+        if (empty($users)) {
+            return new WP_Error('user_not_found', 'No WordPress user found for Better Auth ID');
+        }
+
+        $user = $users[0];
+
+        // Auto-create WordPress session if needed
+        if (!is_user_logged_in() || get_current_user_id() !== $user->ID) {
+            $session_result = asap_create_wp_session_core($user->ID);
+            if (is_wp_error($session_result)) {
+                return $session_result;
+            }
+        }
+
+        // Verify session token
+        $stored_token = get_user_meta($user->ID, 'better_auth_session_token', true);
+        if (empty($stored_token) || $stored_token !== wp_get_session_token()) {
+            // Auto-refresh session if token mismatch
+            $session_result = asap_create_wp_session_core($user->ID);
+            if (is_wp_error($session_result)) {
+                return $session_result;
+            }
+        }
+
+        // Auto-sync user data
+        $sync_result = asap_auto_sync_user_data($user->ID);
+        if (is_wp_error($sync_result)) {
+            error_log('Auto-sync failed: ' . $sync_result->get_error_message());
+        }
+
+        // Return success with user data
+        return [
+            'valid' => true,
+            'user_id' => $user->ID,
+            'better_auth_user_id' => $payload['sub'],
+            'display_name' => $user->display_name,
+            'email' => $user->user_email,
+            'avatar_url' => get_avatar_url($user->ID),
+            'roles' => $user->roles
+        ];
+    } catch (Exception $e) {
+        return new WP_Error('validation_failed', $e->getMessage());
     }
-    
-    return true;
 }
 
 /**
@@ -408,9 +453,85 @@ function asap_handle_create_wp_session($request) {
 function asap_register_wp_session_check() {
     register_rest_route('asap/v1/auth', '/check-wp-session', [
         'methods' => 'GET',
-        'callback' => 'asap_check_wp_session',
+        'callback' => 'asap_check_wp_session', // KEEP THIS NAME for the callback
         'permission_callback' => '__return_true'
     ]);
+}
+
+/**
+ * @description Check WordPress session and sync with Better Auth if needed (REST Endpoint Callback)
+ * @param WP_REST_Request $request The request object
+ * @return WP_REST_Response|WP_Error Response object or error
+ * @created 03.31.25 | 11:48 AM PDT
+ */
+function asap_check_wp_session($request) { // KEEP THIS NAME
+    // Check if user is logged into WordPress
+    if (!is_user_logged_in()) {
+        return new WP_REST_Response(['loggedIn' => false], 200);
+    }
+
+    // Get current WordPress user
+    $current_user = wp_get_current_user();
+    
+    // Sync user to Better Auth if needed
+    $sync_result = asap_sync_wp_user_to_better_auth($current_user->ID, 'auto_sync');
+    
+    if (is_wp_error($sync_result)) {
+        return new WP_REST_Response([
+            'error' => 'Failed to sync user with Better Auth',
+            'details' => $sync_result->get_error_message()
+        ], 500);
+    }
+
+    // Create Better Auth session
+    try {
+        $ba_db = new PDO(
+            sprintf(
+                'mysql:host=%s;port=%s;dbname=%s',
+                defined('DB_HOST') ? DB_HOST : 'localhost',
+                '10018',
+                DB_NAME
+            ),
+            DB_USER,
+            DB_PASSWORD,
+            array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+        );
+
+        // Generate session token
+        $sessionToken = bin2hex(random_bytes(32));
+        
+        // Insert session into Better Auth sessions table
+        $stmt = $ba_db->prepare("
+            INSERT INTO ba_sessions (
+                user_id,
+                token,
+                expires_at,
+                created_at
+            ) VALUES (
+                :user_id,
+                :token,
+                DATE_ADD(NOW(), INTERVAL 30 DAY),
+                NOW()
+            )
+        ");
+
+        $stmt->execute([
+            ':user_id' => $sync_result['ba_user_id'],
+            ':token' => $sessionToken
+        ]);
+
+        return new WP_REST_Response([
+            'loggedIn' => true,
+            'sessionToken' => $sessionToken,
+            'userId' => $sync_result['ba_user_id']
+        ], 200);
+
+    } catch (Exception $e) {
+        return new WP_REST_Response([
+            'error' => 'Failed to create Better Auth session',
+            'details' => $e->getMessage()
+        ], 500);
+    }
 }
 
 /**
@@ -2365,4 +2486,85 @@ function asap_ajax_save_locked_roles() {
     wp_send_json_success(['message' => 'Locked roles saved successfully']);
 }
 add_action('wp_ajax_asap_save_locked_roles', 'asap_ajax_save_locked_roles');
+
+/**
+ * @description Automatically propagate user data changes between WordPress and Better Auth
+ * @param int $user_id WordPress user ID
+ * @param array $user_data Updated user data
+ * @return bool|WP_Error True on success, WP_Error on failure
+ * @created 04.01.25 | 09:15 PM PDT
+ */
+function asap_auto_sync_user_data($user_id, $user_data = null) {
+    // Get user if data not provided
+    if (!$user_data) {
+        $user = get_user_by('ID', $user_id);
+        if (!$user) {
+            return new WP_Error('user_not_found', 'WordPress user not found');
+        }
+        $user_data = array(
+            'ID' => $user_id,
+            'user_email' => $user->user_email,
+            'display_name' => $user->display_name,
+            'user_url' => $user->user_url,
+            'avatar_url' => get_avatar_url($user_id)
+        );
+    }
+
+    // Get Better Auth user ID
+    $better_auth_user_id = get_user_meta($user_id, 'better_auth_user_id', true);
+    if (!$better_auth_user_id) {
+        // Create Better Auth user if doesn't exist
+        $sync_result = asap_sync_wp_user_to_better_auth($user_id);
+        if (is_wp_error($sync_result)) {
+            return $sync_result;
+        }
+        $better_auth_user_id = $sync_result['ba_user_id'];
+    }
+
+    try {
+        // Connect to Better Auth database
+        $ba_db = new PDO(
+            sprintf(
+                'mysql:host=%s;port=%s;dbname=%s',
+                defined('DB_HOST') ? DB_HOST : 'localhost',
+                '10018',
+                DB_NAME
+            ),
+            DB_USER,
+            DB_PASSWORD,
+            array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+        );
+
+        // Update Better Auth user data
+        $stmt = $ba_db->prepare("
+            UPDATE ba_users 
+            SET 
+                email = :email,
+                display_name = :display_name,
+                avatar_url = :avatar_url,
+                website = :website,
+                updated_at = NOW()
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            ':email' => $user_data['user_email'],
+            ':display_name' => $user_data['display_name'],
+            ':avatar_url' => $user_data['avatar_url'],
+            ':website' => $user_data['user_url'],
+            ':id' => $better_auth_user_id
+        ]);
+
+        // Fire action for integrations
+        do_action('asap_user_data_synced', $user_id, $better_auth_user_id, $user_data);
+
+        return true;
+    } catch (Exception $e) {
+        return new WP_Error('sync_failed', $e->getMessage());
+    }
+}
+
+// Hook into user profile updates
+add_action('profile_update', 'asap_auto_sync_user_data', 10, 2);
+add_action('user_register', 'asap_auto_sync_user_data', 10);
   

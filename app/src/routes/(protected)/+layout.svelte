@@ -1,17 +1,132 @@
 <script>
   import { page } from '$app/stores';
-  import { Loader2 } from '$lib/utils/lucide-compat.js';
+  import { onMount } from 'svelte';
+  import { invalidateAll } from '$app/navigation';
+  import { toasts } from '$lib/stores/toast';
+  import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
+  import * as Avatar from '$lib/components/ui/avatar';
+  import { UserCircle } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
-  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
-  
+
   /** @type {import('./$types').LayoutData} */
-  const { data, children } = $props();
+  const { data } = $props();
+
+  const user = $derived(data.user);
+  let syncInterval;
+  let firstSync = true;
+
+  onMount(() => {
+    // Show auto-login notification
+    toasts.show('Successfully logged in via WordPress', 'success');
+
+    // Set up periodic sync every 5 minutes
+    syncInterval = setInterval(async () => {
+      try {
+        const response = await fetch('/api/auth/sync', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.updated) {
+            // Refresh all data if user info was updated
+            await invalidateAll();
+            if (!firstSync) {
+              toasts.show('Profile information updated', 'info');
+            }
+            firstSync = false;
+          }
+        }
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+        toasts.show('Failed to sync profile information', 'error');
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  });
 </script>
 
-{#if $page.data.session}
-  {@render children?.()}
-{:else}
-  <div class="flex justify-center items-center min-h-screen">
-    <Icon icon={Loader2} class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
+{#if user}
+  <div class="protected-layout">
+    <header class="user-header">
+      <div class="user-info">
+        {#if user.avatarUrl}
+          <Avatar.Root>
+            <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
+            <Avatar.Fallback>
+              <Icon icon={UserCircle} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+            </Avatar.Fallback>
+          </Avatar.Root>
+        {:else}
+          <div class="avatar-placeholder">
+            <Icon icon={UserCircle} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+          </div>
+        {/if}
+        <div class="user-details">
+          <span class="display-name">{user.displayName}</span>
+          <span class="email">{user.email}</span>
+        </div>
+      </div>
+    </header>
+    
+    <main>
+      <slot />
+    </main>
   </div>
-{/if} 
+{/if}
+
+<ToastContainer />
+
+<style>
+  .protected-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .user-header {
+    background: hsl(var(--background));
+    padding: 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .display-name {
+    font-weight: 500;
+    color: hsl(var(--foreground));
+  }
+
+  .email {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  main {
+    flex: 1;
+    padding: 2rem;
+  }
+</style> 

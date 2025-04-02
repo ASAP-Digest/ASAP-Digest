@@ -3,7 +3,6 @@
 // It allows existing imports from 'lucide-svelte' to continue working with Svelte 5 runes
 
 import { createIconObject } from './icon-utils.js';
-import Icon from '$components/ui/icon/icon.svelte';
 
 // Import raw SVG paths for common icons
 // In a full implementation, you would import all icons from @lucide/svelte
@@ -16,7 +15,10 @@ const iconPaths = {
   arrowLeft: '<path d="M19 12H5M12 19l-7-7 7-7"></path>',
   logIn: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>',
   logOut: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>',
-  // Add more icons as needed
+  check: '<polyline points="20 6 9 17 4 12"></polyline>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
+  alertCircle: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',
+  info: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
 };
 
 // Create Svelte components for each icon
@@ -28,13 +30,17 @@ export const Mail = createIconObject('mail', iconPaths.mail);
 export const ArrowLeft = createIconObject('arrowLeft', iconPaths.arrowLeft);
 export const LogIn = createIconObject('logIn', iconPaths.logIn);
 export const LogOut = createIconObject('logOut', iconPaths.logOut);
+export const Check = createIconObject('check', iconPaths.check);
+export const X = createIconObject('x', iconPaths.x);
+export const AlertCircle = createIconObject('alertCircle', iconPaths.alertCircle);
+export const Info = createIconObject('info', iconPaths.info);
 // Add more exports as needed
 
 /**
  * Create a custom icon component from a name and SVG content
  * @param {string} name The name of the icon
  * @param {string} svgContent The SVG content as a string 
- * @returns {typeof Icon} A Svelte component that renders the icon
+ * @returns {object} A Svelte component that renders the icon
  */
 export function createCustomIcon(name, svgContent) {
   return createIconObject(name, svgContent);

@@ -1,6 +1,7 @@
 import { auth } from '$lib/server/auth';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
+import { redirect } from '@sveltejs/kit';
 
 /**
  * Get WordPress base URL
@@ -142,4 +143,75 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
 };
 
 /** @type {import('@sveltejs/kit').Handle} */
-export const handle = sequence(betterAuthHandle, wordPressSessionHandle); 
+const protectedRouteHandle = async ({ event, resolve }) => {
+    try {
+        // Skip protection for public routes and API endpoints
+        if (event.url.pathname.startsWith('/api/') || 
+            event.url.pathname.startsWith('/_app/') ||
+            event.url.pathname.startsWith('/@') ||
+            event.url.pathname === '/' ||
+            event.url.pathname === '/login' ||
+            event.url.pathname === '/register' ||
+            event.url.pathname === '/forgot-password') {
+            return resolve(event);
+        }
+
+        // Check if route is protected
+        const isProtectedRoute = event.url.pathname.startsWith('/dashboard') || 
+                               event.url.pathname.startsWith('/account') ||
+                               event.url.pathname.startsWith('/settings');
+
+        if (!isProtectedRoute) {
+            return resolve(event);
+        }
+
+        // Get session token
+        const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
+        if (!sessionToken) {
+            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
+        }
+
+        // Validate session with WordPress
+        const wpResponse = await fetch(`${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, {
+            headers: {
+                'X-Better-Auth-Token': sessionToken,
+                cookie: event.request.headers.get('cookie') || ''
+            }
+        });
+
+        if (!wpResponse.ok) {
+            // Clear invalid session
+            const headers = new Headers();
+            headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`, {
+                headers
+            });
+        }
+
+        const data = await wpResponse.json();
+        if (!data.valid) {
+            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
+        }
+
+        // Add user data to event locals for use in routes
+        event.locals.user = {
+            id: data.user_id,
+            betterAuthId: data.better_auth_user_id,
+            displayName: data.display_name,
+            email: data.email,
+            avatarUrl: data.avatar_url,
+            roles: data.roles
+        };
+
+        return resolve(event);
+    } catch (error) {
+        if (error instanceof Response) {
+            throw error;
+        }
+        console.error('Protected route error:', error);
+        throw redirect(303, '/login');
+    }
+};
+
+/** @type {import('@sveltejs/kit').Handle} */
+export const handle = sequence(betterAuthHandle, wordPressSessionHandle, protectedRouteHandle); 
