@@ -18,7 +18,10 @@ const iconPaths = {
   check: '<polyline points="20 6 9 17 4 12"></polyline>',
   x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
   alertCircle: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>',
-  info: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>'
+  info: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
+  circleUser: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>'
 };
 
 // Create Svelte components for each icon
@@ -34,6 +37,9 @@ export const Check = createIconObject('check', iconPaths.check);
 export const X = createIconObject('x', iconPaths.x);
 export const AlertCircle = createIconObject('alertCircle', iconPaths.alertCircle);
 export const Info = createIconObject('info', iconPaths.info);
+export const CircleUser = createIconObject('circleUser', iconPaths.circleUser);
+export const Shield = createIconObject('shield', iconPaths.shield);
+export const Bell = createIconObject('bell', iconPaths.bell);
 // Add more exports as needed
 
 /**

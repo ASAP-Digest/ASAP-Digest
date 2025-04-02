@@ -5,7 +5,7 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import * as Avatar from '$lib/components/ui/avatar';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
-  import { UserCircle, Mail, Globe, Shield } from '$lib/utils/lucide-compat.js';
+  import { CircleUser, Mail, Globe, Shield } from '$lib/utils/lucide-compat.js';
 
   /** @type {import('./$types').PageData} */
   const { data } = $props();
@@ -54,12 +54,12 @@
             <Avatar.Root class="h-full w-full">
               <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
               <Avatar.Fallback>
-                <Icon icon={UserCircle} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
+                <Icon icon={CircleUser} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
               </Avatar.Fallback>
             </Avatar.Root>
           {:else}
             <div class="avatar-placeholder h-full w-full">
-              <Icon icon={UserCircle} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
+              <Icon icon={CircleUser} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
             </div>
           {/if}
         </div>
@@ -67,7 +67,7 @@
         <div class="flex flex-col space-y-4">
           <div class="space-y-1">
             <div class="flex items-center space-x-2">
-              <Icon icon={UserCircle} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <Icon icon={CircleUser} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
               <span class="text-sm font-medium">Name</span>
             </div>
             <p class="text-lg font-semibold">{user.displayName}</p>

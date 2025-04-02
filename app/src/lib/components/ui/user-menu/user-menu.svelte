@@ -11,7 +11,7 @@
     DropdownMenuTrigger,
   } from '$lib/components/ui/dropdown-menu';
   import * as Avatar from '$lib/components/ui/avatar';
-  import { UserCircle, Settings, LogOut } from '$lib/utils/lucide-compat.js';
+  import { CircleUser, Settings, LogOut } from '$lib/utils/lucide-compat.js';
   import Icon from '../icon/icon.svelte';
 
   /** @type {{ user: { displayName: string, email: string, avatarUrl: string, roles: string[] } }} */
@@ -31,12 +31,12 @@
         <Avatar.Root>
           <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
           <Avatar.Fallback>
-            <Icon icon={UserCircle} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
+            <Icon icon={CircleUser} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
           </Avatar.Fallback>
         </Avatar.Root>
       {:else}
         <div class="avatar-placeholder">
-          <Icon icon={UserCircle} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
+          <Icon icon={CircleUser} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
         </div>
       {/if}
     </Button>

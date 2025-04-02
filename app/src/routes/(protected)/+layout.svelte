@@ -5,7 +5,7 @@
   import { toasts } from '$lib/stores/toast';
   import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
   import * as Avatar from '$lib/components/ui/avatar';
-  import { UserCircle } from '$lib/utils/lucide-compat.js';
+  import { CircleUser } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
 
   /** @type {import('./$types').LayoutData} */
@@ -57,12 +57,12 @@
           <Avatar.Root>
             <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
             <Avatar.Fallback>
-              <Icon icon={UserCircle} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+              <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
             </Avatar.Fallback>
           </Avatar.Root>
         {:else}
           <div class="avatar-placeholder">
-            <Icon icon={UserCircle} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
+            <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
           </div>
         {/if}
         <div class="user-details">
