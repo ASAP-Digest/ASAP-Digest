@@ -5,7 +5,7 @@
   import { toasts } from '$lib/stores/toast';
   import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
   import * as Avatar from '$lib/components/ui/avatar';
-  import { CircleUser } from '$lib/utils/lucide-compat.js';
+  import { CircleUser, Loader2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
 
   /** @type {import('./$types').LayoutData} */
@@ -16,8 +16,21 @@
   let firstSync = true;
 
   onMount(() => {
-    // Show auto-login notification
-    toasts.show('Successfully logged in via WordPress', 'success');
+    // Initial sync to check for auto-login
+    fetch('/api/auth/sync', {
+      credentials: 'include'
+    }).then(async (response) => {
+      if (response.ok) {
+        const result = await response.json();
+        if (result.valid && result.updated) {
+          // Show auto-login notification only when auto-login occurs
+          toasts.show('Successfully logged in via WordPress', 'success');
+          await invalidateAll();
+        }
+      }
+    }).catch((error) => {
+      console.error('Initial sync failed:', error);
+    });
 
     // Set up periodic sync every 5 minutes
     syncInterval = setInterval(async () => {

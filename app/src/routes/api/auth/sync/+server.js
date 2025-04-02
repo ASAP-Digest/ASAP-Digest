@@ -1,70 +1,73 @@
-import { json } from '@sveltejs/kit';
-import { dev } from '$app/environment';
-
-/**
- * Get WordPress base URL
- * @returns {string} WordPress base URL
- */
-function getWordPressBaseURL() {
-    if (dev) {
-        return 'https://asapdigest.local';
-    }
-    return 'https://asapdigest.com';
-}
+import { getWordPressBaseURL } from '$lib/utils/wordpress.js';
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ request, locals }) {
-    try {
-        // Get session token
-        const sessionToken = request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
-        if (!sessionToken) {
-            return json({ error: 'No session token found' }, { status: 401 });
-        }
+  try {
+    const cookies = request.headers.get('cookie') || '';
+    console.debug('All cookies:', cookies);
 
-        // Check WordPress session and sync user data
-        const wpResponse = await fetch(`${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, {
-            headers: {
-                'X-Better-Auth-Token': sessionToken,
-                cookie: request.headers.get('cookie') || ''
-            }
-        });
+    // Extract WordPress cookies
+    const wpCookies = cookies
+      .split(';')
+      .map(cookie => cookie.trim())
+      .filter(cookie => cookie.startsWith('wordpress_logged_in_'));
+    
+    console.debug('WordPress cookies:', wpCookies);
 
-        if (!wpResponse.ok) {
-            return json({ error: 'Failed to validate session' }, { status: 401 });
-        }
-
-        const data = await wpResponse.json();
-        if (!data.valid) {
-            return json({ error: 'Invalid session' }, { status: 401 });
-        }
-
-        // Check if user data has changed
-        const currentUser = locals.user;
-        const updated = !currentUser ||
-            currentUser.displayName !== data.display_name ||
-            currentUser.email !== data.email ||
-            currentUser.avatarUrl !== data.avatar_url ||
-            JSON.stringify(currentUser.roles) !== JSON.stringify(data.roles);
-
-        // Update locals if needed
-        if (updated) {
-            locals.user = {
-                id: data.user_id,
-                betterAuthId: data.better_auth_user_id,
-                displayName: data.display_name,
-                email: data.email,
-                avatarUrl: data.avatar_url,
-                roles: data.roles
-            };
-        }
-
-        return json({
-            valid: true,
-            updated,
-            user: locals.user
-        });
-    } catch (error) {
-        console.error('Sync error:', error);
-        return json({ error: 'Sync failed' }, { status: 500 });
+    if (wpCookies.length === 0) {
+      console.debug('No WordPress cookies found');
+      return new Response(JSON.stringify({ valid: false, error: 'No WordPress session found' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
+
+    // Call WordPress to validate session
+    const response = await fetch(`${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, {
+      headers: {
+        'Cookie': wpCookies.join('; ')
+      },
+      credentials: 'include'
+    });
+
+    console.debug('WordPress response status:', response.status);
+    const data = await response.json();
+    console.debug('WordPress response data:', data);
+
+    if (!response.ok) {
+      return new Response(JSON.stringify({ valid: false, error: data.error || 'Failed to validate session' }), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!data.loggedIn) {
+      return new Response(JSON.stringify({ valid: false, error: 'Not logged in to WordPress' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Update user data if needed
+    const currentUser = locals.user;
+    const updated = currentUser?.id !== data.userId;
+
+    if (updated) {
+      locals.user = {
+        id: data.userId,
+        sessionToken: data.sessionToken
+      };
+    }
+
+    return new Response(JSON.stringify({ valid: true, updated }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Sync error:', error);
+    return new Response(JSON.stringify({ valid: false, error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 } 

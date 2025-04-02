@@ -483,7 +483,6 @@ function asap_check_wp_session($request) { // KEEP THIS NAME
         ], 500);
     }
 
-    // Create Better Auth session
     try {
         $ba_db = new PDO(
             sprintf(
@@ -527,6 +526,7 @@ function asap_check_wp_session($request) { // KEEP THIS NAME
         ], 200);
 
     } catch (Exception $e) {
+        error_log('Better Auth session creation failed: ' . $e->getMessage());
         return new WP_REST_Response([
             'error' => 'Failed to create Better Auth session',
             'details' => $e->getMessage()
@@ -1499,36 +1499,6 @@ function asap_register_token_exchange() {
 add_action('rest_api_init', 'asap_register_token_exchange');
 
 /**
- * @description Create WordPress to Better Auth user mapping table
- * @hook register_activation_hook(__FILE__, 'asap_create_ba_wp_user_map_table')
- * @since 1.0.0
- * @return void
- * @created 03.30.25 | 03:45 PM PDT
- */
-function asap_create_ba_wp_user_map_table() {
-    global $wpdb;
-
-    $charset_collate = $wpdb->get_charset_collate();
-    $table_name = $wpdb->prefix . 'ba_wp_user_map';
-
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-        wp_user_id bigint(20) unsigned NOT NULL,
-        ba_user_id varchar(255) NOT NULL,
-        created_at datetime NOT NULL,
-        PRIMARY KEY  (id),
-        UNIQUE KEY wp_user_id (wp_user_id),
-        UNIQUE KEY ba_user_id (ba_user_id)
-    ) $charset_collate;";
-
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-}
-
-// Create mapping table on plugin activation
-register_activation_hook(__FILE__, 'asap_create_ba_wp_user_map_table');
-
-/**
  * @description Register Better Auth settings
  * @return void
  * @example
@@ -2368,7 +2338,7 @@ function asap_update_better_auth_settings() {
 function asap_is_user_synced($wp_user_id) {
     global $wpdb;
     
-    $table_name = $wpdb->prefix . 'asap_better_auth_users';
+    $table_name = $wpdb->prefix . 'ba_wp_user_map';  // Fixed table name
     $result = $wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM $table_name WHERE wp_user_id = %d",
         $wp_user_id
@@ -2381,88 +2351,98 @@ function asap_is_user_synced($wp_user_id) {
  * AJAX handler for saving auto-sync roles
  */
 function asap_ajax_save_auto_sync_roles() {
-    if (!current_user_can('manage_options')) {
-        error_log('[Better Auth] Permission denied for auto-sync roles save');
-        wp_send_json_error(['message' => 'Insufficient permissions']);
-    }
+    try {
+        if (!current_user_can('manage_options')) {
+            error_log('[Better Auth] Permission denied for auto-sync roles save');
+            wp_send_json_error(['message' => 'Insufficient permissions']);
+            return;
+        }
 
-    if (!wp_verify_nonce($_POST['nonce'], 'asap_save_roles')) {
-        error_log('[Better Auth] Invalid nonce for auto-sync roles save');
-        wp_send_json_error(['message' => 'Invalid nonce']);
-    }
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_save_roles')) {
+            error_log('[Better Auth] Invalid nonce for auto-sync roles save');
+            wp_send_json_error(['message' => 'Invalid nonce']);
+            return;
+        }
 
-    $roles = isset($_POST['roles']) ? (array)$_POST['roles'] : [];
-    $old_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
-    $roles = asap_sanitize_auto_sync_roles($roles);
+        $roles = isset($_POST['roles']) ? (array)$_POST['roles'] : [];
+        $old_roles = get_option('asap_better_auth_auto_sync_roles', ['administrator']);
+        $roles = asap_sanitize_auto_sync_roles($roles);
 
-    error_log(sprintf('[Better Auth] Processing auto-sync roles update. Old: %s, New: %s', 
-        implode(',', $old_roles), 
-        implode(',', $roles)
-    ));
+        error_log(sprintf('[Better Auth] Processing auto-sync roles update. Old: %s, New: %s', 
+            implode(',', $old_roles), 
+            implode(',', $roles)
+        ));
 
-    update_option('asap_better_auth_auto_sync_roles', $roles);
-    
-    // Track sync results
-    $sync_results = [
-        'synced' => [],
-        'unsynced' => [],
-        'errors' => []
-    ];
+        update_option('asap_better_auth_auto_sync_roles', $roles);
+        
+        // Track sync results
+        $sync_results = [
+            'synced' => [],
+            'unsynced' => [],
+            'errors' => []
+        ];
 
-    // Handle bulk sync for added roles
-    $added_roles = array_diff($roles, $old_roles);
-    if (!empty($added_roles)) {
-        error_log(sprintf('[Better Auth] Processing new roles for sync: %s', implode(',', $added_roles)));
-        foreach ($added_roles as $role) {
-            $users = get_users(['role' => $role]);
-            foreach ($users as $user) {
-                if (!asap_is_user_synced($user->ID)) {
-                    $result = asap_sync_wp_user_to_better_auth($user->ID, 'role_auto_sync');
-                    if (is_wp_error($result)) {
-                        error_log(sprintf('[Better Auth] Error syncing user %d: %s', $user->ID, $result->get_error_message()));
-                        $sync_results['errors'][] = [
-                            'user_id' => $user->ID,
-                            'error' => $result->get_error_message()
-                        ];
-                    } else {
-                        error_log(sprintf('[Better Auth] Successfully synced user %d', $user->ID));
-                        $sync_results['synced'][] = $user->ID;
+        // Handle bulk sync for added roles
+        $added_roles = array_diff($roles, $old_roles);
+        if (!empty($added_roles)) {
+            error_log(sprintf('[Better Auth] Processing new roles for sync: %s', implode(',', $added_roles)));
+            foreach ($added_roles as $role) {
+                $users = get_users(['role' => $role]);
+                foreach ($users as $user) {
+                    if (!asap_is_user_synced($user->ID)) {
+                        $result = asap_sync_wp_user_to_better_auth($user->ID, 'role_auto_sync');
+                        if (is_wp_error($result)) {
+                            error_log(sprintf('[Better Auth] Error syncing user %d: %s', $user->ID, $result->get_error_message()));
+                            $sync_results['errors'][] = [
+                                'user_id' => $user->ID,
+                                'error' => $result->get_error_message()
+                            ];
+                        } else {
+                            error_log(sprintf('[Better Auth] Successfully synced user %d', $user->ID));
+                            $sync_results['synced'][] = $user->ID;
+                        }
                     }
                 }
             }
         }
-    }
 
-    // Handle bulk unsync for removed roles
-    $removed_roles = array_diff($old_roles, $roles);
-    if (!empty($removed_roles)) {
-        error_log(sprintf('[Better Auth] Processing roles for unsync: %s', implode(',', $removed_roles)));
-        foreach ($removed_roles as $role) {
-            $users = get_users(['role' => $role]);
-            foreach ($users as $user) {
-                $sync_source = get_user_meta($user->ID, 'better_auth_sync_source', true);
-                if ($sync_source === 'role_auto_sync') {
-                    $result = asap_unsync_wp_user_from_better_auth($user->ID);
-                    if (is_wp_error($result)) {
-                        error_log(sprintf('[Better Auth] Error unsyncing user %d: %s', $user->ID, $result->get_error_message()));
-                        $sync_results['errors'][] = [
-                            'user_id' => $user->ID,
-                            'error' => $result->get_error_message()
-                        ];
-                    } else {
-                        error_log(sprintf('[Better Auth] Successfully unsynced user %d', $user->ID));
-                        $sync_results['unsynced'][] = $user->ID;
+        // Handle bulk unsync for removed roles
+        $removed_roles = array_diff($old_roles, $roles);
+        if (!empty($removed_roles)) {
+            error_log(sprintf('[Better Auth] Processing roles for unsync: %s', implode(',', $removed_roles)));
+            foreach ($removed_roles as $role) {
+                $users = get_users(['role' => $role]);
+                foreach ($users as $user) {
+                    $sync_source = get_user_meta($user->ID, 'better_auth_sync_source', true);
+                    if ($sync_source === 'role_auto_sync') {
+                        $result = asap_unsync_wp_user_from_better_auth($user->ID);
+                        if (is_wp_error($result)) {
+                            error_log(sprintf('[Better Auth] Error unsyncing user %d: %s', $user->ID, $result->get_error_message()));
+                            $sync_results['errors'][] = [
+                                'user_id' => $user->ID,
+                                'error' => $result->get_error_message()
+                            ];
+                        } else {
+                            error_log(sprintf('[Better Auth] Successfully unsynced user %d', $user->ID));
+                            $sync_results['unsynced'][] = $user->ID;
+                        }
                     }
                 }
             }
         }
-    }
 
-    wp_send_json_success([
-        'message' => 'Roles saved successfully',
-        'locked_roles' => get_option('asap_better_auth_locked_roles', ['subscriber']),
-        'sync_results' => $sync_results
-    ]);
+        wp_send_json_success([
+            'message' => 'Roles saved successfully',
+            'locked_roles' => get_option('asap_better_auth_locked_roles', ['subscriber']),
+            'sync_results' => $sync_results
+        ]);
+    } catch (Exception $e) {
+        error_log(sprintf('[Better Auth] Critical error in auto-sync roles save: %s', $e->getMessage()));
+        wp_send_json_error([
+            'message' => 'An unexpected error occurred while saving roles',
+            'error' => $e->getMessage()
+        ]);
+    }
 }
 add_action('wp_ajax_asap_save_auto_sync_roles', 'asap_ajax_save_auto_sync_roles');
 

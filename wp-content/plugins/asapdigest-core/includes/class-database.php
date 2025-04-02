@@ -9,6 +9,7 @@
 
 namespace ASAPDigest\Core;
 
+use Exception;
 use WP_Error;
 use function get_option;
 use function update_option;
@@ -190,55 +191,133 @@ class ASAP_Digest_Database {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
-        // Usage Metrics Table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_usage_metrics (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            user_id BIGINT(20) UNSIGNED NOT NULL,
-            metric_type VARCHAR(50) NOT NULL,
-            value DECIMAL(10,4) NOT NULL,
-            cost DECIMAL(10,4) NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX user_metric (user_id, metric_type)
-        ) $charset_collate;";
-        dbDelta($sql);
+        // Enable error logging
+        $wpdb->show_errors();
+        ob_start();
 
-        // Service Costs Table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_service_costs (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            service_name VARCHAR(50) NOT NULL,
-            cost_per_unit DECIMAL(10,4) NOT NULL,
-            markup_percentage DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY service (service_name)
-        ) $charset_collate;";
-        dbDelta($sql);
+        try {
+            // Step 1: Create Better Auth Users Table (base table for foreign keys)
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}ba_users (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                metadata JSON,
+                avatar_url VARCHAR(255),
+                website VARCHAR(255),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                UNIQUE KEY email (email),
+                UNIQUE KEY username (username)
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
+            
+            // Verify ba_users table was created
+            $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}ba_users'");
+            if (!$table_exists) {
+                throw new Exception("Failed to create ba_users table");
+            }
 
-        // Better Auth User Map Table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}ba_wp_user_map (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            wp_user_id BIGINT(20) UNSIGNED NOT NULL,
-            ba_user_id VARCHAR(255) NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY wp_user (wp_user_id),
-            UNIQUE KEY ba_user (ba_user_id)
-        ) $charset_collate;";
-        dbDelta($sql);
+            // Step 2: Create Better Auth Sessions Table (depends on ba_users)
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}ba_sessions (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                user_id BIGINT(20) UNSIGNED NOT NULL,
+                token VARCHAR(255) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                UNIQUE KEY token (token),
+                KEY user_id (user_id),
+                CONSTRAINT fk_ba_sessions_user
+                    FOREIGN KEY (user_id) 
+                    REFERENCES {$wpdb->prefix}ba_users(id)
+                    ON DELETE CASCADE
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
 
-        // Notifications Table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_notifications (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            user_id BIGINT(20) UNSIGNED NOT NULL,
-            subscription_endpoint TEXT NOT NULL,
-            auth_key VARCHAR(255) NOT NULL,
-            p256dh_key VARCHAR(255) NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX user_id (user_id)
-        ) $charset_collate;";
-        dbDelta($sql);
+            // Step 3: Create Better Auth Verifications Table (depends on ba_users)
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}ba_verifications (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                user_id BIGINT(20) UNSIGNED NOT NULL,
+                token VARCHAR(255) NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                UNIQUE KEY token (token),
+                KEY user_id (user_id),
+                CONSTRAINT fk_ba_verifications_user
+                    FOREIGN KEY (user_id) 
+                    REFERENCES {$wpdb->prefix}ba_users(id)
+                    ON DELETE CASCADE
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
+
+            // Step 4: Create Better Auth User Map Table
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}ba_wp_user_map (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                wp_user_id BIGINT(20) UNSIGNED NOT NULL,
+                ba_user_id VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                UNIQUE KEY wp_user (wp_user_id),
+                UNIQUE KEY ba_user (ba_user_id)
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
+
+            // Step 5: Create Usage Metrics Table
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_usage_metrics (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                user_id BIGINT(20) UNSIGNED NOT NULL,
+                metric_type VARCHAR(50) NOT NULL,
+                value DECIMAL(10,4) NOT NULL,
+                cost DECIMAL(10,4) NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                INDEX user_metric (user_id, metric_type)
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
+
+            // Step 6: Create Service Costs Table
+            $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_service_costs (
+                id BIGINT(20) UNSIGNED NOT NULL,
+                service_name VARCHAR(50) NOT NULL,
+                cost_per_unit DECIMAL(10,4) NOT NULL,
+                markup_percentage DECIMAL(5,2) NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id) AUTO_INCREMENT,
+                UNIQUE KEY service (service_name)
+            ) ENGINE=InnoDB $charset_collate;";
+            
+            dbDelta($sql);
+
+            // Log success
+            error_log('[ASAP Digest] Successfully created/updated all database tables');
+
+        } catch (Exception $e) {
+            // Log error
+            error_log('[ASAP Digest] Database table creation error: ' . $e->getMessage());
+            error_log('[ASAP Digest] MySQL Error: ' . $wpdb->last_error);
+            
+            // Get any output from dbDelta
+            $dbdelta_output = ob_get_clean();
+            if (!empty($dbdelta_output)) {
+                error_log('[ASAP Digest] dbDelta output: ' . $dbdelta_output);
+            }
+            
+            // Re-throw the exception
+            throw $e;
+        }
+
+        // Clean up
+        ob_end_clean();
+        $wpdb->hide_errors();
     }
 
     /**

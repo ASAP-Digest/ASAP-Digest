@@ -27,100 +27,13 @@ load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/lang
 
 global $wpdb;
 
-/**
- * @description Create custom database tables for ASAP Digest
- * @return void
- * @example
- * // Called during plugin activation
- * asap_create_tables();
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_create_tables() {
-  global $wpdb;
-  ob_start(); // Start output buffering
-  $charset_collate = $wpdb->get_charset_collate();
-  $wpdb->suppress_errors(true); // Disable error display
-
-  // Schema version check
-  $installed_ver = get_option('asap_digest_schema_version');
-  if ($installed_ver != ASAP_DIGEST_SCHEMA_VERSION) {
-    require_once(plugin_dir_path(__FILE__) . 'upgrade.php');
+// Schedule cleanup of old digests and notifications
+function asap_schedule_cleanup() {
+  if (!wp_next_scheduled('asap_cleanup_data')) {
+    wp_schedule_event(time(), 'daily', 'asap_cleanup_data');
   }
-
-  // Digests table
-  $digests_table = $wpdb->prefix . 'asap_digests';
-  $digests_sql = "CREATE TABLE $digests_table (
-    id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    user_id BIGINT(20) UNSIGNED NOT NULL,
-    content TEXT NOT NULL,
-    sentiment_score VARCHAR(20) DEFAULT NULL,
-    life_moment TEXT DEFAULT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    share_link VARCHAR(255) DEFAULT NULL,
-    podcast_url VARCHAR(255) DEFAULT NULL,
-    PRIMARY KEY (id),
-    INDEX idx_user_id (user_id),
-    INDEX idx_sentiment (sentiment_score),
-    FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE,
-    INDEX idx_created_at (created_at)
-  ) ENGINE=InnoDB $charset_collate;";
-  require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-  dbDelta($digests_sql);
-
-  // Migration: Move existing digests from options table
-  $option_prefix = 'asap_digest_';
-  $options = $wpdb->get_results($wpdb->prepare(
-    "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s",
-    $option_prefix.'%'
-  ), ARRAY_A);
-  foreach ($options as $option) {
-    $digest_id = absint(str_replace($option_prefix, '', $option['option_name']));
-    $wpdb->insert(
-      $digests_table,
-      ['id' => $digest_id, 'content' => $option['option_value'], 'created_at' => current_time('mysql')],
-      ['%d', '%s', '%s']
-    );
-    delete_option($option['option_name']);
-  }
-
-  // Notifications table
-  $notifications_table = $wpdb->prefix . 'asap_notifications';
-  $notifications_sql = "CREATE TABLE $notifications_table (
-    id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-    user_id BIGINT(20) UNSIGNED NOT NULL,
-    endpoint TEXT NOT NULL,
-    p256dh TEXT NOT NULL,
-    auth TEXT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    UNIQUE INDEX unique_endpoint (endpoint(255)),
-    FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id)
-  ) ENGINE=InnoDB $charset_collate;";
-  dbDelta($notifications_sql);
-
-  // Create user activity log table
-  $table_name = $wpdb->prefix . 'asap_user_activity_log';
-  $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-    id bigint(20) NOT NULL AUTO_INCREMENT,
-    user_id bigint(20) NOT NULL,
-    action varchar(50) NOT NULL,
-    details text NOT NULL,
-    date datetime NOT NULL,
-    PRIMARY KEY  (id),
-    KEY user_id (user_id),
-    KEY action (action)
-  ) $charset_collate;";
-
-  require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-  dbDelta($sql);
-
-  $wpdb->suppress_errors(false); // Re-enable errors
-  ob_end_clean(); // Discard any buffered output
-  update_option('asap_digest_schema_version', ASAP_DIGEST_SCHEMA_VERSION);
 }
-register_activation_hook(__FILE__, 'asap_create_tables');
-
+add_action('wp', 'asap_schedule_cleanup');
 
 /**
  * @description Clean up plugin data on deactivation
@@ -141,22 +54,6 @@ function asap_cleanup_on_deactivation() {
     delete_option('sms_digest_time');
   }
 }
-
-
-/**
- * @description Schedule cleanup of old digests and notifications
- * @return void
- * @example
- * // Schedule daily cleanup
- * asap_schedule_cleanup();
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_schedule_cleanup() {
-  if (!wp_next_scheduled('asap_cleanup_data')) {
-    wp_schedule_event(time(), 'daily', 'asap_cleanup_data');
-  }
-}
-add_action('wp', 'asap_schedule_cleanup');
 
 /**
  * @description Clean up old digests and notifications data
