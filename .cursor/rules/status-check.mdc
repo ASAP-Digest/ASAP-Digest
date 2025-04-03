@@ -5,255 +5,179 @@ alwaysApply: true
 ---
 # Status Check Protocol
 
-1. **Activation Methods**
-   ```
-   A. Primary Triggers
-   - Commandor alias "SC"
-   - Integration: Can be called by BWS/EWS protocols
-   - Context: Used in WSMP (Worotocol)
-   
-   B. Secondary Triggers
-   - Pre-session validation
-   - Post-session summary
-   - Error state assessment
-   ```
+## 1. Protocol Restrictions
+```
+A. Core Restrictions
+- Status Check is a READ-ONLY operation
+- Must NOT initiate any work or changes
+- Must NOT modify any files or database
+- Must NOT create new entities except StatusCheck and StatusReport
+- Must wait for explicit "IAW" or "BWS" command before any work
 
-2. **Protocol Integration Layer**
-   ```
-   ┌─────────────────────────────────────────┐
-   │         Protocol Integration            │
-   ├─────────────────────────────────────────┤
-   │ 1. Status Check Protocol               │
-   │ 2. Work Session Management Protocol     │
-   │ 3. Memory Maintenance Protocol          │
-   │ 4. Task Tracking Protocol               │
-   └─────────────────────────────────────────┘
-   ```
-
-3. **Status Check Implementation**
-   ```javascript
-   async function executeStatusCheck() {
-       // 1. Initialize timestamp
-       const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
-       console.log(`Checking Project status - Current Time is ${timestamp}`);
-   
-       // 2. Create status check entity
-       await mcp_Server_Memory_create_entities({
-           entities: [{
-               name: `StatusCheck_${timestamp}`,
-               entityType: "StatusCheck",
-               observations: [
-                   `Check initiated at ${timestamp}`,
-                   "Scanning server memory",
-                   "Analyzing task status",
-                   "Reviewing error states"
-               ]
-           }]
-       });
-   
-       // 3. Gather status components
-       const components = {
-           serverMemory: await checkServerMemory(),
-           activeSessions: await checkActiveSessions(),
-           taskStatus: await checkTaskStatus(),
-           errorStates: await checkErrorStates()
-       };
-   
-       // 4. Generate status report
-       return generateStatusReport(components);
-   }
-   ```
-
-4. **Status Components**
-   ```
-   A. Memory State Matrix
-   ┌─────────────────┬────────────────────┬────────────────────┐
-   │ Component       │ Check Type         │ Update Frequency   │
-   ├─────────────────┼────────────────────┼────────────────────┤
-   │ Server Memory   │ Entity scan        │ Real-time         │
-   │ Active Session  │ Session state      │ On change         │
-   │ Task Status     │ Progress check     │ On action         │
-   │ Error State     │ Error scan         │ On occurrence     │
-   └─────────────────┴────────────────────┴────────────────────┘
-   ```
-
-5. **Integration Functions**
-   ```javascript
-   class StatusCheckManager {
-       async checkServerMemory() {
-           const memoryState = await mcp_Server_Memory_read_graph({
-               random_string: "status-check"
-           });
-   
-           return {
-               recentTasks: this.extractRecentTasks(memoryState),
-               activeErrors: this.extractActiveErrors(memoryState),
-               sessionState: this.extractSessionState(memoryState)
-           };
-       }
-   
-       async checkActiveSessions() {
-           const sessions = await mcp_Server_Memory_search_nodes({
-               query: "type:WorkSession status:ACTIVE"
-           });
-   
-           return sessions.map(session => ({
-               id: session.id,
-               type: session.type,
-               startTime: session.startTime,
-               currentTask: session.currentTask
-           }));
-       }
-   
-       async checkTaskStatus() {
-           // 1. Check ROADMAP_TASKS.md
-           const roadmapTasks = await this.getRoadmapTasks();
-   
-           // 2. Check active tasks in memory
-           const activeTasks = await mcp_Server_Memory_search_nodes({
-               query: "type:Task status:IN_PROGRESS"
-           });
-   
-           return {
-               roadmap: roadmapTasks,
-               active: activeTasks,
-               blocked: await this.getBlockedTasks(),
-               completed: await this.getRecentlyCompletedTasks()
-           };
-       }
-   
-       async checkErrorStates() {
-           return await mcp_Server_Memory_search_nodes({
-               query: "type:Error status:ACTIVE"
-           });
-       }
-   }
-   ```
-
-6. **Status Report Generation**
-   ```javascript
-   async function generateStatusReport(components) {
-       const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
-   
-       return {
-           timestamp,
-           summary: {
-               activeSessions: components.activeSessions.length,
-               pendingTasks: components.taskStatus.active.length,
-               activeErrors: components.errorStates.length
-           },
-           details: {
-               sessions: components.activeSessions,
-               tasks: components.taskStatus,
-               errors: components.errorStates
-           },
-           recommendations: generateRecommendations(components)
-       };
-   }
-   ```
-
-7. **Status Check Response Protocol**
-   ```javascript
-   class StatusCheckResponse {
-       constructor(report) {
-           this.report = report;
-           this.timestamp = report.timestamp;
-       }
-   
-       async createMemoryEntities() {
-           await mcp_Server_Memory_create_entities({
-               entities: [{
-                   name: `StatusReport_${this.timestamp}`,
-                   entityType: "StatusReport",
-                   observations: [
-                       `Report generated at ${this.timestamp}`,
-                       `Active sessions: ${this.report.summary.activeSessions}`,
-                       `Pending tasks: ${this.report.summary.pendingTasks}`,
-                       `Active errors: ${this.report.summary.activeErrors}`
-                   ]
-               }]
-           });
-       }
-   
-       async updateTaskPriorities() {
-           const priorities = this.generatePriorities();
-           await mcp_Server_Memory_create_entities({
-               entities: [{
-                   name: `TaskPriorities_${this.timestamp}`,
-                   entityType: "Priorities",
-                   observations: priorities.map(p => 
-                       `${p.task}: Priority ${p.level} - ${p.reason}`)
-               }]
-           });
-       }
-   }
-   ```
-
-8. **Usage Example**
-   ```javascript
-   // Status Check Execution
-   async function performStatusCheck() {
-       // 1. Initialize check
-       const statusCheck = new StatusCheckManager();
-   
-       // 2. Execute check
-       const report = await statusCheck.executeStatusCheck();
-   
-       // 3. Process response
-       const response = new StatusCheckResponse(report);
-       await response.createMemoryEntities();
-       await response.updateTaskPriorities();
-   
-       // 4. Return formatted status
-       return {
-           timestamp: report.timestamp,
-           summary: report.summary,
-           priorities: await response.getPriorities(),
-           nextActions: await response.getNextActions()
-       };
-   }
-   ```
-
-9. **Integration with Work Session Protocol**
-   ```javascript
-   class WorkSessionStatusIntegration {
-       async performSessionCheck(sessionId) {
-           const statusCheck = await performStatusCheck();
-           
-           await mcp_Server_Memory_create_relations({
-               relations: [{
-                   from: `Session_${sessionId}`,
-                   to: `StatusReport_${statusCheck.timestamp}`,
-                   relationType: "generates"
-               }]
-           });
-   
-           return statusCheck;
-       }
-   }
-   ```
-
-10. **Error Prevention and Recovery**
-    ```javascript
-    class StatusCheckErrorHandler {
-        async handleCheckError(error) {
-            // 1. Log error state
-            await mcp_Server_Memory_create_entities({
-                entities: [{
-                    name: `StatusCheckError_${Date.now()}`,
-                    entityType: "Error",
-                    observations: [
-                        `Error during status check: ${error.message}`,
-                        `Type: ${error.type}`,
-                        `Stack: ${error.stack}`
-                    ]
-                }]
-            });
-    
-            // 2. Attempt recovery
-            return await this.recoverFromError(error);
-        }
-    }
-    ```
+B. Entity Creation Limits
+- Only allowed to create StatusCheck and StatusReport entities
+- No task priority updates
+- No work initiation
+- No state modifications
 ```
 
+## 2. Activation Methods
+```
+A. Primary Triggers
+- Command or alias "SC"
+- Integration: Can be called by BWS/EWS protocols
+- Context: Used in WSMP (Work Session Management Protocol)
+
+B. Secondary Triggers
+- Pre-session validation
+- Post-session summary
+- Error state assessment
+```
+
+## 3. Protocol Chain and Command Flow
+```
+1. Status Check ("SC")
+   - READ-ONLY operation
+   - Can only create StatusCheck and StatusReport entities
+   - Cannot initiate work or changes
+   - Reports status and exits
+
+2. Work Initiation (Requires explicit command)
+   - Must be triggered by "IAW" or "BWS"
+   - Cannot be initiated by Status Check
+   - Status Check can be called BY work protocols, but cannot trigger them
+
+3. Command Hierarchy
+   Status Check < Work Session < Task Execution
+   
+4. State Modification Rules
+   - Status Check: READ-ONLY
+   - Work Session: Can modify state after explicit command
+   - Task Execution: Can modify state within active work session
+```
+
+## 4. Protocol Integration Layer
+```
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Status Check Protocol               │
+│ 2. Work Session Management Protocol     │
+│ 3. Memory Maintenance Protocol          │
+│ 4. Task Tracking Protocol               │
+└─────────────────────────────────────────┘
+```
+
+## 5. Status Check Implementation
+```javascript
+async function executeStatusCheck() {
+    // 1. Initialize timestamp
+    const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
+    
+    // 2. Create status check entity
+    await mcp_Server_Memory_create_entities({
+        entities: [{
+            name: `StatusCheck_${timestamp}`,
+            entityType: "StatusCheck",
+            observations: [
+                `Check initiated at ${timestamp}`,
+                "Scanning server memory",
+                "Analyzing task status",
+                "Reviewing error states"
+            ]
+        }]
+    });
+
+    // 3. Gather status components
+    const components = {
+        serverMemory: await checkServerMemory(),
+        activeSessions: await checkActiveSessions(),
+        taskStatus: await checkTaskStatus(),
+        errorStates: await checkErrorStates()
+    };
+
+    // 4. Generate status report
+    return generateStatusReport(components);
+}
+```
+
+## 6. Status Components
+```
+A. Memory State Matrix
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Component       │ Check Type         │ Update Frequency   │
+├─────────────────┼────────────────────┼────────────────────┤
+│ Server Memory   │ Entity scan        │ Real-time         │
+│ Active Session  │ Session state      │ On change         │
+│ Task Status     │ Progress check     │ On action         │
+│ Error State     │ Error scan         │ On occurrence     │
+└─────────────────┴────────────────────┴────────────────────┘
+```
+
+## 7. Status Check Response Protocol
+```javascript
+class StatusCheckResponse {
+    constructor(report) {
+        this.report = report;
+        this.timestamp = report.timestamp;
+    }
+
+    async createStatusReport() {
+        // ONLY allowed to create status report entity
+        await mcp_Server_Memory_create_entities({
+            entities: [{
+                name: `StatusReport_${this.timestamp}`,
+                entityType: "StatusReport",
+                observations: [
+                    `Report generated at ${this.timestamp}`,
+                    `Active sessions: ${this.report.summary.activeSessions}`,
+                    `Pending tasks: ${this.report.summary.pendingTasks}`,
+                    `Active errors: ${this.report.summary.activeErrors}`
+                ]
+            }]
+        });
+    }
+}
+```
+
+## 8. Error Prevention and Recovery
+```javascript
+class StatusCheckErrorHandler {
+    async handleCheckError(error) {
+        // 1. Log error state
+        await mcp_Server_Memory_create_entities({
+            entities: [{
+                name: `StatusCheckError_${Date.now()}`,
+                entityType: "Error",
+                observations: [
+                    `Error during status check: ${error.message}`,
+                    `Type: ${error.type}`,
+                    `Stack: ${error.stack}`
+                ]
+            }]
+        });
+
+        // 2. Attempt recovery
+        return await this.recoverFromError(error);
+    }
+}
+```
+
+## 9. Integration with Work Session Protocol
+```javascript
+class WorkSessionStatusIntegration {
+    async performSessionCheck(sessionId) {
+        const statusCheck = await performStatusCheck();
+        
+        await mcp_Server_Memory_create_relations({
+            relations: [{
+                from: `Session_${sessionId}`,
+                to: `StatusReport_${statusCheck.timestamp}`,
+                relationType: "generates"
+            }]
+        });
+
+        return statusCheck;
+    }
+}
+```
