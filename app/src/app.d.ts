@@ -3,6 +3,12 @@
 declare global {
 	interface User {
 		id: string;
+		betterAuthId: string;
+		displayName: string;
+		email: string;
+		avatarUrl: string;
+		roles: string[];
+		syncStatus: string;
 		sessionToken?: string;
 	}
 

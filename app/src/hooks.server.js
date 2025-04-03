@@ -32,7 +32,7 @@ function validateCSRFToken(request) {
 
 /**
  * @typedef {Object} User
- * @property {number} id - User ID
+ * @property {string} id - User ID
  * @property {string} betterAuthId - Better Auth user ID
  * @property {string} displayName - User's display name
  * @property {string} email - User's email address
@@ -108,7 +108,7 @@ const betterAuthHandle = async ({ event, resolve }) => {
 
 /** @type {import('@sveltejs/kit').Handle} */
 const wordPressSessionHandle = async ({ event, resolve }) => {
-    /** @type {EventLocals} */
+    /** @type {App.Locals} */
     const locals = event.locals;
 
     try {
@@ -191,7 +191,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 const updatedLocals = {
                     ...locals,
                     user: {
-                        id: data.user_id,
+                        id: String(data.user_id),
                         betterAuthId: data.better_auth_user_id,
                         displayName: data.display_name,
                         email: data.user_email,
@@ -290,7 +290,7 @@ const protectedRouteHandle = async ({ event, resolve }) => {
         /** @type {EventLocals} */
         const eventLocals = event.locals;
         eventLocals.user = {
-            id: data.user_id,
+            id: String(data.user_id),
             betterAuthId: data.better_auth_user_id,
             displayName: data.display_name,
             email: data.user_email,
