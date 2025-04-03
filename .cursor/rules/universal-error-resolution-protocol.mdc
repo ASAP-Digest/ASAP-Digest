@@ -1,0 +1,209 @@
+---
+description: Use the 
+globs: 
+alwaysApply: false
+---
+# Universal Error Resolution Protocol (UERP) v2.0
+
+## 0. Protocol Integration Layer
+```
+┌─────────────────────────────────────────┐
+│         Meta Protocol Integration       │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │
+│ 2. Rule Execution Protocol             │
+│ 3. Component-Specific Protocols        │
+└─────────────────────────────────────────┘
+```
+
+## 1. Initial Context Assessment
+```
+A. Environment Analysis [Software Development Meta Protocol 1.A]
+   □ Check PE - CTXT for environment state
+   □ Verify working directories
+   □ Document system constraints
+   □ Note available tools
+
+B. Error Classification Matrix
+┌──────────────────┬────────────────┬────────────────────┐
+│ Error Type       │ Protocol       │ Integration Point  │
+├──────────────────┼────────────────┼────────────────────┤
+│ Build Error      │ sk2-scns5-t4   │ Build System      │
+│ Icon Error       │ icon-mgmt      │ Component System  │
+│ Route Error      │ server-route   │ Routing System    │
+│ Auth Error       │ better-auth    │ Auth System       │
+│ DB Error         │ wp-class-org   │ Database System   │
+└──────────────────┴────────────────┴────────────────────┘
+
+Example:
+Error: "Icon not exported from lucide-compat.js"
+Protocol: icon-management.mdc
+Integration: Component System
+```
+
+## 2. Rule Discovery & Protocol Selection
+```
+A. Rule Analysis [Rule Execution Protocol 2.A]
+   1. Scan <available_instructions>
+   2. Use fetch_rules for applicable protocols
+   3. Document protocol dependencies
+   4. Create execution checklist
+
+B. Protocol Selection Matrix
+┌──────────────────┬───────────────────┬──────────────────┐
+│ Component        │ Primary Protocol  │ Support Protocol │
+├──────────────────┼───────────────────┼──────────────────┤
+│ Icons           │ icon-management   │ ui-check        │
+│ Components      │ add-shadcn       │ ui-check        │
+│ Routes          │ server-route     │ status-check    │
+│ Database        │ wp-class-org     │ server-memory   │
+└──────────────────┴───────────────────┴──────────────────┘
+
+Example:
+Component: Icon System
+Primary: icon-management.mdc
+Support: ui-check.mdc for visual verification
+```
+
+## 3. Systematic Investigation
+```
+A. Investigation Framework [Meta Protocol 3.A]
+   1. Tool Selection Matrix
+   ┌────────────┬────────────────┬───────────────┐
+   │ Tool       │ Use Case       │ Protocol      │
+   ├────────────┼────────────────┼───────────────┤
+   │ grep_search│ Exact matches  │ All           │
+   │ codebase   │ Semantic search│ All           │
+   │ read_file  │ File content   │ All           │
+   │ ui-check   │ Visual verify  │ UI Components │
+   └────────────┴────────────────┴───────────────┘
+
+B. Error Tracing Template
+   1. Entry Point Analysis
+   2. Error Point Location
+   3. Root Cause Identification
+   4. Protocol Compliance Check
+
+Example:
+Error: Missing Icon Export
+1. Entry: profile/+page.svelte imports Shield
+2. Error: lucide-compat.js missing export
+3. Root: Icon not added to compatibility layer
+4. Protocol: Follow icon-management.mdc steps
+```
+
+## 4. Resolution Implementation
+```
+A. Solution Framework [Rule Execution Protocol 4.A]
+   1. Protocol-Specific Steps
+   2. Cross-Protocol Requirements
+   3. Integration Points
+   4. Verification Requirements
+
+B. Implementation Matrix
+┌──────────────┬─────────────────┬────────────────┐
+│ Step         │ Protocol        │ Verification   │
+├──────────────┼─────────────────┼────────────────┤
+│ Add Icon     │ icon-management │ ui-check       │
+│ Update Route │ server-route    │ status-check   │
+│ Fix Auth     │ better-auth     │ server-memory  │
+└──────────────┴─────────────────┴────────────────┘
+
+Example:
+Task: Add Missing Icon
+1. Follow icon-management.mdc steps
+2. Verify with ui-check protocol
+3. Update server-memory
+```
+
+## 5. Verification Process
+```
+A. Multi-Protocol Verification
+   1. Primary Protocol Checks
+   2. Support Protocol Checks
+   3. Integration Point Verification
+   4. System-Wide Validation
+
+B. Verification Checklist
+   □ Primary protocol requirements met
+   □ Support protocol requirements met
+   □ UI-check passed (if applicable)
+   □ Server-memory updated
+   □ Status-check completed
+
+Example:
+Icon Addition Verification:
+1. icon-management.mdc requirements ✓
+2. ui-check visual verification ✓
+3. server-memory update ✓
+```
+
+## 6. Documentation & Memory Update
+```
+A. Documentation Requirements [Meta Protocol 6.A]
+   1. Update relevant documentation
+   2. Add prevention notes
+   3. Update protocol documentation
+   4. Cross-reference updates
+
+B. Server Memory Update [server-memory-rules.mdc]
+   1. Create error resolution entity
+   2. Add observations
+   3. Create relations
+   4. Update task status
+
+Example:
+Memory Update:
+1. Create IconResolutionTask entity
+2. Add resolution steps as observations
+3. Link to related entities
+4. Mark task complete
+```
+
+## 7. Protocol Enhancement
+```
+A. Protocol Improvement Framework
+   1. Identify protocol gaps
+   2. Propose enhancements
+   3. Update integration points
+   4. Document changes
+
+B. Enhancement Matrix
+┌──────────────┬────────────────┬─────────────┐
+│ Protocol     │ Enhancement    │ Priority    │
+├──────────────┼────────────────┼─────────────┤
+│ UERP        │ New error type │ Medium      │
+│ icon-mgmt   │ New pattern    │ High        │
+│ ui-check    │ New test case  │ Low         │
+└──────────────┴────────────────┴─────────────┘
+
+Example:
+Enhancement: Add new error type to UERP
+1. Document new error pattern
+2. Update protocol integration
+3. Add verification steps
+```
+
+## Usage Instructions:
+
+1. **Protocol Selection:**
+   - Start with Software Development Meta Protocol
+   - Identify relevant component protocols
+   - Follow Rule Execution Protocol for implementation
+
+2. **Integration Points:**
+   - Use ui-check.mdc for visual verification
+   - Use server-memory-rules.mdc for state updates
+   - Use status-check.mdc for system status
+
+3. **Documentation Requirements:**
+   - Update all relevant documentation
+   - Maintain cross-references
+   - Keep server memory current
+
+4. **Verification Requirements:**
+   - Follow all protocol-specific checks
+   - Verify integration points
+   - Update server memory
+   - Complete status checks
+

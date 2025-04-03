@@ -1,0 +1,40 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Development-Production Parity & Server Route Handling Rule
+
+1. **Development Environment Coverage:**
+   - Specific Vite HMR route handling (`/@vite/client`, `/@fs/`)
+   - Static asset handling (`/_app/`)
+   - API route specific prefixes
+
+2. **Production Environment Coverage:**
+   - Static file serving with specific directory checks
+   - System route exact matching
+   - 404 handling for unknown routes
+   - Load balancer and proxy considerations
+
+3. **General Guidelines:**
+   - Avoid broad route pattern matching
+   - Document exceptions
+   - Use environment-aware conditions
+   - Consider infrastructure configurations
+
+4. **Implementation Example:**
+```javascript
+if (dev) {
+  if (pathname === '/@vite/client' || pathname.startsWith('/@fs/')) return true;
+} else {
+  if (pathname.startsWith('/_app/') || pathname.startsWith('/static/')) return true;
+}
+```
+
+This expanded rule will help prevent similar issues across:
+- Local development with Vite
+- Production deployment on AlmaLinux with Apache
+- Load balanced environments
+- Proxy configurations
+- Static file serving
+- API route handling

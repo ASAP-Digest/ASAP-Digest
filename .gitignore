@@ -45,6 +45,11 @@ app/src/lib/components/ui/README.md
 .*
 ~*
 
+# track cursor rules directory
+!.cursor/
+.cursor/*
+!.cursor/rules/
+
 # ignore OS generated files
 ehthumbs.db
 Thumbs.db
@@ -96,6 +101,9 @@ wp-config-local.php
 # -------------------------
 # BEGIN Whitelisted Files
 # -------------------------
+
+# track cursor rules
+!.cursor/rules
 
 # track these files, if they exist
 !.gitignore

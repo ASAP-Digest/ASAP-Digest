@@ -1,0 +1,75 @@
+---
+description: Add Shadcn-svelte 5 Components
+globs: 
+alwaysApply: false
+---
+# Add Shadcn-svelte 5 Component
+
+1. Pre-installation Checks:
+   - Verify component does not exist: `cd /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app && pnpm list shadcn-svelte`
+   - Check component dependencies in Shadcn documentation
+   - Review usage in codebase
+   - Ensure you're in SvelteKit root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
+
+2. Installation:
+   - Install via CLI: `npx shadcn-svelte@next add [component]`
+   - Verify installation success in package.json
+   - Check component files were created in correct location
+
+3. Icon Management:
+   - Scan new component for Lucide icon imports using grep: `grep -r "from 'lucide-svelte'" app/src/lib/components/ui/[component]`
+   - NEVER use direct icon imports from lucide-svelte
+   - Add ALL component icons to `/app/src/lib/utils/lucide-compat.js`:
+     ```javascript
+     import { Icon1, Icon2 } from 'lucide-svelte'
+     import { createIconObject } from './icon-utils'
+     
+     export const Icon1 = createIconObject(icon1)
+     export const Icon2 = createIconObject(icon2)
+     ```
+   - Update component to use Icon wrapper:
+     ```javascript
+     import Icon from '$lib/components/ui/icon/icon.svelte'
+     import { Icon1, Icon2 } from '$lib/utils/lucide-compat.js'
+     
+     // In template:
+     <Icon icon={Icon1} class="w-4 h-4" />
+     ```
+   - Document icon usage in component
+
+4. Component Integration:
+   - Import directly from .svelte files ONLY:
+     ```javascript
+     // CORRECT
+     import Component from '$lib/components/ui/component/component.svelte'
+     // INCORRECT
+     import { Component } from '$lib/components/ui/component'
+     ```
+   - Use Svelte 5 Runes syntax (NO export let)
+   - Apply Tailwind 4 HSL color variables:
+     ```html
+     <!-- CORRECT -->
+     <div class="text-[hsl(var(--primary))]">
+     <!-- INCORRECT -->
+     <div class="text-primary">
+     ```
+
+5. Testing Requirements:
+   - Test component with all its variants
+   - Verify icon rendering through Icon component
+   - Check responsive behavior
+   - Test dark/light mode transitions
+   - Verify accessibility features
+
+6. Documentation:
+   - Document component usage in project
+   - List all icons added to compatibility layer
+   - Note any specific configuration requirements
+   - Update component registry if exists
+
+7. Error Prevention:
+   - Verify all icons are exported correctly from lucide-compat.js
+   - Check for any style conflicts
+   - Test component in isolation
+   - Verify build completes successfully
+   - Check for SSR compatibility with icons

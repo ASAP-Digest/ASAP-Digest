@@ -1,0 +1,291 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cross-Protocol Communication & Verification Framework v2.0
+
+## 1. Protocol State Management
+```
+A. State Transition Matrix
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Protocol        │ Valid States       │ Transition Rules   │
+├─────────────────┼────────────────────┼────────────────────┤
+│ Meta Protocol   │ INIT, ACTIVE, END  │ INIT → ACTIVE     │
+│ Rule Execution  │ PLAN, EXEC, VERIFY │ PLAN → EXEC       │
+│ Task Tracking   │ START, RUN, DONE   │ START → RUN       │
+│ Memory Manager  │ READY, SYNC, LOCK  │ READY → SYNC      │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. State Synchronization Rules
+1. Pre-transition Verification
+   - Current state validation
+   - Dependency state check
+   - Resource availability check
+   - Lock acquisition verification
+
+2. Transition Execution
+   - Atomic state updates
+   - Cascading state changes
+   - Rollback preparation
+   - Event notification
+
+3. Post-transition Verification
+   - New state validation
+   - Dependency consistency
+   - Resource cleanup
+   - Lock release confirmation
+```
+
+## 2. Cross-Protocol Event System
+```
+A. Event Flow Control
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Event Type      │ Priority Level     │ Handling Protocol  │
+├─────────────────┼────────────────────┼────────────────────┤
+│ State Change    │ CRITICAL          │ State Manager      │
+│ Task Update     │ HIGH             │ Task Tracker       │
+│ Memory Sync     │ MEDIUM           │ Memory Manager     │
+│ Verification    │ HIGH             │ Verification Chain │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Event Processing Pipeline
+1. Event Generation
+   - Source protocol identification
+   - Event type classification
+   - Priority assignment
+   - Timestamp generation
+
+2. Event Routing
+   - Protocol dependency check
+   - State compatibility verification
+   - Resource availability check
+   - Queue management
+
+3. Event Execution
+   - Handler selection
+   - Context preparation
+   - Execution monitoring
+   - Result validation
+
+4. Event Completion
+   - Result propagation
+   - State updates
+   - Resource cleanup
+   - Audit logging
+```
+
+## 3. Verification Chain System
+```
+A. Verification Levels
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Level           │ Verification Type  │ Required Checks    │
+├─────────────────┼────────────────────┼────────────────────┤
+│ L1: Protocol    │ State Integrity    │ State, Events      │
+│ L2: Data        │ Data Consistency   │ DB, Memory, Files  │
+│ L3: System      │ System Integrity   │ Resources, Locks   │
+│ L4: Security    │ Access Control     │ Auth, Permissions  │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Verification Chain Execution
+1. Pre-execution Chain
+   - Protocol state verification
+   - Resource availability check
+   - Security context validation
+   - Dependency verification
+
+2. Execution Chain
+   - Operation atomic verification
+   - State transition validation
+   - Data consistency check
+   - Event sequence validation
+
+3. Post-execution Chain
+   - Result verification
+   - State consistency check
+   - Resource cleanup verification
+   - Audit trail validation
+```
+
+## 4. Protocol Synchronization Framework
+```
+A. Synchronization Matrix
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Protocol Pair   │ Sync Requirements  │ Verification Points│
+├─────────────────┼────────────────────┼────────────────────┤
+│ Meta ↔ Rule     │ State alignment    │ Pre/Post State     │
+│ Rule ↔ Task     │ Task status sync   │ Task Completion    │
+│ Task ↔ Memory   │ Entity updates     │ Data Consistency   │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Synchronization Process
+1. Pre-sync Verification
+   - Protocol readiness check
+   - Resource availability
+   - State compatibility
+   - Lock acquisition
+
+2. Sync Execution
+   - Atomic updates
+   - State propagation
+   - Event generation
+   - Error handling
+
+3. Post-sync Verification
+   - State consistency
+   - Data integrity
+   - Event completion
+   - Lock release
+```
+
+## 5. Error Recovery System
+```
+A. Error Classification
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Error Type      │ Recovery Strategy  │ Verification Req   │
+├─────────────────┼────────────────────┼────────────────────┤
+│ State Error     │ State rollback     │ Full chain verify  │
+│ Data Error      │ Data restoration   │ Data integrity     │
+│ Event Error     │ Event replay       │ Event sequence     │
+│ Sync Error      │ Resynchronization  │ Cross-protocol     │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Recovery Process
+1. Error Detection
+   - Error classification
+   - Impact assessment
+   - Recovery strategy selection
+   - Resource preparation
+
+2. Recovery Execution
+   - State restoration
+   - Data recovery
+   - Event replay
+   - Sync repair
+
+3. Recovery Verification
+   - State validation
+   - Data integrity check
+   - Event sequence verify
+   - System consistency
+```
+
+## 6. Audit Trail System
+```
+A. Audit Components
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Component       │ Tracking Level     │ Verification Req   │
+├─────────────────┼────────────────────┼────────────────────┤
+│ State Changes   │ FULL              │ State Chain        │
+│ Events         │ FULL              │ Event Sequence     │
+│ Data Updates   │ DELTA             │ Data Integrity     │
+│ Verifications  │ SUMMARY           │ Chain Completion   │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Audit Process
+1. Event Recording
+   - Timestamp capture
+   - Context recording
+   - State snapshot
+   - Change delta
+
+2. Trail Verification
+   - Sequence validation
+   - Integrity check
+   - Completeness verify
+   - Cross-reference
+
+3. Audit Analysis
+   - Pattern detection
+   - Anomaly identification
+   - Performance metrics
+   - Security analysis
+```
+
+## 7. Implementation Examples
+
+```javascript
+// Example 1: Protocol State Transition
+async function transitionProtocolState(protocol, newState) {
+  const stateManager = await ProtocolStateManager.getInstance();
+  
+  // Pre-transition verification
+  await stateManager.verifyTransition(protocol, newState);
+  
+  // Execute transition with event generation
+  const event = await stateManager.transition(protocol, newState);
+  
+  // Post-transition verification
+  await VerificationChain.verify(event);
+  
+  // Update audit trail
+  await AuditTrail.record(event);
+}
+
+// Example 2: Cross-Protocol Event Handling
+async function handleCrossProtocolEvent(event) {
+  const eventSystem = await CrossProtocolEventSystem.getInstance();
+  
+  // Event validation and routing
+  await eventSystem.validateEvent(event);
+  const targetProtocols = await eventSystem.determineTargets(event);
+  
+  // Execute event chain with verification
+  for (const protocol of targetProtocols) {
+    const result = await eventSystem.executeEvent(event, protocol);
+    await VerificationChain.verify(result);
+  }
+  
+  // Sync protocol states
+  await ProtocolStateManager.syncStates(targetProtocols);
+}
+
+// Example 3: Verification Chain Execution
+async function executeVerificationChain(operation) {
+  const verificationChain = await VerificationChainSystem.getInstance();
+  
+  // Pre-execution verification
+  const preVerify = await verificationChain.preExecute(operation);
+  if (!preVerify.success) {
+    throw new VerificationError(preVerify.error);
+  }
+  
+  // Execute with monitoring
+  const result = await operation.execute();
+  
+  // Post-execution verification
+  const postVerify = await verificationChain.postExecute(result);
+  if (!postVerify.success) {
+    await operation.rollback();
+    throw new VerificationError(postVerify.error);
+  }
+  
+  return result;
+}
+```
+
+## 8. Usage Instructions
+
+1. **Protocol State Management:**
+   - Always use state transition matrix
+   - Verify state before transitions
+   - Maintain state history
+   - Handle state conflicts
+
+2. **Event System Usage:**
+   - Follow event priority levels
+   - Implement proper routing
+   - Ensure event completion
+   - Maintain event log
+
+3. **Verification Requirements:**
+   - Execute all verification levels
+   - Follow verification chain
+   - Document verification results
+   - Handle verification failures
+
+4. **Recovery Procedures:**
+   - Classify errors properly
+   - Select appropriate strategy
+   - Verify recovery success
+   - Update audit trail

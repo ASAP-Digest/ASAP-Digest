@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# New Directory Protocol
+
+- Always Check current location `pwd` against `@PE - CTXT`
+- Check if directory exists in current or desired location `ls -la`
+- Wait for output
+- If in correct directory according to `@PE - CTXT` & directory does not exist
+- Create new directory `mkdir [dir-name]`

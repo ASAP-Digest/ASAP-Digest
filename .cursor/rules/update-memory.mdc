@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Update Memory
+
+- Initiated by Phrase: "Update Memory" or alias "um"
+- Update `Server Memory` by creating new relevant entities, observations, relations, nodes or graphs.
+- Update [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) with recently completed tasks + ft
+- Update [ASAP_DIGEST_ROADMAP.md](mdc:docs/ASAP_DIGEST_ROADMAP.md) if functionality added was out of scope.
+- Update [DEPLOYMENT_CHECKLIST.md](mdc:docs/DEPLOYMENT_CHECKLIST.md) 

@@ -1,0 +1,111 @@
+---
+description: 
+globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
+alwaysApply: false
+---
+# WordPress Hook Protocol
+
+## 1. Hook Function Naming
+- Use unique, descriptive names that reflect the feature and action
+- Follow the format: `{plugin_prefix}_{feature}_{action}`
+- Example: `asap_better_auth_validate_session`
+- Never duplicate hook function names across plugin files
+- Document any dependencies or required hooks
+
+## 2. Hook Function Organization
+- Define hooks in feature-specific files (e.g., auth hooks in better-auth-config.php)
+- Group related hooks together in the same file
+- Document hook priority and accepted arguments in function comments
+- Follow single responsibility principle for hook functions
+
+## 3. Hook Registration
+- Register hooks in an initialization function for each feature
+- Use consistent priority scheme:
+  - Core functionality: 10 (default)
+  - Feature-specific: 20-29
+  - Extensions: 30+
+  - Late modifications: 100+
+- Document priority choices in comments
+
+## 4. Error Prevention
+- Never use function_exists() for hook functions
+- Always use unique names to prevent conflicts
+- Document hook dependencies in function comments
+- Verify hook existence before removing with remove_action/remove_filter
+
+## 5. Hook Documentation
+```php
+/**
+ * @description Handle Better Auth session validation
+ * @hook add_action('init', 'asap_better_auth_validate_session', 20)
+ * @dependencies asap_better_auth_init must run first (priority 10)
+ * @param void
+ * @return void
+ * @since 1.0.0
+ */
+function asap_better_auth_validate_session() {
+    // Implementation
+}
+```
+
+## 6. Hook Dependencies
+- Document required hooks that must run before/after
+- Use priority to manage execution order
+- Consider plugin load order for cross-plugin hooks
+- Document any WordPress core hook dependencies
+
+## 7. Hook Testing
+- Test hook execution order with different priorities
+- Verify hook removal works correctly
+- Test hook function with all possible argument combinations
+- Document expected behavior in test files
+
+## 8. Common Issues to Avoid
+- Duplicate hook function names
+- Undefined dependencies
+- Incorrect priority ordering
+- Missing documentation
+- Improper hook removal
+- Hook functions with side effects
+
+## 9. Implementation Example
+```php
+// In better-auth-config.php
+function asap_init_better_auth() {
+    // Register hooks with proper priorities
+    add_action('init', 'asap_better_auth_init', 10);
+    add_action('init', 'asap_better_auth_validate_session', 20);
+    add_action('wp_login', 'asap_better_auth_sync_login', 30);
+}
+add_action('plugins_loaded', 'asap_init_better_auth');
+```
+
+## 10. Hook Removal and Cleanup
+- Document any hooks that need cleanup on deactivation
+- Use proper cleanup function in uninstall.php
+- Remove hooks in reverse order of registration
+- Verify all hooks are properly removed
+
+## 11. Security Considerations
+- Validate and sanitize all hook function inputs
+- Use appropriate capability checks
+- Implement nonce verification for form submissions
+- Follow WordPress security best practices
+
+## 12. Performance Impact
+- Consider hook execution frequency
+- Optimize hook function performance
+- Use transients or caching when appropriate
+- Monitor impact on page load time
+
+## 13. Debugging Hooks
+- Use the 'all' hook for debugging
+- Implement proper error logging
+- Add debug mode for hook execution tracking
+- Document debugging procedures
+
+## 14. Versioning and Updates
+- Document hook changes between versions
+- Maintain backward compatibility when possible
+- Use deprecated notices for removed hooks
+- Update documentation with version changes

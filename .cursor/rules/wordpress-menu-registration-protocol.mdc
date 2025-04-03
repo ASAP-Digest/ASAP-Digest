@@ -1,0 +1,31 @@
+---
+description: 
+globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
+alwaysApply: false
+---
+# WordPress Menu Registration Protocol
+
+1. **Centralization**
+   - All menu registration MUST be in ONE location
+   - Use a single initialization function (e.g., `plugin_prefix_init_menus`)
+   - Register function with `admin_menu` action hook
+
+2. **Function Organization**
+   - Define ALL callback functions BEFORE menu registration
+   - Place callbacks in a dedicated section of the file
+   - Document each callback with PHPDoc comments
+
+3. **Registration Order**
+   - Register main menu first
+   - Register submenus immediately after parent
+   - Use consistent priority values
+
+4. **Security & Standards**
+   - Use WordPress capabilities (e.g., 'manage_options')
+   - Never use role names directly (e.g., 'administrator')
+   - Follow WordPress naming conventions
+
+5. **Documentation**
+   - Document menu structure in comments
+   - Include callback function references
+   - Note any dependencies

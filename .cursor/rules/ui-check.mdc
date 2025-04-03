@@ -1,0 +1,34 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# UI Check
+
+- Initiated with magic phrase "UI Check", alias "uic" or When making frontend edits:
+- Before making any changes, call the Browser Tools MCP `takeScreenshot` function to save the current state of the page.
+- After making your change, call the Browser Tools MCP `takeScreenshot` function again to save the new state of the page.
+- Screenshots will be saved to already created `/Volumes/Macintosh HD/Users/vsmith/.cursor/uicscreenshots` folder (this exists already, do not attempt to create).
+- Run this command to get the absolute paths of the 2 most recent screenshots in the already created `/Volumes/Macintosh HD/Users/vsmith/.cursor/uicscreenshots` folder:
+
+
+
+find screenshots -type f -name "*.png" -exec stat -f "%m %N" {} \; | sort -nr | head -n 2 | awk '{print $2}' | xargs realpath | awk 'NR==1 {print "before path: ", $0} NR==2 {print "after path: ", $0}'
+
+
+- Call the `reviewEdit` function to have your changes visually reviewed.
+- Use the following format for the tool call:
+
+{
+  "beforeScreenshotPath": string, // Absolute path to the second-most recent screenshot
+  "afterScreenshotPath": string, // Absolute path to the most recent screenshot
+  "editRequest": string // Describe the edit request from the user in a couple of sentences
+}
+
+- You should summarize my edit request into a couple of sentences so that the frontend reviewer understands the changes you made.
+
+- The tool will either return "yes" if your changes are good, or "no" with a brief explanation if the changes don't satisfy the edit request. Keep editing with the same process until the reviewer returns "yes".
+
+- NOTE: When called with alias "uiceval". Do not make changes but use the Browser Tools MCP `takeScreenshot` function (do not attempt to use terminal commands) to get a screenshot and provide an evaluation of the current state of the app UI in light of [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) & [VISUAL_IDENTITY_STYLE_GUIDE.md](mdc:docs/VISUAL_IDENTITY_STYLE_GUIDE.md). Once you provide the evaluation wait for the next task.
+

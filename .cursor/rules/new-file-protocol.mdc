@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# New File Protocol
+
+- Always Check current location `pwd` against `@PE - CTXT`
+- Check if file exists in current or desired location `ls -la`
+- Wait for output
+- If in correct directory according to `@PE - CTXT` & file does not exist
+- Create new file `touch [file-name]`

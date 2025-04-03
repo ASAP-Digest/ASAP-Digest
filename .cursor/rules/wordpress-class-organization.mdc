@@ -1,0 +1,94 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# WordPress Class Organization
+
+Ensures consistent class organization, prevents namespace conflicts, and maintains clean file structure in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, and namespace mismatches that can cause fatal errors.
+
+**When to Apply:**
+- Creating new classes
+- Moving existing classes
+- Refactoring plugin structure
+- Debugging class loading issues
+
+1. **One Class, One Location**
+   ```php
+   // CORRECT
+   /admin/class-admin-ui.php
+   namespace ASAPDigest\Admin;
+   class ASAP_Digest_Admin_UI { }
+
+   // INCORRECT - Same class in two locations
+   /admin/class-admin-ui.php
+   /includes/class-admin-ui.php
+   ```
+
+2. **Directory Structure**
+   ```
+   your-plugin/
+   ├── admin/           # Admin UI classes
+   ├── includes/        # Core functionality
+   │   ├── api/        # API endpoints
+   │   └── db/         # Database operations
+   └── templates/       # View templates
+   ```
+
+3. **File Paths & Requires**
+   ```php
+   // CORRECT
+   require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
+   
+   // INCORRECT
+   require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+   ```
+
+4. **Namespace Structure**
+   ```php
+   // CORRECT - Namespace matches directory
+   // In admin/class-admin-ui.php
+   namespace ASAPDigest\Admin;
+   
+   // In includes/api/class-rest-auth.php
+   namespace ASAPDigest\API;
+   
+   // INCORRECT - Namespace doesn't match location
+   // In admin/class-admin-ui.php
+   namespace ASAPDigest\Core;
+   ```
+
+5. **Class Loading**
+   ```php
+   // CORRECT
+   use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
+   use ASAPDigest\API\ASAP_Digest_REST_Auth;
+   
+   // INCORRECT
+   use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace
+   ```
+
+6. **Moving Classes**
+   - Search for all references: `grep -r "class_name" .`
+   - Update require paths
+   - Update namespace
+   - Document in CHANGELOG.md
+   ```markdown
+   ## [1.0.1] - 2024-03-31
+   ### Changed
+   - Moved ASAP_Digest_Admin_UI from includes/ to admin/
+   - Updated namespace to ASAPDigest\Admin
+   ```
+
+**Common Issues This Prevents:**
+- Fatal errors from duplicate class definitions
+- Autoloader failures from mismatched namespaces
+- Confusion about class locations
+- Inconsistent plugin structure
+- Hard-to-track class dependencies
+
+**Verification Steps:**
+1. Check for duplicate class files: `find . -name "class-*.php" | sort`
+2. Verify namespaces match directories
+3. Test class autoloading
+4. Validate all require paths

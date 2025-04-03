@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Status Check
+
+- Initiated by Phrase: "Status Check" or alias "SC"
+- State Current "Formatted Time" or "FT": ...Checking Project status - Current Time is "FT"
+- Check `Server Memory` For Recently Completed + "Format Time" of Completed Tasks
+- Check `Server Memory` For Next Priority Tasks
+- Check `[ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md)` For Recently Completed Tasks + "Format Time" of Completed Tasks & Next Priority Tasks
+- Check `[ASAP_DIGEST_ROADMAP.md](mdc:docs/ASAP_DIGEST_ROADMAP.md)` For Recently Completed Tasks+ "Format Time" of Completed Tasks & Next Priority Tasks
+- Combine All Tasks + "Format Time" According to Priority & add "Format Time" as "Operational Priorities" or alias "OP"
+- DO NOT BEGIN WORK until initiated with magic words: "INITIATE WORK", alias "IW" or alias "IAW"

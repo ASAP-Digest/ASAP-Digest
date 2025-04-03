@@ -1,0 +1,155 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Work Session Activation Protocol
+
+## 1. Activation Commands
+```
+A. Start Session
+- Command: "Begin Work Session" or alias "BWS"
+- Optional Parameters: 
+  - Previous Session ID
+  - Session Type (DEBUG, FEATURE, FIX)
+  - Priority Issue
+
+B. End Session
+- Command: "End Work Session" or alias "EWS"
+- Optional Parameters:
+  - Reason (NORMAL, INTERRUPTED, COMPLETED)
+```
+
+## 2. Implementation Example
+
+```javascript
+// Example usage:
+// To start a session:
+BWS [sessionType] [previousSessionId] [priorityIssue]
+// e.g., BWS DEBUG auto-sync-fix-123 "Fix AUTO_INCREMENT issue"
+
+// To end a session:
+EWS [reason]
+// e.g., EWS INTERRUPTED
+```
+
+## 3. Activation Steps
+
+1. **Begin Work Session**:
+```javascript
+// 1. Get current timestamp
+const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
+
+// 2. Initialize session manager
+const sessionManager = new EnhancedWorkSessionManager();
+
+// 3. Create session entity
+await mcp_Server_Memory_create_entities({
+    entities: [{
+        name: `WorkSession_${timestamp}`,
+        entityType: "WorkSession",
+        observations: [
+            `Session started at ${timestamp}`,
+            `Type: ${sessionType}`,
+            `Priority: ${priorityIssue}`,
+            `Previous Session: ${previousSessionId || 'NONE'}`
+        ]
+    }]
+});
+
+// 4. Start session
+await sessionManager.startSession(previousSessionId);
+```
+
+2. **End Work Session**:
+```javascript
+// 1. Get current timestamp
+const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
+
+// 2. End session
+await sessionManager.endSession(reason);
+
+// 3. Create session end entity
+await mcp_Server_Memory_create_entities({
+    entities: [{
+        name: `WorkSession_${timestamp}_End`,
+        entityType: "WorkSessionEnd",
+        observations: [
+            `Session ended at ${timestamp}`,
+            `Reason: ${reason}`,
+            `Status: ${sessionManager.getSessionStatus()}`
+        ]
+    }]
+});
+```
+
+## 4. Usage Example for Auto Sync Issue
+
+```bash
+# Starting a session for Auto Sync fix
+BWS DEBUG auto-sync-123 "Fix AUTO_INCREMENT in class-database.php"
+
+# This would:
+# 1. Initialize the session manager
+# 2. Load previous context about the AUTO_INCREMENT issue
+# 3. Set up verification chains
+# 4. Start task tracking
+# 5. Begin audit trail
+
+# When work needs to end
+EWS INTERRUPTED
+
+# This would:
+# 1. Save current state of database fixes
+# 2. Document progress in server memory
+# 3. Create continuation marker
+# 4. Update ROADMAP_TASKS.md
+```
+
+## 5. Integration with Existing Workflow
+
+1. **Start of Work**:
+```bash
+# 1. First, use Status Check
+SC
+
+# 2. Begin work session with context
+BWS [type] [previous-session] [priority-from-SC]
+```
+
+2. **During Work**:
+- System automatically tracks:
+  - Task status changes
+  - Error encounters
+  - Code modifications
+  - Build attempts
+
+3. **End of Work**:
+```bash
+# 1. End work session
+EWS [reason]
+
+# 2. System automatically:
+- Updates ROADMAP_TASKS.md
+- Creates continuation markers if needed
+- Saves technical state
+- Records in server memory
+```
+
+To use this with your current Auto Sync issue:
+
+1. Start a new session:
+```bash
+BWS DEBUG none "Auto Sync Database Schema Fix"
+```
+
+2. The system will:
+- Create session entities
+- Load relevant context about the AUTO_INCREMENT issue
+- Set up task tracking for the database schema fixes
+- Begin monitoring progress
+
+3. When you need to end work:
+```bash
+EWS INTERRUPTED
+```

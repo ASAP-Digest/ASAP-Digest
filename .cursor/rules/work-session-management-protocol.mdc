@@ -1,0 +1,261 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Enhanced Work Session Management Protocol (WSMP)
+
+## 1. Protocol Integration Layer
+```
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │
+│ 2. Rule Execution Protocol              │
+│ 3. Task Tracking Protocol               │
+│ 4. Memory Maintenance Protocol          │
+│ 5. Session Management Protocol          │
+└─────────────────────────────────────────┘
+```
+
+## 2. Cross-Protocol Event System Integration
+```javascript
+class WorkSessionManager {
+    async startSession(previousSessionId = null) {
+        // Meta Protocol integration
+        await metaProtocol.assessContext({
+            operation: 'SESSION_START',
+            previousSession: previousSessionId
+        });
+        
+        // Rule Execution integration
+        const rules = await ruleProtocol.discoverRules();
+        
+        // Create session with proper event flow
+        const session = await this.createSessionWithEventFlow(previousSessionId);
+        
+        // Establish verification chain
+        await this.establishVerificationChain(session);
+        
+        return session;
+    }
+
+    async createSessionWithEventFlow(previousSessionId) {
+        const eventSystem = await CrossProtocolEventSystem.getInstance();
+        
+        // Generate session start event
+        const startEvent = await eventSystem.createEvent({
+            type: 'SESSION_START',
+            priority: 'CRITICAL',
+            context: { previousSessionId }
+        });
+        
+        // Process through event pipeline
+        await eventSystem.processEvent(startEvent);
+        
+        return startEvent.session;
+    }
+}
+```
+
+## 3. Task Status Management Integration
+```javascript
+class SessionTaskManager {
+    async updateTaskStatus(taskId, status) {
+        // Create task entity with proper status tracking
+        await mcp_Server_Memory_create_entities({
+            entities: [{
+                name: `Task_${taskId}_${timestamp}`,
+                entityType: "Task",
+                observations: [
+                    `Status updated to ${status}`,
+                    `Session ID: ${this.currentSession.id}`,
+                    `Timestamp: ${timestamp}`
+                ]
+            }]
+        });
+
+        // Update ROADMAP with proper emoji
+        await this.updateRoadmap(taskId, this.getStatusEmoji(status));
+        
+        // Create proper relations
+        await mcp_Server_Memory_create_relations({
+            relations: [{
+                from: `Task_${taskId}_${timestamp}`,
+                to: "ROADMAP_TASKS.md",
+                relationType: "updates"
+            }]
+        });
+    }
+
+    getStatusEmoji(status) {
+        const statusMap = {
+            'IN_PROGRESS': '🔄',
+            'COMPLETED': '✅',
+            'BLOCKED': '❌',
+            'PENDING': '⏳'
+        };
+        return statusMap[status] || '❓';
+    }
+}
+```
+
+## 4. Verification Chain System Integration
+```javascript
+class SessionVerificationChain {
+    async verify(operation) {
+        const verificationChain = await VerificationChainSystem.getInstance();
+        
+        // L1: Protocol State Verification
+        const protocolVerify = await verificationChain.verifyLevel({
+            level: 'L1',
+            type: 'Protocol',
+            checks: ['State', 'Events']
+        });
+        
+        // L2: Data Consistency Verification
+        const dataVerify = await verificationChain.verifyLevel({
+            level: 'L2',
+            type: 'Data',
+            checks: ['Memory', 'Files']
+        });
+        
+        // L3: System Integrity Verification
+        const systemVerify = await verificationChain.verifyLevel({
+            level: 'L3',
+            type: 'System',
+            checks: ['Resources', 'Locks']
+        });
+        
+        return protocolVerify && dataVerify && systemVerify;
+    }
+}
+```
+
+## 5. Error Recovery System Integration
+```javascript
+class SessionErrorRecovery {
+    async handleError(error) {
+        const errorSystem = await ErrorRecoverySystem.getInstance();
+        
+        // Classify error
+        const errorType = await errorSystem.classify(error);
+        
+        // Select recovery strategy
+        const strategy = await errorSystem.selectStrategy(errorType);
+        
+        // Execute recovery
+        await strategy.execute();
+        
+        // Verify recovery
+        await this.verifyRecovery(strategy);
+        
+        // Update audit trail
+        await this.updateAuditTrail({
+            error,
+            recovery: strategy,
+            result: 'recovered'
+        });
+    }
+}
+```
+
+## 6. Audit Trail System Integration
+```javascript
+class SessionAuditTrail {
+    async recordSessionEvent(event) {
+        const auditSystem = await AuditTrailSystem.getInstance();
+        
+        // Record event with full context
+        await auditSystem.record({
+            timestamp: await mcp_datetime_get_datetime({ format: "datetime" }),
+            sessionId: this.currentSession.id,
+            eventType: event.type,
+            context: event.context,
+            state: await this.captureState()
+        });
+        
+        // Verify audit record
+        await auditSystem.verify(event.id);
+        
+        // Update relations
+        await mcp_Server_Memory_create_relations({
+            relations: [{
+                from: `Session_${this.currentSession.id}`,
+                to: `Audit_${event.id}`,
+                relationType: "audits"
+            }]
+        });
+    }
+}
+```
+
+## 7. Enhanced Session Implementation
+```javascript
+class EnhancedWorkSessionManager {
+    constructor() {
+        this.verificationChain = new SessionVerificationChain();
+        this.errorRecovery = new SessionErrorRecovery();
+        this.auditTrail = new SessionAuditTrail();
+        this.taskManager = new SessionTaskManager();
+    }
+
+    async startSession(previousSessionId = null) {
+        try {
+            // Initialize protocols
+            await this.initializeProtocols();
+            
+            // Start session with verification
+            const session = await this.startVerifiedSession(previousSessionId);
+            
+            // Record in audit trail
+            await this.auditTrail.recordSessionEvent({
+                type: 'SESSION_START',
+                context: { previousSessionId }
+            });
+            
+            return session;
+        } catch (error) {
+            await this.errorRecovery.handleError(error);
+            throw error;
+        }
+    }
+
+    async endSession(reason = 'NORMAL') {
+        try {
+            // Verify session state
+            await this.verificationChain.verify('SESSION_END');
+            
+            // Update task statuses
+            await this.taskManager.finalizeTaskStates();
+            
+            // Create session end record
+            await this.createSessionEndRecord(reason);
+            
+            // Record in audit trail
+            await this.auditTrail.recordSessionEvent({
+                type: 'SESSION_END',
+                context: { reason }
+            });
+        } catch (error) {
+            await this.errorRecovery.handleError(error);
+            throw error;
+        }
+    }
+}
+```
+
+This enhanced version fully integrates the server-memory-rules.mdc components:
+1. Proper Protocol Integration Layer
+2. Cross-Protocol Event System
+3. Task Status Management with proper emoji updates
+4. Verification Chain System with all levels
+5. Error Recovery System with classification and strategies
+6. Audit Trail System with full event recording
+
+The integration ensures:
+- Consistent state management across protocols
+- Proper event flow and verification
+- Complete audit trail of session activities
+- Robust error recovery
+- Proper task status tracking with ROADMAP updates

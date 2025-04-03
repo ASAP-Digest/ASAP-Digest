@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Format Time
+
+- Initiated by Phrase: "Format Time", "Formatted Time" or alias "FT"
+- Use mcp-datetime to retrieve `get_datetime`
+- `TimeZone` is Always `PDT`
+- Return only the formatted time string
+- Convert `get_datetime` to format: "MM.DD.YY | HH:MM AM/PM `TimeZone`"

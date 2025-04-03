@@ -1,0 +1,90 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Yes, I'll create two more specific protocols for the issues we solved. I'll separate them into distinct markdown blocks that focus on the specific problems we encountered and solved.
+
+Ran tool
+# WordPress Admin Style Enqueue Protocol v1.0
+
+## 1. Style File Organization
+```
+your-plugin/
+├── admin/
+│   ├── css/
+│   │   ├── components/          # Component-specific styles
+│   │   │   ├── _cards.css
+│   │   │   ├── _status.css
+│   │   │   └── _forms.css
+│   │   └── admin.css           # Main admin stylesheet
+│   └── class-admin.php         # Admin initialization
+```
+
+## 2. Enqueue Implementation
+```php
+class Your_Plugin_Admin {
+    private $plugin_screen_hooks = [
+        'toplevel_page_your-plugin',
+        'your-plugin_page_subpage'
+    ];
+
+    public function enqueue_admin_styles($hook) {
+        // 1. Early return if not on plugin pages
+        if (!in_array($hook, $this->plugin_screen_hooks)) {
+            return;
+        }
+
+        // 2. Enqueue with version for cache busting
+        wp_enqueue_style(
+            'your-plugin-admin',
+            plugin_url('admin/css/admin.css', __FILE__),
+            [],
+            YOUR_PLUGIN_VERSION
+        );
+    }
+}
+
+// 3. Hook with correct priority
+add_action('admin_enqueue_scripts', [$admin, 'enqueue_admin_styles'], 100);
+```
+
+## 3. Style Loading Verification
+```php
+class Your_Plugin_Admin {
+    public function verify_styles_loaded() {
+        // 1. Check if style is registered
+        if (!wp_style_is('your-plugin-admin', 'registered')) {
+            error_log('Admin style not registered');
+            return false;
+        }
+
+        // 2. Check if style is enqueued
+        if (!wp_style_is('your-plugin-admin', 'enqueued')) {
+            error_log('Admin style not enqueued');
+            return false;
+        }
+
+        return true;
+    }
+}
+```
+
+## 4. Debug Mode Support
+```php
+class Your_Plugin_Admin {
+    public function maybe_enable_debug_styles() {
+        if (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG) {
+            add_filter('style_loader_src', [$this, 'prevent_caching'], 10, 2);
+        }
+    }
+
+    public function prevent_caching($src, $handle) {
+        if ($handle === 'your-plugin-admin') {
+            return add_query_arg('ver', time(), $src);
+        }
+        return $src;
+    }
+}
+```
+

@@ -1,0 +1,84 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# New Function Protocol
+
+1. **Location Check**
+   - Verify current directory matches intended location in project structure
+   - For SvelteKit functions: Ensure you're in `/app/src/lib/` or appropriate route directory
+   - For WordPress functions: Ensure you're in correct plugin/theme directory
+
+2. **Function Documentation**
+   - Add JSDoc comment block above function
+   - Include description, parameters, return type, and example usage
+   - Add timestamp in format: "MM.DD.YY | HH:MM AM/PM PDT"
+   - For WordPress functions: Add PHP DocBlock with same information
+
+3. **Function Structure**
+   - For SvelteKit/JavaScript:
+     ```js
+     /** 
+      * @description Brief description of what the function does
+      * @param {ParamType} paramName - Parameter description
+      * @returns {ReturnType} Description of return value
+      * @example
+      * // Example usage
+      * functionName(exampleParam)
+      * @created MM.DD.YY | HH:MM AM/PM PDT
+      */
+     function functionName(params) {
+         // Implementation
+     }
+     ```
+   - For WordPress/PHP:
+     ```php
+     /**
+      * @description Brief description of what the function does
+      * @param ParamType $paramName Parameter description
+      * @return ReturnType Description of return value
+      * @example
+      * // Example usage
+      * functionName($exampleParam);
+      * @created MM.DD.YY | HH:MM AM/PM PDT
+      */
+     function functionName($params) {
+         // Implementation
+     }
+     ```
+
+4. **Type Safety**
+   - Use JSDoc type annotations for JavaScript/SvelteKit
+   - Ensure types are explicit and documented
+   - For PHP functions, use type hints when possible
+
+5. **Error Handling**
+   - Include try/catch blocks for potential errors
+   - Document expected errors in JSDoc/DocBlock
+   - Return appropriate error responses
+
+6. **Testing Considerations**
+   - Add comment indicating if test coverage is needed
+   - Note any test dependencies or requirements
+
+7. **Export/Import Rules**
+   - For SvelteKit: Use direct exports (no index files)
+   - For WordPress: Follow WordPress naming conventions
+   - Avoid circular dependencies
+
+8. **Reactivity (SvelteKit Only)**
+   - Use $state and $derived for reactive values
+   - Document reactive dependencies
+   - Follow Svelte 5 Runes conventions
+
+9. **Security**
+   - Document any security considerations
+   - Note required permissions or authentication
+   - Never expose sensitive data in comments
+
+10. **Performance**
+    - Document any performance implications
+    - Note any caching requirements
+    - Include complexity analysis if relevant
+  

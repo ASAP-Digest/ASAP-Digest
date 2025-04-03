@@ -1,0 +1,217 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## 1. Protocol Integration Layer
+```
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │
+│ 2. Rule Execution Protocol              │
+│ 3. Task Tracking Protocol               │
+│ 4. Memory Maintenance Protocol          │
+└─────────────────────────────────────────┘
+```
+
+## 2. Task Completion Tracking
+```
+A. Task Status Management
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Status Type     │ Memory Entity      │ ROADMAP Update     │
+├─────────────────┼────────────────────┼────────────────────┤
+│ Task Start      │ Create TaskEntity  │ Update to 🔄       │
+│ Task Complete   │ Update TaskEntity  │ Update to ✅       │
+│ Task Blocked    │ Create BlockEntity │ Update to ❌       │
+│ Task Pending    │ Create WaitEntity  │ Update to ⏳       │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Task Update Protocol
+1. Pre-Update Check [Software Development Meta Protocol]
+2. Task Analysis [Rule Execution Protocol]
+3. Memory Entity Creation [This Protocol]
+4. [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) Update [Task Tracking Protocol]
+5. Verification [Universal Error Resolution Protocol]
+
+```
+
+## 3. Memory Update Triggers
+```
+A. Mandatory Update Points
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Trigger Event   │ Required Action    │ Integration Point  │
+├─────────────────┼────────────────────┼────────────────────┤
+│ Task Status     │ Update ROADMAP     │ TaskTracker        │
+│ Error Event     │ Create ErrorEntity │ UERP               │
+│ Code Change     │ Create CodeEntity  │ Git/File System    │
+│ Build Result    │ Update TaskEntity  │ Build System       │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Update Protocol Integration
+1. Pre-Update Verification
+2. Rule Analysis
+3. Entity Creation/Update
+4. Relation Mapping
+5. Task Status Sync
+6. Documentation Update
+```
+
+## 4. Entity Templates
+```
+A. Core Entity Types
+┌─────────────────┬────────────────────┬────────────────────┐
+│ Entity Type     │ Required Fields    │ Optional Fields    │
+├─────────────────┼────────────────────┼────────────────────┤
+│ Task            │ name, status       │ priority, deadline │
+│ Error           │ type, resolution   │ impact, prevention │
+│ Code            │ path, change       │ reviewer, tests    │
+│ Build           │ result, timestamp  │ metrics, logs      │
+└─────────────────┴────────────────────┴────────────────────┘
+
+B. Entity Naming Convention
+[Category]_[Identifier]_[Timestamp]
+Example: TaskCompletion_AuthIntegration_03292025
+```
+
+## 5. Task Status Update Process
+```
+A. Update Sequence
+1. Format Current Time
+   - Use mcp-datetime for consistency
+   - Format: "MM.DD.YY | HH:MM AM/PM TimeZone"
+
+2. Entity Creation/Update
+   - Create/update task entity
+   - Add formatted time to observations
+   - Include context and metadata
+
+3. ROADMAP Update
+   - Parse ROADMAP_TASKS.md
+   - Locate task entry
+   - Update status emoji
+   - Add completion timestamp
+   - Commit changes
+
+4. Documentation Update
+   - Update relevant documentation
+   - Add memory state snapshot
+   - Update cross-references
+
+B. Update Verification
+┌─────────────────┬────────────────────┐
+│ Check Type      │ Verification Point  │
+├─────────────────┼────────────────────┤
+│ Entity State    │ Required fields     │
+│ ROADMAP Status  │ Emoji update       │
+│ Time Format     │ Standard format    │
+│ Documentation   │ File updates       │
+└─────────────────┴────────────────────┘
+```
+
+## 6. Cross-Protocol Integration
+```
+A. Protocol Communication Flow
+┌─────────────────────┐
+│ Meta Protocol       │
+├─────────────────────┤
+│ Rule Execution      │
+├─────────────────────┤
+│ Task Tracking       │
+├─────────────────────┤
+│ Memory Management   │
+└─────────────────────┘
+
+B. Integration Points
+
+1. Software Development Meta Protocol
+   - Initial context assessment
+   - Environment verification
+   - Protocol selection
+
+2. Rule Execution Protocol
+   - Rule discovery
+   - Rule validation
+   - Execution planning
+
+3. Task Tracking Protocol
+   - Status management
+   - Progress tracking
+   - Documentation updates
+
+4. Memory Management Protocol
+   - Entity lifecycle
+   - Relation management
+   - System maintenance
+```
+
+## 7. Implementation Examples
+
+```javascript
+// Example 1: Task Completion Update
+async function updateTaskStatus(taskId, status, timestamp) {
+  // Create task entity
+  await createEntities([{
+    name: `TaskCompletion_${taskId}_${timestamp}`,
+    entityType: "Task",
+    observations: [
+      `Status updated to ${status} at ${formattedTime}`,
+      "Updated ROADMAP_TASKS.md",
+      "Verified entity creation",
+      "Documentation synchronized"
+    ]
+  }]);
+
+  // Update ROADMAP_TASKS.md
+  await updateRoadmap(taskId, status, timestamp);
+
+  // Create relations
+  await createRelations([{
+    from: `TaskCompletion_${taskId}_${timestamp}`,
+    to: "ROADMAP_TASKS.md",
+    relationType: "updates"
+  }]);
+}
+
+// Example 2: Protocol Integration
+async function integrateProtocols(context) {
+  // Meta Protocol integration
+  await metaProtocol.assessContext(context);
+  
+  // Rule Execution integration
+  const rules = await ruleProtocol.discoverRules();
+  
+  // Task Tracking integration
+  await taskProtocol.syncStatus(context.taskId);
+  
+  // Memory Management
+  await memoryProtocol.maintain();
+}
+```
+
+## 8. Usage Instructions
+
+1. **Task Status Updates:**
+   - Follow task status management flow
+   - Create appropriate entities
+   - Update ROADMAP_TASKS.md
+   - Verify all updates
+
+2. **Protocol Integration:**
+   - Start with Meta Protocol
+   - Follow Rule Execution Protocol
+   - Update Task Tracking
+   - Maintain Memory System
+
+3. **Verification Steps:**
+   - Check entity completeness
+   - Verify ROADMAP updates
+   - Confirm documentation
+   - Test protocol integration
+
+4. **Maintenance Tasks:**
+   - Regular entity cleanup
+   - ROADMAP synchronization
+   - Protocol state verification
+   - System integrity checks
+

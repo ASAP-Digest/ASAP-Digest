@@ -1,0 +1,204 @@
+---
+description: 
+globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
+alwaysApply: false
+---
+# WordPress Method Parameter Handling
+
+## Purpose
+This rule ensures consistent and error-free method parameter handling in WordPress plugins, particularly for static utility methods and form field generation.
+
+## When to Apply
+- When creating new utility methods
+- When calling existing methods with parameters
+- When modifying method signatures
+- When working with form generation functions
+- When converting between array and individual parameter formats
+
+## Common Issues This Prevents
+1. Parameter count mismatches
+2. Array vs individual parameter confusion
+3. Missing required parameters
+4. Incorrect parameter order
+5. Type mismatches in method calls
+
+## Best Practices
+
+### 1. Method Definition
+```php
+// ✅ CORRECT: Clear parameter definition with types and defaults
+public static function create_form_field(
+    string $id,
+    string $label,
+    string $type = 'text',
+    array $args = []
+) {
+    // Method implementation
+}
+
+// ❌ INCORRECT: Ambiguous parameter handling
+public static function create_form_field($params) {
+    // Method implementation
+}
+```
+
+### 2. Method Documentation
+```php
+// ✅ CORRECT: Clear parameter documentation
+/**
+ * Creates a form field with specified parameters
+ * 
+ * @param string $id          Field identifier
+ * @param string $label       Field label text
+ * @param string $type        Field type (default: 'text')
+ * @param array  $args        Additional field arguments
+ * @return string            Generated HTML
+ */
+
+// ❌ INCORRECT: Missing or unclear documentation
+/** Creates a form field */
+```
+
+### 3. Method Calls
+```php
+// ✅ CORRECT: Individual parameters
+$html = ASAP_Digest_Admin_UI::create_form_field(
+    'field_id',
+    'Field Label',
+    'text',
+    ['placeholder' => 'Enter value']
+);
+
+// ❌ INCORRECT: Single array parameter when method expects individual params
+$html = ASAP_Digest_Admin_UI::create_form_field([
+    'id' => 'field_id',
+    'label' => 'Field Label'
+]);
+```
+
+### 4. Parameter Validation
+```php
+// ✅ CORRECT: Validate required parameters
+public static function create_form_field($id, $label, $type = 'text', $args = []) {
+    if (empty($id) || empty($label)) {
+        throw new InvalidArgumentException('ID and label are required');
+    }
+    // Method implementation
+}
+
+// ❌ INCORRECT: No parameter validation
+public static function create_form_field($id, $label, $type = 'text', $args = []) {
+    // Method implementation without checks
+}
+```
+
+## Implementation Steps
+
+1. **Method Definition**
+   - Clearly define all required parameters
+   - Add type hints when possible
+   - Set default values for optional parameters
+   - Use descriptive parameter names
+
+2. **Documentation**
+   - Add PHPDoc blocks for all methods
+   - Document each parameter with type and description
+   - Include usage examples
+   - Note any required parameters
+
+3. **Parameter Validation**
+   - Check required parameters at method start
+   - Validate parameter types
+   - Provide meaningful error messages
+   - Use WordPress coding standards
+
+4. **Method Calls**
+   - Match parameter count and order
+   - Respect parameter types
+   - Include all required parameters
+   - Use named arguments for clarity (PHP 8+)
+
+## Verification Steps
+
+1. Check method signature:
+   ```bash
+   grep -r "function create_form_field" .
+   ```
+
+2. Verify parameter documentation:
+   ```bash
+   grep -A 10 "@param" path/to/file.php
+   ```
+
+3. Test method calls:
+   ```php
+   // Test required parameters
+   assert(method_exists('ClassName', 'create_form_field'));
+   
+   // Test parameter validation
+   try {
+       ClassName::create_form_field('', '');
+       throw new Exception('Should have failed');
+   } catch (InvalidArgumentException $e) {
+       // Expected
+   }
+   ```
+
+## Common Patterns
+
+1. **Required Parameters First**
+   ```php
+   function method_name($required1, $required2, $optional1 = null)
+   ```
+
+2. **Type Declarations**
+   ```php
+   function method_name(string $id, string $label, array $options = [])
+   ```
+
+3. **Array Arguments Last**
+   ```php
+   function method_name($id, $label, $type = 'text', array $args = [])
+   ```
+
+4. **Validation Blocks**
+   ```php
+   if (empty($required_param)) {
+       throw new InvalidArgumentException('Required parameter missing');
+   }
+   ```
+
+## Migration Guide
+
+When converting from array parameters to individual parameters:
+
+1. Update method signature
+2. Update all method calls
+3. Add parameter validation
+4. Update documentation
+5. Test all call sites
+
+Example:
+```php
+// Old
+function old_method($params = []) {}
+
+// New
+function new_method($required, $optional = null) {
+    if (empty($required)) {
+        throw new InvalidArgumentException('Required parameter missing');
+    }
+}
+```
+
+## Error Prevention Checklist
+
+- [ ] Method has clear parameter definitions
+- [ ] Required parameters are documented
+- [ ] Parameter types are specified
+- [ ] Default values are provided for optional parameters
+- [ ] Parameter validation is implemented
+- [ ] Method calls match parameter count
+- [ ] Method calls use correct parameter types
+- [ ] Documentation includes usage examples
+- [ ] Tests verify parameter handling

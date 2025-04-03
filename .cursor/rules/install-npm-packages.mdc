@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Install NPM Packages
+
+- Verify package exists in **Sveltekit Root** [^1] - `pnpm list [package]`
+- Verify package exists on npm registry `npm search [package]`
+- Wait 180000ms for npm registry results
+- If package exists in npm registry & does not exist in project, install via `pnpm install [package]`
+
+[^1]: "**SvelteKit Root** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`"
+
+

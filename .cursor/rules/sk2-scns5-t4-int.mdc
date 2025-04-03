@@ -1,0 +1,60 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# SvelteKit 2 with Shadcn-Svelte 5 & Tailwind 4
+
+1. **Use HSL variable syntax for theme colors in Tailwind 4**  
+   Always use `text-[hsl(var(--primary))]` instead of `text-primary` for theme colors.
+
+2. **Use standard Tailwind 4 utilities for spacing and sizing when available**  
+   Use standard utilities like `w-5`, `h-5`, `p-4`, `m-2` when they exist in Tailwind's scale.
+   Only use arbitrary values for custom sizes: `w-[1.37rem]`, `h-[22px]`.
+
+3. **Handle events properly using new Svelte 5 event attribute syntax**  
+   Use `onclick={handler}` syntax with proper TypeScript typing through JSDoc annotations.
+
+4. **Use $state and $derived for reactivity in Svelte 5**  
+   Replace `let value` with `let value = $state(initialValue)` for reactive variables.
+
+5. **Apply :global() selectors for CSS that needs to target elements outside the component**  
+   Use `:global(body.sidebar-collapsed) .element` for targeting across component boundaries.
+
+6. **Import individual components directly from Shadcn-Svelte**  
+   When importing, Import directly from the `.svelte` files, Importing from the directory will cause build errors
+
+7. **Search for & Modify Imported Shadcn-Svelte All Component Icons**
+   After importing new Shadcn-svelte components grep all imported icons of the component and add them as export in our compatibility layer `lucide-icons.js` 
+
+8. **Add explicit JSDoc type annotations for all functions and parameters**  
+   Always include `@param {EventType} paramName - Description` for proper TypeScript checking.
+
+9. **Set explicit list-none class on list elements**  
+   Always add `list-none` to `<ul>` and `<li>` elements to prevent bullet points.
+
+10. **Use direct imports from lucide-svelte for icons**  
+   Import specific icons with `import { Icon1, Icon2 } from 'lucide-svelte'` to reduce bundle size.
+
+11. **Implement proper responsive transitions with CSS variables**  
+    Use CSS variables and transition properties for smooth UI changes, especially in layout components.
+
+12. **Use `let` directly**
+    - We are in Svelte 5 Runes Mode. Do not use `export let`
+
+13. **Avoid style blocks in Svelte components when possible**  
+    Style with Tailwind 4 utility classes in markup instead of using `<style>` blocks for better Tailwind 4 compatibility.
+
+14. **NEVER use @reference in Svelte component style blocks**  
+    Tailwind 4 processes each component separately, so `@reference "tailwindcss"` doesn't work properly.
+
+15. **NEVER use @apply in Svelte component style blocks**  
+    Replace `@apply bg-primary` with direct CSS: `background-color: hsl(var(--primary))`.
+
+16. **Use CSS variables for theme colors in component styles**  
+    When you must use `<style>`, use `color: hsl(var(--primary))` instead of Tailwind utilities.
+
+17. **Ensure tailwind.config.js includes all Svelte component files**  
+    content: [`"./src/**/*.{html,js,svelte,ts}"`, `"./src/**/*.{svelte,js,ts,jsx,tsx}"`]
+
+    

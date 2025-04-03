@@ -1,0 +1,161 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# PHP File Creation Protocol
+
+1. **File Header Structure**
+```php
+<?php
+/**
+ * [File Title/Purpose]
+ * 
+ * @package ASAPDigest_Core
+ * @created [MM.DD.YY | HH:MM AM/PM PDT] (Use mcp-datetime)
+ * @file-marker [ClassName or Purpose]
+ */
+
+namespace ASAPDigest\Core;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+```
+
+2. **Required Elements**
+   - Opening `<?php` tag MUST be the first line
+   - File docblock MUST follow immediately after
+   - Package name MUST be `ASAPDigest_Core`
+   - Creation timestamp MUST use mcp-datetime format
+   - Namespace MUST be `ASAPDigest\Core` (or appropriate sub-namespace)
+   - ABSPATH check MUST be included for direct access prevention
+
+3. **Class Structure**
+```php
+/**
+ * [Class Description]
+ */
+class Class_Name {
+    /**
+     * @var type Description
+     */
+    private $property;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        // Implementation
+    }
+}
+```
+
+4. **File Creation Steps**
+   - Check current location against `@PE - CTXT`
+   - Verify file doesn't exist using `ls -la`
+   - Create file using `touch [filename]`
+   - Add standard header structure
+   - Add class implementation
+   - Add proper docblocks for all methods
+
+5. **Namespace Rules**
+   - Main plugin classes: `namespace ASAPDigest\Core;`
+   - API classes: `namespace ASAPDigest\Core\API;`
+   - Admin classes: `namespace ASAPDigest\Core\Admin;`
+   - Include appropriate `use` statements
+
+6. **Security Requirements**
+   - ALWAYS include ABSPATH check
+   - ALWAYS use proper escaping functions
+   - ALWAYS validate user capabilities
+   - ALWAYS sanitize input/output
+
+7. **Documentation Requirements**
+   - File docblock with title and purpose
+   - Package name
+   - Creation timestamp
+   - File marker for LLM processing
+   - Class description
+   - Property documentation
+   - Method documentation with param/return types
+
+8. **Common Use Statements**
+```php
+use function add_action;
+use function add_filter;
+use function plugin_dir_path;
+use function wp_enqueue_script;
+use function wp_enqueue_style;
+use function wp_localize_script;
+```
+
+9. **Error Prevention**
+   - Check for duplicate class names
+   - Verify namespace matches file location
+   - Ensure all dependencies are properly imported
+   - Validate WordPress coding standards compliance
+
+10. **Example Implementation**
+```php
+<?php
+/**
+ * Example Class Implementation
+ * 
+ * @package ASAPDigest_Core
+ * @created 03.31.25 | 03:34 PM PDT
+ * @file-marker Example_Class
+ */
+
+namespace ASAPDigest\Core;
+
+use function add_action;
+use function plugin_dir_path;
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Example class description
+ */
+class Example_Class {
+    /**
+     * @var string Description
+     */
+    private $property;
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        $this->init();
+    }
+
+    /**
+     * Initialize the class
+     */
+    private function init() {
+        add_action('init', [$this, 'setup']);
+    }
+}
+```
+
+11. **File Location Rules**
+   - Core classes go in `includes/`
+   - Admin classes go in `admin/`
+   - API classes go in `includes/api/`
+   - View files go in `admin/views/`
+   - Asset files go in `admin/assets/`
+
+12. **Verification Checklist**
+   - [ ] Opening PHP tag present
+   - [ ] File docblock complete
+   - [ ] ABSPATH check included
+   - [ ] Namespace declared
+   - [ ] Use statements added
+   - [ ] Class properly documented
+   - [ ] Methods properly documented
+   - [ ] WordPress coding standards followed
+   - [ ] Security measures implemented
+   - [ ] Error handling included

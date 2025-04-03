@@ -1,0 +1,20 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Access Project DB via Unix
+
+- Mode Initiated Using Key Term "Access DB" or alias "APDB". When called use terminal to execute the APDB Tools Below
+- The following tool exist in this format: - `alias` / "Definition:" `Command` 
+- Define socket path variable: `MYSQL_SOCKET="${PROJECT_DB_SOCKET:-/Volumes/Macintosh HD/Users/vsmith/Library/Application Support/Local/run/AFTH2oxzp/mysql/mysqld.sock}"`
+- Define credentials: `DB_USER="${PROJECT_DB_USER:-root}" DB_PASS="${PROJECT_DB_PASSWORD:-root}" DB_NAME="${PROJECT_DB_NAME:-local}"`
+- VS / "Verify socket exists:" `ls -la $MYSQL_SOCKET`
+- BC / "Basic connection:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET`
+- DDA / "Direct database access:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME`
+- EQ / "Execute query:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME -e "QUERY;"`
+- DD / "Dump database:" `mysqldump -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME > backup.sql`
+- ID / "Import database:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME < import.sql`
+- CA / "Create alias:" `alias dbconnect='mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME'`
+- GMV / "Get MySQL version:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET -e "SELECT VERSION();"`
