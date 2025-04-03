@@ -61,7 +61,7 @@ B. Secondary Triggers
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. Status Check Protocol               │
+│ 1. Status Check Protocol                │
 │ 2. Work Session Management Protocol     │
 │ 3. Memory Maintenance Protocol          │
 │ 4. Task Tracking Protocol               │

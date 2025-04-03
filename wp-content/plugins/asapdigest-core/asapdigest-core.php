@@ -1187,3 +1187,33 @@ function asap_render_settings() {
 
 // Add the user actions class
 require_once plugin_dir_path(__FILE__) . 'includes/class-user-actions.php';
+
+/**
+ * @description Create the Better Auth to WordPress user mapping table
+ * @return void
+ * @example
+ * // Called during plugin activation or Central Command initialization
+ * asap_create_ba_wp_user_map_table();
+ * @created 04.02.25 | 10:45 PM PDT
+ */
+function asap_create_ba_wp_user_map_table() {
+    global $wpdb;
+    $charset_collate = $wpdb->get_charset_collate();
+    
+    $table_name = $wpdb->prefix . 'ba_wp_user_map';
+    
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        wp_user_id BIGINT(20) UNSIGNED NOT NULL,
+        ba_user_id VARCHAR(255) NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY wp_user_id (wp_user_id),
+        UNIQUE KEY ba_user_id (ba_user_id),
+        KEY created_at (created_at)
+    ) $charset_collate;";
+    
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}

@@ -15,6 +15,27 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Define Better Auth database constants if not already defined
+if (!defined('BETTER_AUTH_DB_HOST')) {
+    define('BETTER_AUTH_DB_HOST', getenv('BETTER_AUTH_DB_HOST') ?: 'localhost');
+}
+
+if (!defined('BETTER_AUTH_DB_PORT')) {
+    define('BETTER_AUTH_DB_PORT', getenv('BETTER_AUTH_DB_PORT') ?: '3306');
+}
+
+if (!defined('BETTER_AUTH_DB_NAME')) {
+    define('BETTER_AUTH_DB_NAME', getenv('BETTER_AUTH_DB_NAME') ?: DB_NAME);
+}
+
+if (!defined('BETTER_AUTH_DB_USER')) {
+    define('BETTER_AUTH_DB_USER', getenv('BETTER_AUTH_DB_USER') ?: DB_USER);
+}
+
+if (!defined('BETTER_AUTH_DB_PASSWORD')) {
+    define('BETTER_AUTH_DB_PASSWORD', getenv('BETTER_AUTH_DB_PASSWORD') ?: DB_PASSWORD);
+}
+
 // Include Admin UI class
 use ASAPDigest\Core\ASAP_Digest_Admin_UI;
 require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
@@ -243,47 +264,99 @@ function asap_create_wp_session_core($wp_user_id) {
 }
 
 /**
- * @description Validate WordPress session token against Better Auth token with auto-sync
+ * @description Validate WordPress session token against Better Auth token with bidirectional sync
  * @param WP_REST_Request $request REST request object
  * @return WP_Error|array Validation result with user data or error
  * @example
  * // Check session token from REST request
  * $result = asap_validate_wp_session_token($request);
- * @created 03.30.25 | 04:37 PM PDT
- * @renamed 07.23.24 | 11:00 AM PDT (was asap_check_wp_session)
+ * @created 04.02.25 | 10:25 PM PDT
  */
 function asap_validate_wp_session_token($request) {
-    // Get Better Auth token from header
-    $better_auth_token = $request->get_header('X-Better-Auth-Token');
-    if (empty($better_auth_token)) {
-        return new WP_Error('missing_token', 'Better Auth token not provided');
-    }
-
-    // Validate token format and signature
-    $token_parts = explode('.', $better_auth_token);
-    if (count($token_parts) !== 3) {
-        return new WP_Error('invalid_token_format', 'Invalid token format');
-    }
-
     try {
+        // Get Better Auth token from header
+        $better_auth_token = $request->get_header('X-Better-Auth-Token');
+        if (empty($better_auth_token)) {
+            return new WP_Error('missing_token', 'Better Auth token not provided');
+        }
+
+        // Validate token format and signature
+        $token_parts = explode('.', $better_auth_token);
+        if (count($token_parts) !== 3) {
+            return new WP_Error('invalid_token_format', 'Invalid token format');
+        }
+
         // Decode token payload
         $payload = json_decode(base64_decode($token_parts[1]), true);
         if (!$payload || empty($payload['sub'])) {
             return new WP_Error('invalid_token_payload', 'Invalid token payload');
         }
 
-        // Get WordPress user from Better Auth ID
-        $users = get_users([
-            'meta_key' => 'better_auth_user_id',
-            'meta_value' => $payload['sub'],
-            'number' => 1
-        ]);
+        // Get WordPress user from Better Auth ID with retry
+        $max_retries = 3;
+        $retry_delay = 1; // seconds
+        $users = null;
+
+        for ($attempt = 0; $attempt < $max_retries; $attempt++) {
+            $users = get_users([
+                'meta_key' => 'better_auth_user_id',
+                'meta_value' => $payload['sub'],
+                'number' => 1
+            ]);
+
+            if (!empty($users)) {
+                break;
+            }
+
+            if ($attempt < $max_retries - 1) {
+                sleep($retry_delay);
+            }
+        }
 
         if (empty($users)) {
             return new WP_Error('user_not_found', 'No WordPress user found for Better Auth ID');
         }
 
         $user = $users[0];
+
+        // Verify Better Auth session is still valid
+        try {
+            $ba_db = new PDO(
+                sprintf(
+                    'mysql:host=%s;port=%s;dbname=%s',
+                    BETTER_AUTH_DB_HOST,
+                    BETTER_AUTH_DB_PORT,
+                    BETTER_AUTH_DB_NAME
+                ),
+                BETTER_AUTH_DB_USER,
+                BETTER_AUTH_DB_PASSWORD,
+                array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+            );
+
+            $stmt = $ba_db->prepare("
+                SELECT COUNT(*) as valid
+                FROM ba_sessions
+                WHERE user_id = :user_id
+                AND token = :token
+                AND expires_at > NOW()
+                AND revoked = 0
+            ");
+
+            $stmt->execute([
+                ':user_id' => $payload['sub'],
+                ':token' => $better_auth_token
+            ]);
+
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$result || !$result['valid']) {
+                // Session is invalid in Better Auth, clear WordPress session
+                wp_destroy_current_session();
+                return new WP_Error('invalid_session', 'Better Auth session is invalid');
+            }
+        } catch (Exception $e) {
+            error_log('Better Auth session verification error: ' . $e->getMessage());
+            // Continue with WordPress session check on Better Auth DB error
+        }
 
         // Auto-create WordPress session if needed
         if (!is_user_logged_in() || get_current_user_id() !== $user->ID) {
@@ -293,7 +366,7 @@ function asap_validate_wp_session_token($request) {
             }
         }
 
-        // Verify session token
+        // Verify WordPress session token
         $stored_token = get_user_meta($user->ID, 'better_auth_session_token', true);
         if (empty($stored_token) || $stored_token !== wp_get_session_token()) {
             // Auto-refresh session if token mismatch
@@ -303,10 +376,25 @@ function asap_validate_wp_session_token($request) {
             }
         }
 
-        // Auto-sync user data
-        $sync_result = asap_auto_sync_user_data($user->ID);
-        if (is_wp_error($sync_result)) {
-            error_log('Auto-sync failed: ' . $sync_result->get_error_message());
+        // Auto-sync user data with retry mechanism
+        $sync_attempts = 0;
+        $max_sync_attempts = 3;
+        $sync_success = false;
+
+        while ($sync_attempts < $max_sync_attempts && !$sync_success) {
+            $sync_result = asap_auto_sync_user_data($user->ID);
+            if (!is_wp_error($sync_result)) {
+                $sync_success = true;
+            } else {
+                $sync_attempts++;
+                if ($sync_attempts < $max_sync_attempts) {
+                    sleep(1); // Wait 1 second before retry
+                }
+            }
+        }
+
+        if (!$sync_success) {
+            error_log('Failed to sync user data after ' . $max_sync_attempts . ' attempts');
         }
 
         // Return success with user data
@@ -317,9 +405,11 @@ function asap_validate_wp_session_token($request) {
             'display_name' => $user->display_name,
             'email' => $user->user_email,
             'avatar_url' => get_avatar_url($user->ID),
-            'roles' => $user->roles
+            'roles' => $user->roles,
+            'sync_status' => $sync_success ? 'synced' : 'sync_failed'
         ];
     } catch (Exception $e) {
+        error_log('Session validation error: ' . $e->getMessage());
         return new WP_Error('validation_failed', $e->getMessage());
     }
 }
@@ -2502,45 +2592,96 @@ function asap_auto_sync_user_data($user_id, $user_data = null) {
     }
 
     try {
-        // Connect to Better Auth database
-        $ba_db = new PDO(
-            sprintf(
-                'mysql:host=%s;port=%s;dbname=%s',
-                defined('DB_HOST') ? DB_HOST : 'localhost',
-                '10018',
-                DB_NAME
-            ),
-            DB_USER,
-            DB_PASSWORD,
-            array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+        // Get database configuration from environment
+        $db_host = defined('BETTER_AUTH_DB_HOST') ? BETTER_AUTH_DB_HOST : 'localhost';
+        $db_port = defined('BETTER_AUTH_DB_PORT') ? BETTER_AUTH_DB_PORT : '3306';
+        $db_name = defined('BETTER_AUTH_DB_NAME') ? BETTER_AUTH_DB_NAME : DB_NAME;
+        $db_user = defined('BETTER_AUTH_DB_USER') ? BETTER_AUTH_DB_USER : DB_USER;
+        $db_pass = defined('BETTER_AUTH_DB_PASSWORD') ? BETTER_AUTH_DB_PASSWORD : DB_PASSWORD;
+
+        // Connect to Better Auth database with error handling
+        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $db_host, $db_port, $db_name);
+        $options = array(
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 5
         );
 
-        // Update Better Auth user data
-        $stmt = $ba_db->prepare("
-            UPDATE ba_users 
-            SET 
-                email = :email,
-                display_name = :display_name,
-                avatar_url = :avatar_url,
-                website = :website,
-                updated_at = NOW()
-            WHERE id = :id
-        ");
+        $ba_db = new PDO($dsn, $db_user, $db_pass, $options);
 
-        $stmt->execute([
-            ':email' => $user_data['user_email'],
-            ':display_name' => $user_data['display_name'],
-            ':avatar_url' => $user_data['avatar_url'],
-            ':website' => $user_data['user_url'],
-            ':id' => $better_auth_user_id
-        ]);
+        // Start transaction
+        $ba_db->beginTransaction();
 
-        // Fire action for integrations
-        do_action('asap_user_data_synced', $user_id, $better_auth_user_id, $user_data);
+        try {
+            // Update Better Auth user data
+            $stmt = $ba_db->prepare("
+                UPDATE ba_users 
+                SET 
+                    email = :email,
+                    display_name = :display_name,
+                    avatar_url = :avatar_url,
+                    website = :website,
+                    updated_at = NOW(),
+                    sync_status = 'synced'
+                WHERE id = :id
+            ");
 
-        return true;
+            $stmt->execute([
+                ':email' => $user_data['user_email'],
+                ':display_name' => $user_data['display_name'],
+                ':avatar_url' => $user_data['avatar_url'],
+                ':website' => $user_data['user_url'],
+                ':id' => $better_auth_user_id
+            ]);
+
+            // Update sync metadata
+            $meta_stmt = $ba_db->prepare("
+                INSERT INTO ba_user_metadata 
+                    (user_id, meta_key, meta_value, updated_at)
+                VALUES 
+                    (:user_id, 'wp_sync_time', :sync_time, NOW())
+                ON DUPLICATE KEY UPDATE
+                    meta_value = :sync_time,
+                    updated_at = NOW()
+            ");
+
+            $meta_stmt->execute([
+                ':user_id' => $better_auth_user_id,
+                ':sync_time' => current_time('mysql')
+            ]);
+
+            // Commit transaction
+            $ba_db->commit();
+
+            // Update WordPress user meta
+            update_user_meta($user_id, 'better_auth_sync_time', current_time('mysql'));
+            update_user_meta($user_id, 'better_auth_sync_status', 'synced');
+
+            // Fire action for integrations
+            do_action('asap_user_data_synced', $user_id, $better_auth_user_id, $user_data);
+
+            return true;
+        } catch (Exception $e) {
+            // Rollback transaction on error
+            $ba_db->rollBack();
+            throw $e;
+        }
+    } catch (PDOException $e) {
+        // Handle database connection errors
+        error_log(sprintf('Better Auth sync error for user %d: %s', $user_id, $e->getMessage()));
+        return new WP_Error(
+            'sync_failed', 
+            'Database connection error during sync. Please try again.',
+            array('error' => $e->getMessage())
+        );
     } catch (Exception $e) {
-        return new WP_Error('sync_failed', $e->getMessage());
+        // Handle other errors
+        error_log(sprintf('Better Auth sync error for user %d: %s', $user_id, $e->getMessage()));
+        return new WP_Error(
+            'sync_failed',
+            'An error occurred during sync. Please try again.',
+            array('error' => $e->getMessage())
+        );
     }
 }
 
