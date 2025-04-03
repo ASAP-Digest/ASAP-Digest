@@ -1,0 +1,116 @@
+---
+description: 
+globs: app/src/routes/api/**/*.js, app/src/routes/**/+server.js, app/src/routes/**/+page.server.js, app/src/lib/server/**/*.js, app/src/lib/utils/**/*.js, app/src/lib/types/**/*.js, app/src/lib/api/**/*.js, app/src/hooks.server.js, app/src/hooks.client.js, app/src/lib/components/**/*.js, app/src/lib/stores/**/*.js, app/src/lib/actions/**/*.js, app/src/lib/services/**/*.js, app/src/lib/config/**/*.js, app/src/lib/constants/**/*.js, app/src/lib/validators/**/*.js, app/src/lib/transformers/**/*.js, app/src/lib/middleware/**/*.js, app/src/service-worker.js, app/src/app.d.ts
+alwaysApply: false
+---
+# Type Definition Management Protocol for JavaScript + JSDoc in SvelteKit
+
+## 1. Global Type Definition Rules
+
+### 1.1 Location Requirements
+- All global types MUST be defined in `app.d.ts`
+- SvelteKit interface extensions MUST be defined in the `App` namespace
+- No TypeScript syntax allowed in `.js` files
+
+### 1.2 Naming Conventions
+- Interface names must be PascalCase
+- Type aliases must be PascalCase
+- Generic type parameters must be PascalCase
+
+## 2. Type Definition Hierarchy
+
+### 2.1 Global Types (`app.d.ts`)
+- Project-wide interfaces
+- SvelteKit type extensions
+- Shared utility types
+- Third-party type augmentations
+
+### 2.2 Local Types (JSDoc in .js files)
+- Function-specific types
+- Component-specific types
+- Implementation-specific types
+- Temporary or one-off types
+
+## 3. Type Definition Verification Process
+
+### 3.1 Pre-Implementation Checks
+- Search `app.d.ts` for existing types
+- Check SvelteKit documentation for built-in types
+- Review related component types
+
+### 3.2 Implementation Steps
+1. Add new types to `app.d.ts` if global
+2. Use JSDoc reference imports for SvelteKit types
+3. Document type relationships
+4. Add verification comments
+
+### 3.3 Code Review Requirements
+- Verify type location appropriateness
+- Check for TypeScript syntax in .js files
+- Validate JSDoc syntax
+- Confirm type documentation
+
+## 4. Documentation Requirements
+
+### 4.1 Global Type Documentation
+```typescript
+// In app.d.ts
+/**
+ * @description User information structure
+ * @since 1.0.0
+ * @example
+ * declare global {
+ *   interface User {
+ *     id: string;
+ *     sessionToken?: string;
+ *   }
+ * }
+ */
+```
+
+### 4.2 Local Type Documentation
+```javascript
+/**
+ * @typedef {Object} SyncResponse
+ * @property {boolean} valid - Whether the sync was successful
+ * @property {boolean} [updated] - Whether the user data was updated
+ * @property {string} [error] - Error message if sync failed
+ */
+```
+
+## 5. Implementation Examples
+
+### 5.1 Correct Global Type Extension
+```typescript
+// In app.d.ts
+declare global {
+  namespace App {
+    interface Locals {
+      user?: User;
+    }
+  }
+}
+```
+
+### 5.2 Correct Local Type Usage
+```javascript
+/** @type {import('@sveltejs/kit').RequestHandler} */
+export async function GET({ request, locals }) {
+  /** @type {User|null} */
+  const currentUser = locals.user || null;
+}
+```
+
+## 6. Enforcement
+
+### 6.1 Code Review Checklist
+- [ ] Global types are in `app.d.ts`
+- [ ] No TypeScript syntax in `.js` files
+- [ ] Proper JSDoc annotations present
+- [ ] Type documentation complete
+- [ ] Type hierarchy respected
+
+### 6.2 CI/CD Integration
+- Add type checking to pre-commit hooks
+- Implement automated JSDoc validation
+- Add type location validation
