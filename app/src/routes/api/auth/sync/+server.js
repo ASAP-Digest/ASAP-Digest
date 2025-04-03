@@ -102,7 +102,13 @@ export async function GET({ request, locals }) {
       /** @type {User} */
       locals.user = {
         id: data.userId,
-        sessionToken: data.sessionToken
+        sessionToken: data.sessionToken,
+        betterAuthId: data.userId, // Using userId as betterAuthId
+        displayName: data.displayName || '',
+        email: data.email || '',
+        avatarUrl: data.avatarUrl || '',
+        roles: data.roles || [],
+        syncStatus: 'synced'
       };
     }
 

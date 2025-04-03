@@ -9,7 +9,7 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
 
   /** @type {import('./$types').LayoutData} */
-  const { data } = $props();
+  let { data, children } = $props();
 
   const user = $derived(data.user);
   let syncInterval;
@@ -86,7 +86,7 @@
     </header>
     
     <main>
-      <slot />
+      {@render children()}
     </main>
   </div>
 {/if}
