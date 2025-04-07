@@ -44,6 +44,13 @@
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
+  // Log user data from page store on mount
+  $effect(() => {
+    if (browser) {
+      console.log('[Layout Client-Side] $page.data.user:', $page.data.user);
+    }
+  });
+
   // Effects using Svelte 5 runes
   $effect(() => {
     if (isDesignSystemRoute && browser) {
