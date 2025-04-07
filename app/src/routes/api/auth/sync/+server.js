@@ -14,10 +14,11 @@
  */
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ request, locals }) {
+  console.debug('[Sync API] Received GET request for /api/auth/sync');
   try {
     // Extract cookies from request
     const cookies = request.headers.get('cookie') || '';
-    console.debug('All cookies:', cookies);
+    console.debug('[Sync API] Extracted cookies:', cookies);
 
     // Find WordPress authentication cookies
     const wpCookies = cookies
@@ -25,11 +26,11 @@ export async function GET({ request, locals }) {
       .map(cookie => cookie.trim())
       .filter(cookie => cookie.startsWith('wordpress_logged_in_'));
     
-    console.debug('WordPress cookies:', wpCookies);
+    console.debug('[Sync API] Found WordPress cookies:', wpCookies);
 
     // Return early if no WordPress cookies found
     if (wpCookies.length === 0) {
-      console.debug('No WordPress cookies found');
+      console.debug('[Sync API] No WordPress cookies found. Returning 401.');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -51,10 +52,13 @@ export async function GET({ request, locals }) {
       }
       return 'https://asapdigest.com';
     };
+    const wpBaseURL = getWordPressBaseURL();
+    const checkSessionURL = `${wpBaseURL}/wp-json/asap/v1/auth/check-wp-session`;
+    console.debug(`[Sync API] Calling WordPress endpoint: ${checkSessionURL}`);
 
     // Validate WordPress session
     const response = await fetch(
-      `${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, 
+      checkSessionURL,
       {
         headers: {
           'Cookie': wpCookies.join('; ')
@@ -63,12 +67,13 @@ export async function GET({ request, locals }) {
       }
     );
 
-    console.debug('WordPress response status:', response.status);
+    console.debug('[Sync API] WordPress check-wp-session response status:', response.status);
     const data = await response.json();
-    console.debug('WordPress response data:', data);
+    console.debug('[Sync API] WordPress check-wp-session response data:', data);
 
     // Handle unsuccessful response
     if (!response.ok) {
+      console.debug('[Sync API] WordPress check-wp-session call failed or returned non-OK status. Returning error.');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -82,6 +87,7 @@ export async function GET({ request, locals }) {
 
     // Handle not logged in state
     if (!data.loggedIn) {
+      console.debug('[Sync API] WordPress check-wp-session indicates not logged in. Returning 401.');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -96,22 +102,35 @@ export async function GET({ request, locals }) {
     // Update user data if needed
     /** @type {User|null} */
     const currentUser = locals.user || null;
-    const updated = currentUser?.id !== data.userId;
+    console.debug('[Sync API] Current SvelteKit user data (locals.user):', currentUser);
+    console.debug('[Sync API] Data from WP (data):', data);
+
+    const userIdChanged = currentUser?.id !== data.userId;
+    const updatedAtChanged = currentUser?.updatedAt !== data.updatedAt;
+    console.debug(`[Sync API] Checking for updates: userIdChanged=${userIdChanged}, updatedAtChanged=${updatedAtChanged}`);
+    
+    const updated = userIdChanged || updatedAtChanged;
 
     if (updated) {
+      console.debug(`[Sync API] Update detected (userId changed: ${userIdChanged}, timestamp changed: ${updatedAtChanged}). Updating locals.user...`);
       /** @type {User} */
       locals.user = {
         id: data.userId,
         sessionToken: data.sessionToken,
-        betterAuthId: data.userId, // Using userId as betterAuthId
+        betterAuthId: data.userId,
         displayName: data.displayName || '',
         email: data.email || '',
         avatarUrl: data.avatarUrl || '',
         roles: data.roles || [],
-        syncStatus: 'synced'
+        syncStatus: 'synced',
+        updatedAt: data.updatedAt
       };
+      console.debug('[Sync API] Updated locals.user:', locals.user);
+    } else {
+      console.debug('[Sync API] No update detected.');
     }
 
+    console.debug(`[Sync API] Returning response: { valid: true, updated: ${updated} }`);
     return new Response(
       JSON.stringify({ valid: true, updated }), {
         headers: { 'Content-Type': 'application/json' }
@@ -119,7 +138,7 @@ export async function GET({ request, locals }) {
     );
 
   } catch (error) {
-    console.error('Sync error:', error);
+    console.error('[Sync API] Error during sync processing:', error);
     return new Response(
       JSON.stringify({ 
         valid: false, 

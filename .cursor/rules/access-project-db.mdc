@@ -3,18 +3,54 @@ description:
 globs: 
 alwaysApply: true
 ---
+# Access Project DB via Unix Socket (v3 - Enforced Substitution)
 
-# Access Project DB via Unix
+**Core Principle:** Database connections via terminal MUST use the Unix socket specified in `@PE - CTXT` for reliability within the Local by Flywheel environment. Avoid using host/port connections.
 
-- Mode Initiated Using Key Term "Access DB" or alias "APDB". When called use terminal to execute the APDB Tools Below
-- The following tool exist in this format: - `alias` / "Definition:" `Command` 
-- Define socket path variable: `MYSQL_SOCKET="${PROJECT_DB_SOCKET:-/Volumes/Macintosh HD/Users/vsmith/Library/Application Support/Local/run/AFTH2oxzp/mysql/mysqld.sock}"`
-- Define credentials: `DB_USER="${PROJECT_DB_USER:-root}" DB_PASS="${PROJECT_DB_PASSWORD:-root}" DB_NAME="${PROJECT_DB_NAME:-local}"`
-- VS / "Verify socket exists:" `ls -la $MYSQL_SOCKET`
-- BC / "Basic connection:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET`
-- DDA / "Direct database access:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME`
-- EQ / "Execute query:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME -e "QUERY;"`
-- DD / "Dump database:" `mysqldump -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME > backup.sql`
-- ID / "Import database:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME < import.sql`
-- CA / "Create alias:" `alias dbconnect='mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET $DB_NAME'`
-- GMV / "Get MySQL version:" `mysql -u $DB_USER -p$DB_PASS -S $MYSQL_SOCKET -e "SELECT VERSION();"`
+**Initiation:** Use key term "Access DB" or alias "APDB".
+
+**LLM Instructions:**
+1.  **MUST** read the `@PE - CTXT` notepad context *before* formulating *any* commands from this rule. This context is the *sole source* for the required connection details.
+2.  **MUST** extract the *current* MySQL socket path (`mysqld.sock`) from the `Local DB Socket` field within `@PE - CTXT`.
+3.  **MUST** extract the *current* Database Name, Username, and Password from the `Database Name`, `Username`, and `Password` fields under the `Database Details` section within `@PE - CTXT`.
+4.  **MUST** substitute these *extracted, actual values* into the command templates below where `[SOCKET_PATH]`, `[DB_USER]`, `[DB_PASS]`, and `[DB_NAME]` are indicated. **DO NOT propose the command with placeholders.**
+5.  **MUST** use the `-S [SOCKET_PATH]` argument (with the *actual extracted path*) in all `mysql` commands.
+6.  **SHOULD** use the `VS` command template first to verify the *extracted* socket path exists if there's any uncertainty *after* extraction but *before* proposing a connection command.
+
+**Command Aliases & Templates (Placeholders MUST be replaced with actual data from `@PE - CTXT` before proposing):**
+
+*   **VS / "Verify socket exists:"**
+    ```bash
+    ls -la [SOCKET_PATH]
+    ```
+*   **BC / "Basic connection:"**
+    ```bash
+    mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH]
+    ```
+*   **DDA / "Direct database access:"**
+    ```bash
+    mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] [DB_NAME]
+    ```
+*   **EQ / "Execute query:"**
+    ```bash
+    mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] [DB_NAME] -e "QUERY;"
+    ```
+    *(Note: Replace "QUERY;" with the actual SQL query. Remember to escape special characters if needed for the shell.)*
+*   **DD / "Dump database:"**
+    ```bash
+    mysqldump -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] [DB_NAME] > backup.sql
+    ```
+*   **ID / "Import database:"**
+    ```bash
+    mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] [DB_NAME] < import.sql
+    ```
+*   **CA / "Create alias (for manual use):"**
+    ```bash
+    alias dbconnect='mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] [DB_NAME]'
+    ```
+*   **GMV / "Get MySQL version:"**
+    ```bash
+    mysql -u [DB_USER] -p[DB_PASS] -S [SOCKET_PATH] -e "SELECT VERSION();"
+    ```
+
+**Rationale for Socket Preference:** Using the socket directly bypasses potential network configuration issues within the Docker environment managed by Local by Flywheel and is generally the most reliable connection method when the client and server are on the same host (or within the same container setup).

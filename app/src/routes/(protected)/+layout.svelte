@@ -16,47 +16,68 @@
   let firstSync = true;
 
   onMount(() => {
+    console.debug('[Sync Layout] onMount: Starting initial sync...');
     // Initial sync to check for auto-login
     fetch('/api/auth/sync', {
       credentials: 'include'
     }).then(async (response) => {
+      console.debug('[Sync Layout] Initial sync fetch completed. Status:', response.status);
       if (response.ok) {
         const result = await response.json();
+        console.debug('[Sync Layout] Initial sync result:', result);
         if (result.valid && result.updated) {
+          console.debug('[Sync Layout] Initial sync indicates update. Invalidating and showing toast...');
           // Show auto-login notification only when auto-login occurs
           toasts.show('Successfully logged in via WordPress', 'success');
           await invalidateAll();
+        } else {
+          console.debug('[Sync Layout] Initial sync valid but no update detected.');
         }
+      } else {
+         console.debug('[Sync Layout] Initial sync fetch failed or returned non-OK status.');
       }
     }).catch((error) => {
-      console.error('Initial sync failed:', error);
+      console.error('[Sync Layout] Initial sync fetch error:', error);
     });
 
+    console.debug('[Sync Layout] Setting up periodic sync interval (5 minutes)...');
     // Set up periodic sync every 5 minutes
     syncInterval = setInterval(async () => {
+      console.debug('[Sync Layout] Interval: Running periodic sync...');
       try {
         const response = await fetch('/api/auth/sync', {
           credentials: 'include'
         });
+        console.debug('[Sync Layout] Interval sync fetch completed. Status:', response.status);
         
         if (response.ok) {
           const result = await response.json();
+           console.debug('[Sync Layout] Interval sync result:', result);
           if (result.updated) {
+            console.debug('[Sync Layout] Interval sync indicates update. Invalidating...');
             // Refresh all data if user info was updated
             await invalidateAll();
             if (!firstSync) {
+              console.debug('[Sync Layout] Interval sync: Showing profile update toast.');
               toasts.show('Profile information updated', 'info');
+            } else {
+               console.debug('[Sync Layout] Interval sync: Update detected on first sync, suppressing toast.');
             }
             firstSync = false;
+          } else {
+             console.debug('[Sync Layout] Interval sync: No update detected.');
           }
+        } else {
+           console.debug('[Sync Layout] Interval sync fetch failed or returned non-OK status.');
         }
       } catch (error) {
-        console.error('Auto-sync failed:', error);
+        console.error('[Sync Layout] Interval sync fetch error:', error);
         toasts.show('Failed to sync profile information', 'error');
       }
     }, 5 * 60 * 1000);
 
     return () => {
+      console.debug('[Sync Layout] Component unmounting. Clearing sync interval.');
       if (syncInterval) clearInterval(syncInterval);
     };
   });

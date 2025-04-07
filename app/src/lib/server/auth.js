@@ -10,7 +10,7 @@ import {
     DB_NAME,
     BETTER_AUTH_SECRET,
     BETTER_AUTH_URL
-} from '$env/static/private';
+} from '$env/static/private'; // Restored import
 
 /**
  * @typedef {Object} RequiredEnvVars
@@ -29,24 +29,37 @@ import {
  */
 
 /**
- * @typedef {Object} UserMetadata 
- * @property {number} [wp_user_id] - WordPress user ID
+ * @typedef {Object} UserMetadata
+ * @property {number} wp_user_id
+ * @property {string[]} [roles]
+ * @property {string} [registered]
+ * @property {string} [locale]
  */
 
 /**
  * Custom type definitions for Better Auth User and Session
  * @typedef {Object} User
- * @property {string} id - User ID
+ * @property {string} id - Better Auth User ID (UUID)
  * @property {string} email - User email
- * @property {string} [username] - Optional username
- * @property {string} [name] - Optional display name
- * @property {UserMetadata} metadata - User metadata
+ * @property {string} [username] - Optional username from WP
+ * @property {string} [name] - Optional display name from WP
+ * @property {UserMetadata} metadata - User metadata 
+ * @property {string} sessionToken - Current Better Auth session token
+ * @property {string} betterAuthId - Better Auth User ID (should match id)
+ * @property {string} displayName - Primary display name (likely from WP)
+ * @property {string} [avatarUrl] - URL to user avatar
+ * @property {string[]} roles - User roles (likely from WP)
+ * @property {'pending' | 'synced' | 'error'} syncStatus - Status of sync with WP
+ * @property {string} [updatedAt] - Timestamp of last update from ba_users table (ISO 8601 format)
  */
 
 /**
  * @typedef {Object} Session
  * @property {string} id - Session ID
- * @property {string} userId - User ID
+ * @property {string} userId - Better Auth User ID
+ * @property {string} token - Session token
+ * @property {Date} expiresAt - Session expiry date
+ * @property {Date} createdAt - Session creation date
  * @property {User} user - Session user
  */
 
@@ -360,14 +373,15 @@ async function createHmacSha256(timestamp, secret) {
 
 // Better Auth configuration
 export const auth = betterAuth({
-    secret: BETTER_AUTH_SECRET,
+    // Restore original config using env vars
+    secret: BETTER_AUTH_SECRET, 
     baseURL: BETTER_AUTH_URL || 'http://localhost:5173',
     database: pool,
     tableNames: {
-        users: 'ba_users',
-        sessions: 'ba_sessions',
-        accounts: 'ba_accounts',
-        verifications: 'ba_verifications'
+        user: 'ba_users',
+        session: 'ba_sessions',
+        account: 'ba_accounts', // Keep this if needed by BA internally
+        verification: 'ba_verifications'
     },
     emailAndPassword: {
         enabled: true,
@@ -387,11 +401,11 @@ export const auth = betterAuth({
         // Create corresponding WordPress user
         const wpUser = /** @type {WordPressUser} */ (await createWordPressUser(user));
         if (wpUser?.wp_user_id) {
-            // Update Better Auth user metadata with WordPress user ID
+            // Update Better Auth user metadata with WordPress user ID - Restored
             return {
                 ...user,
                 metadata: {
-                    ...user.metadata,
+                    ...(user.metadata || {}), // Ensure metadata exists before spreading
                     wp_user_id: wpUser.wp_user_id
                 }
             };
@@ -400,11 +414,13 @@ export const auth = betterAuth({
     },
     onSessionCreated: async (/** @type {Session} */ session) => {
         // Create corresponding WordPress session
-        if (session.user.metadata?.wp_user_id) {
+        if (session.user?.metadata?.wp_user_id) { // Added optional chaining
             await createWordPressSession(session);
         }
         return session;
     }
+    // Restore databaseHooks if necessary
+    // databaseHooks: { ... }
 });
 
 export default auth;

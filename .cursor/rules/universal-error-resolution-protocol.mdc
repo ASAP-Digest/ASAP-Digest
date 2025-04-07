@@ -1,7 +1,7 @@
 ---
-description: Use the 
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Universal Error Resolution Protocol (UERP) v2.0
 
@@ -11,8 +11,8 @@ alwaysApply: false
 │         Meta Protocol Integration       │
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │
-│ 2. Rule Execution Protocol             │
-│ 3. Component-Specific Protocols        │
+│ 2. Rule Execution Protocol              │
+│ 3. Component-Specific Protocols          │
 └─────────────────────────────────────────┘
 ```
 

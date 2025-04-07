@@ -519,7 +519,7 @@
     {/each}
 
   <!-- Debug button - Keep outside the grid if desired -->
-  <button class="debug-toggle col-span-12" on:click={toggleDebugGrid}>Toggle Grid Debug</button>
+  <button class="debug-toggle col-span-12" onclick={toggleDebugGrid}>Toggle Grid Debug</button>
 </div>
 
 <style>

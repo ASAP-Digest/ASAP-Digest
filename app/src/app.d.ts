@@ -10,6 +10,7 @@ declare global {
 		roles: string[];
 		syncStatus: string;
 		sessionToken?: string;
+		updatedAt?: string; // Timestamp of last update from ba_users (ISO 8601 format)
 	}
 
 	namespace App {

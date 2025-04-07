@@ -10,6 +10,9 @@
 namespace ASAPDigest\Core;
 
 use WP_Error;
+use WP_User;
+use ASAPDigest\Core\Traits\User_Sync;
+use ASAPDigest\Core\Traits\Session_Mgmt;
 use function get_option;
 use function update_option;
 
@@ -18,6 +21,8 @@ if (!defined('ABSPATH')) {
 }
 
 class ASAP_Digest_Better_Auth {
+    use User_Sync, Session_Mgmt;
+
     /**
      * @var string Option name for auth settings
      */
@@ -38,6 +43,15 @@ class ASAP_Digest_Better_Auth {
         if (!get_option($this->settings_option)) {
             $this->set_default_settings();
         }
+
+        // Setup hooks for auto-sync
+        $this->setup_user_sync_hooks();
+        $this->setup_session_cleanup_hook();
+        
+        // Add authentication hooks
+        add_action('wp_login', [$this, 'handle_wp_login'], 10, 2);
+        add_action('wp_logout', [$this, 'handle_wp_logout']);
+        add_action('delete_user', [$this, 'handle_user_deletion']);
     }
 
     /**
@@ -47,24 +61,26 @@ class ASAP_Digest_Better_Auth {
         $defaults = [
             'session_length' => 3600, // 1 hour
             'refresh_token_length' => 604800, // 7 days
-            'max_sessions' => 5
+            'max_sessions' => 5,
+            'auto_sync_enabled' => true,
+            'sync_retry_attempts' => 3
         ];
 
         update_option($this->settings_option, $defaults);
     }
 
     /**
-     * Get auth status
+     * Get auth settings
      *
-     * @return array|WP_Error Auth status or error
+     * @return array|WP_Error Auth settings or error
      */
-    public function get_auth_status() {
+    public function get_auth_settings() {
         $settings = get_option($this->settings_option);
         
         if (!$settings) {
             return new WP_Error(
-                'auth_status_error',
-                __('Could not retrieve auth status.', 'asap-digest')
+                'auth_settings_error',
+                __('Could not retrieve auth settings.', 'asap-digest')
             );
         }
 
@@ -104,6 +120,117 @@ class ASAP_Digest_Better_Auth {
     }
 
     /**
+     * Handle WordPress login
+     *
+     * @param string $user_login Username
+     * @param WP_User $user User object
+     */
+    public function handle_wp_login($user_login, $user) {
+        // Ensure user is synced with Better Auth
+        $sync_result = $this->retry_user_sync($user);
+        
+        if (!is_wp_error($sync_result)) {
+            // Create Better Auth session
+            $session_token = $this->create_session($user);
+            
+            if (!is_wp_error($session_token)) {
+                // Set session cookie for cross-domain auth
+                $this->set_auth_cookie($user->ID, $session_token);
+            }
+        }
+    }
+
+    /**
+     * Handle WordPress logout
+     */
+    public function handle_wp_logout() {
+        $user_id = get_current_user_id();
+        if ($user_id) {
+            $token = get_user_meta($user_id, 'better_auth_session_token', true);
+            if ($token) {
+                $this->destroy_session($token);
+            }
+        }
+    }
+
+    /**
+     * Handle user deletion
+     *
+     * @param int $user_id User ID being deleted
+     */
+    public function handle_user_deletion($user_id) {
+        global $wpdb;
+
+        try {
+            // Start transaction
+            $wpdb->query('START TRANSACTION');
+
+            // Get Better Auth user ID
+            $ba_user_id = get_user_meta($user_id, 'better_auth_user_id', true);
+            
+            if ($ba_user_id) {
+                // Delete sessions
+                $wpdb->delete(
+                    $wpdb->prefix . 'ba_sessions',
+                    ['user_id' => $ba_user_id],
+                    ['%d']
+                );
+
+                // Delete user mapping
+                $wpdb->delete(
+                    $wpdb->prefix . 'ba_wp_user_map',
+                    ['wp_user_id' => $user_id],
+                    ['%d']
+                );
+
+                // Delete Better Auth user
+                $wpdb->delete(
+                    $wpdb->prefix . 'ba_users',
+                    ['id' => $ba_user_id],
+                    ['%d']
+                );
+            }
+
+            // Commit transaction
+            $wpdb->query('COMMIT');
+
+        } catch (\Exception $e) {
+            // Rollback on error
+            $wpdb->query('ROLLBACK');
+            
+            error_log(sprintf(
+                'Failed to cleanup Better Auth data for user %d: %s',
+                $user_id,
+                $e->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Set authentication cookie for cross-domain auth
+     *
+     * @param int $user_id User ID
+     * @param string $token Session token
+     */
+    private function set_auth_cookie($user_id, $token) {
+        $settings = get_option($this->settings_option);
+        $session_length = isset($settings['session_length']) ? $settings['session_length'] : 3600;
+
+        setcookie(
+            'ba_auth_token',
+            $token,
+            [
+                'expires' => time() + $session_length,
+                'path' => '/',
+                'domain' => COOKIE_DOMAIN,
+                'secure' => is_ssl(),
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
+        );
+    }
+
+    /**
      * Validate current session
      *
      * @return bool|WP_Error True if valid, error if not
@@ -116,8 +243,16 @@ class ASAP_Digest_Better_Auth {
             );
         }
 
-        // Add more session validation logic here
+        $user_id = get_current_user_id();
+        $token = get_user_meta($user_id, 'better_auth_session_token', true);
 
-        return true;
+        if (!$token) {
+            return new WP_Error(
+                'no_session_token',
+                __('No session token found.', 'asap-digest')
+            );
+        }
+
+        return $this->validate_session_token($token);
     }
 } 
