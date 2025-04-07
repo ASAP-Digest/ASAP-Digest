@@ -3,61 +3,58 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Status Check Protocol
+# Status Check Protocol (Project Status Report) v2.0
 
 ## 1. Protocol Restrictions
-```
+````
 A. Core Restrictions
-- Status Check is a READ-ONLY operation
-- Must NOT initiate any work or changes
-- Must NOT modify any files or database
-- Must NOT create new entities except StatusCheck and StatusReport
-- Must wait for explicit "IAW" or "BWS" command before any work
+- Status Check is a READ-ONLY operation concerning project files and state.
+- Must NOT modify any project files (including roadmaps) or database.
+- Must NOT initiate any work or state changes beyond its own logging.
+- Must wait for explicit "IAW" or "BWS" command before any work initiation by the agent.
 
 B. Entity Creation Limits
-- Only allowed to create StatusCheck and StatusReport entities
-- No task priority updates
-- No work initiation
-- No state modifications
-```
+- Only allowed to create `StatusCheck` and `StatusReport` entities in Server Memory for logging its own execution.
+- The user-facing report content is derived from analyzing roadmap files and recent memory, not directly from general memory state.
+- No task priority updates or external state modifications allowed.
+````
 
 ## 2. Activation Methods
-```
+````
 A. Primary Triggers
-- Command or alias "SC"
-- Integration: Can be called by BWS/EWS protocols
-- Context: Used in WSMP (Work Session Management Protocol)
+- Command or alias "SC".
+- Integration: Can be called by BWS/EWS protocols as part of their flow.
+- Context: Used in WSMP (Work Session Management Protocol) for state assessment.
 
 B. Secondary Triggers
-- Pre-session validation
-- Post-session summary
-- Error state assessment
-```
+- Pre-session validation (if integrated into BWS).
+- Post-session summary (if integrated into EWS).
+- Ad-hoc project status queries.
+````
 
 ## 3. Protocol Chain and Command Flow
-```
+````
 1. Status Check ("SC")
-   - READ-ONLY operation
-   - Can only create StatusCheck and StatusReport entities
-   - Cannot initiate work or changes
-   - Reports status and exits
+   - READ-ONLY operation regarding project files.
+   - Creates `StatusCheck` and `StatusReport` entities for logging.
+   - Reads and analyzes roadmap files (`docs/ROADMAP_TASKS.md`, `docs/ASAP_DIGEST_ROADMAP.md` or LLM versions) and recent Server Memory.
+   - Reports structured project status and exits.
 
 2. Work Initiation (Requires explicit command)
-   - Must be triggered by "IAW" or "BWS"
-   - Cannot be initiated by Status Check
-   - Status Check can be called BY work protocols, but cannot trigger them
+   - Must be triggered by "IAW" or "BWS".
+   - Cannot be initiated by Status Check.
 
 3. Command Hierarchy
    Status Check < Work Session < Task Execution
-   
+
 4. State Modification Rules
-   - Status Check: READ-ONLY
-   - Work Session: Can modify state after explicit command
-   - Task Execution: Can modify state within active work session
-```
+   - Status Check: READ-ONLY (for project files/state).
+   - Work Session: Can modify state after explicit command.
+   - Task Execution: Can modify state within active work session.
+````
 
 ## 4. Protocol Integration Layer
-```
+````
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
@@ -65,119 +62,135 @@ B. Secondary Triggers
 │ 2. Work Session Management Protocol     │
 │ 3. Memory Maintenance Protocol          │
 │ 4. Task Tracking Protocol               │
+│ 5. Software Development Meta Protocol   │
+│ 6. Rule Execution Protocol              │
 └─────────────────────────────────────────┘
-```
+````
 
-## 5. Status Check Implementation
-```javascript
-async function executeStatusCheck() {
-    // 1. Initialize timestamp
-    const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
-    
-    // 2. Create status check entity
+## 5. Status Check Implementation (Conceptual Steps)
+````javascript
+async function executeProjectStatusCheck() {
+    // 1. Initialize timestamp for report and logging
+    const reportTimestamp = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
+    const formattedTime = await mcp_mcp_datetime_get_datetime({ format: "log_compact" }); // Or use FT logic
+
+    // 2. Create status check entity in Server Memory
     await mcp_Server_Memory_create_entities({
         entities: [{
-            name: `StatusCheck_${timestamp}`,
+            name: `StatusCheck_${formattedTime}`,
             entityType: "StatusCheck",
             observations: [
-                `Check initiated at ${timestamp}`,
-                "Scanning server memory",
-                "Analyzing task status",
-                "Reviewing error states"
+                `Project status check initiated at ${reportTimestamp}`,
+                "Reading roadmap files and recent memory.",
             ]
         }]
     });
 
-    // 3. Gather status components
-    const components = {
-        serverMemory: await checkServerMemory(),
-        activeSessions: await checkActiveSessions(),
-        taskStatus: await checkTaskStatus(),
-        errorStates: await checkErrorStates()
-    };
+    // 3. Read Roadmap Files
+    // Use read_file tool for 'docs/ROADMAP_TASKS.md'
+    // Use read_file tool for 'docs/ASAP_DIGEST_ROADMAP.md' (or relevant LLM-split version)
+    // Handle potential large file reads if necessary.
+    const roadmapTasksContent = await readFileContents('docs/ROADMAP_TASKS.md');
+    const mainRoadmapContent = await readFileContents('docs/ASAP_DIGEST_ROADMAP.md'); // Or LLM version
 
-    // 4. Generate status report
-    return generateStatusReport(components);
+    // 4. Check Recent Server Memory (Last 24h)
+    // Calculate timestamp for 24 hours ago
+    // Use mcp_Server_Memory_search_nodes for TaskCompletion entities (by type and potentially observation content/timestamp)
+    // Use mcp_Server_Memory_search_nodes for active Error entities
+    const recentCompletions = await searchRecentMemory('TaskCompletion', 24);
+    const activeErrors = await searchRecentMemory('Error', 0); // Search all active errors
+
+    // 5. Parse and Analyze Data
+    // Parse roadmapTasksContent to get all tasks with statuses (✅, 🔄, ⏳, ❌) and timestamps.
+    // Identify sections based on parsing results and rules defined in Section 7.
+    const reportData = parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp);
+
+    // 6. Generate Structured Report (User Facing)
+    const userReport = formatUserReport(reportData, reportTimestamp);
+
+    // 7. Create status report entity in Server Memory
+    await mcp_Server_Memory_create_entities({
+        entities: [{
+            name: `StatusReport_${formattedTime}`,
+            entityType: "StatusReport",
+            observations: [
+                `Report generated at ${reportTimestamp}`,
+                `Summary: ${reportData.summary}`, // Store a brief summary or the full report text
+                // Add key findings like priority task ID, number of blocked tasks etc.
+            ]
+        }]
+    });
+
+    // 8. Return the formatted user report
+    return userReport;
 }
-```
 
-## 6. Status Components
-```
-A. Memory State Matrix
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Component       │ Check Type         │ Update Frequency   │
-├─────────────────┼────────────────────┼────────────────────┤
-│ Server Memory   │ Entity scan        │ Real-time         │
-│ Active Session  │ Session state      │ On change         │
-│ Task Status     │ Progress check     │ On action         │
-│ Error State     │ Error scan         │ On occurrence     │
-└─────────────────┴────────────────────┴────────────────────┘
-```
+// Helper function placeholders (implementation requires specific parsing logic)
+async function readFileContents(filePath) { /* ... use read_file ... */ }
+async function searchRecentMemory(entityType, hoursAgo) { /* ... use mcp_Server_Memory_search_nodes ... */ }
+function parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp) { /* ... parsing logic ... */ }
+function formatUserReport(reportData, reportTimestamp) { /* ... formatting logic ... */ }
 
-## 7. Status Check Response Protocol
-```javascript
-class StatusCheckResponse {
-    constructor(report) {
-        this.report = report;
-        this.timestamp = report.timestamp;
-    }
+````
+*(Note: The JavaScript is conceptual to illustrate the flow involving tool calls and logic)*
 
-    async createStatusReport() {
-        // ONLY allowed to create status report entity
-        await mcp_Server_Memory_create_entities({
-            entities: [{
-                name: `StatusReport_${this.timestamp}`,
-                entityType: "StatusReport",
-                observations: [
-                    `Report generated at ${this.timestamp}`,
-                    `Active sessions: ${this.report.summary.activeSessions}`,
-                    `Pending tasks: ${this.report.summary.pendingTasks}`,
-                    `Active errors: ${this.report.summary.activeErrors}`
-                ]
-            }]
-        });
-    }
-}
-```
+## 6. Information Sources Hierarchy
+````
+1.  **Primary:** `docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
+2.  **Secondary:**
+    -   Server Memory: For `TaskCompletion` entities (last 24h) and active `Error` entities.
+    -   `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For overall context (Major Task Group).
+    -   Current Timestamp (`mcp_mcp_datetime_get_datetime` or "FT"): For defining the "recent" window.
+````
 
-## 8. Error Prevention and Recovery
-```javascript
-class StatusCheckErrorHandler {
-    async handleCheckError(error) {
-        // 1. Log error state
-        await mcp_Server_Memory_create_entities({
-            entities: [{
-                name: `StatusCheckError_${Date.now()}`,
-                entityType: "Error",
-                observations: [
-                    `Error during status check: ${error.message}`,
-                    `Type: ${error.type}`,
-                    `Stack: ${error.stack}`
-                ]
-            }]
-        });
+## 7. Status Report Structure & Logic
+````
+The user-facing output MUST follow this structure:
 
-        // 2. Attempt recovery
-        return await this.recoverFromError(error);
-    }
-}
-```
+---
+**`📅 Status Check Report (Timestamp)`**
+*(Timestamp format: "YYYY-MM-DD HH:MM:SS" or similar)*
+---
+**`✅ Recently Completed Tasks (Last 24h):`**
+- Logic:
+  - Get current time (T). Calculate T minus 24 hours (T-24).
+  - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-24 and T.
+  - Find `TaskCompletion` entities in Server Memory with a timestamp between T-24 and T.
+  - Combine and deduplicate lists, sort by timestamp (most recent first).
+  - Display the top 3-5 entries.
+- Format: `- Task Name (Completion Timestamp)`
 
-## 9. Integration with Work Session Protocol
-```javascript
-class WorkSessionStatusIntegration {
-    async performSessionCheck(sessionId) {
-        const statusCheck = await performStatusCheck();
-        
-        await mcp_Server_Memory_create_relations({
-            relations: [{
-                from: `Session_${sessionId}`,
-                to: `StatusReport_${statusCheck.timestamp}`,
-                relationType: "generates"
-            }]
-        });
+**`🎯 Current / Operational Priority:`**
+- Logic (Hierarchical):
+  1.  Find the first task marked ❌ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Blocked Task".
+  2.  If no blockers, search Server Memory for active `Error` entities. If found, the *first* error encountered is the priority. Reason: "Active Error". Include error details if possible.
+  3.  If no blockers or errors, find the first task marked 🔄 in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next In Progress".
+  4.  If none of the above, find the first task marked ⏳ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next Pending".
+- Format: `- [Emoji] Task Name (Reason for Priority)`
 
-        return statusCheck;
-    }
-}
-```
+**`⏳ Upcoming Tasks:`**
+- Logic:
+  - Find the task identified as the current priority in the previous step within `ROADMAP_TASKS.md`.
+  - List the next 3 tasks that appear *after* the priority task and are marked ⏳.
+- Format: `- Task Name`
+
+**`❌ Blocked Tasks:`**
+- Logic: List all tasks marked ❌ in `ROADMAP_TASKS.md`.
+- Format: `- Task Name`
+
+**`⚙️ Overall Context:`**
+- Logic:
+  - Identify the current priority task.
+  - Find which major Task group (e.g., "Task 3: Develop Core Application Screens") from `ASAP_DIGEST_ROADMAP.md` (or LLM versions) this task belongs to.
+- Format: `Currently working within: [Major Task Group Title]`
+---
+
+````
+
+## 8. Error Prevention and Handling
+````
+-   Gracefully handle errors during file reading (`read_file`) or memory searches (`mcp_Server_Memory_search_nodes`).
+-   If `ROADMAP_TASKS.md` cannot be read or parsed, the report should indicate this failure clearly.
+-   Log any errors encountered during the status check itself into a relevant `Error` entity in Server Memory if possible, or include in the `StatusReport` entity's observations.
+````
+

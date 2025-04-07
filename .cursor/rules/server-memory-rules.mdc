@@ -3,215 +3,199 @@ description:
 globs: 
 alwaysApply: true
 ---
-## 1. Protocol Integration Layer
-```
+# Server Memory & State Synchronization Protocol v2.0
+
+## 1. Purpose
+This protocol defines the rules for maintaining the integrity and consistency of the project's operational state, primarily managed through Server Memory entities. It governs how project events, task statuses, work sessions, and status checks are recorded and synchronized with key documentation like `ROADMAP_TASKS.md`. It ensures a reliable "single source of truth" for ongoing work and project history.
+
+## 2. Protocol Integration Layer
+This protocol is tightly integrated with several others, forming the backbone of state management.
+
+````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. Software Development Meta Protocol   │
-│ 2. Rule Execution Protocol              │
-│ 3. Task Tracking Protocol               │
-│ 4. Memory Maintenance Protocol          │
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Executio       │ // How rules are applied
+│ 3. Status Check Protocol (v2.0)         │ // Input source & entity creation
+│ 4. Work Session Activation Protocol     │ // Triggers BWS/EWS
+│ 5. Work Session Management Proto (v2.0) │ // Manages session entities & state
+│ 6. Task Tracking Protocol               │ // Roadmap updates & task lifecycle
+│ 7. Memory Maintenance Protocol (This)   │ // Entity/Relation rules
+│ 8. Cross-Protocol Comms & Verification  │ // Ensures consistency
+│ 9. Universal Error Resolution Protocol  │ // Error entity handling
+│ 10. Audit Trail System                  │ // Records state changes
 └─────────────────────────────────────────┘
-```
+````
 
-## 2. Task Completion Tracking
-```
-A. Task Status Management
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Status Type     │ Memory Entity      │ ROADMAP Update     │
-├─────────────────┼────────────────────┼────────────────────┤
-│ Task Start      │ Create TaskEntity  │ Update to 🔄       │
-│ Task Complete   │ Update TaskEntity  │ Update to ✅       │
-│ Task Blocked    │ Create BlockEntity │ Update to ❌       │
-│ Task Pending    │ Create WaitEntity  │ Update to ⏳       │
-└─────────────────┴────────────────────┴────────────────────┘
+## 3. Mandatory Update Triggers & Entity Creation
+Server Memory MUST be updated upon specific events, often triggering the creation or modification of specific entity types.
 
-B. Task Update Protocol
-1. Pre-Update Check [Software Development Meta Protocol]
-2. Task Analysis [Rule Execution Protocol]
-3. Memory Entity Creation [This Protocol]
-4. [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) Update [Task Tracking Protocol]
-5. Verification [Universal Error Resolution Protocol]
+````text
+┌─────────────────────┬──────────────────────────────────┬──────────────────────────────────┐
+│ Trigger Event       │ Primary Entity Created/Updated   │ Integration Point / Protocol     │
+├─────────────────────┼──────────────────────────────────┼──────────────────────────────────┤
+│ Status Check (SC)   │ StatusCheck, StatusReport        │ Status Check Protocol            │
+│ Begin Work (BWS)    │ WorkSession                      │ WSMP (via WSAP trigger)          │
+│ Save Work (SWS)     │ WorkSessionSave                  │ WSMP                             │
+│ End Work (EWS)      │ WorkSession (updated), Task(s)   │ WSMP (via WSAP trigger)          │
+│ Task Status Change  │ Task, potentially RoadmapEntity  │ Task Tracking Protocol           │
+│ Code Change         │ Code, potentially Task           │ VCS / File System Hooks / Manual │
+│ Error Encountered   │ Error                            │ UERP                             │
+│ Build Result        │ Build, potentially Task          │ Build System Integration         │
+└─────────────────────┴──────────────────────────────────┴──────────────────────────────────┘
+````
+*Note: Updates often involve creating relations between entities (e.g., a `WorkSession` entity `relatedTo` the `StatusCheck` entity that preceded it).*
 
-```
+## 4. Core Entity Types & Conventions
 
-## 3. Memory Update Triggers
-```
-A. Mandatory Update Points
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Trigger Event   │ Required Action    │ Integration Point  │
-├─────────────────┼────────────────────┼────────────────────┤
-│ Task Status     │ Update ROADMAP     │ TaskTracker        │
-│ Error Event     │ Create ErrorEntity │ UERP               │
-│ Code Change     │ Create CodeEntity  │ Git/File System    │
-│ Build Result    │ Update TaskEntity  │ Build System       │
-└─────────────────┴────────────────────┴────────────────────┘
+### 4.1. Entity Templates
+These are the primary entity types managed under this protocol.
 
-B. Update Protocol Integration
-1. Pre-Update Verification
-2. Rule Analysis
-3. Entity Creation/Update
-4. Relation Mapping
-5. Task Status Sync
-6. Documentation Update
-```
+````text
+┌─────────────────┬─────────────────────────────┬───────────────────────────────┐
+│ Entity Type     │ Required Fields/Observations│ Optional Fields/Observations  │
+├─────────────────┼─────────────────────────────┼───────────────────────────────┤
+│ StatusCheck     │ timestamp, triggerCommand   │ sourceDocs (e.g., roadmap)    │
+│ StatusReport    │ timestamp, summary          │ priorityTask, blockedTasks    │
+│ WorkSession     │ startTime, sessionType      │ endTime, status, priorityTask │
+│ WorkSessionSave │ saveTime, reason            │ activeTaskID, openFiles       │
+│ Task            │ name, status, lastUpdateTs  │ priority, deadline, assignee  │
+│ Error           │ type, timestamp, description│ resolutionSteps, impact       │
+│ Code            │ path, changeDescription, ts │ commitHash, reviewer, tests   │
+│ Build           │ result, timestamp           │ metrics, logs, artifactPath   │
+│ RoadmapEntity   │ filePath, lastUpdateTs      │ specificSection (e.g., TaskID)│
+└─────────────────┴─────────────────────────────┴───────────────────────────────┘
+````
+*Note: `Observations` often contain human-readable context, timestamps, and links to related entity names.*
 
-## 4. Entity Templates
-```
-A. Core Entity Types
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Entity Type     │ Required Fields    │ Optional Fields    │
-├─────────────────┼────────────────────┼────────────────────┤
-│ Task            │ name, status       │ priority, deadline │
-│ Error           │ type, resolution   │ impact, prevention │
-│ Code            │ path, change       │ reviewer, tests    │
-│ Build           │ result, timestamp  │ metrics, logs      │
-└─────────────────┴────────────────────┴────────────────────┘
+### 4.2. Entity Naming Convention
+-   **General:** `[EntityType]_[PrimaryIdentifier]_[Timestamp(log_compact)]`
+-   **Examples:**
+    -   `StatusCheck_SC_20240331_153000`
+    -   `WorkSession_AuthFeature_20240331_153100`
+    -   `Task_ImplementLoginUI_20240331_160000`
+    -   `WorkSessionSave_ContextSwitch_20240331_170000`
 
-B. Entity Naming Convention
-[Category]_[Identifier]_[Timestamp]
-Example: TaskCompletion_AuthIntegration_03292025
-```
+## 5. Task Status Synchronization
 
-## 5. Task Status Update Process
-```
-A. Update Sequence
-1. Format Current Time
-   - Use mcp-datetime for consistency
-   - Format: "MM.DD.YY | HH:MM AM/PM TimeZone"
+### 5.1. Task State Mapping
+Server Memory `Task` entity status MUST align with the emojis used in `ROADMAP_TASKS.md`.
 
-2. Entity Creation/Update
-   - Create/update task entity
-   - Add formatted time to observations
-   - Include context and metadata
+````text
+┌─────────────────┬────────────────────┬────────────────────────────┐
+│ Memory Status   │ ROADMAP Emoji      │ Typical Trigger            │
+├─────────────────┼────────────────────┼────────────────────────────┤
+│ PENDING         │ ⏳                  │ Initial task creation      │
+│ ACTIVE          │ 🔄                  │ Task start / BWS           │
+│ PAUSED          │ ⏸️                  │ SWS (Save Work Session)    │
+│ COMPLETED       │ ✅                  │ Task completion / EWS      │
+│ BLOCKED         │ ❌                  │ External blocker identified│
+│ ERROR           │ 💥 (or similar)     │ Task failed due to error   │
+└─────────────────┴────────────────────┴────────────────────────────┘
+````
+*Self-Correction: Added PAUSED state and mapping for SWS.*
 
-3. ROADMAP Update
-   - Parse ROADMAP_TASKS.md
-   - Locate task entry
-   - Update status emoji
-   - Add completion timestamp
-   - Commit changes
+### 5.2. Update Process (Example: Task Completion via EWS)
+1.  **Trigger:** `EWS COMPLETED` command issued.
+2.  **Timestamp:** Get current time (`mcp_mcp_datetime_get_datetime`, format "MM.DD.YY | HH:MM AM/PM TimeZone" for roadmap, `log_compact` for entity names).
+3.  **Memory Update (Task):**
+    -   Find relevant `Task` entity linked to the active `WorkSession`.
+    -   Update its status to `COMPLETED`.
+    -   Add observation: `Completed via WorkSession [SessionID] at [Timestamp]`.
+    -   Update `lastUpdateTs` field.
+4.  **Memory Update (WorkSession):**
+    -   Find active `WorkSession` entity.
+    -   Update its status to `ENDED`.
+    -   Set `endTime`.
+    -   Add observation: `Ended normally, task [TaskID] completed.`.
+5.  **Roadmap Update (`ROADMAP_TASKS.md`):**
+    -   Call Task Tracking Protocol function.
+    -   Locate task line by ID.
+    -   Update emoji to ✅.
+    -   Append formatted timestamp.
+6.  **Verification:** Use Cross-Protocol Verification checks (L1, L2) to ensure memory and roadmap state are consistent.
+7.  **Audit:** Record `TASK_COMPLETED`, `SESSION_END` events in Audit Trail.
 
-4. Documentation Update
-   - Update relevant documentation
-   - Add memory state snapshot
-   - Update cross-references
+## 6. Key Relationships
+Maintain explicit relationships between entities in Server Memory for context.
 
-B. Update Verification
-┌─────────────────┬────────────────────┐
-│ Check Type      │ Verification Point  │
-├─────────────────┼────────────────────┤
-│ Entity State    │ Required fields     │
-│ ROADMAP Status  │ Emoji update       │
-│ Time Format     │ Standard format    │
-│ Documentation   │ File updates       │
-└─────────────────┴────────────────────┘
-```
+````text
+- StatusCheck `generated` StatusReport
+- WorkSession `initiatedBy` StatusCheck (or StatusReport)
+- WorkSession `resultedIn` Task (completion/update)
+- WorkSessionSave `pauses` WorkSession
+- Task `blockedBy` Error / ExternalFactor
+- Code `implements` Task
+- Build `tests` Code
+````
 
-## 6. Cross-Protocol Integration
-```
-A. Protocol Communication Flow
-┌─────────────────────┐
-│ Meta Protocol       │
-├─────────────────────┤
-│ Rule Execution      │
-├─────────────────────┤
-│ Task Tracking       │
-├─────────────────────┤
-│ Memory Management   │
-└─────────────────────┘
+## 7. Implementation Examples (Conceptual)
 
-B. Integration Points
+````javascript
+// Example 1: Begin Work Session (BWS) Memory Operations
+async function handleBWS(triggeringEvent, sessionType, precedingStatusCheckId) {
+  const startTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
+  const sessionName = `WorkSession_${sessionType}_${await mcp_mcp_datetime_get_datetime({ format: "log_compact" })}`;
+  const statusCheckEntity = await mcp_Server_Memory_open_nodes({ names: [precedingStatusCheckId] });
+  const priorityTask = statusCheckEntity?.nodes?.[0]?.observations?.find(obs => obs.includes("Priority Task:")) || "N/A"; // Simplified extraction
 
-1. Software Development Meta Protocol
-   - Initial context assessment
-   - Environment verification
-   - Protocol selection
+  await mcp_Server_Memory_create_entities({
+    entities: [{
+      name: sessionName,
+      entityType: "WorkSession",
+      observations: [
+        `Session started at ${startTime}`,
+        `Type: ${sessionType}`,
+        `Initiated following StatusCheck: ${precedingStatusCheckId}`,
+        `Initial Priority: ${priorityTask}`
+      ]
+    }]
+  });
 
-2. Rule Execution Protocol
-   - Rule discovery
-   - Rule validation
-   - Execution planning
+  await mcp_Server_Memory_create_relations({
+    relations: [{ from: sessionName, to: precedingStatusCheckId, relationType: "initiatedFollowing" }]
+  });
+  // ... further logic to potentially mark a task as ACTIVE (🔄) ...
+}
 
-3. Task Tracking Protocol
-   - Status management
-   - Progress tracking
-   - Documentation updates
+// Example 2: Save Work Session (SWS) Memory Operations
+async function handleSWS(activeSessionId, reason) {
+  const saveTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
+  const saveName = `WorkSessionSave_${reason}_${await mcp_mcp_datetime_get_datetime({ format: "log_compact" })}`;
+  // Assuming activeTask ID is known
+  const activeTaskId = "Task_ImplementLoginUI_..."; // Get this from session context
 
-4. Memory Management Protocol
-   - Entity lifecycle
-   - Relation management
-   - System maintenance
-```
+  await mcp_Server_Memory_create_entities({
+    entities: [{
+      name: saveName,
+      entityType: "WorkSessionSave",
+      observations: [
+        `Session state saved at ${saveTime}`,
+        `Reason: ${reason}`,
+        `Active Task: ${activeTaskId}`,
+        `Session Paused: ${activeSessionId}`
+        // Add other context like open files if available
+      ]
+    }]
+  });
 
-## 7. Implementation Examples
-
-```javascript
-// Example 1: Task Completion Update
-async function updateTaskStatus(taskId, status, timestamp) {
-  // Create task entity
-  await createEntities([{
-    name: `TaskCompletion_${taskId}_${timestamp}`,
-    entityType: "Task",
-    observations: [
-      `Status updated to ${status} at ${formattedTime}`,
-      "Updated ROADMAP_TASKS.md",
-      "Verified entity creation",
-      "Documentation synchronized"
+  await mcp_Server_Memory_create_relations({
+    relations: [
+      { from: saveName, to: activeSessionId, relationType: "pauses" },
+      { from: saveName, to: activeTaskId, relationType: "referencesActiveTask" }
     ]
-  }]);
+  });
 
-  // Update ROADMAP_TASKS.md
-  await updateRoadmap(taskId, status, timestamp);
-
-  // Create relations
-  await createRelations([{
-    from: `TaskCompletion_${taskId}_${timestamp}`,
-    to: "ROADMAP_TASKS.md",
-    relationType: "updates"
-  }]);
+  // Trigger Task Tracking Protocol to update roadmap task to PAUSED (⏸️)
+  await updateRoadmapTaskStatus(activeTaskId, 'PAUSED', saveTime);
 }
+````
 
-// Example 2: Protocol Integration
-async function integrateProtocols(context) {
-  // Meta Protocol integration
-  await metaProtocol.assessContext(context);
-  
-  // Rule Execution integration
-  const rules = await ruleProtocol.discoverRules();
-  
-  // Task Tracking integration
-  await taskProtocol.syncStatus(context.taskId);
-  
-  // Memory Management
-  await memoryProtocol.maintain();
-}
-```
-
-## 8. Usage Instructions
-
-1. **Task Status Updates:**
-   - Follow task status management flow
-   - Create appropriate entities
-   - Update ROADMAP_TASKS.md
-   - Verify all updates
-
-2. **Protocol Integration:**
-   - Start with Meta Protocol
-   - Follow Rule Execution Protocol
-   - Update Task Tracking
-   - Maintain Memory System
-
-3. **Verification Steps:**
-   - Check entity completeness
-   - Verify ROADMAP updates
-   - Confirm documentation
-   - Test protocol integration
-
-4. **Maintenance Tasks:**
-   - Regular entity cleanup
-   - ROADMAP synchronization
-   - Protocol state verification
-   - System integrity checks
+## 8. Usage Instructions & Verification
+-   **Consistency:** ALWAYS ensure Server Memory state, `ROADMAP_TASKS.md` emojis/timestamps, and actual work status are aligned.
+-   **Triggers:** Adhere strictly to the mandatory update triggers.
+-   **Relationships:** Create relations between entities to maintain context.
+-   **Verification:** Regularly use `Status Check` (SC) and Cross-Protocol Verification tools to validate state consistency.
+-   **Roadmap Parsing:** Ensure any scripts updating `ROADMAP_TASKS.md` use logic consistent with how `Status Check` parses it.
 

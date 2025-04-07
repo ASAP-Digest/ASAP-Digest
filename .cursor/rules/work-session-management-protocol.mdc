@@ -3,10 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP)
+# Enhanced Work Session Management Protocol (WSMP) v2.0
 
 ## 1. Protocol Integration Layer
-```
+````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
@@ -14,233 +14,196 @@ alwaysApply: true
 │ 2. Rule Execution Protocol              │
 │ 3. Task Tracking Protocol               │
 │ 4. Memory Maintenance Protocol          │
-│ 5. Session Management Protocol          │
+│ 5. Session Management Protocol (This)   │
+│ 6. Status Check Protocol                │
+│ 7. Cross-Protocol Comms & Verification  │
+│ 8. Universal Error Resolution Protocol  │
 └─────────────────────────────────────────┘
-```
+````
+*Self-Correction: Added missing relevant protocols to the integration layer for completeness.*
 
-## 2. Cross-Protocol Event System Integration
-```javascript
+## 2. Activation Commands & Flow
+````text
+A. Start Session
+- Command: "Begin Work Session" or alias "BWS"
+- Prerequisites: SHOULD run "Status Check" (SC) immediately prior to BWS to establish current context and priority.
+- Optional Parameters:
+  - Previous Session ID (If resuming)
+  - Session Type (DEBUG, FEATURE, FIX, REFACTOR)
+  - Priority Issue (Can be automatically inferred from preceding SC output)
+
+B. Save Session State
+- Command: "Save Work Session" or alias "SWS"
+- Purpose: Persists the current working state (memory entities, task status markers) without terminating the logical session, allowing for interruption and later resumption. Does NOT modify core project files beyond status markers.
+- Optional Parameters:
+  - Save Reason (e.g., "Context Switch", "End of Day")
+
+C. End Session
+- Command: "End Work Session" or alias "EWS"
+- Purpose: Formally closes the work session, finalizes task statuses, updates documentation, and performs cleanup.
+- Optional Parameters:
+  - Reason (NORMAL, INTERRUPTED, COMPLETED, FAILED)
+````
+
+## 3. Context Establishment & Status Check Integration
+````text
+A. Session Initiation (BWS)
+1.  **Pre-Check:** Execute "Status Check" (SC).
+2.  **Analyze SC Output:** Extract `🎯 Current / Operational Priority` and `⚙️ Overall Context` from the SC report.
+3.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+4.  **Entity Creation:** Create `WorkSession` entity in Server Memory, including:
+    - Start timestamp.
+    - Session Type.
+    - Priority Issue (from SC or parameter).
+    - Overall Context (from SC).
+    - Previous Session ID (if provided).
+    - Link to the preceding `StatusCheck` entity.
+5.  **State Loading (if resuming):** If `Previous Session ID` is provided and a corresponding `WorkSessionSave` entity exists, load relevant state/context.
+6.  **Verification:** Execute L1/L3 Verification Chain checks.
+7.  **Audit:** Record `SESSION_START` event in Audit Trail.
+
+B. Session Context Sources (Referenced by SC)
+- `docs/ROADMAP_TASKS.md`: For detailed task status (✅, 🔄, ⏳, ❌) and timestamps.
+- Server Memory: `TaskCompletion` entities (last 24h), active `Error` entities.
+- `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For major task group context.
+- Current Timestamp: Defines the "recent" window for SC analysis.
+````
+
+## 4. Save Work Session (SWS) Implementation
+````text
+1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+2.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
+3.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory, including:
+    - Save timestamp.
+    - Link to the active `WorkSession` entity.
+    - Save Reason (if provided).
+    - Observations summarizing key state points (e.g., active task ID, relevant open files/entities, current error state if any).
+4.  **Task Status Marker (Optional):** Consider updating the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. *Self-Correction: Added optional marker logic.*
+5.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
+6.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
+7.  **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID for potential future resumption.
+````
+
+## 5. Cross-Protocol Event System Integration
+````javascript
+// Conceptual Example: Event Handling
 class WorkSessionManager {
-    async startSession(previousSessionId = null) {
-        // Meta Protocol integration
-        await metaProtocol.assessContext({
-            operation: 'SESSION_START',
-            previousSession: previousSessionId
-        });
-        
-        // Rule Execution integration
-        const rules = await ruleProtocol.discoverRules();
-        
-        // Create session with proper event flow
-        const session = await this.createSessionWithEventFlow(previousSessionId);
-        
-        // Establish verification chain
-        await this.establishVerificationChain(session);
-        
-        return session;
-    }
-
-    async createSessionWithEventFlow(previousSessionId) {
+    async handleSessionEvent(event) {
         const eventSystem = await CrossProtocolEventSystem.getInstance();
-        
-        // Generate session start event
-        const startEvent = await eventSystem.createEvent({
-            type: 'SESSION_START',
-            priority: 'CRITICAL',
-            context: { previousSessionId }
-        });
-        
-        // Process through event pipeline
-        await eventSystem.processEvent(startEvent);
-        
-        return startEvent.session;
+        await eventSystem.processEvent(event); // Handles routing, validation
+
+        // Specific actions based on event type
+        switch (event.type) {
+            case 'SESSION_START':
+                // ... logic using SC context ...
+                break;
+            case 'SESSION_SAVE':
+                // ... logic for creating save entity, optional roadmap marker ...
+                break;
+            case 'SESSION_END':
+                // ... finalization logic, roadmap updates ...
+                break;
+        }
+
+        // Audit trail integration
+        await this.auditTrail.recordSessionEvent(event);
     }
 }
-```
+````
 
-## 3. Task Status Management Integration
-```javascript
+## 6. Task Status Management Integration
+````javascript
+// Conceptual Example: Status Updates
 class SessionTaskManager {
-    async updateTaskStatus(taskId, status) {
-        // Create task entity with proper status tracking
-        await mcp_Server_Memory_create_entities({
-            entities: [{
-                name: `Task_${taskId}_${timestamp}`,
-                entityType: "Task",
-                observations: [
-                    `Status updated to ${status}`,
-                    `Session ID: ${this.currentSession.id}`,
-                    `Timestamp: ${timestamp}`
-                ]
-            }]
-        });
+    async updateTaskStatus(taskId, status, timestamp, sessionId) {
+        const statusEmoji = this.getStatusEmoji(status);
 
-        // Update ROADMAP with proper emoji
-        await this.updateRoadmap(taskId, this.getStatusEmoji(status));
-        
-        // Create proper relations
-        await mcp_Server_Memory_create_relations({
-            relations: [{
-                from: `Task_${taskId}_${timestamp}`,
-                to: "ROADMAP_TASKS.md",
-                relationType: "updates"
-            }]
-        });
+        // Update Server Memory
+        await mcp_Server_Memory_create_entities({ /* ... Task entity ... */ });
+        await mcp_Server_Memory_create_relations({ /* ... Link to Session, Roadmap ... */ });
+
+        // Update Roadmap File (ensure consistency with SC parsing)
+        await this.updateRoadmapFile(taskId, statusEmoji, timestamp);
     }
 
+    // Ensure this mapping aligns with SC logic
     getStatusEmoji(status) {
         const statusMap = {
             'IN_PROGRESS': '🔄',
             'COMPLETED': '✅',
             'BLOCKED': '❌',
-            'PENDING': '⏳'
+            'PENDING': '⏳',
+            'PAUSED': '⏸️' // Added for SWS
         };
         return statusMap[status] || '❓';
     }
-}
-```
 
-## 4. Verification Chain System Integration
-```javascript
+    async updateRoadmapFile(taskId, emoji, timestamp) {
+        // Logic to read, find task line, update emoji and timestamp, write file
+        // Must be robust to parsing variations used by Status Check
+    }
+}
+````
+*Self-Correction: Explicitly added PAUSED state mapping and emphasized roadmap update consistency.*
+
+## 7. Verification Chain System Integration
+````javascript
+// Conceptual Example: Verification during SWS
 class SessionVerificationChain {
-    async verify(operation) {
-        const verificationChain = await VerificationChainSystem.getInstance();
-        
-        // L1: Protocol State Verification
-        const protocolVerify = await verificationChain.verifyLevel({
-            level: 'L1',
-            type: 'Protocol',
-            checks: ['State', 'Events']
-        });
-        
-        // L2: Data Consistency Verification
-        const dataVerify = await verificationChain.verifyLevel({
-            level: 'L2',
-            type: 'Data',
-            checks: ['Memory', 'Files']
-        });
-        
-        // L3: System Integrity Verification
-        const systemVerify = await verificationChain.verifyLevel({
-            level: 'L3',
-            type: 'System',
-            checks: ['Resources', 'Locks']
-        });
-        
-        return protocolVerify && dataVerify && systemVerify;
+    async verifyBeforeSave(sessionId) {
+        // Ensure protocol states are valid before saving
+        await VerificationChainSystem.verifyLevel({ level: 'L1', context: { sessionId } });
+        // Ensure data consistency (memory reflects reality) before saving
+        await VerificationChainSystem.verifyLevel({ level: 'L2', context: { sessionId } });
+        // Ensure system integrity (no dangling locks/resources)
+        await VerificationChainSystem.verifyLevel({ level: 'L3', context: { sessionId } });
     }
 }
-```
+````
 
-## 5. Error Recovery System Integration
-```javascript
+## 8. Error Recovery System Integration
+````javascript
+// Conceptual Example: Handling SWS Failure
 class SessionErrorRecovery {
-    async handleError(error) {
-        const errorSystem = await ErrorRecoverySystem.getInstance();
-        
-        // Classify error
-        const errorType = await errorSystem.classify(error);
-        
-        // Select recovery strategy
-        const strategy = await errorSystem.selectStrategy(errorType);
-        
-        // Execute recovery
-        await strategy.execute();
-        
-        // Verify recovery
-        await this.verifyRecovery(strategy);
-        
-        // Update audit trail
-        await this.updateAuditTrail({
-            error,
-            recovery: strategy,
-            result: 'recovered'
-        });
+    async handleSaveError(error, sessionId) {
+        const recoveryStrategy = await ErrorRecoverySystem.selectStrategy(error);
+        await recoveryStrategy.execute({ context: 'SESSION_SAVE', sessionId });
+        await this.verifyRecovery(recoveryStrategy);
+        // Log detailed error and recovery attempt in audit/memory
+        await AuditTrailSystem.record({ /* ... error details ... */ });
+        await mcp_Server_Memory_create_entities({ /* ... Error entity ... */ });
     }
 }
-```
+````
 
-## 6. Audit Trail System Integration
-```javascript
+## 9. Audit Trail System Integration
+````javascript
+// Conceptual Example: Auditing SWS
 class SessionAuditTrail {
     async recordSessionEvent(event) {
         const auditSystem = await AuditTrailSystem.getInstance();
-        
-        // Record event with full context
+        // Record event with full context, including links to relevant entities
         await auditSystem.record({
-            timestamp: await mcp_datetime_get_datetime({ format: "datetime" }),
-            sessionId: this.currentSession.id,
+            timestamp: await mcp_mcp_datetime_get_datetime({ format: "datetime" }),
+            sessionId: event.context.sessionId,
             eventType: event.type,
-            context: event.context,
-            state: await this.captureState()
+            context: event.context, // e.g., { reason: "Context Switch" } for SWS
+            stateSnapshot: await this.captureState(), // Key state points
+            relatedEntities: event.relatedEntities // e.g., ['WorkSessionSave_xyz', 'Task_abc']
         });
-        
-        // Verify audit record
-        await auditSystem.verify(event.id);
-        
-        // Update relations
-        await mcp_Server_Memory_create_relations({
-            relations: [{
-                from: `Session_${this.currentSession.id}`,
-                to: `Audit_${event.id}`,
-                relationType: "audits"
-            }]
-        });
+        await auditSystem.verify(event.id); // Verify record integrity
     }
 }
-```
+````
 
-## 7. Enhanced Session Implementation
-```javascript
-class EnhancedWorkSessionManager {
-    constructor() {
-        this.verificationChain = new SessionVerificationChain();
-        this.errorRecovery = new SessionErrorRecovery();
-        this.auditTrail = new SessionAuditTrail();
-        this.taskManager = new SessionTaskManager();
-    }
-
-    async startSession(previousSessionId = null) {
-        try {
-            // Initialize protocols
-            await this.initializeProtocols();
-            
-            // Start session with verification
-            const session = await this.startVerifiedSession(previousSessionId);
-            
-            // Record in audit trail
-            await this.auditTrail.recordSessionEvent({
-                type: 'SESSION_START',
-                context: { previousSessionId }
-            });
-            
-            return session;
-        } catch (error) {
-            await this.errorRecovery.handleError(error);
-            throw error;
-        }
-    }
-
-    async endSession(reason = 'NORMAL') {
-        try {
-            // Verify session state
-            await this.verificationChain.verify('SESSION_END');
-            
-            // Update task statuses
-            await this.taskManager.finalizeTaskStates();
-            
-            // Create session end record
-            await this.createSessionEndRecord(reason);
-            
-            // Record in audit trail
-            await this.auditTrail.recordSessionEvent({
-                type: 'SESSION_END',
-                context: { reason }
-            });
-        } catch (error) {
-            await this.errorRecovery.handleError(error);
-            throw error;
-        }
-    }
-}
-```
+## 10. Potential Improvements & Considerations
+````text
+1.  **Session Resumption Logic:** Explicitly define how `BWS` uses the `Previous Session ID` and the corresponding `WorkSessionSave` entity to restore context (e.g., re-open relevant files/entities, set task status back to 🔄 from ⏸️).
+2.  **State Snapshot Granularity (SWS):** Define precisely what constitutes the "state" saved by SWS. Is it just memory links, or should it trigger temporary file saves/diffs (potentially complex)? Current implementation focuses on memory/markers.
+3.  **"Paused" State Handling:** Ensure the `Status Check` protocol correctly interprets the proposed ⏸️ marker in `ROADMAP_TASKS.md` (e.g., doesn't treat it as `PENDING` or `BLOCKED`).
+4.  **Concurrency/Locking:** If multiple agents or processes could potentially modify session state or roadmaps, implement locking mechanisms during critical updates (like roadmap file writing).
+5.  **Save State Cleanup:** Define a policy or mechanism for cleaning up old `WorkSessionSave` entities to prevent clutter in Server Memory.
+6.  **User Feedback:** Enhance feedback after BWS/SWS/EWS, confirming the action and providing relevant IDs (Session ID, Save ID).
+7.  **Idempotency:** Design BWS/SWS/EWS operations to be safe if accidentally triggered twice (e.g., check if a session with that ID is already active/saved/ended).
+8.  **Visual State Indication:** Consider if the development environment or UI should visually reflect the current session state (Active, Saved, Ended).
+````

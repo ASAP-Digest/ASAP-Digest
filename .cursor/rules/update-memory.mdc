@@ -3,11 +3,106 @@ description:
 globs: 
 alwaysApply: true
 ---
+# Update Memory & System State Protocol v2.0
 
-# Update Memory
+## 1. Purpose
+This protocol defines the standard operating procedure for the "Update Memory" (`um`) alias. It serves as a crucial integr task completion or significant state changes ensuring that Server Memory, relevant documentatio, and overall system state remain consistent and synchronized. It integrates workflows from Task Tracking, Work Session Management, and Server Memory rules.
 
-- Initiated by Phrase: "Update Memory" or alias "um"
-- Update `Server Memory` by creating new relevant entities, observations, relations, nodes or graphs.
-- Update [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) with recently completed tasks + ft
-- Update [ASAP_DIGEST_ROADMAP.md](mdc:docs/ASAP_DIGEST_ROADMAP.md) if functionality added was out of scope.
-- Update [DEPLOYMENT_CHECKLIST.md](mdc:docs/DEPLOYMENT_CHECKLIST.md) 
+## 2. Activation
+- **Command:** "Update Memory"
+- **Alias:** `um`
+- **Context:** Typically invoked after completing a task segment within an active work session (managed by `work-session-management-protocol.mdc`), before formally ending the session (`EWS`), or when needing to manually synchronize state changes.
+
+## 3. Protocol Integration Layer
+This protocol orchestrates updates across multiple system components.
+
+````text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. Server Memory Rules (v2.0)           │ // Defines Entities/Relations
+│ 4. Work Session Mgmt Proto (v2.0)       │ // Source of Session Context
+│ 5. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
+│ 6. Status Check Protocol (v2.0)         │ // Provides Context Baseline
+│ 7. Format Time Protocol                 │ // Timestamp Formatting Standard
+│ 8. Cross-Protocol Comms & Verification   │ // Ensures Consistency
+│ 9. Audit Trail System                   │ // Records State Changes
+└─────────────────────────────────────────┘
+````
+
+## 4. Core Actions & Sequence
+Executing `um` triggers the following sequence:
+
+1.  **Timestamp Acquisition:**
+    -   MUST acquire the current timestamp using the logic defined in `format-time.mdc` (specifically "MM.DD.YY | HH:MM AM/PM `TimeZone`" format for documentation updates).
+    -   Use `mcp-datetime_get_datetime` tool with appropriate format specifiers.
+
+2.  **Server Memory Update:**
+    -   MUST update Server Memory according to `server-memory-rules.mdc`.
+    -   This typically involves:
+        -   Updating the status of the relevant `Task` entity (e.g., to `COMPLETED` or another appropriate state).
+        -   Adding observations to the `Task` entity detailing the update and timestamp.
+        -   Creating/updating `Code`, `Build`, or `Error` entities if relevant to the completed work.
+        -   Creating necessary relations (e.g., `Task` `completedIn` `WorkSession`).
+    -   Reference the active `WorkSession` entity (from WSMP context) when creating relations.
+
+3.  **Roadmap Task Update (`docs/ROADMAP_TASKS.md`):**
+    -   MUST update the status and timestamp for the completed task(s) in `docs/ROADMAP_TASKS.md`.
+    -   Use the Task Tracking Protocol's logic (implicit) to find the task line and update its status emoji (e.g., ✅) and append the acquired formatted timestamp.
+    -   Example format: `- [Task ID] Task Description ✅ MM.DD.YY | HH:MM AM/PM PDT`
+
+4.  **Main Roadmap Check (`docs/ASAP_DIGEST_ROADMAP.md`):**
+    -   SHOULD review if the completed functionality was significantly outside the scope defined in the main roadmap.
+    -   If necessary, update `docs/ASAP_DIGEST_ROADMAP.md` to reflect scope changes or additions.
+
+5.  **Deployment Checklist Update (`docs/DEPLOYMENT_CHECKLIST.md`):**
+    -   MUST update `docs/DEPLOYMENT_CHECKLIST.md` if the completed work affects deployment steps, configuration, or verification procedures. Add new items or check off existing ones as appropriate.
+
+6.  **Verification & Audit:**
+    -   SHOULD perform L1/L2 Verification Chain checks (from Cross-Protocol Comms) to ensure consistency between memory and updated documentation.
+    -   MUST ensure relevant events (e.g., `TASK_UPDATE`, `MEMORY_SYNC`) are logged via the Audit Trail System.
+
+## 5. Example Flow (Conceptual)
+
+````bash
+# --- (Inside an active Work Session managed by WSMP) ---
+
+# User completes coding for Task 'ImplementLoginUI'
+
+# User triggers the update memory alias
+um
+
+# --- (Agent Executes Protocol 'update-memory.mdc v2.0') ---
+
+# 1. Agent gets timestamp -> "07.27.24 | 10:30 AM PDT"
+#    (Using mcp-datetime_get_datetime with 'format-time.mdc' logic)
+
+# 2. Agent updates Server Memory:
+#    - Finds Task entity 'Task_ImplementLoginUI_...'
+#    - Updates status to 'COMPLETED'
+#    - Adds observation: "Completed by Agent in Session WS_XYZ at 07.27.24 | 10:30 AM PDT"
+#    - Creates relations: Task_ImplementLoginUI completedIn WS_XYZ
+#    (Using mcp_Server_Memory_* tools according to server-memory-rules.mdc)
+
+# 3. Agent updates docs/ROADMAP_TASKS.md:
+#    - Finds line for 'ImplementLoginUI'
+#    - Updates line to: "- [T-123] Implement Login UI ✅ 07.27.24 | 10:30 AM PDT"
+#    (Using edit_file tool)
+
+# 4. Agent reviews docs/ASAP_DIGEST_ROADMAP.md (No changes needed)
+
+# 5. Agent updates docs/DEPLOYMENT_CHECKLIST.md:
+#    - Adds item: "- Verify login form styles on staging"
+#    (Using edit_file tool)
+
+# 6. Agent performs verification checks (Pass)
+#    - Logs events to Audit Trail
+
+# --- (Agent confirms completion of 'um' alias) ---
+
+# User can now optionally end the work session (EWS) or continue
+````
+
+

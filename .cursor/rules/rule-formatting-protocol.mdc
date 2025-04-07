@@ -1,0 +1,121 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Rule Formatting Protocol v1.0
+
+## 1. Purpose
+This protocol defines the standard formatting requirements for creating and maintaining rules (`.mdc` files) within this project. Its primary goal is to ensure clarity, consistency, and correct rendering, especially when rules include code examples, configuration snippets, or other structured text blocks. Adhering to this protocol prevents formatting breakage, particularly with nested code blocks, as experienced previously.
+
+## 2. Core Principles
+- **Clarity:** Rules must be easy to read and understand.
+- **Consistency:** All rules should follow the same basic structure and formatting conventions.
+- **Render Fidelity:** Formatting must ensure correct rendering in environments like the Cursor editor, especially regarding nested structures.
+- **Self-Contained:** Each rule file should contain all necessary information and formatting within itself.
+
+## 3. Formatting Requirements
+
+### 3.1. Single Outer Code Block (MUST)
+- The *entire content* of a rule file MUST be enclosed within a single Markdown code block using triple backticks, specifying `markdown` as the language.
+  ````markdown
+  ```markdown
+  # Rule Title vX.Y
+
+  ## Section 1
+  ... rule content ...
+
+  ## Section 2: Example
+  ... example illustrating the nested block rule ...
+
+  ```
+  ````
+*(Note: The example above demonstrates the *concept* of the outer block. Do not add extra outer blocks within your rule file itself.)*
+
+### 3.2. Nested Code/Structure Block Escaping (MUST)
+- Any illustrative code snippets (JavaScript, PHP, Shell, CSS, etc.), configuration examples (YAML, JSON), structured text (like ASCII tables or specific output formats), or any other content requiring preservation of formatting *within* the main rule body MUST be enclosed in **quadruple backticks** (` ```` `).
+- This prevents the inner block from prematurely closing the outer `markdown` block.
+- **Example:**
+  ````markdown
+  ## Section X: Implementation Example
+
+  Here's how to format a JavaScript function example within your rule:
+
+  ````javascript
+  async function exampleHelper() {
+      // Conceptual steps
+      const timestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
+      await mcp_Server_Memory_create_entities({ /* ... */ });
+      console.log(`Action completed at ${timestamp}`);
+  }
+  ````
+
+  And here's how to format a structured text example:
+
+  ````text
+  Report Structure:
+  ---
+  ✅ Completed:
+    - Task A (Timestamp)
+  🎯 Priority:
+    - Task B (Reason)
+  ---
+  ````
+  ````
+
+### 3.3. Language Specifiers (SHOULD)
+- Language specifiers SHOULD be used on the outer `markdown` block (always `markdown`) and the inner nested blocks (using quadruple backticks) where applicable (e.g., `javascript`, `php`, `yaml`, `text`, `bash`). This aids syntax highlighting and clarity.
+
+### 3.4. Consistency (MUST)
+- The formatting rules, especially the nesting method using quadruple backticks for inner blocks, MUST be applied consistently throughout the entire rule file for *all* code examples, configuration snippets, and structured text blocks.
+
+## 4. Structure Guidelines
+- **Headings:** Use Markdown Headings (`##`, `###`, etc.) to structure the rule into logical sections.
+- **Numbering/Bullets:** Use numbered lists for sequential steps or protocols. Use bullet points for non-sequential guidelines, options, or lists.
+- **Inline Formatting:** Use single backticks (`` ` ``) for inline `code`, `commands`, `filenames`, `entityTypes`, etc. Use **bold** or *italics* for emphasis where appropriate.
+- **Clarity:** Use prescriptive language (MUST, SHOULD, MAY) where applicable (RFC 2119).
+
+## 5. Example of a Well-Formatted (Dummy) Rule Section
+
+*(This section demonstrates the application of the rules within this protocol)*
+
+````markdown
+## 4. Example Dummy Section
+
+This section demonstrates the required formatting.
+
+### 4.1 Configuration Example
+The following configuration snippet MUST be placed within quadruple backticks:
+
+````yaml
+# Sample YAML Configuration
+feature_flags:
+  new_dashboard: true
+  beta_widgets: false
+api_keys:
+  service_a: ${SERVICE_A_KEY}
+````
+
+### 4.2 Code Example
+Similarly, code examples like this script MUST use quadruple backticks:
+
+````bash
+#!/bin/bash
+echo "Starting process..."
+# Add timestamp
+TIMESTAMP=$(date +"%Y-%m-%d_%H%M%S")
+echo "Process started at $TIMESTAMP" >> process.log
+# Placeholder for actual command
+sleep 5
+echo "Process finished."
+````
+````
+
+## 6. Verification Checklist
+When creating or reviewing a rule, ensure the following:
+- [ ] The entire rule content is within a single outer ` ```markdown ... ``` ` block.
+- [ ] All nested code examples, configurations, and structured text blocks use quadruple backticks (` ```` ... ```` `).
+- [ ] Language specifiers are used appropriately on inner blocks.
+- [ ] Formatting is consistent throughout the rule.
+- [ ] The rule is clearly structured with headings and lists/bullets.
+- [ ] Inline formatting (`` ` ``) is used correctly.

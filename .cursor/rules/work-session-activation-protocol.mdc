@@ -3,153 +3,97 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Work Session Activation Protocol
+# Work Session Activation Protocol v2.0
 
-## 1. Activation Commands
-```
-A. Start Session
-- Command: "Begin Work Session" or alias "BWS"
-- Optional Parameters: 
-  - Previous Session ID
-  - Session Type (DEBUG, FEATURE, FIX)
-  - Priority Issue
+## 1. Purpose
+This protocol defines the commands and procedures for initiating (`BWS`) and concluding (`EWS`) formal work sessions. It ensures integration with the `Status Check Protocol (v2.0)` for context establishment and the `Enhanced Work Session Management Protocol (WSMP v2.0)` for managing the session lifecycle.
 
-B. End Session
-- Command: "End Work Session" or alias "EWS"
-- Optional Parameters:
-  - Reason (NORMAL, INTERRUPTED, COMPLETED)
-```
+## 2. Protocol Integration Layer
+This protocol operates within the established framework and relies heavily on the outputs and triggers of other key protocols.
 
-## 2. Implementation Example
+````text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │
+│ 2. Rule Execution Protocol              │
+│ 3. Status Check Protocol (v2.0)         │ // Input Source
+│ 4. Enhanced Work Session Mgmt (v2.0)    │ // Activated Protocol
+│ 5. Memory Maintenance Protocol          │
+│ 6. Cross-Protocol Comms & Verification  │
+│ 7. Audit Trail System                   │
+└─────────────────────────────────────────┘
+````
 
-```javascript
-// Example usage:
-// To start a session:
-BWS [sessionType] [previousSessionId] [priorityIssue]
-// e.g., BWS DEBUG auto-sync-fix-123 "Fix AUTO_INCREMENT issue"
+## 3. Activation Commands & Flow
 
-// To end a session:
-EWS [reason]
-// e.g., EWS INTERRUPTED
-```
+### 3.1. Begin Work Session (BWS)
+-   **Command:** `Begin Work Session` or alias `BWS`
+-   **Prerequisite:** MUST execute `Status Check` (`SC`) immediately prior to `BWS`. The output of `SC` provides essential context.
+-   **Purpose:** Initiates a tracked work session using context from the preceding `SC` report. Triggers the start sequence defined in `WSMP v2.0`.
+-   **Optional Parameters (WSMP v2.0):**
+    -   `Previous Session ID`: If resuming a saved session (identified by a `WorkSessionSave` entity).
+    -   `Session Type`: `DEBUG`, `FEATURE`, `FIX`, `REFACTOR` (Defaults can be set in WSMP).
+-   **Core Actions Triggered (Handled by WSMP):**
+    1.  Analyzes the preceding `SC` report for `🎯 Current / Operational Priority` and `⚙️ Overall Context`.
+    2.  Gets current timestamp (`mcp_mcp_datetime_get_datetime`).
+    3.  Creates `WorkSession` entity in Server Memory (linking to the `StatusCheck` entity from the prerequisite `SC` run).
+    4.  Loads state if `Previous Session ID` is provided and valid.
+    5.  Performs Verification Chain checks (L1/L3).
+    6.  Records `SESSION_START` in Audit Trail.
 
-## 3. Activation Steps
+### 3.2. End Work Session (EWS)
+-   **Command:** `End Work Session` or alias `EWS`
+-   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.0`.
+-   **Optional Parameters (WSMP v2.0):**
+    -   `Reason`: `NORMAL`, `INTERRUPTED`, `COMPLETED`, `FAILED`.
+-   **Core Actions Triggered (Handled by WSMP):**
+    1.  Gets current timestamp (`mcp_mcp_datetime_get_datetime`).
+    2.  Executes session finalization logic (e.g., task status updates in memory/roadmap, documentation updates).
+    3.  Creates relevant entities (e.g., `WorkSessionEnd`) in Server Memory.
+    4.  Performs final Verification Chain checks.
+    5.  Records `SESSION_END` in Audit Trail.
 
-1. **Begin Work Session**:
-```javascript
-// 1. Get current timestamp
-const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
+## 4. Standard Workflow Example
 
-// 2. Initialize session manager
-const sessionManager = new EnhancedWorkSessionManager();
-
-// 3. Create session entity
-await mcp_Server_Memory_create_entities({
-    entities: [{
-        name: `WorkSession_${timestamp}`,
-        entityType: "WorkSession",
-        observations: [
-            `Session started at ${timestamp}`,
-            `Type: ${sessionType}`,
-            `Priority: ${priorityIssue}`,
-            `Previous Session: ${previousSessionId || 'NONE'}`
-        ]
-    }]
-});
-
-// 4. Start session
-await sessionManager.startSession(previousSessionId);
-```
-
-2. **End Work Session**:
-```javascript
-// 1. Get current timestamp
-const timestamp = await mcp_datetime_get_datetime({ format: "datetime" });
-
-// 2. End session
-await sessionManager.endSession(reason);
-
-// 3. Create session end entity
-await mcp_Server_Memory_create_entities({
-    entities: [{
-        name: `WorkSession_${timestamp}_End`,
-        entityType: "WorkSessionEnd",
-        observations: [
-            `Session ended at ${timestamp}`,
-            `Reason: ${reason}`,
-            `Status: ${sessionManager.getSessionStatus()}`
-        ]
-    }]
-});
-```
-
-## 4. Usage Example for Auto Sync Issue
-
-```bash
-# Starting a session for Auto Sync fix
-BWS DEBUG auto-sync-123 "Fix AUTO_INCREMENT in class-database.php"
-
-# This would:
-# 1. Initialize the session manager
-# 2. Load previous context about the AUTO_INCREMENT issue
-# 3. Set up verification chains
-# 4. Start task tracking
-# 5. Begin audit trail
-
-# When work needs to end
-EWS INTERRUPTED
-
-# This would:
-# 1. Save current state of database fixes
-# 2. Document progress in server memory
-# 3. Create continuation marker
-# 4. Update ROADMAP_TASKS.md
-```
-
-## 5. Integration with Existing Workflow
-
-1. **Start of Work**:
-```bash
-# 1. First, use Status Check
+````bash
+# Step 1: Check the current project status
 SC
 
-# 2. Begin work session with context
-BWS [type] [previous-session] [priority-from-SC]
-```
+# --- (SC Output Received) ---
+# Example SC Output Snippet:
+# 🎯 Current / Operational Priority:
+# - 🔄 Task: Implement User Login Form (Reason: Next In Progress)
+# ⚙️ Overall Context:
+# Currently working within: Task 2: Authentication Module
+# ---
 
-2. **During Work**:
-- System automatically tracks:
-  - Task status changes
-  - Error encounters
-  - Code modifications
-  - Build attempts
+# Step 2: Begin the work session, using context from SC
+#    (Priority/Context are implicitly known from the preceding SC)
+BWS FEATURE
 
-3. **End of Work**:
-```bash
-# 1. End work session
-EWS [reason]
+# --- (Work session is now active, managed by WSMP) ---
+# ... Perform development tasks ...
+# ... Protocols like Task Tracking, Memory Maintenance are active ...
+# ... Maybe use SWS (Save Work Session) if interrupted ...
+# ... Resolve errors using UERP ...
 
-# 2. System automatically:
-- Updates ROADMAP_TASKS.md
-- Creates continuation markers if needed
-- Saves technical state
-- Records in server memory
-```
+# Step 3: End the work session when done or interrupted
+EWS COMPLETED # Or EWS INTERRUPTED, etc.
 
-To use this with your current Auto Sync issue:
+# --- (Work session is now closed, WSMP handles finalization) ---
+````
 
-1. Start a new session:
-```bash
-BWS DEBUG none "Auto Sync Database Schema Fix"
-```
+## 5. Implementation Notes
 
-2. The system will:
-- Create session entities
-- Load relevant context about the AUTO_INCREMENT issue
-- Set up task tracking for the database schema fixes
-- Begin monitoring progress
+-   This protocol acts as the **trigger mechanism** for the more detailed procedures defined within `WSMP v2.0`.
+-   The actual creation of Server Memory entities (`WorkSession`, `WorkSessionEnd`) and the handling of session state are the responsibility of `WSMP v2.0`, which is activated by the `BWS` and `EWS` commands defined here.
+-   The strict requirement to run `SC` *before* `BWS` ensures that every work session starts with a clear, documented understanding of the current project state and priority.
 
-3. When you need to end work:
-```bash
-EWS INTERRUPTED
-```
+## 6. Verification Checklist (for this protocol)
+-   [ ] `BWS` command exists and is documented.
+-   [ ] `EWS` command exists and is documented.
+-   [ ] Prerequisite of running `SC` before `BWS` is clearly stated (MUST).
+-   [ ] Linkage between `BWS`/`EWS` commands and the activation of `WSMP v2.0` procedures is clear.
+-   [ ] Integration with `Status Check` output (Priority, Context) for `BWS` initiation is described.
+-   [ ] Formatting adheres to `rule-formatting-protocol.mdc` (outer block, quadruple backticks for nested blocks like the workflow example).
