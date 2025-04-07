@@ -1,0 +1,101 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# JSDoc Complex Parameter Typing Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines a standard, reliable method for applying JSDoc type checking to function parameters in JavaScript projects, particularly when dealing with complex objects (like framework event objects, context objects, or configuration objects) passed as arguments, often using destructuring. It aims to ensure type safety while mitigating issues that can arise from unstable or incorrectly resolved framework-specific type aliases (e.g., SvelteKit's `$types`).
+
+## 2. Core Principles
+
+-   **Clarity:** JSDoc annotations must clearly define the expected types for function parameters and return values.
+-   **Reliability:** Prioritize typing methods that directly utilize globally accessible type definitions over potentially unreliable framework-generated type aliases or complex relative path imports for core parameter structures.
+-   **Global First:** Leverage globally defined types from project-wide type definition files (e.g., `global.d.ts`, `app.d.ts`, `src/types.d.ts`) whenever possible, especially for shared structures like application state or context interfaces (e.g., `App.Locals`, `AppContext`).
+-   **Explicit Parameters:** Use `@param` tags within the JSDoc block to explicitly type destructured function parameters, referencing their structure or individual properties.
+-   **Targeted Imports:** Use standard JSDoc `@type` imports only when necessary for specific, non-global types (e.g., utility types, types from specific modules, or framework primitives like `import('@sveltejs/kit').Params`).
+
+## 3. Standard JSDoc Format for Functions with Complex Parameters
+
+Functions receiving complex objects, especially via destructuring, SHOULD include a JSDoc block following this structure:
+
+````javascript
+/**
+ * [Brief description of the function's purpose].
+ * 
+ * @param {object} complexArg The primary complex argument object (e.g., event, context, config).
+ * // --- Add specific @param tags for EACH destructured property below --- 
+ * @param {GlobalType1} complexArg.property1 Description of property1, referencing a global type.
+ * @param {string} complexArg.property2 Description of property2, using a primitive type.
+ * @param {import('module').SpecificType} complexArg.property3 Description, using an imported type.
+ * // --- Add other relevant destructured params as needed ---\
+ * 
+ * @returns {Promise<ReturnType>|ReturnType} The data or result returned by the function.
+ */
+export async function processData({ property1, property2, property3 /*, ...other props */ }) {
+    // Function implementation
+    // 'property1', 'property2', 'property3' should now be correctly typed via @param.
+}
+````
+
+## 4. Specific Examples
+
+### 4.1 Framework Event Handler (e.g., SvelteKit Server Load)
+
+Leverages globally defined `App.Locals`.
+
+````javascript
+/**
+ * Handles server-side data loading for a specific route.
+ * 
+ * @param {object} event The framework's load event object.
+ * @param {App.Locals} event.locals Access to globally defined request-scoped data.
+ * @param {import('@sveltejs/kit').Params} event.params Route parameters object.
+ * @param {function(RequestInfo | URL, RequestInit?): Promise<Response>} event.fetch Framework-provided fetch function.
+ * 
+ * @returns {Promise<{ message: string }>} Data for the page/layout.
+ */
+export async function load({ locals, params, fetch }) {
+  console.log('User from locals:', locals.user?.displayName); // 'locals' is typed via @param
+  console.log('Route param:', params.slug); // 'params' is typed via @param
+  // ... fetch data ...
+  return { message: 'Data loaded on server' };
+}
+````
+
+### 4.2 Simple Event Callback with Destructuring
+
+Uses basic types and hypothetical global `AppSettings`.
+
+````javascript
+/**
+ * Handles a button click event.
+ * 
+ * @param {object} config Configuration object for the handler.
+ * @param {string} config.id The ID of the element clicked.
+ * @param {number} config.timestamp The time of the click event.
+ * @param {AppSettings} config.settings Global application settings.
+ * 
+ * @returns {void}
+ */
+function handleClick({ id, timestamp, settings }) {
+    console.log(`Element ${id} clicked at ${timestamp}.`);
+    console.log('Current theme setting:', settings.theme); // 'settings' is typed via @param
+}
+````
+
+## 5. Verification Checklist
+
+When implementing or reviewing functions with complex, potentially destructured parameters:
+
+-   [ ] Does the function have a JSDoc block?
+-   [ ] Is there a description of the function's purpose?
+-   [ ] Is there a top-level `@param {object} descriptiveName` tag for the main complex argument?
+-   [ ] Is there a specific `@param` tag for *every* destructured property used from that complex argument?
+-   [ ] Do the types referenced in `@param` tags prioritize globally defined types (e.g., `App.Locals`, `AppContext`) where applicable?
+-   [ ] Are framework-specific type aliases (like `$types`) avoided for typing the core structure of parameters like `locals` or the main event object?
+-   [ ] Are `@type` imports used sparingly and only for necessary, specific types?
+-   [ ] Is there a `@returns` tag describing the output type?
+-   [ ] Are there any unresolved linter errors related to parameter types (especially 'implicitly has an any type')?

@@ -39,6 +39,7 @@ function validateCSRFToken(request) {
  * @property {string} avatarUrl - URL to user's avatar
  * @property {Array<string>} roles - User's roles
  * @property {string} syncStatus - User sync status
+ * @property {string} [updatedAt] - Timestamp of last update (optional, from sync)
  */
 
 /**
@@ -110,21 +111,25 @@ const betterAuthHandle = async ({ event, resolve }) => {
 const wordPressSessionHandle = async ({ event, resolve }) => {
     /** @type {App.Locals} */
     const locals = event.locals;
+    console.log(`[hooks.server.js | WP Session] Request Path: ${event.url.pathname}`); // Log request path
 
     try {
         // Skip WordPress session check for API and static routes
         if (event.url.pathname.startsWith('/api/') || 
             event.url.pathname.startsWith('/_app/') ||
             event.url.pathname.startsWith('/@')) {
+            console.log('[hooks.server.js | WP Session] Skipping WP check for API/Static route.'); // Log skip reason
             return resolve(event);
         }
 
         // Check for existing Better Auth session
         const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
         if (!sessionToken) {
+            console.log('[hooks.server.js | WP Session] No better_auth_session cookie found. Resolving.'); // Log no token
             // No Better Auth session, continue without validation
             return resolve(event);
         }
+        console.log('[hooks.server.js | WP Session] Found better_auth_session cookie.'); // Log token found
 
         // Initialize retry mechanism
         const maxRetries = 3;
@@ -132,23 +137,30 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
         let lastError = null;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
+            console.log(`[hooks.server.js | WP Session] Attempt ${attempt + 1} to check WP session.`); // Log retry attempt
             try {
                 // Check WordPress session with Better Auth token
-                const wpResponse = await fetch(`${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, {
+                const wpApiUrl = `${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`;
+                console.log(`[hooks.server.js | WP Session] Fetching: ${wpApiUrl}`); // Log fetch URL
+                const wpResponse = await fetch(wpApiUrl, {
                     headers: {
                         'X-Better-Auth-Token': sessionToken,
                         cookie: event.request.headers.get('cookie') || ''
                     }
                 });
+                console.log(`[hooks.server.js | WP Session] WP Response Status: ${wpResponse.status}`); // Log response status
 
                 if (!wpResponse.ok) {
+                    console.warn(`[hooks.server.js | WP Session] WP check failed. Status: ${wpResponse.status}`); // Log failure
                     // Clear invalid session on 401/403
                     if (wpResponse.status === 401 || wpResponse.status === 403) {
+                        console.log('[hooks.server.js | WP Session] Clearing invalid session cookie due to 401/403.'); // Log clearing reason
                         const headers = new Headers();
                         headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
                         
                         // Don't redirect on API routes
                         if (!event.url.pathname.startsWith('/api/')) {
+                            console.log('[hooks.server.js | WP Session] Redirecting to /login.'); // Log redirect
                             throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
                         }
                     }
@@ -156,14 +168,17 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 }
 
                 const data = await wpResponse.json();
+                console.log('[hooks.server.js | WP Session] WP Response Data:', data); // Log received data
                 
                 if (!data.valid) {
+                    console.log('[hooks.server.js | WP Session] WP check returned invalid. Clearing session cookie.'); // Log invalid data reason
                     // Clear invalid session
                     const headers = new Headers();
                     headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
                     
                     // Don't redirect on API routes
                     if (!event.url.pathname.startsWith('/api/')) {
+                        console.log('[hooks.server.js | WP Session] Redirecting to /login.'); // Log redirect
                         throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
                     }
                     return resolve(event);
@@ -187,6 +202,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 });
 
                 // Add user data and sync status to event locals
+                console.log('[hooks.server.js | WP Session] Populating event.locals.user.'); // Log population step
                 /** @type {EventLocals} */
                 const updatedLocals = {
                     ...locals,
@@ -197,21 +213,25 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                         email: data.user_email,
                         avatarUrl: data.avatar_url,
                         roles: data.user_roles,
-                        syncStatus: data.sync_status || 'unknown'
+                        syncStatus: data.sync_status || 'unknown',
+                        updatedAt: data.updatedAt
                     }
                 };
 
                 event.locals = updatedLocals;
+                console.log('[hooks.server.js | WP Session] event.locals updated:', event.locals); // Log updated locals
 
                 // Handle sync failures
                 if (data.sync_status === 'sync_failed') {
-                    console.error('User data sync failed - some data may be outdated');
+                    console.error('[hooks.server.js | WP Session] User data sync failed - some data may be outdated');
                     // You might want to trigger a background sync retry here
                 }
 
+                console.log('[hooks.server.js | WP Session] WP session check successful. Resolving.'); // Log success
                 return resolve(event);
             } catch (error) {
                 lastError = error;
+                console.error(`[hooks.server.js | WP Session] Error during attempt ${attempt + 1}:`, error); // Log error during attempt
                 
                 // Don't retry on redirects or clear session errors
                 if (error instanceof Response || (error instanceof Error && error.message?.includes('clear session'))) {
@@ -220,19 +240,20 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 
                 // Wait before retry
                 if (attempt < maxRetries - 1) {
+                    console.log(`[hooks.server.js | WP Session] Retrying after ${retryDelay}ms...`); // Log retry wait
                     await new Promise(resolve => setTimeout(resolve, retryDelay));
                 }
             }
         }
 
         // If we get here, all retries failed
-        console.error('WordPress session check failed after retries:', lastError);
+        console.error('[hooks.server.js | WP Session] WordPress session check failed after retries:', lastError);
         return resolve(event);
     } catch (error) {
         if (error instanceof Response) {
             throw error;
         }
-        console.error('WordPress session handle error:', error);
+        console.error('[hooks.server.js | WP Session] Global handle error:', error);
         return resolve(event);
     }
 };

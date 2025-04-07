@@ -105,7 +105,7 @@ function asap_init_core() {
     add_action('admin_enqueue_scripts', 'asap_enqueue_admin_styles', 30);
     
     // CORS and headers (priority 100+)
-    add_action('init', 'asap_add_cors_headers', 100);
+    add_action('rest_api_init', 'asap_add_cors_headers', 10);
 }
 
 // Initialize core functionality early
@@ -493,7 +493,7 @@ function asap_send_notification(WP_REST_Request $request) {
 
 /**
  * @description Add CORS headers for SvelteKit frontend
- * @hook add_action('init', 'asap_add_cors_headers', 100)
+ * @hook add_action('rest_api_init', 'asap_add_cors_headers', 10)
  * @since 1.0.0
  * @return void
  * @created 03.30.25 | 03:45 PM PDT

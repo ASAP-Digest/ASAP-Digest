@@ -622,6 +622,21 @@ function asap_check_wp_session($request) { // KEEP THIS NAME
         $sessionToken = $ba_user_data->session_token ?? null; // Use existing token if found
         error_log('[ASAP Digest Check Session] Extracted - UpdatedAt: ' . $updated_at_timestamp . ', SessionToken: ' . ($sessionToken ? '[Exists]' : '[None]')); // ADDED
 
+        // ---> ADDED: Create session if one doesn't exist <---
+        if (empty($sessionToken)) {
+            error_log('[ASAP Digest Check Session] No existing session found for BA User ID: ' . $ba_user_id . '. Attempting to create one.');
+            $newSessionToken = asap_create_ba_session($ba_user_id);
+            if ($newSessionToken) {
+                $sessionToken = $newSessionToken;
+                error_log('[ASAP Digest Check Session] Successfully created and assigned new session token.');
+            } else {
+                error_log('[ASAP Digest Check Session] Failed to create new session token.');
+                // Optionally return an error here, or proceed without a token
+                // For now, proceed and let the client handle the lack of token
+            }
+        }
+        // ---> END ADDED SECTION <---
+        
         // ---> REMOVED: Session token generation and insertion <---
 
         $response_data = [
@@ -767,17 +782,20 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
 
         // ---> Log after ba_wp_user_map insert attempt <---
         if (!$mapped) {
-             // Keep original log for actual failure
-             error_log('[ASAP Digest Sync Trace] Failed ba_wp_user_map insert. WPDB Error: ' . $wpdb->last_error);
-        // } else { 
-             // error_log('[ASAP Digest Sync Trace] Successfully inserted into ba_wp_user_map.');
+             error_log('[ASAP Digest Sync Trace] Failed ba_wp_user_map insert. WPDB Error: ' . $wpdb->last_error); // Keep original log
+             throw new \Exception('Failed to insert into ba_wp_user_map. WPDB Error: ' . $wpdb->last_error); // Also throw to ensure rollback
+        } else {
+             error_log('[ASAP Digest Sync Trace] Successfully inserted into ba_wp_user_map. Rows affected: ' . $wpdb->rows_affected); // Add success log
         }
 
         // ---> Log before commit <---
-        // error_log('[ASAP Digest Sync Trace] Before transaction commit.');
+        error_log('[ASAP Digest Sync Trace] Reached point just before transaction commit for WP User ID: ' . $wp_user_id . ', BA User ID: ' . $ba_user_id);
 
         // Commit transaction
         $ba_db->commit();
+
+        // ---> Log after commit <---
+        error_log('[ASAP Digest Sync Trace] Transaction committed successfully for WP User ID: ' . $wp_user_id);
 
         return array(
             'success' => true,
@@ -2734,4 +2752,51 @@ function asap_auto_sync_user_data($user_id, $context = null) {
 // Hook into user profile updates
 add_action('profile_update', 'asap_auto_sync_user_data', 10, 2);
 add_action('user_register', 'asap_auto_sync_user_data', 10);
+
+/**
+ * @description Creates a new session token for a Better Auth user
+ * @param {string} ba_user_id The Better Auth user ID (UUID string)
+ * @return {string|false} The new session token on success, false on failure
+ * @created 04.07.25 | 02:55 PM PDT
+ */
+function asap_create_ba_session($ba_user_id) {
+    global $wpdb;
+    $sessions_table = $wpdb->prefix . 'ba_sessions';
+
+    try {
+        // Generate a secure token (e.g., 64 bytes, hex encoded)
+        $token = bin2hex(random_bytes(32)); 
+        
+        // Set expiry (e.g., 7 days)
+        $expires_at = date('Y-m-d H:i:s', time() + (7 * DAY_IN_SECONDS));
+
+        $inserted = $wpdb->insert(
+            $sessions_table,
+            [
+                'user_id' => $ba_user_id,
+                'token' => $token,
+                'expires_at' => $expires_at,
+                'created_at' => current_time('mysql')
+            ],
+            [
+                '%s', // user_id is UUID string
+                '%s',
+                '%s',
+                '%s'
+            ]
+        );
+
+        if (!$inserted) {
+            error_log('[ASAP Digest Session] Failed to insert new session for BA User ID: ' . $ba_user_id . '. WPDB Error: ' . $wpdb->last_error);
+            return false;
+        }
+        
+        error_log('[ASAP Digest Session] Successfully created new session for BA User ID: ' . $ba_user_id);
+        return $token;
+
+    } catch (\Exception $e) {
+        error_log('[ASAP Digest Session] Exception during session creation for BA User ID: ' . $ba_user_id . '. Error: ' . $e->getMessage());
+        return false;
+    }
+}
   

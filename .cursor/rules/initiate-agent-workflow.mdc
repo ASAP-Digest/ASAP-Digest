@@ -12,14 +12,14 @@ alwaysApply: true
 1. **Begin Work Protocol**
    - Begin by Running "Status Check" or "SC"
    - Review `@PE - CTXT` - to understand project structure & configuration
-   - Set "Operational Context" using `pwd` command + `OP` from `SC`
-   - Clock in using format: "MM.DD.YY | HH:MM AM/PM `TimeZone`"
+   - Set "# 🛠️ Operational Context" using `pwd` command + `OP` from `SC`
+   - Clock in using format: # 🕚 "MM.DD.YY | HH:MM AM/PM `TimeZone`"
    - Check working directory: `pwd`
      - Sveltekit `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
      - WordPress `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
    - Check Server Status: `lsof -i :5173`
    - If OFF - Start Server with `prd` command
-   - If ON - Begin Work
+   - If ON - Begin Work as Agent: Proceed to code or solve problems in immediate `OP` DO NOT WAIT FOR ME TO TELL YOU TO WORK.
 
 2. **End Work Protocol**
    - Update Server Memory with completed tasks, new entities & observations
