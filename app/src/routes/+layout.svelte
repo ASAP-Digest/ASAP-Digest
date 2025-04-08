@@ -29,6 +29,10 @@
   // Import local toast components and store
   import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
   import { toasts } from '$lib/stores/toast.js';
+  // Import required icons
+  import { 
+    Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut 
+  } from '$lib/utils/lucide-compat.js';
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -111,18 +115,29 @@
     }
   });
 
-  // Helper functions
+  /**
+   * @description Toggles the visibility of the mobile sidebar.
+   * @returns {void}
+   */
   function toggleMobileSidebar() {
     isSidebarOpen = !isSidebarOpen;
     console.log('Toggled mobile sidebar, isSidebarOpen:', isSidebarOpen);
   }
 
+  /**
+   * @description Toggles the collapsed state of the desktop sidebar and saves to localStorage.
+   * @returns {void}
+   */
   function toggleDesktopSidebarCollapsed() {
     isSidebarCollapsed = !isSidebarCollapsed;
     localStorage.setItem('sidebar-collapsed', isSidebarCollapsed.toString());
     // No need to update body class anymore, handled by class binding on app-layout
   }
 
+  /**
+   * @description Forces application of CSS custom properties (primarily for design system route).
+   * @returns {void}
+   */
   function forceCSSVariableApplication() {
     if (typeof window === 'undefined') return;
     
@@ -145,7 +160,8 @@
   }
 
   /**
-   * Checks for potential layout problems like overlapping elements.
+   * @description Checks for potential layout problems like overlapping elements.
+   * @returns {void}
    */
   function checkForLayoutIssues() {
     console.log('[Layout] Checking for layout issues...'); 
@@ -162,7 +178,7 @@
   }
 
   /**
-   * Initializes layout checks and observers after mount.
+   * @description Initializes layout checks and observers after mount.
    * @returns {Promise<void>}
    */
   async function initializeLayout() {
@@ -261,36 +277,11 @@
               aria-label="Toggle menu"
             >
               {#if isSidebarOpen}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg
-              >
+                <!-- Use Icon component -->
+                <Icon icon={X} class="w-6 h-6" />
               {:else}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                ><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line
-                  x1="3"
-                  y1="18"
-                  x2="21"
-                  y2="18"
-                ></line></svg
-              >
+                <!-- Use Icon component -->
+                <Icon icon={Menu} class="w-6 h-6" />
               {/if}
             </button>
           {/if}
@@ -307,23 +298,8 @@
             class="focus-visible:ring-ring rounded-md bg-[hsl(var(--muted)/0.1)] p-2 transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.2)] focus-visible:outline-none focus-visible:ring-2"
             aria-label="Search"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ><circle cx="11" cy="11" r="8"></circle><line
-              x1="21"
-              y1="21"
-              x2="16.65"
-              y2="16.65"
-            ></line></svg
-          >
+            <!-- Use Icon component -->
+            <Icon icon={Search} class="w-5 h-5" />
           </button>
           
           <!-- Notifications -->
@@ -331,26 +307,16 @@
             <button
               class="focus-visible:ring-ring rounded-full p-2 transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 dark:hover:bg-[hsl(var(--muted)/0.2)]"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              ></path><circle cx="12" cy="12" r="3"></circle></svg
-            >
-            <div
+              <!-- Use Icon component -->
+              <Icon icon={Bell} class="w-5 h-5" />
+            </button>
+            <!-- Use 0 as placeholder, ideally fetch real count later -->
+            <!-- <div
               class="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-xs font-bold text-[hsl(var(--destructive-foreground))]"
             >
-              3
-            </div>
-          </button>
+              0 
+            </div> -->
+          </div>
         </div>
         
         <!-- User avatar with dropdown -->
@@ -377,6 +343,9 @@
                   /** @type {HTMLImageElement} */
                   const target = e.target; // Type assertion replaced with JSDoc
                   target.onerror = null;
+                  // Use Icon component for fallback INSIDE the img tag's logic is complex,
+                  // Using a simple SVG data URI fallback is often cleaner here.
+                  // Keep the SVG data URI for onerror fallback.
                   target.src =
                     'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
                 }}
@@ -405,22 +374,25 @@
               <div class="py-1">
                 <a
                   href="/dashboard"
-                  class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                  class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
                 >
-                  Dashboard
+                  <Icon icon={LayoutDashboard} class="w-4 h-4" /> 
+                  <span>Dashboard</span>
                 </a>
                 <a
                   href="/settings"
-                  class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                  class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
                 >
-                  Settings
+                  <Icon icon={Settings} class="w-4 h-4" /> 
+                  <span>Settings</span>
                 </a>
                 <!-- Use auth client signout -->
                 <button
                   onclick={() => auth.signOut({ callbackUrl: '/' })}
-                  class="block w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                  class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
                 >
-                  Logout
+                  <Icon icon={LogOut} class="w-4 h-4" /> 
+                  <span>Logout</span>
                 </button>
               </div>
             </div>

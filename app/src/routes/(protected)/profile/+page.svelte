@@ -1,7 +1,7 @@
 <script>
   import { preventDefault } from 'svelte/legacy';
   import { page } from '$app/stores';
-  import { User, Settings, Bell, LogOut } from '$lib/utils/lucide-compat.js';
+  import { User, Settings, Bell, LogOut, BookOpen, Share2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import * as Avatar from '$lib/components/ui/avatar';
   import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -16,11 +16,19 @@
   // Tab management
   let activeTab = $state('profile');
   
+  /**
+   * @description Sets the currently active tab.
+   * @param {string} tab - The name of the tab to activate.
+   * @returns {void}
+   */
   function setActiveTab(tab) {
     activeTab = tab;
   }
   
-  // Handle save profile
+  /**
+   * @description Handle saving the user profile data.
+   * @returns {void}
+   */
   function saveProfile() {
     console.log('Saving profile', user);
     // TODO: Implement actual save functionality
@@ -212,6 +220,8 @@
       
       <!-- Notifications Tab -->
       {#if activeTab === 'notifications'}
+        <!-- START COMMENT OUT: Section depends on undefined user.preferences -->
+        <!--
         <div class="space-y-6">
           <div class="flex items-center justify-between">
             <div>
@@ -243,6 +253,9 @@
             </button>
           </div>
         </div>
+        -->
+        <!-- END COMMENT OUT -->
+        <div>Notifications settings are currently unavailable.</div> <!-- Placeholder message -->
       {/if}
       
       <!-- Digests Tab -->

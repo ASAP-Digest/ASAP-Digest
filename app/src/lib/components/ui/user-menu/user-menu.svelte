@@ -14,7 +14,7 @@
   import { CircleUser, Settings, LogOut } from '$lib/utils/lucide-compat.js';
   import Icon from '../icon/icon.svelte';
 
-  /** @type {{ user: { displayName: string, email: string, avatarUrl: string, roles: string[] } }} */
+  /** @type {{ user: import('app').App.User }} */
   const { data } = $props();
 
   const user = $derived(data.user);

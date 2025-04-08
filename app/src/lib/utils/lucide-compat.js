@@ -21,7 +21,14 @@ const iconPaths = {
   info: '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line>',
   circleUser: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
-  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>'
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>',
+  menu: '<line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line>',
+  search: '<circle cx="11" cy="11" r="8"></circle><line x1="21" x2="16.65" y1="21" y2="16.65"></line>',
+  layoutDashboard: '<rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect>',
+  bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>',
+  share2: '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line>',
+  creditCard: '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>',
+  chevronDown: '<path d="m6 9 6 6 6-6"></path>'
 };
 
 // Create Svelte components for each icon
@@ -40,7 +47,13 @@ export const Info = createIconObject('info', iconPaths.info);
 export const CircleUser = createIconObject('circleUser', iconPaths.circleUser);
 export const Shield = createIconObject('shield', iconPaths.shield);
 export const Bell = createIconObject('bell', iconPaths.bell);
-// Add more exports as needed
+export const Menu = createIconObject('menu', iconPaths.menu);
+export const Search = createIconObject('search', iconPaths.search);
+export const LayoutDashboard = createIconObject('layoutDashboard', iconPaths.layoutDashboard);
+export const BookOpen = createIconObject('bookOpen', iconPaths.bookOpen);
+export const Share2 = createIconObject('share2', iconPaths.share2);
+export const CreditCard = createIconObject('creditCard', iconPaths.creditCard);
+export const ChevronDown = createIconObject('chevronDown', iconPaths.chevronDown);
 
 /**
  * Create a custom icon component from a name and SVG content
