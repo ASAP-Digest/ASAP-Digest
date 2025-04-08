@@ -32,7 +32,7 @@ wp-content/uploads/*
 /docs/ASAP_DIGEST_ROADMAP_LLM_7.md
 app/src/lib/components/ui/README.md
 /docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
-
+class-environment-config.php
 
 # ignore everything in the "wp-content" directory, except:
 # mu-plugins, plugins, and themes directories

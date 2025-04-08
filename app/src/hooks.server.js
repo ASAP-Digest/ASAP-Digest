@@ -2,6 +2,7 @@ import { auth } from '$lib/server/auth';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { redirect } from '@sveltejs/kit';
+import { BETTER_AUTH_SECRET } from '$env/static/private'; // Import the shared secret
 
 /**
  * Get WordPress base URL
@@ -24,10 +25,34 @@ function validateCSRFToken(request) {
     const storedToken = request.headers.get('cookie')?.match(/csrf_token=([^;]+)/)?.[1];
     
     if (!csrfToken || !storedToken) {
+        console.warn('[CSRF Validate] Missing CSRF token or cookie token.'); // DEBUG
         return false;
     }
     
-    return csrfToken === storedToken;
+    if (csrfToken !== storedToken) {
+        console.warn('[CSRF Validate] CSRF token mismatch.'); // DEBUG
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Validate the internal sync secret
+ * @param {Request} request - The request object
+ * @returns {boolean} - Whether the secret is valid
+ */
+function validateSyncSecret(request) {
+    const receivedSecret = request.headers.get('X-WP-Sync-Secret');
+    if (!receivedSecret) {
+        console.warn('[Sync Secret Validate] Missing X-WP-Sync-Secret header.'); // DEBUG
+        return false;
+    }
+    if (receivedSecret !== BETTER_AUTH_SECRET) {
+        console.warn('[Sync Secret Validate] X-WP-Sync-Secret mismatch.'); // DEBUG
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -57,14 +82,32 @@ const betterAuthHandle = async ({ event, resolve }) => {
             return resolve(event);
         }
 
-        // Check CSRF token for mutating requests to auth endpoints
-        if (event.url.pathname.startsWith('/api/auth/') && 
-            ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method)) {
-            if (!validateCSRFToken(event.request)) {
-                return new Response(JSON.stringify({ error: 'Invalid CSRF token' }), {
+        // Check CSRF token OR Sync Secret for mutating requests to auth endpoints
+        const isAuthPath = event.url.pathname.startsWith('/api/auth/');
+        const isMutatingMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method);
+        const isSyncPath = event.url.pathname === '/api/auth/users/sync';
+
+        if (isAuthPath && isMutatingMethod) {
+            let isAuthorized = false;
+            if (isSyncPath) {
+                // For the specific internal sync path, check the shared secret
+                console.log('[Auth Handle] Checking sync secret for /api/auth/users/sync'); // DEBUG
+                isAuthorized = validateSyncSecret(event.request);
+            } else {
+                // For all other mutating auth paths, check the standard CSRF token
+                console.log(`[Auth Handle] Checking CSRF token for ${event.url.pathname}`); // DEBUG
+                isAuthorized = validateCSRFToken(event.request);
+            }
+
+            if (!isAuthorized) {
+                 const errorMsg = isSyncPath ? 'Invalid Sync Secret' : 'Invalid CSRF token';
+                 console.warn(`[Auth Handle] ${errorMsg} for ${event.url.pathname}`); // DEBUG
+                 return new Response(JSON.stringify({ error: errorMsg }), {
                     status: 403,
                     headers: { 'Content-Type': 'application/json' }
-                });
+                 });
+            } else {
+                 console.log(`[Auth Handle] Authorization successful for ${event.url.pathname}`); // DEBUG
             }
         }
 

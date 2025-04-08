@@ -41,37 +41,38 @@ use ASAPDigest\Core\ASAP_Digest_Admin_UI;
 require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
 
 /**
- * @description Set up Better Auth shared secret for WordPress integration
+ * @description Set up Better Auth secret for WordPress integration (using consistent name)
  * @return void
  * @example
  * // Called during plugin initialization
- * asap_setup_better_auth_shared_secret();
+ * asap_setup_better_auth_secret();
  * @created 03.29.25 | 03:45 PM PDT
+ * @updated 04.07.25 | 06:05 PM PDT - Renamed constant to BETTER_AUTH_SECRET
  */
-function asap_setup_better_auth_shared_secret() {
-    // First, check if the constant is already defined in wp-config.php
-    if (!defined('BETTER_AUTH_SHARED_SECRET')) {
+function asap_setup_better_auth_secret() { // Renamed function for clarity
+    // Check if the constant is already defined in wp-config.php
+    if (!defined('BETTER_AUTH_SECRET')) {
         // Use WordPress AUTH_KEY as the shared secret if not defined
         // This ensures that we have a unique secret per site that's already secure
         if (defined('AUTH_KEY') && !empty(AUTH_KEY)) {
-            define('BETTER_AUTH_SHARED_SECRET', AUTH_KEY);
+            define('BETTER_AUTH_SECRET', AUTH_KEY);
+             error_log('[ASAP Better Auth] WARNING: Using AUTH_KEY as fallback for BETTER_AUTH_SECRET. Define BETTER_AUTH_SECRET in wp-config.php.'); // Added warning
         } else {
             // Extremely unlikely fallback
-            define('BETTER_AUTH_SHARED_SECRET', wp_generate_password(64, true, true));
-            
+            define('BETTER_AUTH_SECRET', wp_generate_password(64, true, true));
             // Log the issue
-            error_log('[ASAP Better Auth] WARNING: Using generated password for BETTER_AUTH_SHARED_SECRET. Define in wp-config.php for security.');
+            error_log('[ASAP Better Auth] CRITICAL WARNING: Using generated password for BETTER_AUTH_SECRET. Define in wp-config.php immediately!');
         }
     }
-    
-    // Store the value in options for easier access
-    if (!get_option('better_auth_shared_secret')) {
-        update_option('better_auth_shared_secret', BETTER_AUTH_SHARED_SECRET);
+
+    // Store the value in options for easier access (using consistent option name)
+    if (!get_option('better_auth_secret')) { // Changed option name
+        update_option('better_auth_secret', BETTER_AUTH_SECRET); // Changed option name
     }
 }
 
 // Run setup function
-asap_setup_better_auth_shared_secret();
+asap_setup_better_auth_secret(); // Renamed function call
 
 /**
  * @description Safely get a constant value with null fallback
@@ -125,28 +126,31 @@ function asap_get_better_auth_base_url() {
  * // Validate an incoming request
  * $is_valid = asap_validate_better_auth_signature($timestamp, $signature);
  * @created 03.29.25 | 03:45 PM PDT
+ * @updated 04.07.25 | 06:05 PM PDT - Use consistent constant/option name
  */
 function asap_validate_better_auth_signature($timestamp, $signature) {
     // Ensure we have required data
     if (empty($timestamp) || empty($signature)) {
         return false;
     }
-    
-    // Get shared secret
-    $secret = defined('BETTER_AUTH_SHARED_SECRET') ? BETTER_AUTH_SHARED_SECRET : get_option('better_auth_shared_secret');
+
+    // Get shared secret (use consistent constant name first, then option)
+    $secret = defined('BETTER_AUTH_SECRET') ? BETTER_AUTH_SECRET : get_option('better_auth_secret'); // Changed constant and option name
     if (empty($secret)) {
+        error_log('[ASAP Better Auth] Validation Error: Secret not found.'); // Added log
         return false;
     }
-    
+
     // Check timestamp is within 5 minutes
     $now = time();
     if (abs($now - intval($timestamp)) > 300) {
+        error_log('[ASAP Better Auth] Validation Error: Timestamp expired.'); // Added log
         return false;
     }
-    
+
     // Calculate expected signature
     $expected = hash_hmac('sha256', $timestamp, $secret);
-    
+
     // Compare signatures
     return hash_equals($expected, $signature);
 }
@@ -425,7 +429,7 @@ function asap_validate_wp_session_token($request) {
  */
 function asap_init_better_auth() {
     // Core functionality (priority 10)
-    add_action('init', 'asap_setup_better_auth_shared_secret', 10);
+    add_action('init', 'asap_setup_better_auth_secret', 10); // Renamed setup function call
     
     // Feature-specific hooks (priority 20-29)
     add_action('user_register', 'asap_sync_wp_user_to_better_auth', 20);
@@ -675,141 +679,101 @@ function asap_track_sync_source($wp_user_id, $source) {
  * // Sync a WordPress user to Better Auth
  * $result = asap_sync_wp_user_to_better_auth(123);
  * @created 03.29.25 | 03:45 PM PDT
+ * @updated 04.07.25 | 06:05 PM PDT - Use consistent constant name
  */
 function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
-    global $wpdb;
+    error_log('[ASAP Debug] SYNC FUNC: asap_sync_wp_user_to_better_auth called for WP User ID: ' . $wp_user_id . ' | Source: ' . $source); // DEBUG
 
-    // Get WordPress user data
-    $wp_user = get_userdata($wp_user_id);
-    if (!$wp_user) {
-        return new WP_Error('invalid_user', 'WordPress user not found');
+    $user = get_userdata($wp_user_id);
+    if (!$user) {
+        error_log('[ASAP Debug] SYNC FUNC: Failed to get user data for ID: ' . $wp_user_id); // DEBUG
+        return new WP_Error('user_not_found', 'WordPress user not found.', ['status' => 404]);
     }
 
-    // Track sync source before proceeding
-    asap_track_sync_source($wp_user_id, $source);
-
-    // Check if user is already synced
-    $existing_ba_user = $wpdb->get_row($wpdb->prepare(
-        "SELECT ba_user_id FROM {$wpdb->prefix}ba_wp_user_map WHERE wp_user_id = %d",
-        $wp_user_id
-    ));
-
-    if ($existing_ba_user) {
-        return array(
-            'success' => true,
-            'ba_user_id' => $existing_ba_user->ba_user_id,
-            'message' => 'User already synced'
-        );
+    // Check sync eligibility again (e.g., based on role)
+    if (!asap_should_auto_sync_user($user) && $source !== 'manual') {
+         error_log('[ASAP Debug] SYNC FUNC: User ID ' . $wp_user_id . ' role excluded from sync based on current settings.'); // DEBUG
+         update_user_meta($wp_user_id, 'better_auth_sync_status', 'excluded');
+         return ['status' => 'excluded', 'message' => 'User role excluded from sync.'];
     }
 
-    try {
-        // Connect to Better Auth database
-        $ba_db = new PDO(
-            sprintf(
-                'mysql:host=%s;port=%s;dbname=%s',
-                defined('DB_HOST') ? DB_HOST : 'localhost',
-                '10018', // Local by Flywheel MySQL port
-                DB_NAME
-            ),
-            DB_USER,
-            DB_PASSWORD,
-            array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
-        );
+    // Prepare user data payload
+    $user_data = [
+        'wpUserId' => $wp_user_id,
+        'email' => $user->user_email,
+        'username' => $user->user_login,
+        'displayName' => $user->display_name ?: $user->user_login,
+        'roles' => (array) $user->roles,
+        'firstName' => $user->first_name,
+        'lastName' => $user->last_name,
+        // Add other relevant metadata if needed
+        'metadata' => [
+            'description' => $user->description,
+            'nickname' => $user->nickname,
+        ]
+    ];
+    error_log('[ASAP Debug] SYNC FUNC: Prepared payload: ' . print_r($user_data, true)); // DEBUG
 
-        // Start transaction
-        $ba_db->beginTransaction();
+    // Get Better Auth API endpoint
+    $api_base_url = asap_get_better_auth_base_url();
+    $sync_endpoint = $api_base_url . '/api/auth/users/sync'; // Using the SvelteKit base URL
 
-        // ---> ADD UUID GENERATION <---
-        if (!function_exists('wp_generate_uuid4')) {
-            require_once ABSPATH . 'wp-includes/compat.php';
+    // Get the shared secret (using consistent constant name)
+    $shared_secret = asap_get_constant('BETTER_AUTH_SECRET'); // Changed constant name
+    if (!$shared_secret) {
+        error_log('[ASAP Debug] SYNC FUNC: ERROR - BETTER_AUTH_SECRET is not defined!'); // Changed constant name in log
+        return new WP_Error('missing_secret', 'Better Auth secret is not configured in wp-config.php.', ['status' => 500]); // Updated error message
+    }
+
+    // Prepare request arguments
+    $args = [
+        'method' => 'POST',
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'X-WP-Sync-Secret' => $shared_secret // Add the shared secret header
+        ],
+        'body' => json_encode($user_data),
+        'timeout' => 15 // seconds
+    ];
+    error_log('[ASAP Debug] SYNC FUNC: Making request to: ' . $sync_endpoint); // DEBUG
+
+    // Make the request
+    $response = wp_remote_post($sync_endpoint, $args);
+
+    // Handle response
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        error_log('[ASAP Debug] SYNC FUNC: WP Error during sync request: ' . $error_message); // DEBUG
+        update_user_meta($wp_user_id, 'better_auth_sync_status', 'error');
+        update_user_meta($wp_user_id, 'better_auth_sync_error', $error_message);
+        return new WP_Error('sync_failed', 'Failed to sync user to Better Auth: ' . $error_message);
+    }
+
+    $response_code = wp_remote_retrieve_response_code($response);
+    $response_body = wp_remote_retrieve_body($response);
+    error_log('[ASAP Debug] SYNC FUNC: Response Code: ' . $response_code); // DEBUG
+    error_log('[ASAP Debug] SYNC FUNC: Response Body: ' . $response_body); // DEBUG
+
+    if ($response_code >= 200 && $response_code < 300) {
+        // Success
+        $result_data = json_decode($response_body, true);
+        $ba_user_id = $result_data['data']['id'] ?? null;
+
+        if ($ba_user_id) {
+             update_user_meta($wp_user_id, 'better_auth_user_id', $ba_user_id);
         }
-        $ba_user_id_generated = wp_generate_uuid4();
-        if (!$ba_user_id_generated) {
-            throw new \Exception('Failed to generate UUID for Better Auth user.');
-        }
-        // ---> END UUID GENERATION <---
-
-        // Create Better Auth user
-        $stmt = $ba_db->prepare("\n            INSERT INTO ba_users (\n                id, \n                email,\n                username,\n                name,\n                metadata,\n                created_at,\n                updated_at\n            ) VALUES (\n                :id, \n                :email,\n                :username,\n                :name,\n                :metadata,\n                NOW(),\n                NOW()\n            )\n        ");
-
-        // Get all user roles and capabilities
-        $roles = $wp_user->roles;
-        $all_caps = $wp_user->allcaps;
-
-        $metadata = json_encode(array(
-            'wp_user_id' => $wp_user_id,
-            'wp_roles' => $roles,
-            'wp_capabilities' => $all_caps,
-            'wp_user_level' => $wp_user->user_level,
-            'wp_user_status' => get_user_meta($wp_user_id, 'wp_user_status', true),
-            'wp_display_name' => $wp_user->display_name,
-            'wp_nickname' => $wp_user->nickname,
-            'wp_first_name' => $wp_user->first_name,
-            'wp_last_name' => $wp_user->last_name,
-            'wp_description' => $wp_user->description,
-            'wp_user_registered' => $wp_user->user_registered
-        ));
-
-        $stmt->execute(array(
-            ':id' => $ba_user_id_generated, // Provide the generated UUID
-            ':email' => $wp_user->user_email,
-            ':username' => $wp_user->user_login,
-            ':name' => $wp_user->display_name,
-            ':metadata' => $metadata
-        ));
-
-        // ---> Log after ba_users insert attempt <---
-        // error_log('[ASAP Digest Sync Trace] After ba_users execute. PDO Error: ' . print_r($ba_db->errorInfo(), true));
-
-        // Remove incorrect usage of lastInsertId
-        // $ba_user_id = $ba_db->lastInsertId();
-        // Use the generated ID instead:
-        $ba_user_id = $ba_user_id_generated; 
-
-        // ---> Log before ba_wp_user_map insert <---
-        // error_log('[ASAP Digest Sync Trace] Before ba_wp_user_map insert. WP User ID: ' . $wp_user_id . ', BA User ID: ' . $ba_user_id);
-
-        // Create mapping record
-        $mapped = $wpdb->insert(
-            $wpdb->prefix . 'ba_wp_user_map',
-            array(
-                'wp_user_id' => $wp_user_id,
-                'ba_user_id' => $ba_user_id, // Now using the correct string ID
-                'created_at' => current_time('mysql')
-            ),
-            array('%d', '%s', '%s') // Format specifiers are correct
-        );
-
-        // ---> Log after ba_wp_user_map insert attempt <---
-        if (!$mapped) {
-             error_log('[ASAP Digest Sync Trace] Failed ba_wp_user_map insert. WPDB Error: ' . $wpdb->last_error); // Keep original log
-             throw new \Exception('Failed to insert into ba_wp_user_map. WPDB Error: ' . $wpdb->last_error); // Also throw to ensure rollback
-        } else {
-             error_log('[ASAP Digest Sync Trace] Successfully inserted into ba_wp_user_map. Rows affected: ' . $wpdb->rows_affected); // Add success log
-        }
-
-        // ---> Log before commit <---
-        error_log('[ASAP Digest Sync Trace] Reached point just before transaction commit for WP User ID: ' . $wp_user_id . ', BA User ID: ' . $ba_user_id);
-
-        // Commit transaction
-        $ba_db->commit();
-
-        // ---> Log after commit <---
-        error_log('[ASAP Digest Sync Trace] Transaction committed successfully for WP User ID: ' . $wp_user_id);
-
-        return array(
-            'success' => true,
-            'ba_user_id' => $ba_user_id,
-            'message' => 'User synced successfully'
-        );
-
-    } catch (Exception $e) {
-        if (isset($ba_db) && $ba_db->inTransaction()) {
-            $ba_db->rollBack();
-        }
-        // ---> REMOVE Log exception message <---
-        // error_log('[ASAP Digest Sync Trace] Exception caught: ' . $e->getMessage()); 
-        return new WP_Error('sync_failed', $e->getMessage());
+        update_user_meta($wp_user_id, 'better_auth_sync_status', 'synced');
+        update_user_meta($wp_user_id, 'better_auth_sync_time', current_time('mysql'));
+        delete_user_meta($wp_user_id, 'better_auth_sync_error'); // Clear previous errors
+        asap_track_sync_source($wp_user_id, $source);
+        error_log('[ASAP Debug] SYNC FUNC: Sync successful for WP User ID: ' . $wp_user_id . '. BA ID: ' . ($ba_user_id ?? 'N/A')); // DEBUG
+        return ['status' => 'synced', 'data' => $result_data];
+    } else {
+        // Failure
+        update_user_meta($wp_user_id, 'better_auth_sync_status', 'error');
+        update_user_meta($wp_user_id, 'better_auth_sync_error', "HTTP {$response_code}: {$response_body}");
+        error_log('[ASAP Debug] SYNC FUNC: Sync failed for WP User ID: ' . $wp_user_id . '. Response Code: ' . $response_code); // DEBUG
+        return new WP_Error('sync_failed', "Better Auth sync failed with status {$response_code}.", ['status' => $response_code, 'body' => $response_body]);
     }
 }
 
@@ -931,12 +895,12 @@ function asap_render_better_auth_settings() {
         // Status Overview Card
         $status_content = '<div class="asap-status-grid">';
         
-        // Check if shared secret is set
-        $shared_secret = asap_get_constant('ASAP_BETTER_AUTH_SHARED_SECRET');
+        // Check if shared secret is set (use consistent constant name)
+        $shared_secret = asap_get_constant('BETTER_AUTH_SECRET'); // Changed constant name
         $status_content .= '<div class="status-item">';
         $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
             $shared_secret ? 'good' : 'error',
-            'Shared Secret: ' . ($shared_secret ? 'Configured' : 'Not Set')
+            'Shared Secret: ' . ($shared_secret ? 'Configured' : 'Not Set (Define BETTER_AUTH_SECRET in wp-config.php)') // Updated message
         );
         $status_content .= '</div>';
         
@@ -1743,17 +1707,21 @@ function asap_sync_better_auth_users() {
         wp_send_json_error(['message' => 'Better Auth base URL not configured']);
     }
     
+    // Use consistent constant name for signature
+    $timestamp = time();
+    $signature = hash_hmac(
+        'sha256',
+        $timestamp,
+        defined('BETTER_AUTH_SECRET') ? BETTER_AUTH_SECRET : get_option('better_auth_secret') // Changed constant/option
+    );
+
     // Make request to Better Auth API
     $response = wp_remote_get(
         $base_url . '/api/users',
         [
             'headers' => [
-                'X-Better-Auth-Timestamp' => time(),
-                'X-Better-Auth-Signature' => hash_hmac(
-                    'sha256',
-                    time(),
-                    defined('BETTER_AUTH_SHARED_SECRET') ? BETTER_AUTH_SHARED_SECRET : get_option('better_auth_shared_secret')
-                )
+                'X-Better-Auth-Timestamp' => $timestamp,
+                'X-Better-Auth-Signature' => $signature
             ]
         ]
     );
@@ -2352,25 +2320,25 @@ function asap_should_auto_sync_user($user) {
  * @param WP_User $user User object
  */
 function asap_handle_login_auto_sync($user_login, $user) {
-    if (!asap_should_auto_sync_user($user)) {
+    error_log('[ASAP Debug] LOGIN HOOK: asap_handle_login_auto_sync triggered for user: ' . $user_login . ' (ID: ' . $user->ID . ')'); // DEBUG
+    // Check if auto-sync is enabled
+    $options = get_option('better_auth_settings', []);
+    if (empty($options['auto_sync_enabled']) || !$options['auto_sync_enabled']) {
+        error_log('[ASAP Debug] LOGIN HOOK: Auto-sync disabled in settings. Skipping.'); // DEBUG
         return;
     }
 
-    // Check if user is already synced
-    $better_auth_id = get_user_meta($user->ID, 'better_auth_user_id', true);
-    if (!$better_auth_id) {
-        // Sync user with Better Auth
-        $result = asap_sync_wp_user_to_better_auth($user->ID);
-        if (!is_wp_error($result)) {
-            $better_auth_id = $result['ba_user_id'];
-        }
+    // Check if user role should be synced
+    if (!asap_should_auto_sync_user($user)) {
+        error_log('[ASAP Debug] LOGIN HOOK: User role should not be synced. Skipping.'); // DEBUG
+        return;
     }
 
-    // If we have a Better Auth ID, create a session
-    if ($better_auth_id) {
-        asap_create_wp_session_core($user->ID);
-    }
+    // Sync user data
+    error_log('[ASAP Debug] LOGIN HOOK: Calling asap_sync_wp_user_to_better_auth for user ID: ' . $user->ID); // DEBUG
+    asap_sync_wp_user_to_better_auth($user->ID, 'login');
 }
+add_action('wp_login', 'asap_handle_login_auto_sync', 10, 2);
 
 /**
  * @description Handle auto-sync when user's roles change
@@ -2799,4 +2767,13 @@ function asap_create_ba_session($ba_user_id) {
         return false;
     }
 }
+
+// ... existing code ...
+add_action('wp_ajax_nopriv_asap_unlock_role', 'asap_ajax_unlock_role');
+
+// TEMPORARY DEBUGGING HOOK
+function asap_debug_wp_login_hook_test($user_login, $user) {
+    error_log('[ASAP TEMP DEBUG] wp_login hook fired successfully for user: ' . $user_login);
+}
+add_action('wp_login', 'asap_debug_wp_login_hook_test', 5, 2); // Use priority 5 to fire early
   
