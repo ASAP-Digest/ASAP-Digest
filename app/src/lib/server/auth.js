@@ -423,6 +423,10 @@ export const auth = betterAuth({
     // databaseHooks: { ... }
 });
 
+// Add named export for the pool
+export { pool };
+
+// Keep the default export for auth
 export default auth;
 
 /**

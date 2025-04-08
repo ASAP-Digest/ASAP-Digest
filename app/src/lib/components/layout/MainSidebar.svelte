@@ -34,7 +34,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from "$lib/components/ui/Icon.svelte";
-  
+
   /**
    * @typedef {Object} IconObject
    * @property {string} name - The icon name
@@ -166,14 +166,21 @@
     console.log('[SidebarDebug] Collapsed state:', debugCollapsedState);
   }
   
-  // Accept collapsed state AND toggle function as props
+  // Accept props including the user data
   let {
     collapsed = false,
     toggleSidebar = () => { console.error('toggleSidebar prop not provided to MainSidebar'); },
-    isMobile = false, // Receive isMobile prop
-    closeMobileMenu = () => {} // Receive closeMobileMenu prop
+    isMobile = false,
+    closeMobileMenu = () => {},
+    /** @type {User} */
+    user = null
   } = $props();
-  
+
+  // Log received user data when it changes
+  $effect(() => {
+    console.debug('[MainSidebar $effect] Received user prop:', JSON.stringify(user));
+  });
+
   // Main navigation items with reactive closures for 'active' property
   const mainNavItems = [
     {
@@ -251,14 +258,6 @@
       }
     };
   });
-  
-  // User data mock - would come from authentication in a real app
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    avatar: "/images/avatar.png",
-    plan: "Free" // Free, Spark, Pulse, Bolt
-  };
   
   // Avatar dropdown open state
   let isAvatarDropdownOpen = $state(false);
@@ -889,34 +888,45 @@
     
     <Footer class="mt-auto border-t border-[hsl(var(--sidebar-border)/0.8)] px-4 py-4">
       <div class="relative">
-        <button
-          class="avatar-container flex w-full items-center rounded-md p-2 text-left transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.2)]"
-          class:justify-center={collapsed}
-          onclick={toggleAvatarDropdown}
-          aria-haspopup="true"
-          aria-expanded={isAvatarDropdownOpen}
-        >
-          <div class="avatar">
-            <img src={user.avatar} alt={user.name} onerror={handleImageError} class="h-full w-full object-cover" />
-          </div>
-          <div class="avatar-text-content ml-2 flex-grow overflow-hidden">
-            <div class="truncate font-semibold">{user.name}</div>
-            <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.plan}</div>
-          </div>
-          <div class="avatar-chevron ml-auto">
-            <Icon icon={ChevronDown} size={16} class={`transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </button>
+        {#if user}
+          <button
+            class="avatar-container flex w-full items-center rounded-md p-2 text-left transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.2)]"
+            class:justify-center={collapsed}
+            onclick={toggleAvatarDropdown}
+            aria-haspopup="true"
+            aria-expanded={isAvatarDropdownOpen}
+          >
+            <div class="avatar">
+              <img 
+                src={user.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'} 
+                alt={user.displayName || 'User Avatar'} 
+                onerror={handleImageError} 
+                class="h-full w-full object-cover" 
+              />
+            </div>
+            <div class="avatar-text-content ml-2 flex-grow overflow-hidden">
+              <div class="truncate font-semibold">{user.displayName || 'User Name'}</div>
+              <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.plan || 'Plan'}</div>
+            </div>
+            <div class="avatar-chevron ml-auto">
+              <Icon icon={ChevronDown} size={16} class={`transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+        {:else}
+          <a href="/login" class="flex w-full items-center justify-center rounded-md p-2 text-left transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.2)]">
+             Sign In
+          </a>
+        {/if}
         
-        {#if isAvatarDropdownOpen}
+        {#if isAvatarDropdownOpen && user}
           <div
             class="avatar-dropdown fixed z-[var(--z-dropdown)] w-64 max-h-[calc(100vh-7.5rem)] overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 shadow-lg animate-fadeIn"
             bind:this={avatarDropdownElement}
           >
             <div class="border-b border-[hsl(var(--border))] p-[0.5rem] dark:border-[hsl(var(--muted-foreground)/0.2)]">
-              <div class="font-semibold">{user.name}</div>
-              <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>
-              <div class="mt-[0.25rem] text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{user.plan}</div>
+              <div class="font-semibold">{user.displayName || 'User Name'}</div>
+              <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email || 'user@example.com'}</div>
+              <div class="mt-[0.25rem] text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{user.plan || 'Plan'}</div>
             </div>
             
             <div class="py-[0.25rem]">

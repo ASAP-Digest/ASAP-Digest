@@ -44,11 +44,10 @@
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
-  // Log user data from page store on mount
+  // Log user data from page store on mount AND whenever it changes
   $effect(() => {
-    if (browser) {
-      console.log('[Layout Client-Side] $page.data.user:', $page.data.user);
-    }
+    // This log runs both on the server (during SSR) and client
+    console.log('[Layout $effect] $page.data.user:', JSON.stringify($page.data.user || null));
   });
 
   // Effects using Svelte 5 runes
@@ -368,14 +367,17 @@
             aria-haspopup="true"
           >
             <div class="h-8 w-8 overflow-hidden rounded-full bg-[hsl(var(--muted)/0.2)]">
+              <!-- Use real user data for avatar -->
               <img
-                src="/images/avatar.png"
-                alt="User"
+                src={$page.data.user?.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'}
+                alt={$page.data.user?.displayName || 'User Avatar'}
                 class="h-full w-full object-cover"
                 onerror={(e) => {
                   if (typeof window === 'undefined') return;
-                  e.target.onerror = null;
-                  e.target.src =
+                  /** @type {HTMLImageElement} */
+                  const target = e.target; // Type assertion replaced with JSDoc
+                  target.onerror = null;
+                  target.src =
                     'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
                 }}
               />
@@ -383,42 +385,61 @@
           </button>
           
           <!-- User dropdown menu -->
-          <div
-            id="user-dropdown"
-            class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]"
-          >
+          {#if $page.data.user}
             <div
-              class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]"
+              id="user-dropdown"
+              class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]"
             >
-              <div class="font-semibold">John Doe</div>
               <div
-                class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]"
+                class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]"
               >
-                john.doe@example.com
+                <!-- Use real user data -->
+                <div class="font-semibold">{$page.data.user.displayName || 'User Name'}</div>
+                <div
+                  class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]"
+                >
+                  {$page.data.user.email || 'user@example.com'}
+                </div>
+              </div>
+              
+              <div class="py-1">
+                <a
+                  href="/dashboard"
+                  class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                >
+                  Dashboard
+                </a>
+                <a
+                  href="/settings"
+                  class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                >
+                  Settings
+                </a>
+                <!-- Use auth client signout -->
+                <button
+                  onclick={() => auth.signOut({ callbackUrl: '/' })}
+                  class="block w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                >
+                  Logout
+                </button>
               </div>
             </div>
-            
-            <div class="py-1">
-              <a
-                href="/dashboard"
-                class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+          {:else}
+             <!-- Optionally show login button if no user -->
+             <div 
+               id="user-dropdown" 
+               class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]"
               >
-                Dashboard
-              </a>
-              <a
-                href="/settings"
-                class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-              >
-                Settings
-              </a>
-              <a
-                href="/logout"
-                class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-              >
-                Logout
-              </a>
-            </div>
-          </div>
+                <div class="py-1">
+                  <a 
+                    href="/login" 
+                    class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
+                  >
+                    Login
+                  </a>
+                 </div>
+             </div>
+          {/if}
         </div>
       </div>
     </header>
@@ -434,6 +455,7 @@
         toggleSidebar={toggleDesktopSidebarCollapsed}
         isMobile={isMobile}
         closeMobileMenu={() => (isSidebarOpen = false)}
+        user={$page.data.user}
       />
     </aside>
     

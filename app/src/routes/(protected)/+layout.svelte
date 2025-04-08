@@ -22,9 +22,12 @@
       credentials: 'include'
     }).then(async (response) => {
       console.debug('[Sync Layout] Initial sync fetch completed. Status:', response.status);
+      console.log(`["(protected) Layout"] Sync API response status: ${response.status}`); // DEBUG
+
       if (response.ok) {
         const result = await response.json();
         console.debug('[Sync Layout] Initial sync result:', result);
+        console.debug('["(protected) Layout"] Received data from /api/auth/sync:', JSON.stringify(result)); 
         if (result.valid && result.updated) {
           console.debug('[Sync Layout] Initial sync indicates update. Invalidating and showing toast...');
           // Show auto-login notification only when auto-login occurs
