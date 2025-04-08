@@ -2,7 +2,7 @@
 <script>
     import { auth, useSession } from '$lib/auth-client';
     import { Button } from '$lib/components/ui/button';
-    import { LogIn, LogOut, Loader2 } from 'lucide-svelte';
+    import { LogIn, LogOut, Loader2 } from '$lib/utils/lucide-compat.js';
     
     const session = useSession();
     let loading = $state(false);

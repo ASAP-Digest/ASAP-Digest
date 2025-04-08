@@ -10,6 +10,7 @@
   /** @type {import('./$types').PageData} */
   const { data } = $props();
 
+  /** @type {import('app').App.User | null} */
   const user = $derived(data.user);
   
   // Tab management
@@ -17,22 +18,6 @@
   
   function setActiveTab(tab) {
     activeTab = tab;
-  }
-  
-  // Toggle dark mode
-  function toggleDarkMode() {
-    user.preferences.darkMode = !user.preferences.darkMode;
-    // TODO: Implement actual dark mode toggle
-  }
-  
-  // Toggle notification settings
-  function toggleNotifications() {
-    user.preferences.notifications = !user.preferences.notifications;
-  }
-  
-  // Toggle email digest
-  function toggleEmailDigest() {
-    user.preferences.emailDigest = !user.preferences.emailDigest;
   }
   
   // Handle save profile
@@ -115,16 +100,13 @@
     <!-- User header -->
     <div class="bg-[hsl(var(--primary))]/10 p-6 flex flex-col md:flex-row items-center gap-6">
       <img 
-        src={user.avatar} 
-        alt={user.name} 
+        src={user.avatarUrl} 
+        alt={user.displayName} 
         class="w-24 h-24 rounded-full border-4 border-white dark:border-gray-700 shadow-md"
       />
       <div class="text-center md:text-left">
-        <h1 class="text-2xl font-bold">{user.name}</h1>
+        <h1 class="text-2xl font-bold">{user.displayName}</h1>
         <p class="text-gray-600 dark:text-gray-400">{user.email}</p>
-        <p class="text-sm text-gray-500 dark:text-gray-500 mt-1">
-          Member since {new Date(user.joined).toLocaleDateString()}
-        </p>
       </div>
     </div>
     
@@ -170,7 +152,7 @@
             <input 
               type="text" 
               id="name" 
-              bind:value={user.name} 
+              bind:value={user.displayName} 
               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
@@ -190,7 +172,7 @@
             <input 
               type="text" 
               id="avatar" 
-              bind:value={user.avatar} 
+              bind:value={user.avatarUrl} 
               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
@@ -209,22 +191,6 @@
       <!-- Preferences Tab -->
       {#if activeTab === 'preferences'}
         <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="font-medium">Dark Mode</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">Enable dark theme for your application</p>
-            </div>
-            <button 
-              onclick={toggleDarkMode}
-              class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.darkMode ? 'bg-[hsl(var(--primary))]' : ''}"
-            >
-              <span 
-                class="block w-5 h-5 bg-white rounded-full shadow-md transform transition-transform {user.preferences.darkMode ? 'translate-x-4' : 'translate-x-0'}"
-              ></span>
-              <span class="sr-only">Toggle Dark Mode</span>
-            </button>
-          </div>
-          
           <div class="space-y-4">
             <h3 class="font-medium">Categories</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400">Select your interests to personalize your digest</p>
@@ -233,7 +199,7 @@
                 <label class="flex items-center">
                   <input 
                     type="checkbox" 
-                    checked={user.preferences.categories.includes(category)}
+                    checked={false}
                     class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                   />
                   <span class="ml-2 text-sm">{category}</span>
@@ -253,7 +219,6 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">Receive notifications when new digests are available</p>
             </div>
             <button 
-              onclick={toggleNotifications}
               class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.notifications ? 'bg-[hsl(var(--primary))]' : ''}"
             >
               <span 
@@ -269,7 +234,6 @@
               <p class="text-sm text-gray-600 dark:text-gray-400">Receive daily digest summaries via email</p>
             </div>
             <button 
-              onclick={toggleEmailDigest}
               class="flex items-center justify-center w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative {user.preferences.emailDigest ? 'bg-[hsl(var(--primary))]' : ''}"
             >
               <span 

@@ -6,6 +6,14 @@
   import { Bell } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   
+  /**
+   * @typedef {Object} HeaderProps
+   * @property {import('app').App.User | null} user - The user object or null if not logged in.
+   */
+
+  /** @type {HeaderProps} */
+  const { user = null } = $props(); // Accept user as a prop
+  
   // Avatar dropdown open state
   let isAvatarDropdownOpen = $state(false);
   
@@ -17,16 +25,8 @@
     isAvatarDropdownOpen = !isAvatarDropdownOpen;
   }
   
-  // Mock user data - would come from authentication in real app
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    avatar: "/images/avatar.png",
-    plan: "Free" // Free, Spark, Pulse, Bolt
-  };
-  
-  // Mock notification count
-  const notificationCount = 3;
+  // Use notification count from props or state if needed
+  let notificationCount = $state(3); // Example state, ideally from data
   
   // Error handler for images
   /**
@@ -128,19 +128,23 @@
           aria-expanded={isAvatarDropdownOpen}
         >
           <div class="w-[2rem] h-[2rem] rounded-full bg-[hsl(var(--muted)/0.2)] overflow-hidden">
-            <img 
-              src={user.avatar} 
-              alt={user.name} 
-              class="w-full h-full object-cover"
-              onerror={handleImageError}
-            />
+            {#if user}
+              <img 
+                src={user.avatarUrl}
+                alt={user.displayName}
+                class="w-full h-full object-cover"
+                onerror={handleImageError}
+              />
+            {:else}
+              <Icon icon={User} class="w-full h-full p-1 text-[hsl(var(--muted-foreground))]" />
+            {/if}
           </div>
         </button>
         
-        {#if isAvatarDropdownOpen}
+        {#if isAvatarDropdownOpen && user}
           <div class="avatar-dropdown">
             <div class="avatar-dropdown-header">
-              <div class="font-semibold">{user.name}</div>
+              <div class="font-semibold">{user.displayName}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>
             </div>
             

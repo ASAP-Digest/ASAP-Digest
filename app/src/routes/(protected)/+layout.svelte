@@ -11,6 +11,7 @@
   /** @type {import('./$types').LayoutData} */
   let { data, children } = $props();
 
+  /** @type {import('app').App.User | null} */
   const user = $derived(data.user);
   let syncInterval;
   let firstSync = true;
