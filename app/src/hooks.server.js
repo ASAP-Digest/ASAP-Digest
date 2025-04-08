@@ -85,29 +85,35 @@ const betterAuthHandle = async ({ event, resolve }) => {
         // Check CSRF token OR Sync Secret for mutating requests to auth endpoints
         const isAuthPath = event.url.pathname.startsWith('/api/auth/');
         const isMutatingMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method);
-        const isSyncPath = event.url.pathname === '/api/auth/users/sync';
+        const CORRECT_SYNC_PATH = '/api/auth/sync'; // Define constant for clarity
+        const isSyncPath = event.url.pathname === CORRECT_SYNC_PATH; // Correct path check
 
         if (isAuthPath && isMutatingMethod) {
             let isAuthorized = false;
+            let expectedAuthMethod = ''; // For logging/error message
+
             if (isSyncPath) {
                 // For the specific internal sync path, check the shared secret
-                console.log('[Auth Handle] Checking sync secret for /api/auth/users/sync'); // DEBUG
+                console.log(`[Auth Handle] Checking sync secret for ${CORRECT_SYNC_PATH}`); // Correct log
+                expectedAuthMethod = 'Sync Secret';
                 isAuthorized = validateSyncSecret(event.request);
             } else {
                 // For all other mutating auth paths, check the standard CSRF token
-                console.log(`[Auth Handle] Checking CSRF token for ${event.url.pathname}`); // DEBUG
+                console.log(`[Auth Handle] Checking CSRF token for ${event.url.pathname}`);
+                expectedAuthMethod = 'CSRF Token';
                 isAuthorized = validateCSRFToken(event.request);
             }
 
             if (!isAuthorized) {
-                 const errorMsg = isSyncPath ? 'Invalid Sync Secret' : 'Invalid CSRF token';
-                 console.warn(`[Auth Handle] ${errorMsg} for ${event.url.pathname}`); // DEBUG
+                 // Use expectedAuthMethod for clearer error message
+                 const errorMsg = `Invalid ${expectedAuthMethod}`; 
+                 console.warn(`[Auth Handle] ${errorMsg} for ${event.url.pathname}`);
                  return new Response(JSON.stringify({ error: errorMsg }), {
                     status: 403,
                     headers: { 'Content-Type': 'application/json' }
                  });
             } else {
-                 console.log(`[Auth Handle] Authorization successful for ${event.url.pathname}`); // DEBUG
+                 console.log(`[Auth Handle] Authorization successful for ${event.url.pathname} using ${expectedAuthMethod}`);
             }
         }
 
@@ -129,8 +135,12 @@ const betterAuthHandle = async ({ event, resolve }) => {
             });
         }
 
-        // Handle auth routes with Better Auth
-        if (event.url.pathname.startsWith('/api/auth/')) {
+        // Handle auth routes with Better Auth, *except* our custom sync route
+        // which is handled by its own +server.js after secret validation.
+        const isStandardAuthPath = event.url.pathname.startsWith('/api/auth/') && !isSyncPath; 
+
+        if (isStandardAuthPath) {
+            console.log(`[Auth Handle] Passing standard auth path ${event.url.pathname} to auth.handler`); // DEBUG
             try {
                 const response = await auth.handler(event.request);
                 if (response) return response;
@@ -143,6 +153,8 @@ const betterAuthHandle = async ({ event, resolve }) => {
             }
         }
         
+        // Resolve the request (this will now correctly route /api/auth/sync)
+        console.log(`[Auth Handle] Resolving request for ${event.url.pathname}`); // DEBUG
         return resolve(event);
     } catch (error) {
         console.error('Auth handle error:', error);

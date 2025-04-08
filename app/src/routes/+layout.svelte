@@ -25,10 +25,10 @@
   import GlobalFAB from '$lib/components/layout/GlobalFAB.svelte';
   import { fade } from 'svelte/transition';
   // Import the functions
-  import { getInstallPrompt, getIsInstallable, getIsPWA } from '$lib/stores/pwa.svelte.js'; 
-  // let installPrompt = null; // TEMP: Remove Fallback
-  // let isInstallable = false; // TEMP: Remove Fallback
-  // let isPWA = false; // TEMP: Remove Fallback
+  import { getInstallPrompt, getIsInstallable, getIsPWA } from '$lib/stores/pwa.svelte.js';
+  // Import local toast components and store
+  import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
+  import { toasts } from '$lib/stores/toast.js';
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -207,9 +207,37 @@
   import { auth, useSession } from '$lib/auth-client';
   import AuthButtons from '$lib/components/AuthButtons.svelte';
   import { navigating } from '$app/stores';
-  import { Loader2 } from 'lucide-svelte';
+  // Remove direct import
+  // import { Loader2 } from 'lucide-svelte';
+  // Import wrapper and icon from compat layer
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { Loader2 } from '$lib/utils/lucide-compat.js';
 
   const { data: session } = useSession();
+
+  // Store the last known updatedAt timestamp
+  let lastUpdatedAt = $state(null);
+
+  $effect(() => {
+    const currentUser = $page.data.user;
+    if (currentUser?.updatedAt) {
+      if (lastUpdatedAt === null) {
+        // Initialize on first load
+        lastUpdatedAt = currentUser.updatedAt;
+        console.log('[Layout Effect] Initialized lastUpdatedAt:', lastUpdatedAt); // DEBUG
+      } else if (currentUser.updatedAt !== lastUpdatedAt) {
+        // Timestamp has changed, trigger toast
+        console.log('[Layout Effect] User data updated. Old ts:', lastUpdatedAt, 'New ts:', currentUser.updatedAt); // DEBUG
+        // Use the local toast store's show method
+        toasts.show('Profile synchronized.', 'success');
+        lastUpdatedAt = currentUser.updatedAt; // Update the stored timestamp
+      }
+    } else if (lastUpdatedAt !== null && !currentUser) {
+       // User logged out, reset timestamp
+       console.log('[Layout Effect] User logged out, resetting lastUpdatedAt.'); // DEBUG
+       lastUpdatedAt = null;
+    }
+  });
 </script>
 
 <svelte:head>
@@ -431,7 +459,8 @@
       <div>
         {#if $navigating}
           <div class="flex justify-center items-center min-h-[50vh]">
-            <Loader2 class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
+            <!-- Use Icon wrapper -->
+            <Icon icon={Loader2} class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
           </div>
         {:else}
           {@render children?.()}
@@ -466,6 +495,9 @@
     </div>
   {/if}
 {/if}
+
+<!-- Add local ToastContainer component -->
+<ToastContainer />
 
 <style>
   /* Add CSS for lazy-loaded images */

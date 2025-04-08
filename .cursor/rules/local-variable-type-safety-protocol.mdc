@@ -1,0 +1,156 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Local Variable Type Safety Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes the standard practice for ensuring type safety when working with local variables within JavaScript functions, especially when using JSDoc for type checking. It specifically addresses scenarios where variables hold values whose types are **union types** (representing multiple possible structures) or objects where the presence of specific properties cannot be guaranteed at compile time by the type checker. This is common when dealing with return values from external libraries (e.g., database drivers, API clients) or dynamic data transformations. The goal is to prevent potential runtime errors and satisfy linter checks by explicitly verifying the shape or type of data *before* accessing potentially non-existent properties.
+
+## 2. Core Principles
+
+-   **Proactive Verification:** Type guards MUST be implemented *before* accessing properties on variables that might hold union types or objects with optional properties. Do not assume the shape of data returned from external sources.
+-   **Explicit Guards:** Use clear and appropriate JavaScript runtime checks (type guards) to narrow down the type of a variable within a specific code block.
+-   **Avoid Unsafe Access:** Directly accessing properties on a variable without a preceding, relevant type guard that confirms the property's existence is NOT PERMITTED if the variable's type definition allows for shapes where the property might be absent.
+
+## 3. Identifying Potential Issues
+
+Be vigilant for type safety issues when:
+
+-   Handling return values from asynchronous operations (e.g., `fetch`, database queries).
+-   Working with data from external APIs or libraries where the exact response structure might vary.
+-   Processing data where transformations might lead to different possible output shapes.
+-   Using libraries whose JSDoc/TypeScript definitions utilize union types for return values (like `mysql2/promise`'s `QueryResult`).
+
+## 4. Required Type Guard Implementation
+
+Before accessing a specific property (`prop`) on a variable (`myVar`) whose type might not guarantee the presence of `prop`, you MUST use one or more appropriate type guards within the same logical scope.
+
+### 4.1 Common Type Guards
+
+-   **Property Existence Check:** Useful for objects where a specific key might be optional or part of only one type in a union.
+    ````javascript
+    /** @type {{ success: boolean, data?: string } | { success: boolean, error: string }} */
+    let apiResult = await fetchData();
+
+    if (apiResult.success && 'data' in apiResult) {
+      // SAFE: 'data' is guaranteed to exist here
+      console.log(apiResult.data.toUpperCase()); 
+    } else if (!apiResult.success && 'error' in apiResult) {
+      // SAFE: 'error' is guaranteed to exist here
+      console.error(apiResult.error);
+    }
+    ````
+
+-   **Type Check (`typeof`):** For distinguishing between primitive types.
+    ````javascript
+    /** @type {string | number} */
+    let value = getConfigValue();
+
+    if (typeof value === 'string') {
+      // SAFE: Treat as string
+      console.log(value.trim());
+    } else {
+      // SAFE: Treat as number (assuming only string/number possible)
+      console.log(value.toFixed(2));
+    }
+    ````
+
+-   **Instance Check (`instanceof`):** For distinguishing between class instances.
+    ````javascript
+    class CustomError extends Error { /* ... */ }
+
+    /** @type {Error | CustomError} */
+    let result = await performAction();
+
+    if (result instanceof CustomError) {
+      // SAFE: Access CustomError specific properties
+      console.error('Custom Error Code:', result.code); 
+    } else if (result instanceof Error) {
+      // SAFE: Access standard Error properties
+      console.error('Standard Error:', result.message);
+    }
+    ````
+
+-   **Array Check (`Array.isArray`):** Crucial when a result might be an object or an array.
+    ````javascript
+    /** @type {import('mysql2/promise').QueryResult | null} */
+    let dbResult = await connection.query('SELECT * FROM users');
+    // QueryResult can be RowDataPacket[], ResultSetHeader, OkPacket, etc.
+
+    if (Array.isArray(dbResult?.[0])) {
+      // SAFE: dbResult[0] is the array of rows for SELECT
+      const rows = dbResult[0];
+      console.log(`Found ${rows.length} users.`);
+      rows.forEach(user => console.log(user.email)); 
+    } else if (dbResult && typeof dbResult[0] === 'object' && dbResult[0] !== null && !Array.isArray(dbResult[0])) {
+       // Handle OkPacket, ResultSetHeader etc. based on specific properties if needed
+       // Example: Checking for affectedRows after an UPDATE/DELETE
+       // (Requires further specific property checks as below)
+    }
+    ````
+
+-   **Null/Undefined Check:** Always necessary when a value might be absent.
+    ````javascript
+    /** @type {{ user?: { name: string } }} */
+    let session = getSessionData();
+
+    if (session.user && typeof session.user.name === 'string') {
+        // SAFE: 'user' exists and 'name' exists
+        console.log(session.user.name);
+    }
+    ````
+
+### 4.2 Example: Handling `mysql2/promise` `execute` Result (The Resolved Issue)
+
+The `connection.execute()` method often returns a `QueryResult`, which is a tuple where the first element (`result[0]`) can be `OkPacket`, `ResultSetHeader`, `RowDataPacket[]`, etc.
+
+**Problematic Pattern (Linter Error / Unsafe):**
+
+````javascript
+// usersResult type is QueryResult (complex union)
+const [usersResult] = await connection.execute(sql, params); 
+
+if (usersResult && typeof usersResult === 'object') { 
+    // UNSAFE / LINTER ERROR: 'affectedRows'/'insertId' may not exist on all object
+    // types within the QueryResult union, even if it's an object.
+    // const affectedRows = usersResult.affectedRows; 
+    // const insertId = usersResult.insertId; 
+}
+````
+
+**Corrected Pattern (Using Type Guard):**
+
+````javascript
+const [usersResult] = await connection.execute(sql, params); 
+
+// Type Guard: Check for specific properties expected from INSERT/UPDATE results
+if (usersResult && typeof usersResult === 'object' && 
+    'affectedRows' in usersResult && 'insertId' in usersResult) {
+    
+    // SAFE: The 'in' operator guarantees these properties exist within this block.
+    const affectedRows = usersResult.affectedRows ?? 0;
+    const insertId = usersResult.insertId ?? 0; 
+
+    console.log(`Operation affected ${affectedRows} rows.`);
+    if (insertId > 0) {
+        console.log(`New insert ID: ${insertId}`);
+    }
+} else if (Array.isArray(usersResult)) {
+    // Handle SELECT results (rows are in usersResult itself if using execute without destructuring the tuple)
+    console.log(`Query returned ${usersResult.length} rows.`);
+} 
+// Add other 'else if' blocks as needed for other QueryResult possibilities
+````
+
+## 5. Verification Checklist
+
+When reviewing code involving local variables with potentially ambiguous types:
+
+-   [ ] Is the variable's type potentially a union type or an object with optional properties (especially if from an external source)?
+-   [ ] Are specific properties of this variable being accessed?
+-   [ ] Is there an appropriate type guard (e.g., `'prop' in obj`, `typeof`, `instanceof`, `Array.isArray`, null check) in the same logical block *before* the property access?
+-   [ ] Does the type guard correctly narrow the type to ensure the accessed property exists in that block?
+-   [ ] Is unsafe direct access to potentially non-existent properties avoided?

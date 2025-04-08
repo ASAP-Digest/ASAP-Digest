@@ -716,7 +716,7 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
 
     // Get Better Auth API endpoint
     $api_base_url = asap_get_better_auth_base_url();
-    $sync_endpoint = $api_base_url . '/api/auth/users/sync'; // Using the SvelteKit base URL
+    $sync_endpoint = $api_base_url . '/api/auth/sync'; // Using the SvelteKit base URL (Removed /users/)
 
     // Get the shared secret (using consistent constant name)
     $shared_secret = asap_get_constant('BETTER_AUTH_SECRET'); // Changed constant name
@@ -767,7 +767,8 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
         delete_user_meta($wp_user_id, 'better_auth_sync_error'); // Clear previous errors
         asap_track_sync_source($wp_user_id, $source);
         error_log('[ASAP Debug] SYNC FUNC: Sync successful for WP User ID: ' . $wp_user_id . '. BA ID: ' . ($ba_user_id ?? 'N/A')); // DEBUG
-        return ['status' => 'synced', 'data' => $result_data];
+        // Include ba_user_id in the return array for successful sync
+        return ['status' => 'synced', 'data' => $result_data, 'ba_user_id' => $ba_user_id]; 
     } else {
         // Failure
         update_user_meta($wp_user_id, 'better_auth_sync_status', 'error');
@@ -2586,140 +2587,42 @@ add_action('wp_ajax_asap_save_locked_roles', 'asap_ajax_save_locked_roles');
  * @created 04.01.25 | 09:15 PM PDT
  */
 function asap_auto_sync_user_data($user_id, $context = null) {
-    // ---> MODIFIED: Get current user data regardless of context <---
+    error_log(sprintf('[ASAP Auto Sync Hook] CALLED for user ID: %s (Context: %s)', $user_id, print_r($context, true))); // Log context too
+    
     $user = get_user_by('ID', $user_id);
     if (!$user) {
+        error_log(sprintf('[ASAP Auto Sync Hook] ERROR: User not found for ID: %s. Exiting.', $user_id));
         return new WP_Error('user_not_found', 'WordPress user not found for ID: ' . $user_id);
     }
+    error_log('[ASAP Auto Sync Hook] User found. Triggering sync via asap_sync_wp_user_to_better_auth...');
     
-    // Create the user_data array from the current WP_User object
-    $user_data = array(
-        'ID' => $user_id,
-        'user_email' => $user->user_email,
-        'display_name' => $user->display_name,
-        'user_url' => $user->user_url,
-        'avatar_url' => get_avatar_url($user_id) // Fetch current avatar URL
-    );
-    // ---> END MODIFICATION <---
+    // ---> REMOVED: Check for existing meta ID <-----
+    // ---> REMOVED: Direct PDO Connection and UPDATE logic <-----
 
-    // Get Better Auth user ID
-    $better_auth_user_id = get_user_meta($user_id, 'better_auth_user_id', true);
-    if (!$better_auth_user_id) {
-        // Create Better Auth user if doesn't exist
-        error_log("[ASAP Auto Sync] User ID {$user_id} not found in Better Auth meta. Attempting initial sync."); // Added log
-        $sync_result = asap_sync_wp_user_to_better_auth($user_id, 'auto_sync_profile_update'); // Pass specific source
-        if (is_wp_error($sync_result)) {
-             error_log("[ASAP Auto Sync] Initial sync failed for User ID {$user_id}: " . $sync_result->get_error_message()); // Added log
-            return $sync_result;
-        }
-         if (!isset($sync_result['ba_user_id'])) { // Check if ba_user_id exists
-             error_log("[ASAP Auto Sync] Initial sync succeeded but ba_user_id missing for User ID {$user_id}"); // Added log
-             return new WP_Error('sync_error', 'Better Auth User ID missing after initial sync.');
-         }
-        $better_auth_user_id = $sync_result['ba_user_id'];
-         error_log("[ASAP Auto Sync] Initial sync successful for User ID {$user_id}. BA ID: {$better_auth_user_id}"); // Added log
+    // Always call the sync function which handles the HTTP request to SvelteKit
+    $sync_result = asap_sync_wp_user_to_better_auth($user_id, 'auto_sync_profile_update'); 
+    
+    error_log('[ASAP Auto Sync Hook] Sync result: ' . print_r($sync_result, true));
+
+    if (is_wp_error($sync_result)) {
+        error_log("[ASAP Auto Sync Hook] Sync returned WP_Error: " . $sync_result->get_error_message());
+        // Do not update meta on error
+    } else {
+        // Success - WP meta (like sync time, status, ba_user_id) 
+        // is already updated *inside* asap_sync_wp_user_to_better_auth on successful response
+        error_log("[ASAP Auto Sync Hook] Sync successful (WP meta updated within called function).");
+        // Fire action for integrations
+        do_action('asap_user_data_synced', $user_id, ($sync_result['ba_user_id'] ?? null), []); // Note: user_data array is not readily available here
+        return true; // Indicate success from this hook's perspective
     }
-
-    try {
-        // Get database configuration from environment
-        $db_host = defined('BETTER_AUTH_DB_HOST') ? BETTER_AUTH_DB_HOST : 'localhost';
-        $db_port = defined('BETTER_AUTH_DB_PORT') ? BETTER_AUTH_DB_PORT : '3306';
-        $db_name = defined('BETTER_AUTH_DB_NAME') ? BETTER_AUTH_DB_NAME : DB_NAME;
-        $db_user = defined('BETTER_AUTH_DB_USER') ? BETTER_AUTH_DB_USER : DB_USER;
-        $db_pass = defined('BETTER_AUTH_DB_PASSWORD') ? BETTER_AUTH_DB_PASSWORD : DB_PASSWORD;
-
-        // Connect to Better Auth database with error handling
-        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $db_host, $db_port, $db_name);
-        $options = array(
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 5
-        );
-
-        $ba_db = new PDO($dsn, $db_user, $db_pass, $options);
-
-        // Start transaction
-        $ba_db->beginTransaction();
-
-        try {
-            // Update Better Auth user data
-            // ---> MODIFIED: Use correct column name 'name' and remove non-existent columns <---
-            $stmt = $ba_db->prepare("
-                UPDATE ba_users 
-                SET 
-                    email = :email,
-                    name = :name, 
-                    updated_at = NOW()
-                    -- Removed avatar_url, website, sync_status as they aren't direct columns
-                WHERE id = :id
-            ");
-
-            // ---> MODIFIED: Use correct parameter name :name <---
-            $stmt->execute([
-                ':email' => $user_data['user_email'],
-                ':name' => $user_data['display_name'], // Use 'name' for the column, but data comes from WP display_name
-                // Removed parameters for avatar_url, website
-                ':id' => $better_auth_user_id
-            ]);
-
-            // ---> REMOVED: Update sync metadata section <---
-            // This section attempts to use a non-existent ba_user_metadata table.
-            // Sync status/time should ideally be updated in the main ba_users metadata or WP user meta.
-            /* 
-            $meta_stmt = $ba_db->prepare("
-                INSERT INTO ba_user_metadata 
-                    (user_id, meta_key, meta_value, updated_at)
-                VALUES 
-                    (:user_id, 'wp_sync_time', :sync_time, NOW())
-                ON DUPLICATE KEY UPDATE
-                    meta_value = :sync_time,
-                    updated_at = NOW()
-            ");
-
-            $meta_stmt->execute([
-                ':user_id' => $better_auth_user_id,
-                ':sync_time' => current_time('mysql')
-            ]);
-            */
-
-            // Commit transaction
-            $ba_db->commit();
-
-            // Update WordPress user meta
-            update_user_meta($user_id, 'better_auth_sync_time', current_time('mysql'));
-            update_user_meta($user_id, 'better_auth_sync_status', 'synced');
-
-            // Fire action for integrations
-            do_action('asap_user_data_synced', $user_id, $better_auth_user_id, $user_data);
-
-            return true;
-        } catch (Exception $e) {
-            // Rollback transaction on error
-            $ba_db->rollBack();
-            throw $e;
-        }
-    } catch (PDOException $e) {
-        // Handle database connection errors
-        error_log(sprintf('Better Auth sync error for user %d: %s', $user_id, $e->getMessage()));
-        return new WP_Error(
-            'sync_failed', 
-            'Database connection error during sync. Please try again.',
-            array('error' => $e->getMessage())
-        );
-    } catch (Exception $e) {
-        // Handle other errors
-        error_log(sprintf('Better Auth sync error for user %d: %s', $user_id, $e->getMessage()));
-        return new WP_Error(
-            'sync_failed',
-            'An error occurred during sync. Please try again.',
-            array('error' => $e->getMessage())
-        );
-    }
+    
+    // Return the WP_Error if sync failed, otherwise true was returned
+    return $sync_result; 
 }
 
 // Hook into user profile updates
-add_action('profile_update', 'asap_auto_sync_user_data', 10, 2);
-add_action('user_register', 'asap_auto_sync_user_data', 10);
+add_action('profile_update', 'asap_auto_sync_user_data', 10, 2); // UNCOMMENTED
+add_action('user_register', 'asap_auto_sync_user_data', 10); // UNCOMMENTED
 
 /**
  * @description Creates a new session token for a Better Auth user
