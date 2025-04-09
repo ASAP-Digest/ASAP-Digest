@@ -17,7 +17,7 @@ alwaysApply: true
 │ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules
 │ 5. Session Management Protocol (This)   │
 │ 6. Status Check Protocol                │
-│ 7. Cross-Protocol Comms & Verification  │
+│ 7. Cross-Protocol Comms & Verification   │
 │ 8. Universal Error Resolution Protocol  │
 │ 9. Audit Trail System                   │
 └─────────────────────────────────────────┘

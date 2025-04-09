@@ -697,9 +697,28 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
          return ['status' => 'excluded', 'message' => 'User role excluded from sync.'];
     }
 
+    // *** START ADDED CODE ***
+    // Get the Better Auth user ID (ba_user_id) from the map
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'ba_wp_user_map';
+    $ba_user_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT ba_user_id FROM {$table_name} WHERE wp_user_id = %d",
+        $wp_user_id
+    ));
+
+    if (!$ba_user_id) {
+        error_log('[ASAP Debug] SYNC FUNC: Could not find corresponding ba_user_id for wp_user_id: ' . $wp_user_id . ' in ' . $table_name);
+        // Decide if this is an error or if the sync should proceed without it
+        // For now, we'll log and proceed, but the SvelteKit endpoint requires it,
+        // so the sync will likely fail there. This indicates an incomplete initial sync/mapping.
+        // Alternatively, could return a specific WP_Error here.
+    }
+    // *** END ADDED CODE ***
+
     // Prepare user data payload
     $user_data = [
         'wpUserId' => $wp_user_id,
+        'skUserId' => $ba_user_id, // *** ADDED LINE ***
         'email' => $user->user_email,
         'username' => $user->user_login,
         'displayName' => $user->display_name ?: $user->user_login,
