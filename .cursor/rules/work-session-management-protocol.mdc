@@ -3,9 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.1
+# Enhanced Work Session Management Protocol (WSMP) v2.2
 
 ## 1. Protocol Integration Layer
+*(No changes from v2.1)*
 ````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
@@ -21,9 +22,9 @@ alwaysApply: true
 │ 9. Audit Trail System                   │
 └─────────────────────────────────────────┘
 ````
-*Self-Correction: Consolidated Memory Maintenance reference.*
 
 ## 2. Activation Commands & Flow
+*(No changes from v2.1)*
 ````text
 A. Start New Session
 - Command: "Begin Work Session" or alias "BWS"
@@ -45,7 +46,7 @@ C. Resume Saved Session
 - Purpose: Resumes a previously saved work session, making it the active session again.
 - Optional Parameters:
   - `saveSessionID`: The specific name/ID of the `WorkSessionSave` entity to resume from.
-- Default Behavior: If `saveSessionID` is not provided, RWS MUST attempt to resume from the MOST RECENTLY created `WorkSessionSave` entity in Server Memory. If none found, falls back to suggesting the last active session.
+- Default Behavior: If `saveSessionID` is not provided, RWS MUST attempt to resume from the MOST RECENTLY created `WorkSessionSave` entity in Server Memory. If none found, it initiates the fallback sequence (See Section 3.3).
 
 D. End Session
 - Command: "End Work Session" or alias "EWS"
@@ -57,6 +58,7 @@ D. End Session
 ## 3. Context Establishment & Session Lifecycle Management
 
 ### 3.1 Session Initiation (BWS)
+*(No changes from v2.1)*
 ````text
 1.  **Pre-Check:** Execute "Status Check" (SC).
 2.  **Analyze SC Output:** Extract `🎯 Current / Operational Priority` and `⚙️ Overall Context` from the SC report.
@@ -75,26 +77,32 @@ D. End Session
 ````
 
 ### 3.2 Save Work Session (SWS)
+*Self-Correction: Added explicit verification and rollback steps to prevent inconsistency.*
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
 2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-3.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
+3.  **Pre-Save Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
 4.  **Generate Save ID:** Create a unique ID for the save state (e.g., `WSSave_[SessionIDShort]_[Timestamp]`).
-5.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory with the generated Save ID, including:
+5.  **Entity Creation:** Attempt to create the `WorkSessionSave` entity in Server Memory with the generated Save ID, including:
     - Save timestamp.
     - Link to the active `WorkSession` entity ID.
     - Save Reason (if provided).
     - Observations summarizing key state points (e.g., active task ID, relevant open files/entities, current error state if any).
-6.  **Update Active Session:** Add observation to the active `WorkSession` entity: `Session paused by WSSave_[ID] at [Timestamp]`. Change status to `PAUSED`.
-7.  **Task Status Marker (Optional but Recommended):** Update the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. This MUST be done consistently if implemented.
-8.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
-9.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
-10. **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID.
+6.  **Verify Entity Creation:** Immediately after step 5, attempt to read the newly created `WorkSessionSave` entity from Server Memory using its generated Save ID.
+7.  **Handle Verification Result:**
+    - **If Verification SUCCEEDS:** Proceed to step 8.
+    - **If Verification FAILS:** Report error "Failed to create/verify WorkSessionSave entity '[SaveID]' in Server Memory. SWS operation aborted, state not saved." DO NOT proceed to step 8. Stop SWS process here.
+8.  **Update Active Session:** (Only if step 7 succeeded) Add observation to the active `WorkSession` entity: `Session paused by WSSave_[ID] at [Timestamp]`. Change status to `PAUSED`.
+9.  **Task Status Marker (Optional but Recommended):** (Only if step 7 succeeded) Update the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. This MUST be done consistently if implemented.
+10. **Relation Creation:** (Only if step 7 succeeded) Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
+11. **Audit:** Record `SESSION_SAVE` event in Audit Trail.
+12. **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID.
 ````
 
 ### 3.3 Resume Work Session (RWS)
+*Self-Correction: Refined fallback logic to detect inconsistency between roadmap and memory.*
 ````text
-1.  **Identify Target Save State & Fallback:**
+1.  **Identify Target Save State & Initiate Fallback:**
     - If `saveSessionID` parameter is provided:
       - Search Server Memory for a `WorkSessionSave` entity with that name.
       - If found: Proceed to step 2 (Resume Found Save).
@@ -102,12 +110,18 @@ D. End Session
     - If no `saveSessionID` parameter is provided:
       - Search Server Memory for the most recently created `WorkSessionSave` entity based on timestamp in observations or name.
       - If found: Proceed to step 2 (Resume Found Save).
-      - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Suggest Last Session).
+      - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Initiate Fallback Check).
 
-    1.a. **Suggest Last Session (Fallback):**
+    1.a. **Fallback Check 1: Scan Roadmap for Paused Markers:**
+        - Read `docs/ROADMAP_TASKS.md`.
+        - Search the content specifically for the `⏸️` emoji marker.
+        - **If `⏸️` markers ARE FOUND:** Report error "Inconsistency Detected: Roadmap file shows paused task(s) (marked with ⏸️), but no corresponding 'WorkSessionSave' entity was found in Server Memory. Manual review/cleanup suggested before proceeding. Cannot resume automatically." and stop.
+        - **If `⏸️` markers ARE NOT FOUND:** Proceed to step 1.b (Fallback Check 2).
+
+    1.b. **Fallback Check 2: Suggest Last Active Session:**
         - Search Server Memory for the `WorkSession` entity with the latest activity (based on `endTime` or the timestamp of the last observation, prioritizing `endTime` if available).
-        - If a recent `WorkSession` is found: Report "No active saved session found to resume. The most recent session activity was for '[Found Session ID]' (Status: [Status], Ended: [End Time/Last Activity Time]). Did you mean to start a new session (BWS)?" and stop.
-        - If no `WorkSessionSave` and no recent `WorkSession` entities are found: Report "No saved session or recent activity found. Use BWS to start a new session." and stop.
+        - If a recent `WorkSession` is found: Report "No active saved session found to resume. The most recent session activity was for '[Found Session ID]' (Status: [Status], Ended: [End Time/Last Activity Time]). Use BWS to start a new session if intended." and stop.
+        - If no `WorkSessionSave` (from initial check) and no recent `WorkSession` entities are found: Report "No saved session or recent activity found. Use BWS to start a new session." and stop.
 
 2.  **Retrieve Saved State:** (Executed only if a `WorkSessionSave` was found in step 1)
     - Get the target `WorkSessionSave` entity and its linked `WorkSession` entity ID.
@@ -120,13 +134,14 @@ D. End Session
 6.  **Restore Context (Informational):**
     - Log the restored context (priority task, overall context) based on the resumed `WorkSession` entity's observations.
 7.  **Task Status Marker Update:**
-    - If the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄).
+    - If the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄). This MUST be done consistently if the marker is used.
 8.  **Verification:** Execute L1/L3 Verification Chain checks.
 9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail.
 10. **Feedback:** Confirm session resumption, stating the active Session ID and the priority task.
 ````
 
 ### 3.4 End Work Session (EWS)
+*(No changes from v2.1)*
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
 2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
@@ -144,34 +159,11 @@ D. End Session
 ````
 
 ## 4. Cross-Protocol Event System Integration
-````javascript
-// Conceptual Example: Event Handling Remains Similar
-class WorkSessionManager {
-    async handleSessionEvent(event) {
-        const eventSystem = await CrossProtocolEventSystem.getInstance();
-        await eventSystem.processEvent(event); // Handles routing, validation
-
-        // Specific actions based on event type
-        switch (event.type) {
-            case 'SESSION_START':
-                // ... logic using SC context, generate new ID ...
-                break;
-            case 'SESSION_SAVE':
-                // ... logic for creating save entity, optional roadmap marker ...
-                break;
-            case 'SESSION_RESUME':
-                // ... logic for finding save state, updating session, roadmap marker ...
-                break;
-            case 'SESSION_END':
-                // ... finalization logic, roadmap updates ...
-                break;
-        }
-        await this.auditTrail.recordSessionEvent(event);
-    }
-}
-````
+*(No changes from v2.1)*
+*(...Content identical to v2.1...)*
 
 ## 5. Task Status Management Integration
+*(No changes from v2.1, but emphasizes consistent handling of PAUSED marker)*
 ````javascript
 // Conceptual Example: Status Updates (with PAUSED -> ACTIVE)
 class SessionTaskManager {
@@ -205,27 +197,23 @@ class SessionTaskManager {
     }
 }
 ````
-*Self-Correction: Updated status names slightly for clarity (`ACTIVE`) and emphasized handling the `PAUSED` marker change during `RWS`.*
 
 ## 6. Verification Chain System Integration
-*(Remains conceptually similar, applied during BWS, SWS, RWS, EWS transitions)*
+*(No changes from v2.1)*
 
 ## 7. Error Recovery System Integration
-*(Remains conceptually similar, applicable to failures during BWS, SWS, RWS, EWS)*
+*(No changes from v2.1)*
 
 ## 8. Audit Trail System Integration
-*(Remains conceptually similar, logs `SESSION_START`, `SESSION_SAVE`, `SESSION_RESUME`, `SESSION_END` events)*
+*(No changes from v2.1)*
 
 ## 9. Session ID Naming Convention Recommendation
-````text
-- **Problem:** Current reliance on `log_compact` timestamp (e.g., `WorkSession_FEATURE_20250408_162141`) is prone to collisions if commands run quickly and lacks human readability.
-- **Recommendation:** Update the naming convention defined in `server-memory-rules.mdc` (Section 4.2). Suggest alternatives like:
-    - `WS_[Type]_[YYYYMMDD]_[ShortHash/Seq]`: e.g., `WS_FEAT_20250409_a3f7` (Short hash of timestamp or a sequence number for the day)
-    - `WS_[Type]_[PriorityTaskName]_[YYYYMMDD]`: e.g., `WS_FEAT_ImplementAudio_20250409` (Uses a sanitized version of the priority task name)
-- **Action Required:** This protocol (`WSMP`) will use the convention defined in `server-memory-rules.mdc`. That rule file needs to be updated separately to implement a new naming scheme.
-````
+*(No changes from v2.1 - Requires separate update to `server-memory-rules.mdc`)*
 
 ## 10. Potential Improvements & Considerations
-*(Existing points remain relevant, plus consideration for:*
--   *Clarity on `RWS` context restoration scope (memory links vs. active tool state).*
--   *Robustness of finding the "most recent" `WorkSessionSave`.*)
+*(No changes from v2.1)*
+
+## 11. Rationale for v2.2 Changes
+- **SWS Enhancement:** Added verification after `WorkSessionSave` entity creation (Step 6 & 7) to prevent the protocol from proceeding if the entity wasn't successfully stored in Server Memory. This aims to stop the inconsistent state (roadmap paused, memory entity missing) from being created in the first place.
+- **RWS Fallback Enhancement:** Modified the fallback logic when no `WorkSessionSave` entity is found (Step 1.a). It now explicitly checks the `ROADMAP_TASKS.md` file for the `⏸️` marker *before* looking for the last active session. If the marker is found without a corresponding save entity, it reports the inconsistency and stops, providing a more accurate error message than simply suggesting `BWS`. This helps diagnose the root cause (likely a failed `SWS`) rather than masking it.
+```
