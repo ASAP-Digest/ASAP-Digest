@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.0
+# Enhanced Work Session Management Protocol (WSMP) v2.1
 
 ## 1. Protocol Integration Layer
 ````text
@@ -12,81 +12,140 @@ alwaysApply: true
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │
 │ 2. Rule Execution Protocol              │
-│ 3. Task Tracking Protocol               │
-│ 4. Memory Maintenance Protocol          │
+│ 3. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
+│ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules
 │ 5. Session Management Protocol (This)   │
 │ 6. Status Check Protocol                │
 │ 7. Cross-Protocol Comms & Verification  │
 │ 8. Universal Error Resolution Protocol  │
+│ 9. Audit Trail System                   │
 └─────────────────────────────────────────┘
 ````
-*Self-Correction: Added missing relevant protocols to the integration layer for completeness.*
+*Self-Correction: Consolidated Memory Maintenance reference.*
 
 ## 2. Activation Commands & Flow
 ````text
-A. Start Session
+A. Start New Session
 - Command: "Begin Work Session" or alias "BWS"
-- Prerequisites: SHOULD run "Status Check" (SC) immediately prior to BWS to establish current context and priority.
+- Purpose: Initiates a NEW tracked work session.
+- Prerequisites: MUST run "Status Check" (SC) immediately prior to BWS to establish current context and priority.
 - Optional Parameters:
-  - Previous Session ID (If resuming)
-  - Session Type (DEBUG, FEATURE, FIX, REFACTOR)
+  - Session Type (DEBUG, FEATURE, FIX, REFACTOR) - Default can be inferred.
   - Priority Issue (Can be automatically inferred from preceding SC output)
+- Note: Any additional arguments provided with BWS that are not recognized parameters SHOULD be ignored or logged as informational context, not used as the session ID.
 
 B. Save Session State
 - Command: "Save Work Session" or alias "SWS"
-- Purpose: Persists the current working state (memory entities, task status markers) without terminating the logical session, allowing for interruption and later resumption. Does NOT modify core project files beyond status markers.
+- Purpose: Creates a `WorkSessionSave` entity linked to the active `WorkSession`. Persists the current working state (memory entities, task status markers) without terminating the logical session, allowing for interruption and later resumption via RWS. Does NOT modify core project files beyond optional status markers.
 - Optional Parameters:
   - Save Reason (e.g., "Context Switch", "End of Day")
 
-C. End Session
+C. Resume Saved Session
+- Command: "Resume Work Session" or alias "RWS"
+- Purpose: Resumes a previously saved work session, making it the active session again.
+- Optional Parameters:
+  - `saveSessionID`: The specific name/ID of the `WorkSessionSave` entity to resume from.
+- Default Behavior: If `saveSessionID` is not provided, RWS MUST attempt to resume from the MOST RECENTLY created `WorkSessionSave` entity in Server Memory. If none found, falls back to suggesting the last active session.
+
+D. End Session
 - Command: "End Work Session" or alias "EWS"
-- Purpose: Formally closes the work session, finalizes task statuses, updates documentation, and performs cleanup.
+- Purpose: Formally closes the ACTIVE work session, finalizes task statuses, updates documentation, and performs cleanup.
 - Optional Parameters:
   - Reason (NORMAL, INTERRUPTED, COMPLETED, FAILED)
 ````
 
-## 3. Context Establishment & Status Check Integration
+## 3. Context Establishment & Session Lifecycle Management
+
+### 3.1 Session Initiation (BWS)
 ````text
-A. Session Initiation (BWS)
 1.  **Pre-Check:** Execute "Status Check" (SC).
 2.  **Analyze SC Output:** Extract `🎯 Current / Operational Priority` and `⚙️ Overall Context` from the SC report.
 3.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-4.  **Entity Creation:** Create `WorkSession` entity in Server Memory, including:
+4.  **Generate Session ID:** Create a new, unique session ID following the updated naming convention (See Section 9).
+5.  **Entity Creation:** Create `WorkSession` entity in Server Memory with the generated ID, including:
     - Start timestamp.
-    - Session Type.
+    - Session Type (from param or inferred).
     - Priority Issue (from SC or parameter).
     - Overall Context (from SC).
-    - Previous Session ID (if provided).
     - Link to the preceding `StatusCheck` entity.
-5.  **State Loading (if resuming):** If `Previous Session ID` is provided and a corresponding `WorkSessionSave` entity exists, load relevant state/context.
+    - Status: `ACTIVE`.
 6.  **Verification:** Execute L1/L3 Verification Chain checks.
 7.  **Audit:** Record `SESSION_START` event in Audit Trail.
-
-B. Session Context Sources (Referenced by SC)
-- `docs/ROADMAP_TASKS.md`: For detailed task status (✅, 🔄, ⏳, ❌) and timestamps.
-- Server Memory: `TaskCompletion` entities (last 24h), active `Error` entities.
-- `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For major task group context.
-- Current Timestamp: Defines the "recent" window for SC analysis.
+8.  **Feedback:** Confirm session start with the new Session ID.
 ````
 
-## 4. Save Work Session (SWS) Implementation
+### 3.2 Save Work Session (SWS)
 ````text
-1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-2.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
-3.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory, including:
+1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
+2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+3.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
+4.  **Generate Save ID:** Create a unique ID for the save state (e.g., `WSSave_[SessionIDShort]_[Timestamp]`).
+5.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory with the generated Save ID, including:
     - Save timestamp.
-    - Link to the active `WorkSession` entity.
+    - Link to the active `WorkSession` entity ID.
     - Save Reason (if provided).
     - Observations summarizing key state points (e.g., active task ID, relevant open files/entities, current error state if any).
-4.  **Task Status Marker (Optional):** Consider updating the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. *Self-Correction: Added optional marker logic.*
-5.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
-6.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
-7.  **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID for potential future resumption.
+6.  **Update Active Session:** Add observation to the active `WorkSession` entity: `Session paused by WSSave_[ID] at [Timestamp]`. Change status to `PAUSED`.
+7.  **Task Status Marker (Optional but Recommended):** Update the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. This MUST be done consistently if implemented.
+8.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
+9.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
+10. **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID.
 ````
 
-## 5. Cross-Protocol Event System Integration
+### 3.3 Resume Work Session (RWS)
+````text
+1.  **Identify Target Save State & Fallback:**
+    - If `saveSessionID` parameter is provided:
+      - Search Server Memory for a `WorkSessionSave` entity with that name.
+      - If found: Proceed to step 2 (Resume Found Save).
+      - If not found: Report error "Specific Save Session ID '[saveSessionID]' not found." and stop.
+    - If no `saveSessionID` parameter is provided:
+      - Search Server Memory for the most recently created `WorkSessionSave` entity based on timestamp in observations or name.
+      - If found: Proceed to step 2 (Resume Found Save).
+      - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Suggest Last Session).
+
+    1.a. **Suggest Last Session (Fallback):**
+        - Search Server Memory for the `WorkSession` entity with the latest activity (based on `endTime` or the timestamp of the last observation, prioritizing `endTime` if available).
+        - If a recent `WorkSession` is found: Report "No active saved session found to resume. The most recent session activity was for '[Found Session ID]' (Status: [Status], Ended: [End Time/Last Activity Time]). Did you mean to start a new session (BWS)?" and stop.
+        - If no `WorkSessionSave` and no recent `WorkSession` entities are found: Report "No saved session or recent activity found. Use BWS to start a new session." and stop.
+
+2.  **Retrieve Saved State:** (Executed only if a `WorkSessionSave` was found in step 1)
+    - Get the target `WorkSessionSave` entity and its linked `WorkSession` entity ID.
+3.  **Retrieve Work Session:**
+    - Fetch the linked `WorkSession` entity. If not found or status is not `PAUSED`, report error "Cannot resume: Linked WorkSession '[SessionID]' not found or not in PAUSED state." and stop.
+4.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+5.  **Update Work Session:**
+    - Change status back to `ACTIVE`.
+    - Add observation: `Session resumed from WSSave_[ID] at [Timestamp]`.
+6.  **Restore Context (Informational):**
+    - Log the restored context (priority task, overall context) based on the resumed `WorkSession` entity's observations.
+7.  **Task Status Marker Update:**
+    - If the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄).
+8.  **Verification:** Execute L1/L3 Verification Chain checks.
+9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail.
+10. **Feedback:** Confirm session resumption, stating the active Session ID and the priority task.
+````
+
+### 3.4 End Work Session (EWS)
+````text
+1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
+2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+3.  **Finalization Logic:** Execute session finalization tasks:
+    - Update relevant `Task` entity statuses in Server Memory (e.g., to `COMPLETED`, `PENDING`).
+    - Update corresponding tasks in `docs/ROADMAP_TASKS.md` (status emoji, timestamp) via Task Tracking Protocol logic.
+    - Update other documentation (`DEPLOYMENT_CHECKLIST.md`, etc.) if needed.
+4.  **Update Work Session:**
+    - Change status to `ENDED`.
+    - Add observation: `Session ended at [Timestamp]. Reason: [Reason Param]`.
+    - Set `endTime` field/observation.
+5.  **Verification:** Execute final L1/L2/L4 Verification Chain checks.
+6.  **Audit:** Record `SESSION_END` event in Audit Trail.
+7.  **Feedback:** Confirm session end.
+````
+
+## 4. Cross-Protocol Event System Integration
 ````javascript
-// Conceptual Example: Event Handling
+// Conceptual Example: Event Handling Remains Similar
 class WorkSessionManager {
     async handleSessionEvent(event) {
         const eventSystem = await CrossProtocolEventSystem.getInstance();
@@ -95,32 +154,33 @@ class WorkSessionManager {
         // Specific actions based on event type
         switch (event.type) {
             case 'SESSION_START':
-                // ... logic using SC context ...
+                // ... logic using SC context, generate new ID ...
                 break;
             case 'SESSION_SAVE':
                 // ... logic for creating save entity, optional roadmap marker ...
+                break;
+            case 'SESSION_RESUME':
+                // ... logic for finding save state, updating session, roadmap marker ...
                 break;
             case 'SESSION_END':
                 // ... finalization logic, roadmap updates ...
                 break;
         }
-
-        // Audit trail integration
         await this.auditTrail.recordSessionEvent(event);
     }
 }
 ````
 
-## 6. Task Status Management Integration
+## 5. Task Status Management Integration
 ````javascript
-// Conceptual Example: Status Updates
+// Conceptual Example: Status Updates (with PAUSED -> ACTIVE)
 class SessionTaskManager {
     async updateTaskStatus(taskId, status, timestamp, sessionId) {
         const statusEmoji = this.getStatusEmoji(status);
 
-        // Update Server Memory
-        await mcp_Server_Memory_create_entities({ /* ... Task entity ... */ });
-        await mcp_Server_Memory_create_relations({ /* ... Link to Session, Roadmap ... */ });
+        // Update Server Memory (using add_observations or similar)
+        await mcp_Server_Memory_add_observations({ /* ... Task entity ... */ });
+        // Potentially update Task status field if it exists
 
         // Update Roadmap File (ensure consistency with SC parsing)
         await this.updateRoadmapFile(taskId, statusEmoji, timestamp);
@@ -129,11 +189,11 @@ class SessionTaskManager {
     // Ensure this mapping aligns with SC logic
     getStatusEmoji(status) {
         const statusMap = {
-            'IN_PROGRESS': '🔄',
+            'ACTIVE': '🔄', // Changed from IN_PROGRESS for consistency
             'COMPLETED': '✅',
             'BLOCKED': '❌',
             'PENDING': '⏳',
-            'PAUSED': '⏸️' // Added for SWS
+            'PAUSED': '⏸️' // Used by SWS
         };
         return statusMap[status] || '❓';
     }
@@ -141,69 +201,31 @@ class SessionTaskManager {
     async updateRoadmapFile(taskId, emoji, timestamp) {
         // Logic to read, find task line, update emoji and timestamp, write file
         // Must be robust to parsing variations used by Status Check
+        // Must handle changing ⏸️ back to 🔄 on RWS if that marker is used.
     }
 }
 ````
-*Self-Correction: Explicitly added PAUSED state mapping and emphasized roadmap update consistency.*
+*Self-Correction: Updated status names slightly for clarity (`ACTIVE`) and emphasized handling the `PAUSED` marker change during `RWS`.*
 
-## 7. Verification Chain System Integration
-````javascript
-// Conceptual Example: Verification during SWS
-class SessionVerificationChain {
-    async verifyBeforeSave(sessionId) {
-        // Ensure protocol states are valid before saving
-        await VerificationChainSystem.verifyLevel({ level: 'L1', context: { sessionId } });
-        // Ensure data consistency (memory reflects reality) before saving
-        await VerificationChainSystem.verifyLevel({ level: 'L2', context: { sessionId } });
-        // Ensure system integrity (no dangling locks/resources)
-        await VerificationChainSystem.verifyLevel({ level: 'L3', context: { sessionId } });
-    }
-}
-````
+## 6. Verification Chain System Integration
+*(Remains conceptually similar, applied during BWS, SWS, RWS, EWS transitions)*
 
-## 8. Error Recovery System Integration
-````javascript
-// Conceptual Example: Handling SWS Failure
-class SessionErrorRecovery {
-    async handleSaveError(error, sessionId) {
-        const recoveryStrategy = await ErrorRecoverySystem.selectStrategy(error);
-        await recoveryStrategy.execute({ context: 'SESSION_SAVE', sessionId });
-        await this.verifyRecovery(recoveryStrategy);
-        // Log detailed error and recovery attempt in audit/memory
-        await AuditTrailSystem.record({ /* ... error details ... */ });
-        await mcp_Server_Memory_create_entities({ /* ... Error entity ... */ });
-    }
-}
-````
+## 7. Error Recovery System Integration
+*(Remains conceptually similar, applicable to failures during BWS, SWS, RWS, EWS)*
 
-## 9. Audit Trail System Integration
-````javascript
-// Conceptual Example: Auditing SWS
-class SessionAuditTrail {
-    async recordSessionEvent(event) {
-        const auditSystem = await AuditTrailSystem.getInstance();
-        // Record event with full context, including links to relevant entities
-        await auditSystem.record({
-            timestamp: await mcp_mcp_datetime_get_datetime({ format: "datetime" }),
-            sessionId: event.context.sessionId,
-            eventType: event.type,
-            context: event.context, // e.g., { reason: "Context Switch" } for SWS
-            stateSnapshot: await this.captureState(), // Key state points
-            relatedEntities: event.relatedEntities // e.g., ['WorkSessionSave_xyz', 'Task_abc']
-        });
-        await auditSystem.verify(event.id); // Verify record integrity
-    }
-}
+## 8. Audit Trail System Integration
+*(Remains conceptually similar, logs `SESSION_START`, `SESSION_SAVE`, `SESSION_RESUME`, `SESSION_END` events)*
+
+## 9. Session ID Naming Convention Recommendation
+````text
+- **Problem:** Current reliance on `log_compact` timestamp (e.g., `WorkSession_FEATURE_20250408_162141`) is prone to collisions if commands run quickly and lacks human readability.
+- **Recommendation:** Update the naming convention defined in `server-memory-rules.mdc` (Section 4.2). Suggest alternatives like:
+    - `WS_[Type]_[YYYYMMDD]_[ShortHash/Seq]`: e.g., `WS_FEAT_20250409_a3f7` (Short hash of timestamp or a sequence number for the day)
+    - `WS_[Type]_[PriorityTaskName]_[YYYYMMDD]`: e.g., `WS_FEAT_ImplementAudio_20250409` (Uses a sanitized version of the priority task name)
+- **Action Required:** This protocol (`WSMP`) will use the convention defined in `server-memory-rules.mdc`. That rule file needs to be updated separately to implement a new naming scheme.
 ````
 
 ## 10. Potential Improvements & Considerations
-````text
-1.  **Session Resumption Logic:** Explicitly define how `BWS` uses the `Previous Session ID` and the corresponding `WorkSessionSave` entity to restore context (e.g., re-open relevant files/entities, set task status back to 🔄 from ⏸️).
-2.  **State Snapshot Granularity (SWS):** Define precisely what constitutes the "state" saved by SWS. Is it just memory links, or should it trigger temporary file saves/diffs (potentially complex)? Current implementation focuses on memory/markers.
-3.  **"Paused" State Handling:** Ensure the `Status Check` protocol correctly interprets the proposed ⏸️ marker in `ROADMAP_TASKS.md` (e.g., doesn't treat it as `PENDING` or `BLOCKED`).
-4.  **Concurrency/Locking:** If multiple agents or processes could potentially modify session state or roadmaps, implement locking mechanisms during critical updates (like roadmap file writing).
-5.  **Save State Cleanup:** Define a policy or mechanism for cleaning up old `WorkSessionSave` entities to prevent clutter in Server Memory.
-6.  **User Feedback:** Enhance feedback after BWS/SWS/EWS, confirming the action and providing relevant IDs (Session ID, Save ID).
-7.  **Idempotency:** Design BWS/SWS/EWS operations to be safe if accidentally triggered twice (e.g., check if a session with that ID is already active/saved/ended).
-8.  **Visual State Indication:** Consider if the development environment or UI should visually reflect the current session state (Active, Saved, Ended).
-````
+*(Existing points remain relevant, plus consideration for:*
+-   *Clarity on `RWS` context restoration scope (memory links vs. active tool state).*
+-   *Robustness of finding the "most recent" `WorkSessionSave`.*)

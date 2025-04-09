@@ -3,13 +3,8 @@
   import { cn } from "$lib/utils.js";
   import Typography from './Typography.svelte';
 
-  /** @type {string | undefined | null} */
-  let className = undefined;
-  /** @type {import('svelte/elements').HTMLAttributes<HTMLParagraphElement>} */
-  let props = {}; // Use let directly for props in Svelte 5
-
-  // Expose className and other props
-  $: ({ class: className, ...props } = $props());
+  // Access props using the $props rune
+  const { class: className, ...restProps } = $props();
 </script>
 
 <Typography 
@@ -19,7 +14,7 @@
     'text-sm',
     className
   )}
-  {...props}
+  {...restProps}
 >
   {@render children?.()}
 </Typography> 

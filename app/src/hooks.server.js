@@ -239,23 +239,6 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                     return resolve(event);
                 }
 
-                // Add session token to request headers
-                const headers = new Headers(event.request.headers);
-                headers.set('Authorization', `Bearer ${sessionToken}`);
-                
-                // Create a new request with the updated headers
-                event.request = new Request(event.request.url, {
-                    method: event.request.method,
-                    headers,
-                    body: event.request.body,
-                    mode: event.request.mode,
-                    credentials: event.request.credentials,
-                    cache: event.request.cache,
-                    redirect: event.request.redirect,
-                    referrer: event.request.referrer,
-                    integrity: event.request.integrity
-                });
-
                 // Add user data and sync status to event locals
                 console.log('[hooks.server.js | WP Session] Populating event.locals.user.'); // Log population step
                 /** @type {EventLocals} */

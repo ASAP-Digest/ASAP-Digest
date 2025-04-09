@@ -28,7 +28,8 @@ const iconPaths = {
   bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>',
   share2: '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line>',
   creditCard: '<rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line>',
-  chevronDown: '<path d="m6 9 6 6 6-6"></path>'
+  chevronDown: '<path d="m6 9 6 6 6-6"></path>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20z"/><path d="M2 12h20"/>'
 };
 
 // Create Svelte components for each icon
@@ -54,6 +55,7 @@ export const BookOpen = createIconObject('bookOpen', iconPaths.bookOpen);
 export const Share2 = createIconObject('share2', iconPaths.share2);
 export const CreditCard = createIconObject('creditCard', iconPaths.creditCard);
 export const ChevronDown = createIconObject('chevronDown', iconPaths.chevronDown);
+export const Globe = createIconObject('globe', iconPaths.globe);
 
 /**
  * Create a custom icon component from a name and SVG content

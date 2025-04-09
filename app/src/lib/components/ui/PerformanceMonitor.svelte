@@ -142,12 +142,6 @@
     transition: opacity 0.2s ease, transform 0.2s ease;
   }
   
-  .performance-monitor.hidden {
-    opacity: 0;
-    transform: translateY(20px);
-    pointer-events: none;
-  }
-  
   .performance-monitor-header {
     display: flex;
     justify-content: space-between;

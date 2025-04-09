@@ -265,7 +265,8 @@
         <!-- Content Grid -->
         <div class="selector-content-grid">
           {#each contentItems as item (item.id)}
-            <div 
+            <button 
+              type="button"
               class="selector-content-item {isSelected(item) ? 'selected' : ''}"
               onclick={() => toggleItemSelection(item)}
             >
@@ -286,7 +287,7 @@
                   <span>{item.source}</span>
                 </div>
               </div>
-            </div>
+            </button>
           {/each}
           
           {#if contentItems.length === 0}
