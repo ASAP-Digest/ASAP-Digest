@@ -302,25 +302,14 @@
             <Icon icon={Search} class="w-5 h-5" />
           </button>
           
-          <!-- Notifications -->
-          <div class="relative">
-            <button
-              class="focus-visible:ring-ring rounded-full p-2 transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 dark:hover:bg-[hsl(var(--muted)/0.2)]"
-            >
-              <!-- Use Icon component -->
-              <Icon icon={Bell} class="w-5 h-5" />
-            </button>
-            <!-- Use 0 as placeholder, ideally fetch real count later -->
-            <!-- <div
-              class="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-xs font-bold text-[hsl(var(--destructive-foreground))]"
-            >
-              0 
-            </div> -->
-          </div>
+          
         </div>
         
-        <!-- User avatar with dropdown -->
-        <div class="relative">
+        <div class="flex avatar-notifications-wrapper"><!--! start of avatar-notifications wrapper -->
+
+        <div class="relative"><!--! start of avatar wrapper -->
+
+          <!-- User avatar with dropdown -->
           <button
             class="focus-visible:ring-ring flex items-center space-x-2 rounded-full p-1 transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 dark:hover:bg-[hsl(var(--muted)/0.2)]"
             onclick={() => {
@@ -355,64 +344,63 @@
           
           <!-- User dropdown menu -->
           {#if $page.data.user}
-            <div
-              id="user-dropdown"
-              class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]"
-            >
-              <div
-                class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]"
-              >
+            <div id="user-dropdown" class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]">
+              
+              <!-- User & Email -->
+              <div class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]">
                 <!-- Use real user data -->
-                <div class="font-semibold">{$page.data.user.displayName || 'User Name'}</div>
-                <div
-                  class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]"
-                >
+                <div class="font-semibold">
+                  {$page.data.user.displayName || 'User Name'}
+                </div>
+                <div class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">
                   {$page.data.user.email || 'user@example.com'}
                 </div>
               </div>
-              
+
+              <!-- Dashboard, Settings, Logout -->
               <div class="py-1">
-                <a
-                  href="/dashboard"
-                  class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-                >
+                <a href="/dashboard" class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
                   <Icon icon={LayoutDashboard} class="w-4 h-4" /> 
                   <span>Dashboard</span>
                 </a>
-                <a
-                  href="/settings"
-                  class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-                >
+                <a href="/settings" class="flex items-center gap-2 px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
                   <Icon icon={Settings} class="w-4 h-4" /> 
                   <span>Settings</span>
                 </a>
                 <!-- Use auth client signout -->
-                <button
-                  onclick={() => auth.signOut({ callbackUrl: '/' })}
-                  class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-                >
+                <button onclick={() => auth.signOut({ callbackUrl: '/' })} class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
                   <Icon icon={LogOut} class="w-4 h-4" /> 
                   <span>Logout</span>
                 </button>
               </div>
-            </div>
+            </div><!--! end of user dropdown -->
           {:else}
-             <!-- Optionally show login button if no user -->
-             <div 
-               id="user-dropdown" 
-               class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]"
-              >
-                <div class="py-1">
-                  <a 
-                    href="/login" 
-                    class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]"
-                  >
-                    Login
-                  </a>
-                 </div>
-             </div>
+            <!-- Optionally show login button if no user -->
+            <div id="user-dropdown" class="absolute right-0 mt-2 hidden w-48 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg dark:border-[hsl(var(--muted-foreground)/0.2)] dark:bg-[hsl(var(--muted))] z-[var(--z-dropdown)]">
+              <div class="py-1">
+                <a href="/login" class="block px-4 py-2 text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                  Login
+                </a>
+              </div>
+            </div>
           {/if}
-        </div>
+          <!-- END of User avatar with dropdown -->
+
+        </div> <!-- end of avatar wrapper -->
+
+        <div class="relative"><!--! start of notifications wrapper -->
+          <button class="focus-visible:ring-ring rounded-full p-2 transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] focus-visible:outline-none focus-visible:ring-2 dark:hover:bg-[hsl(var(--muted)/0.2)]">
+            <!-- Use Icon component -->
+            <Icon icon={Bell} class="w-5 h-5" />
+          </button>
+          <!-- Use 0 as placeholder, ideally fetch real count later -->
+          <div class="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-xs font-bold text-[hsl(var(--destructive-foreground))]">
+            0 
+          </div>
+        </div><!--! end of notifications wrapper -->
+
+      </div><!--! end of avatar-notifications wrapper -->
+
       </div>
     </header>
     
