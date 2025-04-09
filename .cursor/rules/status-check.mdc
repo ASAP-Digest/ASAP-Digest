@@ -6,9 +6,9 @@ alwaysApply: true
 # Status Check Protocol (Project Status Report) v2.0
 
 ## 1. Protocol Restrictions
-````
+````markdown
 A. Core Restrictions
-- Status Check is a READ-ONLY operation concerning project files and state.
+- Status Check is a **READ-ONLY** operation concerning project files and state.
 - Must NOT modify any project files (including roadmaps) or database.
 - Must NOT initiate any work or state changes beyond its own logging.
 - Must wait for explicit "IAW" or "BWS" command before any work initiation by the agent.

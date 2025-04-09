@@ -14,6 +14,7 @@ use WP_User;
 use function get_user_by;
 use function get_user_meta;
 use function update_user_meta;
+use function wp_remote_post;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -149,6 +150,37 @@ trait User_Sync {
             // Commit transaction
             $wpdb->query('COMMIT');
             
+            // --- BEGIN ADDED CODE: Send data to SvelteKit endpoint ---
+            $sync_url = defined('WP_ENVIRONMENT_TYPE') && WP_ENVIRONMENT_TYPE === 'development' 
+                        ? 'http://localhost:5173/api/auth/sync' 
+                        : 'https://asapdigest.com/api/auth/sync'; // Replace with actual production URL if different
+
+            if ($ba_user_id) { // Ensure we have the SK user ID
+                $post_body = json_encode([
+                    'wpUserId' => $user->ID,
+                    'skUserId' => $ba_user_id
+                ]);
+
+                $response = wp_remote_post($sync_url, [
+                    'method'    => 'POST',
+                    'headers'   => ['Content-Type' => 'application/json; charset=utf-8'],
+                    'body'      => $post_body,
+                    'timeout'   => 15, // seconds
+                    'blocking'  => false // Don't wait for the response to avoid blocking WP profile update
+                ]);
+
+                // Optional: Log if the request scheduling failed (is_wp_error)
+                if (is_wp_error($response)) {
+                    error_log('[ASAP Digest Sync Error] Failed to trigger SvelteKit sync endpoint: ' . $response->get_error_message());
+                } else {
+                    // Optional: Log success if needed for debugging
+                     error_log('[ASAP Digest Sync Debug] Triggered SvelteKit sync POST for wpUserId: ' . $user->ID . ', skUserId: ' . $ba_user_id);
+                }
+            } else {
+                 error_log('[ASAP Digest Sync Error] Cannot trigger SvelteKit sync: Missing ba_user_id for wpUserId: ' . $user->ID);
+            }
+            // --- END ADDED CODE ---
+
             return true;
 
         } catch (\Exception $e) {
