@@ -163,7 +163,7 @@ D. End Session
 *(...Content identical to v2.1...)*
 
 ## 5. Task Status Management Integration
-*(No changes from v2.1, but emphasizes consistent handling of PAUSED marker)*
+*(Emphasizes consistent handling of PAUSED marker and parent/sub-task hierarchy)*
 ````javascript
 // Conceptual Example: Status Updates (with PAUSED -> ACTIVE)
 class SessionTaskManager {
@@ -175,13 +175,16 @@ class SessionTaskManager {
         // Potentially update Task status field if it exists
 
         // Update Roadmap File (ensure consistency with SC parsing)
-        await this.updateRoadmapFile(taskId, statusEmoji, timestamp);
+        // NOTE: If updating a sub-task to 'ACTIVE' (🔄), the logic here
+        // MUST also update any parent task marked 'PAUSED' (⏸️) to 'ACTIVE' (🔄)
+        // in the roadmap file to reflect ongoing work within that section.
+        await this.updateRoadmapFile(taskId, statusEmoji, timestamp, { updatePausedParents: (status === 'ACTIVE') });
     }
 
     // Ensure this mapping aligns with SC logic
     getStatusEmoji(status) {
         const statusMap = {
-            'ACTIVE': '🔄', // Changed from IN_PROGRESS for consistency
+            'ACTIVE': '🔄', // Use this for IN_PROGRESS
             'COMPLETED': '✅',
             'BLOCKED': '❌',
             'PENDING': '⏳',
@@ -190,28 +193,113 @@ class SessionTaskManager {
         return statusMap[status] || '❓';
     }
 
-    async updateRoadmapFile(taskId, emoji, timestamp) {
+    async updateRoadmapFile(taskId, emoji, timestamp, options = {}) {
         // Logic to read, find task line, update emoji and timestamp, write file
         // Must be robust to parsing variations used by Status Check
         // Must handle changing ⏸️ back to 🔄 on RWS if that marker is used.
+        // If options.updatePausedParents is true, must also find parent tasks
+        // in the hierarchy and update their emoji from ⏸️ to 🔄.
     }
 }
 ````
 
-## 6. Verification Chain System Integration
-*(No changes from v2.1)*
+## 6. Task Status Management Integration
+````javascript
+// Conceptual Example: Status Updates
+class SessionTaskManager {
+    async updateTaskStatus(taskId, status, timestamp, sessionId) {
+        const statusEmoji = this.getStatusEmoji(status);
 
-## 7. Error Recovery System Integration
-*(No changes from v2.1)*
+        // Update Server Memory
+        await mcp_Server_Memory_create_entities({ /* ... Task entity ... */ });
+        await mcp_Server_Memory_create_relations({ /* ... Link to Session, Roadmap ... */ });
 
-## 8. Audit Trail System Integration
-*(No changes from v2.1)*
+        // Update Roadmap File (ensure consistency with SC parsing)
+        await this.updateRoadmapFile(taskId, statusEmoji, timestamp);
+~    }
+~
+    // Ensure this mapping aligns with SC logic
+    getStatusEmoji(status) {
+        const statusMap = {
+            'IN_PROGRESS': '🔄',
+            'COMPLETED': '✅',
+            'BLOCKED': '❌',
+            'PENDING': '⏳',
+            'PAUSED': '⏸️' // Added for SWS
+        };
+        return statusMap[status] || '❓';
+    }
 
-## 9. Session ID Naming Convention Recommendation
-*(No changes from v2.1 - Requires separate update to `server-memory-rules.mdc`)*
+    async updateRoadmapFile(taskId, emoji, timestamp) {
+        // Logic to read, find task line, update emoji and timestamp, write file
+        // Must be robust to parsing variations used by Status Check
+
+    }
+}
+````
+*Self-Correction: Explicitly added PAUSED state mapping and emphasized roadmap update consistency.*
+
+## 7. Verification Chain System Integration
+````javascript
+// Conceptual Example: Verification during SWS
+class SessionVerificationChain {
+    async verifyBeforeSave(sessionId) {
+        // Ensure protocol states are valid before saving
+        await VerificationChainSystem.verifyLevel({ level: 'L1', context: { sessionId } });
+        // Ensure data consistency (memory reflects reality) before saving
+        await VerificationChainSystem.verifyLevel({ level: 'L2', context: { sessionId } });
+        // Ensure system integrity (no dangling locks/resources)
+        await VerificationChainSystem.verifyLevel({ level: 'L3', context: { sessionId } });
+    }
+}
+````
+
+## 8. Error Recovery System Integration
+````javascript
+// Conceptual Example: Handling SWS Failure
+class SessionErrorRecovery {
+    async handleSaveError(error, sessionId) {
+        const recoveryStrategy = await ErrorRecoverySystem.selectStrategy(error);
+        await recoveryStrategy.execute({ context: 'SESSION_SAVE', sessionId });
+        await this.verifyRecovery(recoveryStrategy);
+        // Log detailed error and recovery attempt in audit/memory
+        await AuditTrailSystem.record({ /* ... error details ... */ });
+        await mcp_Server_Memory_create_entities({ /* ... Error entity ... */ });
+    }
+}
+````
+
+## 9. Audit Trail System Integration
+````javascript
+// Conceptual Example: Auditing SWS
+class SessionAuditTrail {
+    async recordSessionEvent(event) {
+        const auditSystem = await AuditTrailSystem.getInstance();
+        // Record event with full context, including links to relevant entities
+        await auditSystem.record({
+            timestamp: await mcp_mcp_datetime_get_datetime({ format: "datetime" }),
+            sessionId: event.context.sessionId,
+            eventType: event.type,
+            context: event.context, // e.g., { reason: "Context Switch" } for SWS
+            stateSnapshot: await this.captureState(), // Key state points
+            relatedEntities: event.relatedEntities // e.g., ['WorkSessionSave_xyz', 'Task_abc']
+        });
+        await auditSystem.verify(event.id); // Verify record integrity
+    }
+}
+````
 
 ## 10. Potential Improvements & Considerations
-*(No changes from v2.1)*
+````text
+1.  **Session Resumption Logic:** Explicitly define how `BWS` uses the `Previous Session ID` and the corresponding `WorkSessionSave` entity to restore context (e.g., re-open relevant files/entities, set task status back to 🔄 from ⏸️).
+2.  **State Snapshot Granularity (SWS):** Define precisely what constitutes the "state" saved by SWS. Is it just memory links, or should it trigger temporary file saves/diffs (potentially complex)? Current implementation focuses on memory/markers.
+3.  **"Paused" State Handling:** Ensure the `Status Check` protocol correctly interprets the proposed ⏸️ marker in `ROADMAP_TASKS.md` (e.g., doesn't treat it as `PENDING` or `BLOCKED`).
+4.  **Concurrency/Locking:** If multiple agents or processes could potentially modify session state or roadmaps, implement locking mechanisms during critical updates (like roadmap file writing).
+5.  **Save State Cleanup:** Define a policy or mechanism for cleaning up old `WorkSessionSave` entities to prevent clutter in Server Memory.
+6.  **User Feedback:** Enhance feedback after BWS/SWS/EWS, confirming the action and providing relevant IDs (Session ID, Save ID).
+7.  **Idempotency:** Design BWS/SWS/EWS operations to be safe if accidentally triggered twice (e.g., check if a session with that ID is already active/saved/ended).
+8.  **Visual State Indication:** Consider if the development environment or UI should visually reflect the current session state (Active, Saved, Ended).
+````
 
 ## 11. Rationale for v2.2 Changes
 - **SWS Enhancement:** Added verification after `WorkSessionSave` entity creation (Step 6 & 7) to prevent the protocol from proceeding if the entity wasn't successfully stored in Server Memory. This aims to stop the inconsistent state (roadmap paused, memory entity missing) from being created in the first place.

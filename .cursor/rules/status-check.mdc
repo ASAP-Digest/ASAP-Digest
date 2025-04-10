@@ -39,6 +39,7 @@ B. Secondary Triggers
    - Creates `StatusCheck` and `StatusReport` entities for logging.
    - Reads and analyzes roadmap files (`docs/ROADMAP_TASKS.md`, `docs/ASAP_DIGEST_ROADMAP.md` or LLM versions) and recent Server Memory.
    - Reports structured project status and exits.
+   - **ONLY OUTPUT THE FINAL REPORT**
 
 2. Work Initiation (Requires explicit command)
    - Must be triggered by "IAW" or "BWS".
@@ -144,14 +145,14 @@ function formatUserReport(reportData, reportTimestamp) { /* ... formatting logic
 ````
 
 ## 7. Status Report Structure & Logic
-````
+````markdown
 The user-facing output MUST follow this structure:
 
 ---
-**`📅 Status Check Report (Timestamp)`**
+## **`📅 Status Check Report (Timestamp)`**
 *(Timestamp format: "YYYY-MM-DD HH:MM:SS" or similar)*
 ---
-**`✅ Recently Completed Tasks (Last 24h):`**
+### **`✅ Recently Completed Tasks (Last 24h):`**
 - Logic:
   - Get current time (T). Calculate T minus 24 hours (T-24).
   - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-24 and T.
@@ -160,7 +161,7 @@ The user-facing output MUST follow this structure:
   - Display the top 3-5 entries.
 - Format: `- Task Name (Completion Timestamp)`
 
-**`🎯 Current / Operational Priority:`**
+### **`🎯 Current / Operational Priority:`**
 - Logic (Hierarchical):
   1.  Find the first task marked ❌ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Blocked Task".
   2.  If no blockers, search Server Memory for active `Error` entities. If found, the *first* error encountered is the priority. Reason: "Active Error". Include error details if possible.
@@ -168,17 +169,17 @@ The user-facing output MUST follow this structure:
   4.  If none of the above, find the first task marked ⏳ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next Pending".
 - Format: `- [Emoji] Task Name (Reason for Priority)`
 
-**`⏳ Upcoming Tasks:`**
+### **`⏳ Upcoming Tasks:`**
 - Logic:
   - Find the task identified as the current priority in the previous step within `ROADMAP_TASKS.md`.
   - List the next 3 tasks that appear *after* the priority task and are marked ⏳.
 - Format: `- Task Name`
 
-**`❌ Blocked Tasks:`**
+### **`❌ Blocked Tasks:`**
 - Logic: List all tasks marked ❌ in `ROADMAP_TASKS.md`.
 - Format: `- Task Name`
 
-**`⚙️ Overall Context:`**
+### **`⚙️ Overall Context:`**
 - Logic:
   - Identify the current priority task.
   - Find which major Task group (e.g., "Task 3: Develop Core Application Screens") from `ASAP_DIGEST_ROADMAP.md` (or LLM versions) this task belongs to.
