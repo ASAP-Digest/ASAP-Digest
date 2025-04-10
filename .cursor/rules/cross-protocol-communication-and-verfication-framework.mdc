@@ -8,46 +8,53 @@ alwaysApply: true
 ## 1. Protocol State Management
 ```
 A. State Transition Matrix
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Protocol        │ Valid States       │ Transition Rules   │
-├─────────────────┼────────────────────┼────────────────────┤
-│ Meta Protocol   │ INIT, ACTIVE, END  │ INIT → ACTIVE     │
-│ Rule Execution  │ PLAN, EXEC, VERIFY │ PLAN → EXEC       │
-│ Task Tracking   │ START, RUN, DONE   │ START → RUN       │
-│ Memory Manager  │ READY, SYNC, LOCK  │ READY → SYNC      │
-└─────────────────┴────────────────────┴────────────────────┘
+┌─────────────────┬────────────────────────┬──────────────────────────┐
+│ Protocol        │ Valid States           │ Transition Rules         │
+├─────────────────┼────────────────────────┼──────────────────────────┤
+│ Meta Protocol   │ INIT, ACTIVE, END      │ INIT → ACTIVE            │
+│ Rule Execution  │ PLAN, EXEC, VERIFY     │ PLAN → EXEC              │
+│ Task Tracking   │ START, RUN, TEST, DONE │ START → RUN → TEST → DONE│
+│ Memory Manager  │ READY, SYNC, LOCK      │ READY → SYNC             │
+│ Testing/Verify  │ PENDING, ACTIVE, DONE  │ PENDING → ACTIVE → DONE  │
+└─────────────────┴────────────────────────┴──────────────────────────┘
+*(Self-correction: Added TESTING ('TEST') state to Task Tracking)*
+*(Self-correction: Added Testing/Verification Protocol states)*
 
 B. State Synchronization Rules
 1. Pre-transition Verification
    - Current state validation
-   - Dependency state check
+   - Dependency state check (e.g., Task must be RUN before TEST)
    - Resource availability check
    - Lock acquisition verification
+   - **User approval check (for TEST → DONE)**
 
 2. Transition Execution
    - Atomic state updates
    - Cascading state changes
    - Rollback preparation
-   - Event notification
+   - Event notification (`VERIFICATION_REQUESTED`, `VERIFICATION_COMPLETE`)
 
 3. Post-transition Verification
    - New state validation
    - Dependency consistency
    - Resource cleanup
    - Lock release confirmation
+   - **User approval confirmation logged**
 ```
 
 ## 2. Cross-Protocol Event System
 ```
 A. Event Flow Control
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Event Type      │ Priority Level     │ Handling Protocol  │
-├─────────────────┼────────────────────┼────────────────────┤
-│ State Change    │ CRITICAL          │ State Manager      │
-│ Task Update     │ HIGH             │ Task Tracker       │
-│ Memory Sync     │ MEDIUM           │ Memory Manager     │
-│ Verification    │ HIGH             │ Verification Chain │
-└─────────────────┴────────────────────┴────────────────────┘
+┌──────────────────────────┬────────────────┬──────────────────────────┐
+│ Event Type               │ Priority Level │ Handling Protocol        │
+├──────────────────────────┼────────────────┼──────────────────────────┤
+│ State Change             │ CRITICAL       │ State Manager            │
+│ Task Update              │ HIGH           │ Task Tracker             │
+│ Memory Sync              │ MEDIUM         │ Memory Manager           │
+│ Verification Check       │ HIGH           │ Verification Chain       │
+│ **Verification Requested** │ **HIGH**       │ **Testing Verification** │
+│ **User Approval Result** │ **CRITICAL**   │ **Testing Verification** │
+└──────────────────────────┴────────────────┴──────────────────────────┘
 
 B. Event Processing Pipeline
 1. Event Generation
@@ -78,14 +85,16 @@ B. Event Processing Pipeline
 ## 3. Verification Chain System
 ```
 A. Verification Levels
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Level           │ Verification Type  │ Required Checks    │
-├─────────────────┼────────────────────┼────────────────────┤
-│ L1: Protocol    │ State Integrity    │ State, Events      │
-│ L2: Data        │ Data Consistency   │ DB, Memory, Files  │
-│ L3: System      │ System Integrity   │ Resources, Locks   │
-│ L4: Security    │ Access Control     │ Auth, Permissions  │
-└─────────────────┴────────────────────┴────────────────────┘
+┌─────────────────┬───────────────────────┬──────────────────────────────────┐
+│ Level           │ Verification Type     │ Required Checks                  │
+├─────────────────┼───────────────────────┼──────────────────────────────────┤
+│ L1: Protocol    │ State Integrity       │ State, Events                    │
+│ L2: Data        │ Data Consistency      │ DB, Memory, Files                │
+│ L3: System      │ System Integrity      │ Resources, Locks                 │
+│ L4: Security    │ Access Control        │ Auth, Permissions                │
+│ **L5: User**    │ **User Acceptance**   │ **Explicit User Input/Approval** │
+└─────────────────┴───────────────────────┴──────────────────────────────────┘
+*(Self-correction: Added L5 for User Acceptance)*
 
 B. Verification Chain Execution
 1. Pre-execution Chain
@@ -93,30 +102,35 @@ B. Verification Chain Execution
    - Resource availability check
    - Security context validation
    - Dependency verification
+   - **User readiness check (for L5)**
 
 2. Execution Chain
    - Operation atomic verification
    - State transition validation
    - Data consistency check
    - Event sequence validation
+   - **User interaction logging (for L5)**
 
 3. Post-execution Chain
    - Result verification
    - State consistency check
    - Resource cleanup verification
    - Audit trail validation
+   - **User approval recorded (for L5)**
 ```
 
 ## 4. Protocol Synchronization Framework
 ```
 A. Synchronization Matrix
-┌─────────────────┬────────────────────┬────────────────────┐
-│ Protocol Pair   │ Sync Requirements  │ Verification Points│
-├─────────────────┼────────────────────┼────────────────────┤
-│ Meta ↔ Rule     │ State alignment    │ Pre/Post State     │
-│ Rule ↔ Task     │ Task status sync   │ Task Completion    │
-│ Task ↔ Memory   │ Entity updates     │ Data Consistency   │
-└─────────────────┴────────────────────┴────────────────────┘
+┌─────────────────┬───────────────────────────┬─────────────────────────────────────┐
+│ Protocol Pair   │ Sync Requirements         │ Verification Points                  │
+├─────────────────┼───────────────────────────┼─────────────────────────────────────┤
+│ Meta ↔ Rule     │ State alignment           │ Pre/Post State                      │
+│ Rule ↔ Task     │ Task status sync          │ Task Completion (Requires User Appr)│
+│ Task ↔ Memory   │ Entity updates            │ Data Consistency                    │
+│ Task ↔ Testing  │ Task status (🔄 → 🧪)     │ Testing Entry Criteria              │
+│ Testing ↔ Task  │ Task status (🧪 → ✅/🔄)  │ User Approval Recorded (L5 Verify)  │
+└─────────────────┴───────────────────────────┴─────────────────────────────────────┘
 
 B. Synchronization Process
 1. Pre-sync Verification

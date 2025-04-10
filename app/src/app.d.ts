@@ -4,11 +4,11 @@ declare global {
 	interface User {
 		id: string;
 		betterAuthId: string;
-		displayName: string;
-		email: string;
-		avatarUrl: string;
-		roles: string[];
-		syncStatus: string;
+		displayName?: string;
+		email?: string;
+		avatarUrl?: string;
+		roles?: string[];
+		syncStatus?: string;
 		sessionToken?: string;
 		updatedAt?: string; // Timestamp of last update from ba_users (ISO 8601 format)
 	}

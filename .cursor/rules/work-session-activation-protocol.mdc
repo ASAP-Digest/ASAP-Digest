@@ -44,15 +44,15 @@ This protocol operates within the established framework and relies heavily on th
 
 ### 3.2. End Work Session (EWS)
 -   **Command:** `End Work Session` or alias `EWS`
--   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.0`.
+-   **Purpose:** Formally closes the *active* work session or transitions the primary task to the Testing/Verification phase (`🧪`). Triggers the finalization or testing transition sequence defined in `WSMP v2.0`.
 -   **Optional Parameters (WSMP v2.0):**
-    -   `Reason`: `NORMAL`, `INTERRUPTED`, `COMPLETED`, `FAILED`.
+    -   `Reason`: `TESTING`, `COMPLETED`, `NORMAL`, `INTERRUPTED`, `FAILED`. (`TESTING` is now the precursor to `COMPLETED`).
 -   **Core Actions Triggered (Handled by WSMP):**
     1.  Gets current timestamp (`mcp_mcp_datetime_get_datetime`).
-    2.  Executes session finalization logic (e.g., task status updates in memory/roadmap, documentation updates).
-    3.  Creates relevant entities (e.g., `WorkSessionEnd`) in Server Memory.
+    2.  Executes session finalization or testing transition logic (e.g., task status updates to `🧪` or `ENDED`, documentation updates).
+    3.  Creates relevant entities (e.g., `WorkSessionEnd`, `VerificationRequest`) in Server Memory.
     4.  Performs final Verification Chain checks.
-    5.  Records `SESSION_END` in Audit Trail.
+    5.  Records `SESSION_END` or `TASK_VERIFICATION_PENDING` in Audit Trail.
 
 ## 4. Standard Workflow Example
 

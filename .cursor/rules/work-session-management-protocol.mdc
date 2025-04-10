@@ -152,17 +152,31 @@ E. Current Session Status & Auto-Save (NEW)
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
 2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-3.  **Finalization Logic:** Execute session finalization tasks:
-    - Update relevant `Task` entity statuses in Server Memory (e.g., to `COMPLETED`, `PENDING`).
-    - Update corresponding tasks in `docs/ROADMAP_TASKS.md` (status emoji, timestamp) via Task Tracking Protocol logic.
-    - Update other documentation (`DEPLOYMENT_CHECKLIST.md`, etc.) if needed.
-4.  **Update Work Session:**
-    - Change status to `ENDED`.
-    - Add observation: `Session ended at [Timestamp]. Reason: [Reason Param]`.
-    - Set `endTime` field/observation.
-5.  **Verification:** Execute final L1/L2/L4 Verification Chain checks.
-6.  **Audit:** Record `SESSION_END` event in Audit Trail.
-7.  **Feedback:** Confirm session end.
+3.  **Finalization Logic:** Based on the `Reason` parameter:
+    -   **If `Reason` is `TESTING`:**
+        -   Identify the primary active task.
+        -   Update relevant `Task` entity status in Server Memory to `TESTING`.
+        -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `🧪` emoji.
+        -   Optionally update other documentation (`DEPLOYMENT_CHECKLIST.md`) with verification steps.
+        -   **DO NOT** end the `WorkSession` entity state yet. Add observation: `Task transitioned to TESTING at [Timestamp]`.
+        -   Trigger the `Testing Verification Protocol` for the primary task.
+    -   **If `Reason` is `COMPLETED` (Requires prior successful `TESTING` phase):**
+        -   Verify the primary task passed the `Testing Verification Protocol` (check Server Memory for approval entity/observation).
+        -   Update relevant `Task` entity status in Server Memory to `COMPLETED`.
+        -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `✅` emoji and append timestamp.
+        -   Update final documentation (`DEPLOYMENT_CHECKLIST.md`, etc.).
+        -   Proceed to Step 4 (Update Work Session to ENDED).
+    -   **If `Reason` is `NORMAL`, `INTERRUPTED`, `FAILED`:**
+        -   Perform standard finalization (update tasks to relevant non-completed state if needed, update docs).
+        -   Proceed to Step 4 (Update Work Session to ENDED).
+    -   **Error:** If `Reason` is `COMPLETED` but verification is not confirmed, report error and do not proceed.
+4.  **Update Work Session (Only if ending session, not for TESTING transition):**
+    -   Change status to `ENDED`.
+    -   Add observation: `Session ended at [Timestamp]. Reason: [Reason Param]`.
+    -   Set `endTime` field/observation.
+5.  **Verification:** Execute final L1/L2/L4 Verification Chain checks. If transitioning to TESTING, specific verification checks related to testing readiness might apply.
+6.  **Audit:** Record `SESSION_END` or `TASK_TESTING_PENDING` event in Audit Trail.
+7.  **Feedback:** Confirm session end or transition to testing phase.
 ````
 
 ### 3.5 Current Working Session (CWS)
@@ -216,13 +230,14 @@ class SessionTaskManager {
     async updateTaskStatus(taskId, status, timestamp, sessionId) {
         const statusEmoji = this.getStatusEmoji(status);
         // ... (Update Server Memory) ...
-        // Update Roadmap File - Handles PAUSED/ACTIVE transitions
+        // Update Roadmap File - Handles PAUSED/ACTIVE/TESTING transitions
         await this.updateRoadmapFile(taskId, statusEmoji, timestamp, { updatePausedParents: (status === 'ACTIVE') });
     }
     // Ensure this mapping aligns with SC logic
     getStatusEmoji(status) {
         const statusMap = {
             'ACTIVE': '🔄', // Use this for IN_PROGRESS
+            'TESTING': '🧪', // New Testing/Verification state
             'COMPLETED': '✅',
             'BLOCKED': '❌',
             'PENDING': '⏳',
@@ -234,7 +249,9 @@ class SessionTaskManager {
         // Logic to read, find task line, update emoji and timestamp, write file
         // Must be robust to parsing variations used by Status Check
         // Must handle changing ⏸️ back to 🔄 on RWS if that marker is used by SWS.
-        // CWS triggers SWS (may set ⏸️) then RWS (should set back to 🔄).
+        // Must handle changing 🔄 to 🧪 on EWS TESTING.
+        // Must handle changing 🧪 to ✅ ONLY on user approval (via Testing Verification Protocol).
+        // Must handle changing 🧪 back to 🔄 on user rejection.
         // If options.updatePausedParents is true, must also find parent tasks
         // in the hierarchy and update their emoji from ⏸️ to 🔄.
     }

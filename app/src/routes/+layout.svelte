@@ -49,10 +49,28 @@
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
+  // Store previous user update timestamp
+  let previousUserUpdatedAt = $state($page.data.user?.updatedAt);
+
   // Log user data from page store on mount AND whenever it changes
   $effect(() => {
     // This log runs both on the server (during SSR) and client
     console.log('[Layout $effect] $page.data.user:', JSON.stringify($page.data.user || null));
+  });
+
+  // Effect to show toast on user data update
+  $effect(() => {
+    const currentUser = $page.data.user;
+    if (currentUser?.updatedAt && currentUser.updatedAt !== previousUserUpdatedAt) {
+      console.log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${currentUser.updatedAt}. Showing toast.`); // DEBUG
+      $toasts.add({
+        title: 'Profile Synced',
+        description: 'Your user data has been updated from WordPress.',
+        type: 'success',
+        duration: 5000 // 5 seconds
+      });
+      previousUserUpdatedAt = currentUser.updatedAt;
+    }
   });
 
   // Effects using Svelte 5 runes
