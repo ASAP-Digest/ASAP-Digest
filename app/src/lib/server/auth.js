@@ -44,7 +44,6 @@ import {
  * @property {string} [username] - Optional username from WP
  * @property {string} [name] - Optional display name from WP
  * @property {UserMetadata} metadata - User metadata 
- * @property {string} sessionToken - Current Better Auth session token
  * @property {string} betterAuthId - Better Auth User ID (should match id)
  * @property {string} displayName - Primary display name (likely from WP)
  * @property {string} [avatarUrl] - URL to user avatar
@@ -192,7 +191,7 @@ if (!process.env.BETTER_AUTH_URL) {
  * 
  * @param {User} user Better Auth user object
  * @param {number} [retries=3] Number of retry attempts
- * @returns {Promise<object|null>} WordPress API response or null on error
+ * @returns {Promise<{success: boolean, wp_user_id?: number, message?: string} | null>} WordPress API response or null on error
  */
 async function createWordPressUser(user, retries = 3) {
     if (!user || !user.id) {
@@ -344,86 +343,336 @@ async function updateUserMetadata(userId, metadata) {
 }
 
 /**
- * Create an HMAC SHA-256 signature using the Web Crypto API
+ * Create an HMAC SHA-256 signature using node:crypto
  * 
- * @param {string} timestamp Timestamp to sign
+ * @param {string} message Message to sign
  * @param {string} secret Secret key
  * @returns {Promise<string>} HMAC signature as hex string
  */
-async function createHmacSha256(timestamp, secret) {
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign(
-        'HMAC',
-        key,
-        encoder.encode(timestamp)
-    );
-    
-    return Array.from(new Uint8Array(signature))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+async function createHmacSha256(message, secret) {
+    const crypto = await import('node:crypto');
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(message);
+    return hmac.digest('hex');
 }
+
+// --- Adapter Functions Definition ---
+
+/**
+ * Get user by email (Adapter Implementation)
+ * @param {string} email - User email
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserByEmailFn(email) {
+    logConfig(`Adapter: getUserByEmail called for ${email}`);
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = 'SELECT * FROM ba_users WHERE email = ? LIMIT 1';
+        const params = [email];
+        /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
+        const [rows, fields] = await connection.execute(sql, params);
+
+        if (Array.isArray(rows) && rows.length > 0) {
+            const userRow = rows[0];
+            if (userRow && typeof userRow === 'object' && 'id' in userRow && 'email' in userRow) {
+                logConfig(`Adapter: getUserByEmail found user for ${email}`);
+                let metadata = userRow.metadata;
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        logConfig(`Adapter: Failed to parse metadata for user ${userRow.id}`, 'warn');
+                        metadata = {};
+                    }
+                }
+                const user = {
+                    id: String(userRow.id),
+                    email: String(userRow.email),
+                    username: userRow.username ? String(userRow.username) : undefined,
+                    name: userRow.name ? String(userRow.name) : undefined,
+                    metadata: metadata || {},
+                    betterAuthId: String(userRow.id),
+                    displayName: String(userRow.name || userRow.username || userRow.email),
+                    roles: metadata?.roles || [],
+                    syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'), // <-- Keep type cast
+                    updatedAt: userRow.updated_at ? new Date(userRow.updated_at).toISOString() : undefined,
+                };
+                logConfig(`Adapter: getUserByEmail returning user object for ${email}: ${JSON.stringify(user)}`);
+                return user;
+            } else {
+                logConfig(`Adapter: getUserByEmail found row but missing expected properties for ${email}`, 'warn');
+                return null;
+            }
+        } else {
+            logConfig(`Adapter: getUserByEmail did not find user for ${email}`);
+            return null;
+        }
+    } catch (error) {
+        logConfig(`Adapter: Error in getUserByEmail for ${email}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+/**
+ * Get user by ID (Adapter Implementation)
+ * @param {string} userId Better Auth user ID
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserByIdFn(userId) {
+    logConfig(`Adapter: getUserById called for ${userId}`);
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = 'SELECT * FROM ba_users WHERE id = ? LIMIT 1';
+        const params = [userId];
+        /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
+        const [rows, fields] = await connection.execute(sql, params);
+
+        if (Array.isArray(rows) && rows.length > 0) {
+            const userRow = rows[0];
+            if (userRow && typeof userRow === 'object' && 'id' in userRow && 'email' in userRow) {
+                logConfig(`Adapter: getUserById found user for ${userId}`);
+                let metadata = userRow.metadata;
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        logConfig(`Adapter: Failed to parse metadata for user ${userRow.id}`, 'warn');
+                        metadata = {};
+                    }
+                }
+                const user = {
+                    id: String(userRow.id),
+                    email: String(userRow.email),
+                    username: userRow.username ? String(userRow.username) : undefined,
+                    name: userRow.name ? String(userRow.name) : undefined,
+                    metadata: metadata || {},
+                    betterAuthId: String(userRow.id),
+                    displayName: String(userRow.name || userRow.username || userRow.email),
+                    roles: metadata?.roles || [],
+                    syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'), // <-- Keep type cast
+                    updatedAt: userRow.updated_at ? new Date(userRow.updated_at).toISOString() : undefined,
+                };
+                logConfig(`Adapter: getUserById returning user object for ${userId}: ${JSON.stringify(user)}`);
+                return user;
+            } else {
+                logConfig(`Adapter: getUserById found row but missing expected properties for ${userId}`, 'warn');
+                return null;
+            }
+        } else {
+            logConfig(`Adapter: getUserById did not find user for ${userId}`);
+            return null;
+        }
+    } catch (error) {
+        logConfig(`Adapter: Error in getUserById for ${userId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+/**
+ * Get session by token (Adapter Implementation)
+ * @param {string} sessionToken - Session token
+ * @returns {Promise<Session|null>} Session object or null if not found/expired
+ */
+async function getSessionByTokenFn(sessionToken) {
+    logConfig(`Adapter: getSessionByToken called for token: ${sessionToken ? 'present' : 'missing'}`);
+    if (!sessionToken) return null;
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = 'SELECT * FROM ba_sessions WHERE session_token = ? AND expires_at > NOW() LIMIT 1';
+        const params = [sessionToken];
+        /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
+        const [rows, fields] = await connection.execute(sql, params);
+
+        if (Array.isArray(rows) && rows.length > 0) {
+            const sessionData = rows[0];
+            if (sessionData && typeof sessionData === 'object' && 'user_id' in sessionData && 'session_token' in sessionData && 'expires_at' in sessionData && 'created_at' in sessionData) {
+                logConfig(`Adapter: getSessionByToken found valid session for token.`);
+                const user = await getUserByIdFn(String(sessionData.user_id)); // <-- Call renamed function
+
+                if (user) {
+                    logConfig(`Adapter: getSessionByToken found user ${user.id} for session.`);
+                    return {
+                        id: String(sessionData.id),
+                        userId: String(sessionData.user_id),
+                        token: String(sessionData.session_token),
+                        expiresAt: new Date(sessionData.expires_at),
+                        createdAt: new Date(sessionData.created_at),
+                        user: user
+                    };
+                } else {
+                    logConfig(`Adapter: getSessionByToken could NOT find user ${sessionData.user_id} for valid session. Invalid state?`, 'warn');
+                    return null;
+                }
+            } else {
+                logConfig(`Adapter: getSessionByToken found row but missing expected properties for token`, 'warn');
+                return null;
+            }
+        } else {
+            logConfig(`Adapter: getSessionByToken did not find valid session for token.`);
+            return null;
+        }
+    } catch (error) {
+        logConfig(`Adapter: Error in getSessionByToken: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+/**
+ * Create session (Adapter Implementation)
+ * @param {string} userId - Better Auth user ID
+ * @param {string} sessionToken - Session token
+ * @param {Date} expiresAt - Expiry date
+ * @returns {Promise<Session|null>} Created session object or null on error
+ */
+async function createSessionFn(userId, sessionToken, expiresAt) {
+    logConfig(`Adapter: createSession called for user ${userId}`);
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const createdAt = new Date();
+        const sql = 'INSERT INTO ba_sessions (user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?)';
+        const params = [userId, sessionToken, expiresAt, createdAt];
+        /** @type {[import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
+        const [result, fields] = await connection.execute(sql, params);
+
+        if (result && typeof result === 'object' && 'affectedRows' in result && result.affectedRows > 0 && 'insertId' in result) {
+            logConfig(`Adapter: createSession successfully inserted session for user ${userId}`);
+            const user = await getUserByIdFn(userId); // <-- Call renamed function
+            if (user) {
+                return {
+                    id: String(result.insertId) || sessionToken,
+                    userId: userId,
+                    token: sessionToken,
+                    expiresAt: expiresAt,
+                    createdAt: createdAt,
+                    user: user
+                };
+            } else {
+                logConfig(`Adapter: createSession could not fetch user ${userId} after inserting session.`, 'warn');
+                return null;
+            }
+        } else {
+            logConfig(`Adapter: createSession failed to insert session for user ${userId}. DB Result: ${JSON.stringify(result)}`, 'error');
+            return null;
+        }
+    } catch (error) {
+        logConfig(`Adapter: Error in createSession for user ${userId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+/**
+ * Delete session by token (Adapter Implementation)
+ * @param {string} sessionToken - Session token
+ * @returns {Promise<void>}
+ */
+async function deleteSessionFn(sessionToken) {
+    logConfig(`Adapter: deleteSession called for token: ${sessionToken ? 'present' : 'missing'}`);
+    if (!sessionToken) return;
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = 'DELETE FROM ba_sessions WHERE session_token = ?';
+        const params = [sessionToken];
+        await connection.execute(sql, params);
+        logConfig(`Adapter: deleteSession executed for token.`);
+    } catch (error) {
+        logConfig(`Adapter: Error in deleteSession: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+// --- Hook Functions Definition ---
+
+/** 
+ * Hook executed after user creation 
+ * @param {User} user 
+ */
+async function onUserCreationHook(user) {
+    logConfig(`Hook: onUserCreation triggered for user ${user.id}. Attempting to create WordPress user.`);
+    const wpResult = await createWordPressUser(user);
+    if (!wpResult || !wpResult.success) {
+        logConfig(`Hook: Failed to create WordPress user for Better Auth user: ${user.id}`, 'error');
+    } else {
+        if (wpResult.wp_user_id) {
+            logConfig(`Hook: Successfully created WordPress user ID: ${wpResult.wp_user_id} for Better Auth user: ${user.id}`);
+        } else {
+            logConfig(`Hook: WordPress user creation endpoint succeeded but did not return wp_user_id for BA user ${user.id}`, 'warn');
+        }
+    }
+}
+
+/** 
+ * Hook executed after session creation 
+ * @param {Session} session 
+ */
+async function onSessionCreationHook(session) {
+    logConfig(`Hook: onSessionCreation triggered for user ${session.userId}. Attempting to create WordPress session.`);
+    await createWordPressSession(session);
+}
+
 
 // Better Auth configuration
 export const auth = betterAuth({
-    // Restore original config using env vars
-    secret: BETTER_AUTH_SECRET, 
-    baseURL: BETTER_AUTH_URL || 'http://localhost:5173',
-    database: pool,
-    tableNames: {
-        user: 'ba_users',
-        session: 'ba_sessions',
-        account: 'ba_accounts', // Keep this if needed by BA internally
-        verification: 'ba_verifications'
+    dialect: dialect,
+    authKey: authSecret,
+    config: {
+        sessionCookieName: 'better_auth_session',
+        sessionExpiresIn: 30 * 24 * 60 * 60 * 1000,
     },
-    emailAndPassword: {
-        enabled: true,
-        autoSignIn: true
+    adapter: {
+        // Assign the defined functions to the adapter properties
+        getUserByEmail: getUserByEmailFn,
+        getUserById: getUserByIdFn,
+        getSessionByToken: getSessionByTokenFn,
+        createSession: createSessionFn,
+        deleteSession: deleteSessionFn,
     },
-    cookies: {
-        sessionToken: {
-            name: 'asap_session',
-            options: {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax'
-            }
-        }
-    },
-    onUserCreated: async (/** @type {User} */ user) => {
-        // Create corresponding WordPress user
-        const wpUser = /** @type {WordPressUser} */ (await createWordPressUser(user));
-        if (wpUser?.wp_user_id) {
-            // Update Better Auth user metadata with WordPress user ID - Restored
-            return {
-                ...user,
-                metadata: {
-                    ...(user.metadata || {}), // Ensure metadata exists before spreading
-                    wp_user_id: wpUser.wp_user_id
+    after: {
+        /** @param {User} user */
+        onUserCreation: async (user) => {
+            logConfig(`User created in Better Auth: ${user.id}. Attempting to create WordPress user.`);
+            const wpResult = await createWordPressUser(user);
+            if (!wpResult || !wpResult.success) {
+                logConfig(`Failed to create WordPress user for Better Auth user: ${user.id}`, 'error');
+            } else {
+                if (wpResult.wp_user_id) {
+                    logConfig(`Successfully created WordPress user ID: ${wpResult.wp_user_id} for Better Auth user: ${user.id}`);
+                } else {
+                    logConfig(`WordPress user creation endpoint succeeded but did not return wp_user_id for BA user ${user.id}`, 'warn');
                 }
-            };
-        }
-        return user;
-    },
-    onSessionCreated: async (/** @type {Session} */ session) => {
-        // Create corresponding WordPress session
-        if (session.user?.metadata?.wp_user_id) { // Added optional chaining
+            }
+        },
+        /** @param {Session} session */
+        onSessionCreation: async (session) => {
+            logConfig(`Session created for user: ${session.userId}. Attempting to create WordPress session.`);
             await createWordPressSession(session);
-        }
-        return session;
+        },
     }
-    // Restore databaseHooks if necessary
-    // databaseHooks: { ... }
 });
 
-// Add named export for the pool
 export { pool };
 
 // Keep the default export for auth

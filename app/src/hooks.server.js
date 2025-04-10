@@ -3,6 +3,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { redirect } from '@sveltejs/kit';
 import { BETTER_AUTH_SECRET } from '$env/static/private'; // Import the shared secret
+import { pool } from '$lib/server/auth'; // Import the DB pool
 
 /**
  * Get WordPress base URL
@@ -56,15 +57,22 @@ function validateSyncSecret(request) {
 }
 
 /**
- * @typedef {Object} User
- * @property {string} id - User ID
- * @property {string} betterAuthId - Better Auth user ID
- * @property {string} displayName - User's display name
- * @property {string} email - User's email address
- * @property {string} avatarUrl - URL to user's avatar
- * @property {Array<string>} roles - User's roles
- * @property {string} syncStatus - User sync status
- * @property {string} [updatedAt] - Timestamp of last update (optional, from sync)
+ * @typedef {import('mysql2/promise').PoolConnection} PoolConnection
+ * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
+ * @typedef {import('mysql2/promise').OkPacket} OkPacket
+ * @typedef {import('mysql2/promise').ResultSetHeader} ResultSetHeader
+ */
+
+/**
+ * @typedef {Object} User - Defined locally for hook processing
+ * @property {string} id - User ID (WP User ID)
+ * @property {string} betterAuthId - Better Auth user ID (UUID)
+ * @property {string | undefined} [displayName] - User's display name (Optional from DB)
+ * @property {string | undefined} [email] - User's email address (Optional from DB)
+ * @property {string | undefined} [avatarUrl] - URL to user's avatar (Optional)
+ * @property {Array<string>} [roles] - User's roles
+ * @property {string} [syncStatus] - User sync status (Optional)
+ * @property {string} [updatedAt] - Timestamp of last update (ISO format)
  */
 
 /**
@@ -166,134 +174,150 @@ const betterAuthHandle = async ({ event, resolve }) => {
 const wordPressSessionHandle = async ({ event, resolve }) => {
     /** @type {App.Locals} */
     const locals = event.locals;
-    console.log(`[hooks.server.js | WP Session] Request Path: ${event.url.pathname}`); // Log request path
+    /** @type {PoolConnection | undefined} */
+    let skConnection;
+    console.log(`[hooks.server.js | WP Session] Request Path: ${event.url.pathname}`); 
 
     try {
-        // Skip WordPress session check for API and static routes
+        // Skip check for API, static, internal routes
         if (event.url.pathname.startsWith('/api/') || 
             event.url.pathname.startsWith('/_app/') ||
             event.url.pathname.startsWith('/@')) {
-            console.log('[hooks.server.js | WP Session] Skipping WP check for API/Static route.'); // Log skip reason
+            console.log('[hooks.server.js | WP Session] Skipping check for API/Static/Internal route.');
             return resolve(event);
         }
 
-        // Check for existing Better Auth session
+        // Check for existing Better Auth session cookie
         const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
         if (!sessionToken) {
-            console.log('[hooks.server.js | WP Session] No better_auth_session cookie found. Resolving.'); // Log no token
-            // No Better Auth session, continue without validation
+            console.log('[hooks.server.js | WP Session] No better_auth_session cookie found.');
             return resolve(event);
         }
-        console.log('[hooks.server.js | WP Session] Found better_auth_session cookie.'); // Log token found
+        console.log('[hooks.server.js | WP Session] Found better_auth_session cookie.');
 
-        // Initialize retry mechanism
-        const maxRetries = 3;
-        const retryDelay = 1000; // 1 second
-        let lastError = null;
+        // 1. Validate session token and get ba_user_id from SK database
+        skConnection = await pool.getConnection();
+        console.log('[hooks.server.js | SK Session] Acquired SK DB connection.');
+        
+        const sessionSql = `
+            SELECT user_id 
+            FROM ba_sessions 
+            WHERE session_token = ? AND expires_at > NOW()
+        `;
+        /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */ 
+        const [sessionResult] = await skConnection.execute(sessionSql, [sessionToken]);
+        
+        let baUserId = null;
+        // Type guard for sessionResult
+        if (Array.isArray(sessionResult) && sessionResult.length > 0) {
+             // Check the first element - assumes SELECT returns RowDataPacket[]
+             const firstRow = sessionResult[0];
+             if (firstRow && typeof firstRow === 'object' && 'user_id' in firstRow) {
+                // @ts-ignore - Linter might still complain, but logic ensures it's RowDataPacket
+                baUserId = firstRow.user_id;
+                console.log(`[hooks.server.js | SK Session] Valid SK session found for ba_user_id: ${baUserId}`);
+             } else {
+                 // This case shouldn't happen if DB schema is correct & SELECT returns rows
+                 console.warn('[hooks.server.js | SK Session] Session query returned array, but first element invalid.');
+                 // Fall through to invalid session logic
+             }
+        }
+        
+        // If baUserId wasn't found (either query empty/invalid or first element check failed)
+        if (!baUserId) {
+            console.log('[hooks.server.js | SK Session] Invalid or expired SK session token (or unexpected query result). Clearing cookie.');
+            const headers = new Headers();
+            headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+            if (skConnection) await skConnection.release();
+            if (!event.url.pathname.startsWith('/api/')) {
+                 console.log('[hooks.server.js | SK Session] Redirecting to /login due to invalid SK session.');
+                 // Throw redirect needs headers attached to the response, not directly in the throw
+                 const response = new Response(null, { status: 303, headers: { Location: `/login?redirect=${encodeURIComponent(event.url.pathname)}` } });
+                 response.headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+                 return response; // Return the response to execute redirect with cookie clearing
+                 // Original: throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
+            }
+            return resolve(event); // Resolve if API route
+        }
+        
+        // 2. Fetch user data directly from ba_users using ba_user_id
+        if (baUserId) {
+            const userSql = `
+                SELECT 
+                    u.id as betterAuthId, 
+                    u.display_name as displayName, 
+                    u.email, 
+                    u.avatar_url as avatarUrl, 
+                    u.roles, 
+                    u.updated_at as updatedAt,
+                    m.wp_user_id as id, 
+                    m.sync_status as syncStatus
+                FROM ba_users u
+                LEFT JOIN ba_wp_user_map m ON u.id = m.ba_user_id
+                WHERE u.id = ?
+            `;
+             /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */
+            const [userResult] = await skConnection.execute(userSql, [baUserId]);
 
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            console.log(`[hooks.server.js | WP Session] Attempt ${attempt + 1} to check WP session.`); // Log retry attempt
-            try {
-                // Check WordPress session with Better Auth token
-                const wpApiUrl = `${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`;
-                console.log(`[hooks.server.js | WP Session] Fetching: ${wpApiUrl}`); // Log fetch URL
-                const wpResponse = await fetch(wpApiUrl, {
-                    headers: {
-                        'X-Better-Auth-Token': sessionToken,
-                        cookie: event.request.headers.get('cookie') || ''
-                    }
-                });
-                console.log(`[hooks.server.js | WP Session] WP Response Status: ${wpResponse.status}`); // Log response status
+            // Refined Type guard for userResult
+            if (Array.isArray(userResult) && userResult.length > 0) {
+                const userRow = userResult[0]; 
 
-                if (!wpResponse.ok) {
-                    console.warn(`[hooks.server.js | WP Session] WP check failed. Status: ${wpResponse.status}`); // Log failure
-                    // Clear invalid session on 401/403
-                    if (wpResponse.status === 401 || wpResponse.status === 403) {
-                        console.log('[hooks.server.js | WP Session] Clearing invalid session cookie due to 401/403.'); // Log clearing reason
-                        const headers = new Headers();
-                        headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
-                        
-                        // Don't redirect on API routes
-                        if (!event.url.pathname.startsWith('/api/')) {
-                            console.log('[hooks.server.js | WP Session] Redirecting to /login.'); // Log redirect
-                            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
-                        }
-                    }
-                    throw new Error(`WordPress session check failed: ${wpResponse.status}`);
-                }
-
-                const data = await wpResponse.json();
-                console.log('[hooks.server.js | WP Session] WP Response Data:', data); // Log received data
-                
-                if (!data.valid) {
-                    console.log('[hooks.server.js | WP Session] WP check returned invalid. Clearing session cookie.'); // Log invalid data reason
-                    // Clear invalid session
-                    const headers = new Headers();
-                    headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+                // Runtime check for expected properties
+                if (userRow && typeof userRow === 'object' && 'id' in userRow && 'betterAuthId' in userRow) {
+                     /** @type {User} */
+                    const userDataFromDb = {
+                        // @ts-ignore
+                        id: String(userRow.id), 
+                        // @ts-ignore
+                        betterAuthId: userRow.betterAuthId,
+                        // @ts-ignore - Provide fallback to undefined if null/empty
+                        displayName: userRow.displayName || undefined, 
+                        // @ts-ignore - Provide fallback to undefined if null/empty
+                        email: userRow.email || undefined, 
+                        // @ts-ignore
+                        avatarUrl: userRow.avatarUrl ?? undefined, 
+                        // @ts-ignore
+                        roles: JSON.parse(userRow.roles || '[]'), 
+                        // @ts-ignore
+                        syncStatus: userRow.syncStatus,
+                        // @ts-ignore
+                        updatedAt: userRow.updatedAt instanceof Date ? userRow.updatedAt.toISOString() : userRow.updatedAt
+                    };
                     
-                    // Don't redirect on API routes
-                    if (!event.url.pathname.startsWith('/api/')) {
-                        console.log('[hooks.server.js | WP Session] Redirecting to /login.'); // Log redirect
-                        throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
-                    }
-                    return resolve(event);
+                    console.log('[hooks.server.js | SK Session] Fetched user data from ba_users:', userDataFromDb);
+                    // Assigning to App.Locals.user which should expect optional fields correctly
+                    event.locals.user = userDataFromDb;
+                } else {
+                    console.error(`[hooks.server.js | SK Session] User data row invalid or missing expected properties for ba_user_id: ${baUserId}`);
                 }
-
-                // Add user data and sync status to event locals
-                console.log('[hooks.server.js | WP Session] Populating event.locals.user.'); // Log population step
-                /** @type {EventLocals} */
-                const updatedLocals = {
-                    ...locals,
-                    user: {
-                        id: String(data.user_id),
-                        betterAuthId: data.better_auth_user_id,
-                        displayName: data.display_name,
-                        email: data.user_email,
-                        avatarUrl: data.avatar_url,
-                        roles: data.user_roles,
-                        syncStatus: data.sync_status || 'unknown',
-                        updatedAt: data.updatedAt
-                    }
-                };
-
-                event.locals = updatedLocals;
-                console.log('[hooks.server.js | WP Session] event.locals updated:', event.locals); // Log updated locals
-
-                // Handle sync failures
-                if (data.sync_status === 'sync_failed') {
-                    console.error('[hooks.server.js | WP Session] User data sync failed - some data may be outdated');
-                    // You might want to trigger a background sync retry here
-                }
-
-                console.log('[hooks.server.js | WP Session] WP session check successful. Resolving.'); // Log success
-                return resolve(event);
-            } catch (error) {
-                lastError = error;
-                console.error(`[hooks.server.js | WP Session] Error during attempt ${attempt + 1}:`, error); // Log error during attempt
-                
-                // Don't retry on redirects or clear session errors
-                if (error instanceof Response || (error instanceof Error && error.message?.includes('clear session'))) {
-                    throw error;
-                }
-                
-                // Wait before retry
-                if (attempt < maxRetries - 1) {
-                    console.log(`[hooks.server.js | WP Session] Retrying after ${retryDelay}ms...`); // Log retry wait
-                    await new Promise(resolve => setTimeout(resolve, retryDelay));
-                }
+            } else {
+                 console.error(`[hooks.server.js | SK Session] User data not found in ba_users for ba_user_id: ${baUserId}`);
             }
         }
 
-        // If we get here, all retries failed
-        console.error('[hooks.server.js | WP Session] WordPress session check failed after retries:', lastError);
-        return resolve(event);
     } catch (error) {
-        if (error instanceof Response) {
-            throw error;
+        // Type guard for thrown redirect responses or other errors
+        if (error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' && error.status >= 300 && error.status < 400 && 'location' in error) {
+             console.log('[hooks.server.js | Session Handle] Caught redirect error, re-throwing.');
+             throw error; // Re-throw redirects
+        } else if (error instanceof Response) {
+            // If a Response was returned directly (like redirect with cookie clearing)
+            console.log('[hooks.server.js | Session Handle] Caught Response, returning it.');
+            return error; 
         }
-        console.error('[hooks.server.js | WP Session] Global handle error:', error);
-        return resolve(event);
+        // Log other unexpected errors
+        console.error('[hooks.server.js | Session Handle] Unexpected Error:', error);
+
+    } finally {
+         if (skConnection) {
+             try { await skConnection.release(); console.log('[hooks.server.js | SK Session] Released SK DB connection.'); } catch(relErr){ console.error('Failed releasing SK DB connection:', relErr);}
+         }
     }
+    
+    // Always resolve the request
+    console.log('[hooks.server.js | Session Handle] Resolving request. Locals user set:', !!event.locals.user);
+    return resolve(event);
 };
 
 /** @type {import('@sveltejs/kit').Handle} */

@@ -112,10 +112,14 @@ D. End Session
       - If found: Proceed to step 2 (Resume Found Save).
       - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Initiate Fallback Check).
 
-    1.a. **Fallback Check 1: Scan Roadmap for Paused Markers:**
+     1.a. **Fallback Check 1: Scan Roadmap for Paused Markers:**
         - Read `docs/ROADMAP_TASKS.md`.
         - Search the content specifically for the `⏸️` emoji marker.
-        - **If `⏸️` markers ARE FOUND:** Report error "Inconsistency Detected: Roadmap file shows paused task(s) (marked with ⏸️), but no corresponding 'WorkSessionSave' entity was found in Server Memory. Manual review/cleanup suggested before proceeding. Cannot resume automatically." and stop.
+        - **If `⏸️` markers ARE FOUND:**
+            - Acknowledge Inconsistency: Report "Inconsistency Detected: Roadmap file shows paused task(s) (marked with ⏸️), but no corresponding 'WorkSessionSave' entity was found in Server Memory. This may indicate a previous Save Work Session (SWS) did not fully complete."
+            - Identify Resumption Point: Parse the roadmap structure to identify all tasks marked with `⏸️`. Determine the hierarchical relationship (e.g., based on indentation or task ID structure). Select the task marked with `⏸️` that is deepest in the hierarchy (i.e., the most specific child task).
+            - Report Resumption: State "Proceeding by initiating a new session targeting the deepest paused task found: '[Selected Deepest Paused Task Name]'."
+            - Initiate New Session: Trigger the logic equivalent to `BWS` (Begin Work Session), creating a *new* `WorkSession` entity. This new session MUST explicitly target the identified deepest paused task as its `Priority Issue`. Link this new `WorkSession` entity to an observation noting the inconsistent state detection and the chosen resumption task. Proceed with the normal RWS flow from step 4 (Timestamp acquisition onwards) using this *newly created* session, effectively resuming work on the target task.
         - **If `⏸️` markers ARE NOT FOUND:** Proceed to step 1.b (Fallback Check 2).
 
     1.b. **Fallback Check 2: Suggest Last Active Session:**
@@ -158,9 +162,20 @@ D. End Session
 7.  **Feedback:** Confirm session end.
 ````
 
-## 4. Cross-Protocol Event System Integration
-*(No changes from v2.1)*
-*(...Content identical to v2.1...)*
+## 4. Save Work Session (SWS) Implementation
+````text
+1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+2.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
+3.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory, including:
+    - Save timestamp.
+    - Link to the active `WorkSession` entity.
+    - Save Reason (if provided).
+    - Observations summarizing key state points (e.g., active task ID, relevant open files/entities, current error state if any).
+4.  **Task Status Marker:** Consider updating the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. 
+5.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
+6.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
+7.  **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID for potential future resumption.
+````
 
 ## 5. Task Status Management Integration
 *(Emphasizes consistent handling of PAUSED marker and parent/sub-task hierarchy)*

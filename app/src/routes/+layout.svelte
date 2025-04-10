@@ -33,6 +33,7 @@
   import { 
     Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut 
   } from '$lib/utils/lucide-compat.js';
+  import { invalidateAll } from '@sveltejs/kit'; // Import invalidateAll
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -63,6 +64,48 @@
 
   // Initialize on mount
   onMount(() => {
+    let eventSource = null; // Variable to hold the EventSource instance
+
+    if (browser) { // Ensure this runs only in the browser
+      console.log('[Layout Sync Listener] Setting up EventSource...');
+      eventSource = new EventSource('/api/auth/sync-stream');
+
+      eventSource.onopen = () => {
+        console.log('[Layout Sync Listener] EventSource connection opened.');
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[Layout Sync Listener] Received message:', data); // DEBUG
+
+          if (data.type === 'user-update') {
+            const currentUserId = $page.data.user?.id; 
+            console.log(`[Layout Sync Listener] User update received for userId: ${data.userId}. Current user ID: ${currentUserId}`); // DEBUG
+            if (currentUserId && data.userId === currentUserId) {
+              console.log('[Layout Sync Listener] Update matches current user. Invalidating data...');
+              // Invalidate layout data to refetch user info
+              invalidateAll(); 
+              // The existing $effect checking updatedAt should then trigger the toast
+            } else {
+               console.log('[Layout Sync Listener] Update does not match current user, ignoring.'); // DEBUG 
+            }
+          } else if (data.type === 'connection-ready') {
+             console.log('[Layout Sync Listener] Connection ready message received.');
+          }
+        } catch (error) {
+          console.error('[Layout Sync Listener] Error parsing message data:', error, 'Raw data:', event.data);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('[Layout Sync Listener] EventSource error:', error);
+        // Handle errors, e.g., close and potentially retry connection after a delay
+        eventSource.close(); 
+        eventSource = null;
+      };
+    } // end if(browser)
+
     try {
       // Initialize mobile state
       const checkMobile = () => {
@@ -107,6 +150,10 @@
       
       // Return cleanup function
       return () => {
+        if (eventSource) {
+          console.log('[Layout Sync Listener] Closing EventSource connection.');
+          eventSource.close();
+        }
         window.removeEventListener('resize', checkMobile);
         // cleanupLazyLoading?.(); // TEMP: Comment out this call
       };
@@ -242,8 +289,7 @@
         console.log('[Layout Effect] Initialized lastUpdatedAt:', lastUpdatedAt); // DEBUG
       } else if (currentUser.updatedAt !== lastUpdatedAt) {
         // Timestamp has changed, trigger toast
-        console.log('[Layout Effect] User data updated. Old ts:', lastUpdatedAt, 'New ts:', currentUser.updatedAt); // DEBUG
-        // Use the local toast store's show method
+        console.log('[Layout Effect] User data updated via $effect. Old ts:', lastUpdatedAt, 'New ts:', currentUser.updatedAt); // DEBUG
         toasts.show('Profile synchronized.', 'success');
         lastUpdatedAt = currentUser.updatedAt; // Update the stored timestamp
       }

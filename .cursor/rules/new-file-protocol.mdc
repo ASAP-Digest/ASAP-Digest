@@ -3,11 +3,17 @@ description:
 globs: 
 alwaysApply: true
 ---
-
 # New File Protocol
 
-- Always Check current location `pwd` against `@PE - CTXT`
-- Check if file exists in current or desired location `ls -la`
-- Wait for output
-- If in correct directory according to `@PE - CTXT` & file does not exist
-- Create new file `touch [file-name]`
+1.  **Location Context Verification**
+    *   MUST Check current location `pwd` against relevant target directory specified in `@PE - CTXT` (e.g., SvelteKit Root, WordPress Root).
+    *   **MUST explicitly state the current CWD (from `pwd` result) and the required CWD (from `@PE - CTXT`).**
+    *   **MUST confirm they match OR state the exact `cd` command needed to reach the required CWD.**
+    *   If `cd` is needed, execute it *before* proceeding to Step 2.
+
+2.  **File Existence Check**
+    *   Once in the correct directory (verified in Step 1), check if file exists using `ls -la [file-name]`.
+    *   Wait for output.
+
+3.  **File Creation (If Necessary)**
+    *   If the file does *not* exist (verified in Step 2), create the new file using `touch [file-name]`.

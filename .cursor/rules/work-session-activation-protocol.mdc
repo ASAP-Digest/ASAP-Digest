@@ -20,7 +20,7 @@ This protocol operates within the established framework and relies heavily on th
 │ 3. Status Check Protocol (v2.0)         │ // Input Source
 │ 4. Enhanced Work Session Mgmt (v2.0)    │ // Activated Protocol
 │ 5. Memory Maintenance Protocol          │
-│ 6. Cross-Protocol Comms & Verification  │
+│ 6. Cross-Protocol Comms & Verification   │
 │ 7. Audit Trail System                   │
 └─────────────────────────────────────────┘
 ````

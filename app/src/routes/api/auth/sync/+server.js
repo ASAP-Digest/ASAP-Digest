@@ -12,6 +12,10 @@ import { randomUUID } from 'node:crypto';
 import { randomBytes } from 'node:crypto';
 import { pool } from '$lib/server/auth';
 import { redirect } from '@sveltejs/kit';
+// /** @typedef {import('../sync-stream/+server.js')} SyncStreamModule */
+// /** @type {SyncStreamModule['broadcastSyncUpdate']} */
+// import { broadcastSyncUpdate } from '../sync-stream/+server.js'; // <-- Old incorrect path
+import { broadcastSyncUpdate } from '$lib/server/syncBroadcaster'; // <-- Correct path
 
 /**
  * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
@@ -107,7 +111,7 @@ export async function GET({ request, url, locals }) {
             console.debug(`[Sync API] Inserted new session into ba_sessions for user: ${ba_user_id}`);
 
             // 5. Prepare Set-Cookie header
-            const cookieName = 'asap_session';
+            const cookieName = 'better_auth_session';
             const cookieOptions = [
                 `Path=/`,
                 `Expires=${expires_at.toUTCString()}`,
@@ -285,7 +289,7 @@ export async function GET({ request, url, locals }) {
                     console.debug(`[Sync API - Cookie Check] Inserted new session into ba_sessions for user: ${ba_user_id_cookie}`);
                     session_created_cookie = true;
 
-                    const cookieName_cookie = 'asap_session';
+                    const cookieName_cookie = 'better_auth_session';
                     const cookieOptions_cookie = [
                         `Path=/`,
                         `Expires=${expires_at_cookie.toUTCString()}`,
@@ -420,147 +424,88 @@ export async function GET({ request, url, locals }) {
  */
 
 /**
- * Handles POST requests for manually triggered user data synchronization.
- * Expects WordPress user ID and checks if SvelteKit data needs updating.
- *
+ * Handles POST requests to synchronize user data from WordPress.
+ * Expected payload: { wpUserId: number, userData: { displayName: string, email: string, avatarUrl?: string, ... } }
  * @param {object} event The SvelteKit request event object.
  * @param {Request} event.request The incoming request object.
- * @returns {Promise<Response>} A response indicating if the sync was successful/needed.
+ * @returns {Promise<Response>} JSON response indicating success or failure.
  */
 /** @type {import('./$types').RequestHandler} */
 export async function POST({ request }) {
   console.debug('[Sync API] Received POST request for /api/auth/sync');
   let connection;
+  const headers = { 'Content-Type': 'application/json' };
+
   try {
     const body = await request.json();
-    console.debug('[Sync API POST] Request body:', body);
-    const { wpUserId, skUserId, forceUpdate } = body; // forceUpdate can bypass timestamp check
+    console.debug('[Sync API] POST request body:', body);
 
-    if (!wpUserId || !skUserId) {
-      console.debug('[Sync API POST] Missing wpUserId or skUserId in request body. Returning 400.');
-      return new Response(JSON.stringify({ success: false, error: 'Missing required user IDs' }), { status: 400 });
+    const { wpUserId, userData } = body;
+
+    if (!wpUserId || !userData) {
+      console.warn('[Sync API] POST request missing wpUserId or userData.');
+      return new Response(JSON.stringify({ success: false, error: 'Missing required data' }), { status: 400, headers });
     }
 
     connection = await pool.getConnection();
-    console.debug('[Sync API POST] Acquired DB connection.');
+    console.debug('[Sync API] Acquired DB connection for POST processing.');
 
-    // 1. Get SK user data from ba_users
-    const skUserSql = 'SELECT display_name, email, avatar_url, roles, updated_at FROM ba_users WHERE id = ? LIMIT 1';
-    const [skUserRows] = await connection.execute(skUserSql, [skUserId]);
+    // 1. Find ba_user_id from ba_wp_user_map
+    const mapSql = 'SELECT ba_user_id FROM ba_wp_user_map WHERE wp_user_id = ? LIMIT 1';
+    const [mapRows] = await connection.execute(mapSql, [wpUserId]);
 
-    /** @type {RowDataPacket | null} */
-    let skUserData = null;
-    // Type Guard: Ensure we got rows and the first row is an object
-    if (Array.isArray(skUserRows) && skUserRows.length > 0 && typeof skUserRows[0] === 'object' && skUserRows[0] !== null) {
-      // Assuming the first row is the user data based on LIMIT 1
-      skUserData = /** @type {RowDataPacket} */ (skUserRows[0]);
-      console.debug('[Sync API POST] Found SvelteKit user data:', skUserData);
+    /** @type {string | null} */
+    let baUserId = null;
+    if (Array.isArray(mapRows) && mapRows.length > 0 && mapRows[0] && typeof mapRows[0] === 'object' && 'ba_user_id' in mapRows[0]) {
+        baUserId = mapRows[0].ba_user_id;
+        console.debug(`[Sync API] Found ba_user_id: ${baUserId} for wpUserId: ${wpUserId}`);
     } else {
-      console.warn(`[Sync API POST] SvelteKit user not found for ID: ${skUserId}`);
-      await connection.release();
-      return new Response(JSON.stringify({ success: false, error: 'SvelteKit user not found' }), { status: 404 });
+        console.error(`[Sync API] CRITICAL: Could not find ba_user_id in ba_wp_user_map for wpUserId: ${wpUserId}. Cannot sync user data.`);
+        if (connection) await connection.release();
+        return new Response(JSON.stringify({ success: false, error: 'User mapping not found' }), { status: 404, headers });
     }
 
-    // 2. Get WP user data
-    console.debug(`[Sync API POST] Fetching latest data from WordPress for wpUserId: ${wpUserId}`);
-    const wpData = await fetchWordPressUserData(wpUserId); // Assume this function exists/is implemented
+    // 2. Update ba_users table
+    const updateSql = 'UPDATE ba_users SET display_name = ?, email = ?, avatar_url = ?, updated_at = NOW() WHERE id = ?';
+    const updateParams = [
+        userData.displayName || null,
+        userData.email || null,
+        userData.avatarUrl || null,
+        baUserId
+    ];
 
-    // Type Guard: Ensure wpData is fetched and is an object
-    if (!wpData || typeof wpData !== 'object') {
-      console.error(`[Sync API POST] Failed to fetch data or received invalid data from WordPress for wpUserId: ${wpUserId}`);
-      await connection.release();
-      return new Response(JSON.stringify({ success: false, error: 'Failed to fetch or parse WordPress user data' }), { status: 502 }); // Bad Gateway?
-    }
-    console.debug('[Sync API POST] Fetched WordPress user data:', wpData);
+    console.debug('[Sync API] Executing SQL to update ba_users:', updateSql, updateParams);
+    const [updateResult] = await connection.execute(updateSql, updateParams);
+    console.debug('[Sync API] Update result:', updateResult);
 
-    // 3. Compare timestamps
-    // Type Guard: Check properties exist before accessing
-    const skTimestamp = (skUserData && typeof skUserData === 'object' && 'updated_at' in skUserData && skUserData.updated_at)
-        ? new Date(/**@type {string | Date}*/(skUserData.updated_at)).getTime()
-        : 0;
-    const wpTimestamp = (wpData && typeof wpData === 'object' && 'updatedAt' in wpData && wpData.updatedAt)
-        ? new Date(wpData.updatedAt).getTime()
-        : 0;
-    console.debug(`[Sync API POST] Comparing timestamps: SK=${skTimestamp}, WP=${wpTimestamp}`);
+    // Type guard for updateResult
+    if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult && updateResult.affectedRows > 0) {
+        console.info(`[Sync API] Successfully updated ba_users for ba_user_id: ${baUserId}`);
 
-    // Sync needed if WP data is newer OR if forceUpdate is true
-    const needsUpdate = forceUpdate || (wpTimestamp > skTimestamp);
-    console.debug(`[Sync API POST] Update needed? ${needsUpdate} (forceUpdate: ${forceUpdate}, wpTimestamp > skTimestamp: ${wpTimestamp > skTimestamp})`);
-
-
-    if (needsUpdate) {
-      console.debug('[Sync API POST] Update required. Updating ba_users table...');
-      // 4. Update ba_users table with data from WordPress
-      const updateSql = `
-        UPDATE ba_users
-        SET
-          display_name = ?,
-          email = ?,
-          avatar_url = ?,
-          roles = ?,
-          updated_at = NOW()
-        WHERE id = ?
-      `;
-
-      // Provide default values using type guards before accessing properties
-      const wpDisplayName = (wpData && 'display_name' in wpData) ? wpData.display_name : null;
-      const skDisplayName = (skUserData && 'display_name' in skUserData) ? skUserData.display_name : null;
-
-      const wpEmail = (wpData && 'user_email' in wpData) ? wpData.user_email : null;
-      const skEmail = (skUserData && 'email' in skUserData) ? skUserData.email : null;
-
-      const wpAvatar = (wpData && 'avatar_url' in wpData) ? wpData.avatar_url : null;
-      const skAvatar = (skUserData && 'avatar_url' in skUserData) ? skUserData.avatar_url : null;
-
-      const wpRoles = (wpData && 'user_roles' in wpData && Array.isArray(wpData.user_roles)) ? wpData.user_roles : null;
-      const skRolesString = (skUserData && 'roles' in skUserData) ? skUserData.roles : '[]';
-      let skRoles = [];
-      try {
-        skRoles = JSON.parse(/**@type {string}*/(skRolesString) || '[]');
-      } catch (e) {
-        console.warn('[Sync API POST] Failed to parse skUserData roles JSON', skRolesString);
-      }
-
-      const updateParams = [
-        wpDisplayName ?? skDisplayName ?? '', // Use WP data if available, else SK, else empty string
-        wpEmail ?? skEmail ?? '',
-        wpAvatar ?? skAvatar ?? null, // Allow null for avatar
-        JSON.stringify(wpRoles ?? skRoles ?? []), // Use WP roles if available, else SK, else empty array
-        skUserId
-      ];
-
-      const [updateResult] = await connection.execute(updateSql, updateParams);
-
-       // Type Guard for checking execute result (OkPacket or ResultSetHeader)
-       if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult) {
-           const affectedRows = updateResult.affectedRows ?? 0;
-            console.debug(`[Sync API POST] Update executed. Affected rows: ${affectedRows}`);
-            if (affectedRows > 0) {
-                 await connection.release();
-                 return new Response(JSON.stringify({ success: true, updated: true, message: 'User data synchronized' }));
-            } else {
-                 console.warn(`[Sync API POST] Update query ran but affected 0 rows for skUserId: ${skUserId}.`);
-                 await connection.release();
-                 return new Response(JSON.stringify({ success: true, updated: false, message: 'No update needed or user not found during update' }));
-            }
-       } else {
-           console.error('[Sync API POST] Unexpected result from update query:', updateResult);
-            await connection.release();
-            return new Response(JSON.stringify({ success: false, error: 'Database update failed' }), { status: 500 });
-       }
-
+        // ---> Call the broadcast function after successful update <---    
+        broadcastSyncUpdate(baUserId);
+        
+        if (connection) await connection.release();
+        return new Response(JSON.stringify({ success: true, message: 'User data synchronized' }), { status: 200, headers });
+    } else if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult && updateResult.affectedRows === 0) {
+        console.warn(`[Sync API] Update affected 0 rows for ba_user_id: ${baUserId}. User might not exist or data was identical.`);
+        // Still broadcast even if no rows changed, as the intent was to sync
+        broadcastSyncUpdate(baUserId); 
+        if (connection) await connection.release();
+        // Consider if 0 affected rows is truly success or requires a different response
+        return new Response(JSON.stringify({ success: true, message: 'Sync completed, no data changed' }), { status: 200, headers });
     } else {
-      console.debug('[Sync API POST] No update required based on timestamp.');
-       await connection.release();
-      return new Response(JSON.stringify({ success: true, updated: false, message: 'User data already up-to-date' }));
+        console.error(`[Sync API] Failed to update ba_users for ba_user_id: ${baUserId}. Unexpected update result:`, updateResult);
+        if (connection) await connection.release();
+        return new Response(JSON.stringify({ success: false, error: 'Failed to update user data' }), { status: 500, headers });
     }
 
   } catch (error) {
-    console.error('[Sync API POST] Error during POST sync processing:', error);
+    console.error('[Sync API] Error during POST sync:', error);
     if (connection) {
-       try { await connection.release(); } catch (relErr) { console.error('[Sync API POST] Error releasing connection in POST catch:', relErr); }
+        try { await connection.release(); } catch (relErr) { console.error('[Sync API] Error releasing connection in POST catch:', relErr); }
     }
-    return new Response(JSON.stringify({ success: false, error: 'Server error during sync' }), { status: 500 });
+    return new Response(JSON.stringify({ success: false, error: 'Server error during sync' }), { status: 500, headers });
   }
 }
 

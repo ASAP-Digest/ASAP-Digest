@@ -1,6 +1,6 @@
 <script>
   import { page } from '$app/stores';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { invalidateAll } from '$app/navigation';
   import { toasts } from '$lib/stores/toast';
   import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
@@ -13,8 +13,7 @@
 
   /** @type {import('app').App.User | null} */
   const user = $derived(data.user);
-  let syncInterval;
-  let firstSync = true;
+  let eventSource = $state(/** @type {EventSource | null} */ (null));
 
   onMount(() => {
     console.debug('[Sync Layout] onMount: Starting initial sync...');
@@ -44,46 +43,62 @@
       console.error('[Sync Layout] Initial sync fetch error:', error);
     });
 
-    console.debug('[Sync Layout] Setting up periodic sync interval (5 minutes)...');
-    // Set up periodic sync every 5 minutes
-    syncInterval = setInterval(async () => {
-      console.debug('[Sync Layout] Interval: Running periodic sync...');
-      try {
-        const response = await fetch('/api/auth/sync', {
-          credentials: 'include'
-        });
-        console.debug('[Sync Layout] Interval sync fetch completed. Status:', response.status);
-        
-        if (response.ok) {
-          const result = await response.json();
-           console.debug('[Sync Layout] Interval sync result:', result);
-          if (result.updated) {
-            console.debug('[Sync Layout] Interval sync indicates update. Invalidating...');
-            // Refresh all data if user info was updated
-            await invalidateAll();
-            if (!firstSync) {
-              console.debug('[Sync Layout] Interval sync: Showing profile update toast.');
-              toasts.show('Profile information updated', 'info');
-            } else {
-               console.debug('[Sync Layout] Interval sync: Update detected on first sync, suppressing toast.');
-            }
-            firstSync = false;
-          } else {
-             console.debug('[Sync Layout] Interval sync: No update detected.');
-          }
-        } else {
-           console.debug('[Sync Layout] Interval sync fetch failed or returned non-OK status.');
-        }
-      } catch (error) {
-        console.error('[Sync Layout] Interval sync fetch error:', error);
-        toasts.show('Failed to sync profile information', 'error');
-      }
-    }, 5 * 60 * 1000);
+    // --- Setup Server-Sent Events --- 
+    console.log('[Sync Layout] Setting up SSE connection...');
+    eventSource = new EventSource('/api/auth/sync-stream');
 
-    return () => {
-      console.debug('[Sync Layout] Component unmounting. Clearing sync interval.');
-      if (syncInterval) clearInterval(syncInterval);
+    eventSource.onopen = () => {
+      console.log('[Sync Layout] SSE connection opened.');
     };
+
+    eventSource.onerror = (error) => {
+      console.error('[Sync Layout] SSE connection error:', error);
+      // Optional: Implement reconnection logic here if needed
+      toasts.show('Real-time sync connection lost. Retrying...', 'warning');
+      eventSource?.close(); // Close the errored connection
+      // Simple retry after a delay
+      setTimeout(() => {
+        if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
+           console.log('[Sync Layout] Attempting SSE reconnection...');
+           eventSource = new EventSource('/api/auth/sync-stream');
+           // Re-attach handlers if necessary (or manage within a class/store)
+        }
+      }, 5000); // Retry after 5 seconds
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const eventData = JSON.parse(event.data);
+        console.log('[Sync Layout] SSE message received:', eventData);
+
+        if (eventData.connected) {
+          console.log(`[Sync Layout] SSE confirmed connection with clientId: ${eventData.clientId}`);
+          return; // Ignore connection confirmation message
+        }
+
+        if (eventData.updated) {
+            // Check if the update is for the current user (optional but good practice)
+            if (eventData.userId === user?.id) {
+                console.log('[Sync Layout] SSE update received for current user. Invalidating data and showing toast...');
+                invalidateAll();
+                toasts.show('Profile information updated', 'info');
+            } else {
+                 console.log(`[Sync Layout] SSE update received for different user (${eventData.userId}), ignoring.`);
+            }
+        }
+      } catch (e) {
+        console.error('[Sync Layout] Error parsing SSE message:', e, 'Data:', event.data);
+      }
+    };
+  });
+  
+  onDestroy(() => {
+      console.log('[Sync Layout] Component destroying. Closing SSE connection.');
+      if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+      }
+      // Clear any pending retry timeouts if implemented more robustly
   });
 </script>
 

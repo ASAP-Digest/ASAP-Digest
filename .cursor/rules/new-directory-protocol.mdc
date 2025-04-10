@@ -5,8 +5,15 @@ alwaysApply: true
 ---
 # New Directory Protocol
 
-- Always Check current location `pwd` against `@PE - CTXT`
-- Check if directory exists in current or desired location `ls -la`
-- Wait for output
-- If in correct directory according to `@PE - CTXT` & directory does not exist
-- Create new directory `mkdir [dir-name]`
+1.  **Location Context Verification**
+    *   MUST Check current location `pwd` against relevant target parent directory specified in `@PE - CTXT`.
+    *   **MUST explicitly state the current CWD (from `pwd` result) and the required CWD (from `@PE - CTXT`).**
+    *   **MUST confirm they match OR state the exact `cd` command needed to reach the required CWD.**
+    *   If `cd` is needed, execute it *before* proceeding to Step 2.
+
+2.  **Directory Existence Check**
+    *   Once in the correct directory (verified in Step 1), check if the target directory exists using `ls -ld [dir-name]` or `ls -la`.
+    *   Wait for output.
+
+3.  **Directory Creation (If Necessary)**
+    *   If the directory does *not* exist (verified in Step 2), create the new directory using `mkdir [dir-name]`.

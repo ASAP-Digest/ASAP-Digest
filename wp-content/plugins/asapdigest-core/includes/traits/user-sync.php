@@ -155,10 +155,19 @@ trait User_Sync {
                         ? 'http://localhost:5173/api/auth/sync' 
                         : 'https://asapdigest.com/api/auth/sync'; // Replace with actual production URL if different
 
-            if ($ba_user_id) { // Ensure we have the SK user ID
+            // --- MODIFIED: Retrieve ba_user_id directly from map table ---
+            $retrieved_ba_user_id = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT ba_user_id FROM {$wpdb->prefix}ba_wp_user_map WHERE wp_user_id = %d LIMIT 1",
+                    $user->ID
+                )
+            );
+            // --- END MODIFIED ---
+
+            if ($retrieved_ba_user_id) { // Ensure we have the SK user ID from the DB query
                 $post_body = json_encode([
                     'wpUserId' => $user->ID,
-                    'skUserId' => $ba_user_id
+                    'skUserId' => $retrieved_ba_user_id // Use the ID retrieved from the DB
                 ]);
 
                 $response = wp_remote_post($sync_url, [
@@ -174,10 +183,10 @@ trait User_Sync {
                     error_log('[ASAP Digest Sync Error] Failed to trigger SvelteKit sync endpoint: ' . $response->get_error_message());
                 } else {
                     // Optional: Log success if needed for debugging
-                     error_log('[ASAP Digest Sync Debug] Triggered SvelteKit sync POST for wpUserId: ' . $user->ID . ', skUserId: ' . $ba_user_id);
+                     error_log('[ASAP Digest Sync Debug] Triggered SvelteKit sync POST for wpUserId: ' . $user->ID . ', skUserId: ' . $retrieved_ba_user_id);
                 }
             } else {
-                 error_log('[ASAP Digest Sync Error] Cannot trigger SvelteKit sync: Missing ba_user_id for wpUserId: ' . $user->ID);
+                 error_log('[ASAP Digest Sync Error] Cannot trigger SvelteKit sync: Missing ba_user_id in map table for wpUserId: ' . $user->ID);
             }
             // --- END ADDED CODE ---
 
