@@ -103,9 +103,9 @@ E. Current Session Status & Auto-Save (NEW)
     - If no `saveSessionID` parameter is provided:
       - Search Server Memory for the most recently created `WorkSessionSave` entity based on timestamp in observations or name.
       - If found: Proceed to step 2 (Resume Found Save).
-      - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Initiate Fallback Check).
+      - **If no `WorkSessionSave` entity is found:** Proceed to step 1.a (Initiate Fallback Checks).
 
-     1.a. **Fallback Check 1: Scan Roadmap for Paused Markers:**
+     1.a. **Fallback Check 1: Scan Roadmap for Paused Markers (`⏸️`):**
         - Read `docs/ROADMAP_TASKS.md`.
         - Search the content specifically for the `⏸️` emoji marker.
         - **If `⏸️` markers ARE FOUND:**
@@ -115,26 +115,37 @@ E. Current Session Status & Auto-Save (NEW)
             - Initiate New Session: Trigger the logic equivalent to `BWS` (Begin Work Session), creating a *new* `WorkSession` entity. This new session MUST explicitly target the identified deepest paused task as its `Priority Issue`. Link this new `WorkSession` entity to an observation noting the inconsistent state detection and the chosen resumption task. Proceed with the normal RWS flow from step 4 (Timestamp acquisition onwards) using this *newly created* session, effectively resuming work on the target task.
         - **If `⏸️` markers ARE NOT FOUND:** Proceed to step 1.b (Fallback Check 2).
 
-    1.b. **Fallback Check 2: Suggest Last Active Session:**
+     1.b. **Fallback Check 2: Scan Roadmap for In-Progress Markers (`🔄`):**
+        - Read `docs/ROADMAP_TASKS.md` (if not already read in 1.a).
+        - Search the content specifically for the `🔄` emoji marker.
+        - **If `🔄` markers ARE FOUND:**
+            - Identify Resumption Point: Parse the roadmap structure to identify all tasks marked with `🔄`. Determine the hierarchical relationship. Select the task marked with `🔄` that is deepest in the hierarchy (i.e., the most specific child task).
+            - Report Resumption: State "No saved state or explicitly paused task found. Proceeding by initiating a new session targeting the deepest 'In Progress' task found: '[Selected Deepest In-Progress Task Name]'."
+            - Initiate New Session: Trigger the logic equivalent to `BWS` (Begin Work Session), creating a *new* `WorkSession` entity. This new session MUST explicitly target the identified deepest in-progress task as its `Priority Issue`. Proceed with the normal RWS flow from step 4 (Timestamp acquisition onwards) using this *newly created* session.
+        - **If `🔄` markers ARE NOT FOUND:** Proceed to step 1.c (Fallback Check 3).
+
+    1.c. **Fallback Check 3: Suggest Last Active Session:**
         - Search Server Memory for the `WorkSession` entity with the latest activity (based on `endTime` or the timestamp of the last observation, prioritizing `endTime` if available).
-        - If a recent `WorkSession` is found: Report "No active saved session found to resume. The most recent session activity was for '[Found Session ID]' (Status: [Status], Ended: [End Time/Last Activity Time]). Use BWS to start a new session if intended." and stop.
-        - If no `WorkSessionSave` (from initial check) and no recent `WorkSession` entities are found: Report "No saved session or recent activity found. Use BWS to start a new session." and stop.
+        - If a recent `WorkSession` is found: Report "No active saved session, paused task, or in-progress task found to resume. The most recent session activity was for '[Found Session ID]' (Status: [Status], Ended: [End Time/Last Activity Time]). Use BWS to start a new session if intended." and stop.
+        - If no `WorkSessionSave`, `⏸️` marker, `🔄` marker, or recent `WorkSession` entities are found: Report "No saved session or recent activity found. Use BWS to start a new session." and stop.
 
 2.  **Retrieve Saved State:** (Executed only if a `WorkSessionSave` was found in step 1)
     - Get the target `WorkSessionSave` entity and its linked `WorkSession` entity ID.
-3.  **Retrieve Work Session:**
+3.  **Retrieve Work Session:** (Executed only if a `WorkSessionSave` was found in step 1)
     - Fetch the linked `WorkSession` entity. If not found or status is not `PAUSED`, report error "Cannot resume: Linked WorkSession '[SessionID]' not found or not in PAUSED state." and stop.
 4.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
 5.  **Update Work Session:**
     - Change status back to `ACTIVE`.
-    - Add observation: `Session resumed from WSSave_[ID] at [Timestamp]`.
+    - Add observation: `Session resumed from WSSave_[ID] at [Timestamp]`. (If resuming from save state)
+    - Add observation: `New session started targeting task '[Task Name]' based on [Marker Type: Paused/In-Progress] marker at [Timestamp]`. (If resuming based on roadmap marker)
 6.  **Restore Context (Informational):**
-    - Log the restored context (priority task, overall context) based on the resumed `WorkSession` entity's observations.
+    - Log the restored context (priority task, overall context) based on the resumed `WorkSession` entity's observations (if resuming save state) or the newly created session's context (if resuming from marker).
 7.  **Task Status Marker Update:**
-    - If the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄). This MUST be done consistently if the marker is used.
+    - If resuming from a `WorkSessionSave` and the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄). This MUST be done consistently if the marker is used.
+    - If resuming by creating a new session based on a roadmap marker (`⏸️` or `🔄`), ensure the targeted task in `docs/ROADMAP_TASKS.md` is marked as `IN_PROGRESS` (🔄).
 8.  **Verification:** Execute L1/L3 Verification Chain checks.
-9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail.
-10. **Feedback:** Confirm session resumption, stating the active Session ID and the priority task.
+9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail. (If resuming from save state) or `SESSION_START` (if resuming from marker).
+10. **Feedback:** Confirm session resumption or start, stating the active Session ID and the priority task.
 ````
 
 ### 3.4 End Work Session (EWS)
