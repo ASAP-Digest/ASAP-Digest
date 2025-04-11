@@ -5,48 +5,65 @@ alwaysApply: true
 ---
 # Better Auth Route Handling in SvelteKit
 
-1. **Route Handler Structure**
+## 0. Prerequisite: Configuration
+- The `auth` instance MUST be configured according to `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)` before being used in route handlers.
+
+## 1. Route Handler Structure
    - Place Better Auth route handlers in `app/src/routes/api/auth/[...auth]/+server.js`
    - Use JSDoc for type annotations, not TypeScript imports
    - Export all HTTP methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
 
-2. **Handler Configuration**
-   ```javascript
-   import { auth } from '$lib/server/auth';
+## 2. Handler Configuration
+   ````javascript
+   import { auth } from '$lib/server/auth'; // Assumes auth is correctly configured per better-auth-config.mdc
    import { svelteKitHandler } from 'better-auth/svelte-kit';
 
    /** @type {import('@sveltejs/kit').RequestHandler} */
    const handler = (event) => {
+       // Use the standard RequestEvent directly if the library supports it
+       // Or construct the expected object precisely
        return svelteKitHandler({
-           event: {
+           event: { // Ensure this structure matches what svelteKitHandler expects
                request: event.request,
                url: event.url
+               // Add other required event properties if necessary
            },
-           resolve: () => {},
-           auth
+           resolve: () => {}, // Default empty resolve for dedicated auth routes
+           auth // The configured auth instance
        });
    };
-   ```
+   
+   // Export all methods pointing to the handler
+   export const GET = handler;
+   export const POST = handler;
+   export const PUT = handler;
+   export const DELETE = handler;
+   export const PATCH = handler;
+   export const OPTIONS = handler; // Include OPTIONS if needed for CORS preflight
+   ````
 
-3. **Required Parameters**
-   - `event`: SvelteKit request event object
-     - Must include `request` and `url` properties
-   - `resolve`: Function to handle non-auth routes (empty for auth routes)
-   - `auth`: Better Auth instance from server configuration
+## 3. Required Parameters for `svelteKitHandler`
+   - `event`: Object containing SvelteKit request details.
+     - **Crucial:** MUST include `request` and `url` properties at minimum. Verify library docs for any other required properties from the SvelteKit `RequestEvent`.
+   - `resolve`: Function to handle non-auth routes (typically an empty function `() => {}` for dedicated auth route handlers).
+   - `auth`: The configured Better Auth instance imported from server configuration (`$lib/server/auth.js`).
 
-4. **Common Issues to Avoid**
-   - Don't use TypeScript imports in .js files
-   - Don't pass auth configuration directly to handler
-   - Don't use simplified event passing
-   - Don't strip auth prefix from URLs
+## 4. Common Issues to Avoid
+   - Don't use TypeScript imports in `.js` files.
+   - Don't pass the raw configuration object directly to the handler; pass the *initialized `auth` instance*.
+   - Don't use simplified event passing (e.g., `svelteKitHandler(event, auth)` if the library expects the structured object `{ event: { request, url }, resolve, auth }`).
+   - Don't strip the `/api/auth` prefix from URLs within the handler logic unless explicitly required by the library.
+   - Ensure the `auth` instance is correctly configured *before* the handler is invoked (See Section 0).
 
-5. **Version Compatibility**
-   - Better Auth v1.2.5+ requires `better-auth/svelte-kit` import path
-   - Use `svelteKitHandler` not `toSvelteKitHandler`
-   - Ensure auth instance is properly configured before use
+## 5. Version Compatibility
+   - Better Auth v1.2.5+ requires `better-auth/svelte-kit` import path.
+   - Use `svelteKitHandler`, not deprecated names like `toSvelteKitHandler`.
+   - Ensure the `auth` instance passed is fully initialized and configured.
 
-6. **Error Prevention**
-   - Always validate event object structure
-   - Ensure auth instance is imported from server config
-   - Verify all HTTP methods are exported
-   - Test route with various auth operations 
+## 6. Error Prevention & Verification
+   - Always validate the structure of the object passed to `svelteKitHandler`, especially the nested `event` object.
+   - Ensure the `auth` instance is correctly imported from `$lib/server/auth.js`.
+   - Verify all necessary HTTP methods are exported from `+server.js`.
+   - Test the `/api/auth/[...auth]` route with various operations (login, logout, registration, etc.).
+   - Check browser network console and server logs for errors during auth operations.
+   

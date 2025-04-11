@@ -1,0 +1,87 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Better Auth Configuration Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard structure for the configuration object passed to the `betterAuth()` function in `app/src/lib/server/auth.js`. Adhering to this structure is crucial to avoid type errors and ensure the library initializes correctly.
+
+## 2. Core Principles
+
+-   **Correct Structure:** Options MUST be placed according to the library's expected hierarchy.
+-   **Valid Keys:** Only recognized keys (`secret`, `sessionCookieName`, `sessionExpiresIn`, `adapter`, `after`) should be used at the top level.
+-   **Secret Key:** Use the `secret` key for the main authentication secret.
+-   **Adapter Configuration:** Database dialect and adapter functions MUST be nested within the `adapter` object.
+
+## 3. Required Configuration Structure
+
+The object passed to `betterAuth()` MUST follow this structure:
+
+````javascript
+import { betterAuth } from 'better-auth';
+import { dialect } from './path/to/dialect'; // Example import
+import { 
+    getUserByEmailFn, 
+    getUserByIdFn, 
+    getSessionByTokenFn, 
+    createSessionFn, 
+    deleteSessionFn 
+} from './path/to/adapter/functions'; // Example import
+import { 
+    onUserCreationHook, 
+    onSessionCreationHook 
+} from './path/to/hooks'; // Example import
+
+// Assume authSecret is defined elsewhere (e.g., from $env/static/private)
+const authSecret = process.env.BETTER_AUTH_SECRET; 
+
+export const auth = betterAuth({
+    // --- Top-Level Options ---
+    secret: authSecret, // REQUIRED: Authentication secret key
+    sessionCookieName: 'better_auth_session', // Optional: Customize cookie name
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional: Session duration (ms)
+
+    // --- Adapter Configuration ---
+    adapter: {
+        dialect: dialect, // REQUIRED: Kysely dialect instance
+        // REQUIRED: Adapter functions
+        getUserByEmail: getUserByEmailFn,
+        getUserById: getUserByIdFn,
+        getSessionByToken: getSessionByTokenFn,
+        createSession: createSessionFn,
+        deleteSession: deleteSessionFn,
+        // ... other adapter functions if needed ...
+    },
+
+    // --- Lifecycle Hooks ---
+    after: {
+        // Optional: Hooks like onUserCreation, onSessionCreation
+        onUserCreation: onUserCreationHook,
+        onSessionCreation: onSessionCreationHook,
+    }
+});
+````
+
+## 4. Common Pitfalls to Avoid
+
+-   **Incorrect Nesting:** Do NOT nest core options like `secret` or session settings inside a `config: {}` object.
+-   **Incorrect Key Names:** Do NOT use `authKey` instead of `secret`.
+-   **Misplaced Dialect:** Do NOT place the `dialect` at the top level; it belongs inside `adapter`.
+
+## 5. Verification Checklist
+
+When configuring `betterAuth`:
+
+-   [ ] Is the `secret` key present at the top level?
+-   [ ] Are `sessionCookieName` and `sessionExpiresIn` at the top level (if used)?
+-   [ ] Is the `adapter` object present at the top level?
+-   [ ] Is the `dialect` nested correctly *inside* the `adapter` object?
+-   [ ] Are all required adapter functions assigned within the `adapter` object?
+-   [ ] Is the `after` object present at the top level (if hooks are used)?
+-   [ ] Are there any unexpected keys at the top level?
+-   [ ] Does the configuration pass linter checks without type errors related to `BetterAuthOptions`?
+
+

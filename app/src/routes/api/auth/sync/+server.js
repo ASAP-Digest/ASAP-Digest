@@ -497,10 +497,10 @@ export async function POST({ request }) {
             console.error(`[Sync API] Error fetching updated_at timestamp after update for user ${baUserId}:`, fetchError);
         }
 
-        // ---> Call the broadcast function, providing a fallback timestamp if needed <---    
-        const timestampToBroadcast = typeof newUpdatedAt === 'string' ? newUpdatedAt : new Date().toISOString(); // Fallback to current ISO time
-        if (typeof newUpdatedAt !== 'string') {
-             console.warn(`[Sync API] Using fallback timestamp (${timestampToBroadcast}) for broadcast for user ${baUserId} as DB fetch failed.`);
+        // ---> Ensure timestamp is a string before broadcasting <---    
+        const timestampToBroadcast = newUpdatedAt ?? new Date().toISOString(); // Provide fallback if fetch failed
+        if (!newUpdatedAt) { // Log if fallback was used
+             console.warn(`[Sync API] Using fallback timestamp (${timestampToBroadcast}) for broadcast for user ${baUserId} as DB fetch failed or returned null.`);
         }
         broadcastSyncUpdate(baUserId, timestampToBroadcast); 
         

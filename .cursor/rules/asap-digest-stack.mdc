@@ -10,8 +10,14 @@ alwaysApply: true
    - "Tailwind 4 [^1]"
    - "SvelteKit 2"
    - "Svelte 5 (not Svelte 4)"
-   - "Shadcn-svelte for Sv "Lucide" Icons using `[lucide-compat.js](mdc:app/src/lib/utils/lucide-compat.js)` as our compatibility layer
-   - "JavaScript + JSDocs No `*.t All Functions use `@new- All Files use `[new-file-protocol.mdc](mdc:.cursor/rules/new-file-protocol.mdc)`
+   - "Shadcn-svelte for Svelte 5 [^2]"
+   - "Better Auth"
+     - **Configuration:** MUST follow `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)`
+     - **Route Handling:** MUST follow `[better-auth-route-handling.mdc](mdc:.cursor/rules/better-auth-route-handling.mdc)`
+   - "Lucide" Icons using `[lucide-compat.js](mdc:app/src/lib/utils/lucide-compat.js)` as our compatibility layer
+   - "JavaScript + JSDocs No `*.ts`"
+   - All Functions use `[new-function-protocol.mdc](mdc:.cursor/rules/new-function-protocol.mdc)`
+   - All Files use `[new-file-protocol.mdc](mdc:.cursor/rules/new-file-protocol.mdc)`
    - All Directories use `[new-directory-protocol.mdc](mdc:.cursor/rules/new-directory-protocol.mdc)`
 
 2. Icon Management System:
@@ -26,12 +32,12 @@ alwaysApply: true
 
 3. Styling Requirements:
    - Use HSL variable syntax for theme colors:
-     ```html
+     ````html
      <!-- CORRECT -->
      <div class="text-[hsl(var(--primary))]">
      <!-- INCORRECT -->
      <div class="text-primary">
-     ```
+     ````
    - Use standard Tailwind utilities for spacing/sizing when available:
      - Use: `w-5`, `h-5`, `p-4`, `m-2`
      - Only use arbitrary values when necessary: `w-[1.37rem]`
@@ -56,12 +62,12 @@ alwaysApply: true
 
 6. Build Configuration:
    - Ensure tailwind.config.js includes all component files:
-     ```javascript
+     ````javascript
      content: [
        "./src/**/*.{html,js,svelte,ts}",
        "./src/**/*.{svelte,js,ts,jsx,tsx}"
      ]
-     ```
+     ````
    - Verify proper tree-shaking
    - Monitor bundle size
    - Use proper environment variables
@@ -92,4 +98,3 @@ alwaysApply: true
 [^1]: "https://tailwindcss.com/docs/installation/framework-guides/sveltekit"
 [^2]: "https://next.shadcn-svelte.com/docs/migration/svelte-5"
 [^3]: "https://tailwindcss.com/docs"
-
