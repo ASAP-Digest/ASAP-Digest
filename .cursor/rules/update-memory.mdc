@@ -97,6 +97,8 @@ um
 #    - Adds item: "- Verify login form styles on staging"
 #    (Using edit_file tool)
 
+# 5.a. **Execute State Synchronization Verification:** MUST execute the full sequence defined in `Mandatory Post-Update State Synchronization Verification Protocol v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
+
 # 6. Agent performs verification checks (Pass)
 #    - Logs events to Audit Trail
 
@@ -104,5 +106,7 @@ um
 
 # User can now optionally end the work session (EWS) or continue
 ````
+
+        
 
 

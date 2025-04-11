@@ -90,6 +90,7 @@ E. Current Session Status & Auto-Save
     - **If Verification FAILS:** Report error "Failed to create/verify WorkSessionSave entity '[SaveID]' in Server Memory. SWS operation aborted, state not saved." DO NOT proceed to step 8. Stop SWS process here.
 8.  **Update Active Session:** (Only if step 7 succeeded) Add observation to the active `WorkSession` entity: `Session paused by WSSave_[ID] at [Timestamp]`. Change status to `PAUSED`.
 9.  **Task Status Marker (Optional but Recommended):** (Only if step 7 succeeded) Update the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run. This MUST be done consistently if implemented.
+9.a. **Execute State Synchronization Verification (SWS - Paused):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (should reflect being paused/linked to save) and the `docs/ROADMAP_TASKS.md` `⏸️` marker/timestamp. Trigger UERP on failure.
 10. **Relation Creation:** (Only if step 7 succeeded) Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
 11. **Audit:** Record `SESSION_SAVE` event in Audit Trail.
 12. **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID.
@@ -145,6 +146,7 @@ E. Current Session Status & Auto-Save
 7.  **Task Status Marker Update:**
     - If resuming from a `WorkSessionSave` and the optional `PAUSED` marker (⏸️) was used in `docs/ROADMAP_TASKS.md` during SWS, update the corresponding task back to `IN_PROGRESS` (🔄). This MUST be done consistently if the marker is used.
     - If resuming by creating a new session based on a roadmap marker (`⏸️` or `🔄`), ensure the targeted task in `docs/ROADMAP_TASKS.md` is marked as `IN_PROGRESS` (🔄).
+7.a. **Execute State Synchronization Verification (RWS - Active):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (should be `ACTIVE`) and the `docs/ROADMAP_TASKS.md` `🔄` marker. Trigger UERP on failure.
 8.  **Verification:** Execute L1/L3 Verification Chain checks.
 9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail. (If resuming from save state) or `SESSION_START` (if resuming from marker).
 10. **Feedback:** Confirm session resumption or start, stating the active Session ID and the priority task.
@@ -161,6 +163,7 @@ E. Current Session Status & Auto-Save
         -   **Trigger Testing Protocol (Step 1 - Auto-Initiation):** Execute the initial steps of the `Testing & Verification Protocol v1.1` for the identified primary task. This involves:
             -   Updating the target `Task` entity status to `PENDING_TESTING` in Server Memory.
             -   Updating the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🔬` emoji and add a note.
+            -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
             -   Creating a `VerificationRequest` entity linked to the `Task` with status `PENDING_USER_INITIATION`.
             -   Logging the `TASK_PENDING_TESTING` audit event.
             -   Notifying the user the task is ready for testing and awaits `ST [TaskID]`.
@@ -168,10 +171,12 @@ E. Current Session Status & Auto-Save
         -   **Audit:** Record `SESSION_END` event (in addition to the `TASK_PENDING_TESTING` event triggered by the testing protocol).
         -   **Feedback:** Confirm session end and that the task is now pending user testing initiation.
     -   **If `Reason` is `COMPLETED`:**
+        -   **Re-Verify Approval Status (MUST):** Identify the target `TaskID`. Query Server Memory for the `VerificationRequest` entity linked to this `TaskID`. Verify that this entity exists and its status is currently `APPROVED`. If this verification fails, halt execution of the `EWS COMPLETED` logic immediately, report a critical error, and trigger UERP. Do NOT proceed further in this block if verification fails.
         -   **Verify Prerequisites:** Check Server Memory for the `VerificationRequest` entity linked to the primary task. Ensure its status is `APPROVED`. If not found or not approved, report error "EWS Error: Cannot mark task '[TaskID]' as COMPLETED. Testing & Verification protocol has not been successfully completed and approved by the user." and stop.
         -   **Update Task Status:** (Assuming verification passed)
             -   Update relevant `Task` entity status in Server Memory to `COMPLETED`.
             -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp (using the timestamp from the user's approval if available, otherwise current EWS timestamp).
+            -   **Execute State Synchronization Verification (EWS - Completed):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`COMPLETED`) and the `docs/ROADMAP_TASKS.md` `✅` marker/timestamp. Trigger UERP on failure.
         -   **Update Documentation:** Update final documentation (`DEPLOYMENT_CHECKLIST.md`, etc.) as needed.
         -   **Update Work Session:** Change status to `ENDED`. Add observation: `Session ended at [Timestamp]. Reason: Task '[TaskID]' COMPLETED (verified).`. Set `endTime`.
         -   **Audit:** Record `SESSION_END` event. The `TASK_COMPLETED` event should have been recorded by the Testing Protocol upon user approval.
