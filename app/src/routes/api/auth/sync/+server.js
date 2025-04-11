@@ -440,10 +440,27 @@ export async function POST({ request }) {
     const body = await request.json();
     console.debug('[Sync API] POST request body:', body);
 
-    const { wpUserId, userData } = body;
+    // --- MODIFIED Destructuring ---
+    // Expecting a flatter structure like { wpUserId, skUserId, displayName, email, avatarUrl, ... }
+    const {
+      wpUserId,
+      // skUserId, // skUserId is often available here too, but not directly used in this part of the logic
+      displayName,
+      email,
+      avatarUrl // Optional
+      // Add other potential fields if needed later
+    } = body;
 
-    if (!wpUserId || !userData) {
-      console.warn('[Sync API] POST request missing wpUserId or userData.');
+    // --- Construct userData for DB logic ---
+    const userData = {
+        displayName: displayName,
+        email: email,
+        avatarUrl: avatarUrl || null // Ensure null if not present
+    };
+
+    // --- Original Check (now checks wpUserId and existence of fields used in userData) ---
+    if (!wpUserId || typeof displayName === 'undefined' || typeof email === 'undefined') { // Check core required fields
+      console.warn('[Sync API] POST request missing wpUserId or essential user data fields (displayName, email).');
       return new Response(JSON.stringify({ success: false, error: 'Missing required data' }), { status: 400, headers });
     }
 
@@ -466,11 +483,13 @@ export async function POST({ request }) {
     }
 
     // 2. Update ba_users table
-    const updateSql = 'UPDATE ba_users SET display_name = ?, email = ?, avatar_url = ?, updated_at = NOW() WHERE id = ?';
+    // --- Corrected based on actual DESCRIBE ba_users output ---
+    // Columns available: id, name, email, emailVerified, image, created_at, updated_at, username, metadata
+    const updateSql = 'UPDATE ba_users SET name = ?, email = ?, image = ?, updated_at = NOW() WHERE id = ?';
     const updateParams = [
-        userData.displayName || null,
+        userData.displayName || null, // Assuming WP displayName maps to ba_users.name
         userData.email || null,
-        userData.avatarUrl || null,
+        userData.avatarUrl || null, // Assuming WP avatarUrl maps to ba_users.image
         baUserId
     ];
 

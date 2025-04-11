@@ -3,40 +3,51 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Better Auth Configuration Protocol v1.0
+# Better Auth Configuration Protocol
+
+*(Self-correction: Incremented version based on resolved configuration issue)*
 
 ## 1. Purpose
 
-This protocol defines the standard structure for the configuration object passed to the `betterAuth()` function in `app/src/lib/server/auth.js`. Adhering to this structure is crucial to avoid type errors and ensure the library initializes correctly.
+This protocol defines the standard structure for the configuration object passed to the `betterAuth()` function, specifically addressing the correct method for integrating with a Kysely dialect (like MySQL) based on official documentation findings for `better-auth@1.2.5`. Adhering to this structure is crucial to avoid type errors, prevent the library from defaulting to the memory adapter, and ensure the library initializes correctly with the intended database.
 
 ## 2. Core Principles
 
--   **Correct Structure:** Options MUST be placed according to the library's expected hierarchy.
--   **Valid Keys:** Only recognized keys (`secret`, `sessionCookieName`, `sessionExpiresIn`, `adapter`, `after`) should be used at the top level.
+-   **Correct Key:** Use the top-level `database` key when configuring Better Auth with a Kysely dialect.
+-   **Dialect and Type:** The `database` object MUST contain the initialized Kysely `dialect` instance and an explicit `type` string (e.g., `"mysql"`).
+-   **Avoid Redundancy:** When providing a Kysely `dialect` under the `database` key, do NOT pass explicit adapter functions (like `getUserByEmail`, `createSession`, etc.) in the configuration; the library uses the dialect's methods.
+-   **Valid Top-Level Keys:** Only recognized keys (`secret`, `database`, `sessionCookieName`, `sessionExpiresIn`, `after`, `emailAndPassword`, `socialProviders`, etc.) should be used at the top level.
 -   **Secret Key:** Use the `secret` key for the main authentication secret.
--   **Adapter Configuration:** Database dialect and adapter functions MUST be nested within the `adapter` object.
 
-## 3. Required Configuration Structure
+## 3. Required Configuration Structure (MySQL + Kysely Example)
 
-The object passed to `betterAuth()` MUST follow this structure:
+The object passed to `betterAuth()` MUST follow this structure when using a Kysely dialect:
 
 ````javascript
 import { betterAuth } from 'better-auth';
-import { dialect } from './path/to/dialect'; // Example import
-import { 
-    getUserByEmailFn, 
-    getUserByIdFn, 
-    getSessionByTokenFn, 
-    createSessionFn, 
-    deleteSessionFn 
-} from './path/to/adapter/functions'; // Example import
+import { createPool } from 'mysql2/promise'; // Or your pool creation logic
+import { MysqlDialect } from 'kysely';      // Or the appropriate Kysely dialect
 import { 
     onUserCreationHook, 
     onSessionCreationHook 
-} from './path/to/hooks'; // Example import
+} from './path/to/hooks'; // Example import for optional hooks
 
-// Assume authSecret is defined elsewhere (e.g., from $env/static/private)
-const authSecret = process.env.BETTER_AUTH_SECRET; 
+// Assume authSecret and DB connection details are defined elsewhere
+// (e.g., from $env/static/private)
+const authSecret = process.env.BETTER_AUTH_SECRET;
+const dbConfig = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    // Other necessary mysql2 pool options...
+};
+
+// Create the Kysely Dialect
+const dialect = new MysqlDialect({
+    pool: createPool(dbConfig) 
+});
 
 export const auth = betterAuth({
     // --- Top-Level Options ---
@@ -44,22 +55,21 @@ export const auth = betterAuth({
     sessionCookieName: 'better_auth_session', // Optional: Customize cookie name
     sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional: Session duration (ms)
 
-    // --- Adapter Configuration ---
-    adapter: {
-        dialect: dialect, // REQUIRED: Kysely dialect instance
-        // REQUIRED: Adapter functions
-        getUserByEmail: getUserByEmailFn,
-        getUserById: getUserByIdFn,
-        getSessionByToken: getSessionByTokenFn,
-        createSession: createSessionFn,
-        deleteSession: deleteSessionFn,
-        // ... other adapter functions if needed ...
+    // --- Database Configuration (Using Kysely Dialect) ---
+    database: {
+        dialect: dialect,   // REQUIRED: Kysely dialect instance
+        type: "mysql",      // REQUIRED: Explicit type for the dialect
+        // DO NOT add explicit adapter functions (getUserByEmail, etc.) here
+        // when using a Kysely dialect.
     },
 
-    // --- Lifecycle Hooks ---
+    // --- Other Optional Configurations ---
+    // emailAndPassword: { enabled: true }, 
+    // socialProviders: { /* ... */ },
+
+    // --- Optional Lifecycle Hooks ---
     after: {
-        // Optional: Hooks like onUserCreation, onSessionCreation
-        onUserCreation: onUserCreationHook,
+        onUserCreation: onUserCreationHook, 
         onSessionCreation: onSessionCreationHook,
     }
 });
@@ -67,21 +77,23 @@ export const auth = betterAuth({
 
 ## 4. Common Pitfalls to Avoid
 
--   **Incorrect Nesting:** Do NOT nest core options like `secret` or session settings inside a `config: {}` object.
+-   **Using `adapter` Key for Kysely:** Do NOT use the `adapter` key when configuring with a Kysely `dialect`. Use the `database` key instead.
+-   **Missing `type` Property:** Do NOT omit the `type: "mysql"` (or relevant type) property within the `database` object when providing a `dialect`.
+-   **Passing Explicit Adapter Functions with Dialect:** Do NOT provide functions like `getUserByEmail`, `createSession` within the `database` or `adapter` object when using a Kysely `dialect`. The library uses the dialect's methods.
+-   **Incorrect Nesting:** Do NOT nest core options like `secret` or session settings inside other objects unless specified by the library documentation for specific features.
 -   **Incorrect Key Names:** Do NOT use `authKey` instead of `secret`.
--   **Misplaced Dialect:** Do NOT place the `dialect` at the top level; it belongs inside `adapter`.
 
 ## 5. Verification Checklist
 
-When configuring `betterAuth`:
+When configuring `betterAuth` with Kysely:
 
 -   [ ] Is the `secret` key present at the top level?
+-   [ ] Is the `database` key present at the top level?
+-   [ ] Is the `dialect` instance correctly nested *inside* the `database` object?
+-   [ ] Is the `type` property (e.g., `"mysql"`) present *inside* the `database` object alongside the `dialect`?
+-   [ ] Are explicit adapter functions (e.g., `getUserByEmail`) *absent* from the `database` object configuration?
 -   [ ] Are `sessionCookieName` and `sessionExpiresIn` at the top level (if used)?
--   [ ] Is the `adapter` object present at the top level?
--   [ ] Is the `dialect` nested correctly *inside* the `adapter` object?
--   [ ] Are all required adapter functions assigned within the `adapter` object?
 -   [ ] Is the `after` object present at the top level (if hooks are used)?
 -   [ ] Are there any unexpected keys at the top level?
 -   [ ] Does the configuration pass linter checks without type errors related to `BetterAuthOptions`?
-
-
+-   [ ] Does the server start *without* the "No database configuration provided. Using memory adapter..." warning?
