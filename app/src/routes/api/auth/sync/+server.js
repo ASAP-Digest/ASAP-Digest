@@ -39,9 +39,9 @@ import { broadcastSyncUpdate } from '$lib/server/syncBroadcaster'; // <-- Correc
  * validate the session and potentially sync user data with SvelteKit locals.
  *
  * @param {object} event The SvelteKit request event object.
- * @param {Request} event.request The incoming request object.
- * @param {URL} event.url The URL object for the request.
- * @param {App.Locals} event.locals The SvelteKit request locals object.
+ * @param {import('@sveltejs/kit').RequestEvent['request']} event.request The incoming request object.
+ * @param {import('@sveltejs/kit').RequestEvent['url']} event.url The URL object for the request.
+ * @param {import('@sveltejs/kit').RequestEvent['locals']} event.locals The SvelteKit request locals object.
  * @returns {Promise<Response>} A response (JSON or Redirect).
  */
 /** @type {import('./$types').RequestHandler} */
@@ -427,7 +427,7 @@ export async function GET({ request, url, locals }) {
  * Handles POST requests to synchronize user data from WordPress.
  * Expected payload: { wpUserId: number, userData: { displayName: string, email: string, avatarUrl?: string, ... } }
  * @param {object} event The SvelteKit request event object.
- * @param {Request} event.request The incoming request object.
+ * @param {import('@sveltejs/kit').RequestEvent['request']} event.request The incoming request object.
  * @returns {Promise<Response>} JSON response indicating success or failure.
  */
 /** @type {import('./$types').RequestHandler} */
@@ -479,21 +479,35 @@ export async function POST({ request }) {
     console.debug('[Sync API] Update result:', updateResult);
 
     // Type guard for updateResult
-    if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult && updateResult.affectedRows > 0) {
-        console.info(`[Sync API] Successfully updated ba_users for ba_user_id: ${baUserId}`);
+    if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult && updateResult.affectedRows >= 0) { // Check for >= 0 rows affected
+        console.info(`[Sync API] Update executed for ba_user_id: ${baUserId} (Affected Rows: ${updateResult.affectedRows})`);
 
-        // ---> Call the broadcast function after successful update <---    
-        broadcastSyncUpdate(baUserId);
+        // Fetch the new updated_at timestamp
+        let newUpdatedAt = null;
+        try {
+            const selectSql = 'SELECT updated_at FROM ba_users WHERE id = ?';
+            const [selectRows] = await connection.execute(selectSql, [baUserId]);
+            if (Array.isArray(selectRows) && selectRows.length > 0 && selectRows[0] && typeof selectRows[0] === 'object' && 'updated_at' in selectRows[0] && selectRows[0].updated_at) {
+                newUpdatedAt = new Date(selectRows[0].updated_at).toISOString();
+                console.debug(`[Sync API] Fetched new updated_at timestamp: ${newUpdatedAt} for user ${baUserId}`);
+            } else {
+                 console.warn(`[Sync API] Could not fetch updated_at timestamp after update for user ${baUserId}`);
+            }
+        } catch (fetchError) {
+            console.error(`[Sync API] Error fetching updated_at timestamp after update for user ${baUserId}:`, fetchError);
+        }
+
+        // ---> Call the broadcast function, providing a fallback timestamp if needed <---    
+        const timestampToBroadcast = typeof newUpdatedAt === 'string' ? newUpdatedAt : new Date().toISOString(); // Fallback to current ISO time
+        if (typeof newUpdatedAt !== 'string') {
+             console.warn(`[Sync API] Using fallback timestamp (${timestampToBroadcast}) for broadcast for user ${baUserId} as DB fetch failed.`);
+        }
+        broadcastSyncUpdate(baUserId, timestampToBroadcast); 
         
         if (connection) await connection.release();
-        return new Response(JSON.stringify({ success: true, message: 'User data synchronized' }), { status: 200, headers });
-    } else if (updateResult && typeof updateResult === 'object' && 'affectedRows' in updateResult && updateResult.affectedRows === 0) {
-        console.warn(`[Sync API] Update affected 0 rows for ba_user_id: ${baUserId}. User might not exist or data was identical.`);
-        // Still broadcast even if no rows changed, as the intent was to sync
-        broadcastSyncUpdate(baUserId); 
-        if (connection) await connection.release();
-        // Consider if 0 affected rows is truly success or requires a different response
-        return new Response(JSON.stringify({ success: true, message: 'Sync completed, no data changed' }), { status: 200, headers });
+        const message = updateResult.affectedRows > 0 ? 'User data synchronized' : 'Sync completed, no data changed';
+        return new Response(JSON.stringify({ success: true, message: message }), { status: 200, headers });
+
     } else {
         console.error(`[Sync API] Failed to update ba_users for ba_user_id: ${baUserId}. Unexpected update result:`, updateResult);
         if (connection) await connection.release();

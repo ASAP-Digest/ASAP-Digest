@@ -99,14 +99,44 @@
 
           if (data.type === 'user-update') {
             const currentUserId = $page.data.user?.id; 
-            console.log(`[Layout Sync Listener] User update received for userId: ${data.userId}. Current user ID: ${currentUserId}`); // DEBUG
-            if (currentUserId && data.userId === currentUserId) {
-              console.log('[Layout Sync Listener] Update matches current user. Invalidating data...');
-              // Invalidate layout data to refetch user info
-              invalidateAll(); 
-              // The existing $effect checking updatedAt should then trigger the toast
+            // Enhanced Logging: Include received timestamp
+            console.log(`[Layout Sync Listener] User update received. Target User: ${data.userId}, Current User: ${currentUserId}, Timestamp in message: ${data.updatedAt}`); // DEBUG
+            
+            // Check if userId matches AND the updatedAt timestamp exists in the message
+            if (currentUserId && data.userId === currentUserId && data.updatedAt) { 
+              console.log(`[Layout Sync Listener] Update matches current user. Processing received timestamp: ${data.updatedAt}`);
+              
+              // Compare the received timestamp with the last known timestamp
+              if (data.updatedAt !== previousUserUpdatedAt) {
+                // Log the change detection
+                console.log(`[Layout Sync Listener] Timestamp changed! Old: ${previousUserUpdatedAt}, New from SSE: ${data.updatedAt}. Showing toast.`); // DEBUG
+                
+                // Add the toast notification directly based on SSE data
+                $toasts.add({
+                  title: 'Profile Synced',
+                  description: 'Your user data has been updated.', // Simplified description
+                  type: 'success',
+                  duration: 5000 // 5 seconds
+                });
+                
+                // IMPORTANT: Update the state variable *after* showing the toast, using the timestamp from the SSE message
+                previousUserUpdatedAt = data.updatedAt; 
+                
+                // Optionally, still invalidate to refresh other potentially related data, 
+                // but the toast trigger now relies *only* on the direct timestamp comparison above.
+                console.log('[Layout Sync Listener] Calling invalidateAll() to refresh potentially related data.');
+                invalidateAll(); 
+
+              } else {
+                // Log if timestamp hasn't changed (unlikely but possible)
+                console.log(`[Layout Sync Listener] Timestamp from SSE (${data.updatedAt}) matches previous state (${previousUserUpdatedAt}). No toast needed.`); // DEBUG
+                // Optionally invalidate even if no toast shown, if other data needs refresh
+                // invalidateAll(); 
+              }
             } else {
-               console.log('[Layout Sync Listener] Update does not match current user, ignoring.'); // DEBUG 
+               // Log why the update was ignored
+               let reason = !currentUserId ? 'No current user' : (data.userId !== currentUserId ? 'User ID mismatch' : 'Missing timestamp in message');
+               console.log(`[Layout Sync Listener] Update ignored (${reason}). Data: ${JSON.stringify(data)}`); // DEBUG 
             }
           } else if (data.type === 'connection-ready') {
              console.log('[Layout Sync Listener] Connection ready message received.');

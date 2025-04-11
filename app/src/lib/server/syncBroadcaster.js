@@ -57,14 +57,25 @@ export function createEventStream(clientId) {
  * Frontend clients will need to check if the update pertains to them.
  * 
  * @param {string} userId - The ID of the user whose data was updated.
+ * @param {string | null} [updatedAt] - Optional ISO timestamp of the update.
  */
-export function broadcastSyncUpdate(userId) {
+export function broadcastSyncUpdate(userId, updatedAt = null) {
     if (!userId) {
         console.warn('[SyncBroadcaster] Attempted to broadcast update without a userId.');
         return;
     }
     
-    const message = JSON.stringify({ type: 'user-update', userId: userId });
+    // Construct payload, include updatedAt if provided
+    const payload = { 
+        type: 'user-update', 
+        userId: userId 
+    };
+    if (updatedAt) {
+        // @ts-ignore
+        payload.updatedAt = updatedAt;
+    }
+
+    const message = JSON.stringify(payload);
     console.log(`[SyncBroadcaster] Broadcasting message: ${message}`);
     
     controllers.forEach((controller, clientId) => {

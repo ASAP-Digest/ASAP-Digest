@@ -636,13 +636,13 @@ async function onSessionCreationHook(session) {
 
 // Better Auth configuration
 export const auth = betterAuth({
-    dialect: dialect,
-    authKey: authSecret,
     config: {
+        authKey: authSecret,
         sessionCookieName: 'better_auth_session',
         sessionExpiresIn: 30 * 24 * 60 * 60 * 1000,
     },
     adapter: {
+        dialect: dialect,
         // Assign the defined functions to the adapter properties
         getUserByEmail: getUserByEmailFn,
         getUserById: getUserByIdFn,

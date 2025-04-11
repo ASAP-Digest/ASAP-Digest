@@ -1,7 +1,7 @@
 import { createEventStream } from '$lib/server/syncBroadcaster';
 import { randomUUID } from 'node:crypto';
 
-/** @type {import('./$types').RequestHandler} */
+/** @type {import('../../sync-stream/$types').RequestHandler} */
 export function GET({ request }) {
     // Generate a unique ID for this client connection
     const clientId = randomUUID(); 
@@ -19,7 +19,7 @@ export function GET({ request }) {
 }
 
 // Placeholder for potentially handling POST requests if needed in the future
-/** @type {import('./$types').RequestHandler} */
+/** @type {import('../../sync-stream/$types').RequestHandler} */
 export async function POST({ request }) {
      console.warn('[Sync Stream API] Received unexpected POST request.');
      return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
