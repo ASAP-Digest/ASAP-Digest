@@ -33,7 +33,7 @@
   import { 
     Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut 
   } from '$lib/utils/lucide-compat.js';
-  import { invalidateAll } from '@sveltejs/kit'; // Import invalidateAll
+  import { goto } from '$app/navigation'; // Import goto from correct module
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -124,8 +124,8 @@
                 
                 // Optionally, still invalidate to refresh other potentially related data, 
                 // but the toast trigger now relies *only* on the direct timestamp comparison above.
-                console.log('[Layout Sync Listener] Calling invalidateAll() to refresh potentially related data.');
-                invalidateAll(); 
+                console.log('[Layout Sync Listener] Calling goto() to refresh potentially related data.');
+                goto(window.location.href, { invalidateAll: true }); // NEW: Use goto to force reload
 
               } else {
                 // Log if timestamp hasn't changed (unlikely but possible)

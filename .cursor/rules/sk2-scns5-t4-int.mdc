@@ -5,56 +5,83 @@ alwaysApply: true
 ---
 # SvelteKit 2 with Shadcn-Svelte 5 & Tailwind 4
 
-1. **Use HSL variable syntax for theme colors in Tailwind 4**  
-   Always use `text-[hsl(var(--primary))]` instead of `text-primary` for theme colors.
+1.  **Use HSL variable syntax for theme colors in Tailwind 4**
+    Always use `text-[hsl(var(--primary))]` instead of `text-primary` for theme colors.
 
-2. **Use standard Tailwind 4 utilities for spacing and sizing when available**  
-   Use standard utilities like `w-5`, `h-5`, `p-4`, `m-2` when they exist in Tailwind's scale.
-   Only use arbitrary values for custom sizes: `w-[1.37rem]`, `h-[22px]`.
+2.  **Use standard Tailwind 4 utilities for spacing and sizing when available**
+    Use standard utilities like `w-5`, `h-5`, `p-4`, `m-2` when they exist in Tailwind's scale.
+    Only use arbitrary values for custom sizes: `w-[1.37rem]`, `h-[22px]`.
 
-3. **Handle events properly using new Svelte 5 event attribute syntax**  
-   Use `onclick={handler}` syntax with proper TypeScript typing through JSDoc annotations.
+3.  **Handle events properly using new Svelte 5 event attribute syntax**
+    Use `onclick={handler}` syntax with proper TypeScript typing through JSDoc annotations.
 
-4. **Use $state and $derived for reactivity in Svelte 5**  
-   Replace `let value` with `let value = $state(initialValue)` for reactive variables.
+4.  **Use $state and $derived for reactivity in Svelte 5**
+    Replace `let value` with `let value = $state(initialValue)` for reactive variables.
 
-5. **Apply :global() selectors for CSS that needs to target elements outside the component**  
-   Use `:global(body.sidebar-collapsed) .element` for targeting across component boundaries.
+5.  **SvelteKit Module Imports (MUST)**
+    Always import SvelteKit framework functions and stores from their designated modules, not directly from `@sveltejs/kit`.
+    Common examples include:
+    ````javascript
+    import { goto } from '$app/navigation'; // For programmatic navigation
+    import { page, navigating, updated } from '$app/stores'; // For page data, navigation state, etc.
+    import { browser, dev } from '$app/environment'; // For environment checks
+    ````
+    **Deprecated Functions:** Avoid using deprecated functions like `invalidateAll`. For broad data invalidation, use the pattern:
+    ````javascript
+    goto(window.location.href, { invalidateAll: true });
+    ````
 
-6. **Import individual components directly from Shadcn-Svelte**  
-   When importing, Import directly from the `.svelte` files, Importing from the directory will cause build errors
+6.  **Apply :global() selectors for CSS that needs to target elements outside the component**
+    Use `:global(body.sidebar-collapsed) .element` for targeting across component boundaries.
 
-7. **Search for & Modify Imported Shadcn-Svelte All Component Icons**
-   After importing new Shadcn-svelte components grep all imported icons of the component and add them as export in our compatibility layer `lucide-icons.js` 
+7.  **Import individual components directly from Shadcn-Svelte**
+    When importing, Import directly from the `.svelte` files. Importing from the directory index file (e.g., `$lib/components/ui/sidebar/`) will cause build errors.
+    ````javascript
+    // CORRECT
+    import Root from '$lib/components/ui/sidebar/sidebar.svelte';
+    
+    // INCORRECT
+    import { Root } from '$lib/components/ui/sidebar'; 
+    ````
 
-8. **Add explicit JSDoc type annotations for all functions and parameters**  
-   Always include `@param {EventType} paramName - Description` for proper TypeScript checking.
+8.  **Search for & Modify Imported Shadcn-Svelte All Component Icons**
+    After importing new Shadcn-svelte components grep all imported icons of the component and add them as export in our compatibility layer `lucide-compat.js` (following `icon-management.mdc`).
 
-9. **Set explicit list-none class on list elements**  
-   Always add `list-none` to `<ul>` and `<li>` elements to prevent bullet points.
+9.  **Add explicit JSDoc type annotations for all functions and parameters**
+    Always include `@param {EventType} paramName - Description` for proper TypeScript checking. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
 
-10. **Use direct imports from lucide-svelte for icons**  
-   Import specific icons with `import { Icon1, Icon2 } from 'lucide-svelte'` to reduce bundle size.
+10. **Set explicit list-none class on list elements**
+    Always add `list-none` to `<ul>` and `<li>` elements to prevent bullet points.
 
-11. **Implement proper responsive transitions with CSS variables**  
+11. **Use direct imports from lucide-compat.js for icons**
+    Import specific icons according to `icon-management.mdc`. Do NOT import directly from `lucide-svelte`.
+
+12. **Implement proper responsive transitions with CSS variables**
     Use CSS variables and transition properties for smooth UI changes, especially in layout components.
 
-12. **Use `let` directly**
-    - We are in Svelte 5 Runes Mode. Do not use `export let`
+13. **Use `let` directly**
+    - We are in Svelte 5 Runes Mode. Do not use `export let`.
 
-13. **Avoid style blocks in Svelte components when possible**  
+14. **Avoid style blocks in Svelte components when possible**
     Style with Tailwind 4 utility classes in markup instead of using `<style>` blocks for better Tailwind 4 compatibility.
 
-14. **NEVER use @reference in Svelte component style blocks**  
+15. **NEVER use @reference in Svelte component style blocks**
     Tailwind 4 processes each component separately, so `@reference "tailwindcss"` doesn't work properly.
 
-15. **NEVER use @apply in Svelte component style blocks**  
+16. **NEVER use @apply in Svelte component style blocks**
     Replace `@apply bg-primary` with direct CSS: `background-color: hsl(var(--primary))`.
 
-16. **Use CSS variables for theme colors in component styles**  
+17. **Use CSS variables for theme colors in component styles**
     When you must use `<style>`, use `color: hsl(var(--primary))` instead of Tailwind utilities.
 
-17. **Ensure tailwind.config.js includes all Svelte component files**  
-    content: [`"./src/**/*.{html,js,svelte,ts}"`, `"./src/**/*.{svelte,js,ts,jsx,tsx}"`]
+18. **Ensure tailwind.config.js includes all Svelte component files**
+    ````javascript
+    // Example tailwind.config.js content array
+    content: [
+      "./src/**/*.{html,js,svelte,ts}",
+      "./src/**/*.{svelte,js,ts,jsx,tsx}" 
+      // Ensure this covers all relevant directories
+    ]
+    ````
 
     
