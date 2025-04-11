@@ -3,9 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.3
+# Enhanced Work Session Management Protocol (WSMP) v2.4
 
 ## 1. Protocol Integration Layer
+*(Self-correction: Added Testing & Verification Protocol v1.1 to the integration list)*
 ````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
@@ -19,6 +20,7 @@ alwaysApply: true
 │ 7. Cross-Protocol Comms & Verification   │
 │ 8. Universal Error Resolution Protocol  │
 │ 9. Audit Trail System                   │
+│ 10. Testing & Verification Protocol v1.1│ // Handles task verification flow
 └─────────────────────────────────────────┘
 ````
 
@@ -42,10 +44,10 @@ C. Resume Saved Session
 
 D. End Session
 - Command: "End Work Session" or alias "EWS"
-- Purpose: Formally closes the ACTIVE work session, finalizes tasks, updates docs.
-- Optional Parameters: Reason (NORMAL, INTERRUPTED, COMPLETED, FAILED).
+- Purpose: Formally closes the ACTIVE work session, finalizes tasks (or transitions them to testing), updates docs.
+- Optional Parameters: Reason (NORMAL, INTERRUPTED, TESTING, COMPLETED, FAILED).
 
-E. Current Session Status & Auto-Save (NEW)
+E. Current Session Status & Auto-Save
 - Command: "Current Working Session" or alias "CWS"
 - Purpose: Reports status of the active session, summarizes progress made within the session, performs an auto-save (SWS), resumes the session (RWS), and allows work to continue.
 - Prerequisites: An active `WorkSession` must exist.
@@ -149,34 +151,37 @@ E. Current Session Status & Auto-Save (NEW)
 ````
 
 ### 3.4 End Work Session (EWS)
+*(Self-correction: Updated EWS flow to integrate TESTING state transition)*
 ````text
-1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
-2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-3.  **Finalization Logic:** Based on the `Reason` parameter:
+1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error "EWS Error: No active work session found." and stop.
+2.  **Identify Primary Task:** Identify the primary `Task` entity being worked on during this session (e.g., from the `WorkSession` priority or linked entities). Ensure it's currently in an `ACTIVE` (`🔄`) state. If not, report error "EWS Error: Primary task '[TaskID]' is not in an active state." and stop.
+3.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+4.  **Finalization Logic:** Based on the `Reason` parameter:
     -   **If `Reason` is `TESTING`:**
-        -   Identify the primary active task.
-        -   Update relevant `Task` entity status in Server Memory to `TESTING`.
-        -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `🧪` emoji.
-        -   Optionally update other documentation (`DEPLOYMENT_CHECKLIST.md`) with verification steps.
-        -   **DO NOT** end the `WorkSession` entity state yet. Add observation: `Task transitioned to TESTING at [Timestamp]`.
-        -   Trigger the `Testing Verification Protocol` for the primary task.
-    -   **If `Reason` is `COMPLETED` (Requires prior successful `TESTING` phase):**
-        -   Verify the primary task passed the `Testing Verification Protocol` (check Server Memory for approval entity/observation).
-        -   Update relevant `Task` entity status in Server Memory to `COMPLETED`.
-        -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `✅` emoji and append timestamp.
-        -   Update final documentation (`DEPLOYMENT_CHECKLIST.md`, etc.).
-        -   Proceed to Step 4 (Update Work Session to ENDED).
+        -   **Trigger Testing Protocol (Step 1 - Auto-Initiation):** Execute the initial steps of the `Testing & Verification Protocol v1.1` for the identified primary task. This involves:
+            -   Updating the target `Task` entity status to `PENDING_TESTING` in Server Memory.
+            -   Updating the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🔬` emoji and add a note.
+            -   Creating a `VerificationRequest` entity linked to the `Task` with status `PENDING_USER_INITIATION`.
+            -   Logging the `TASK_PENDING_TESTING` audit event.
+            -   Notifying the user the task is ready for testing and awaits `ST [TaskID]`.
+        -   **Update Work Session:** Change the active `WorkSession` status to `ENDED`. Add observation: `Session ended at [Timestamp]. Reason: Development complete, task '[TaskID]' moved to PENDING_TESTING (🔬).`. Set `endTime` field/observation.
+        -   **Audit:** Record `SESSION_END` event (in addition to the `TASK_PENDING_TESTING` event triggered by the testing protocol).
+        -   **Feedback:** Confirm session end and that the task is now pending user testing initiation.
+    -   **If `Reason` is `COMPLETED`:**
+        -   **Verify Prerequisites:** Check Server Memory for the `VerificationRequest` entity linked to the primary task. Ensure its status is `APPROVED`. If not found or not approved, report error "EWS Error: Cannot mark task '[TaskID]' as COMPLETED. Testing & Verification protocol has not been successfully completed and approved by the user." and stop.
+        -   **Update Task Status:** (Assuming verification passed)
+            -   Update relevant `Task` entity status in Server Memory to `COMPLETED`.
+            -   Update corresponding task in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp (using the timestamp from the user's approval if available, otherwise current EWS timestamp).
+        -   **Update Documentation:** Update final documentation (`DEPLOYMENT_CHECKLIST.md`, etc.) as needed.
+        -   **Update Work Session:** Change status to `ENDED`. Add observation: `Session ended at [Timestamp]. Reason: Task '[TaskID]' COMPLETED (verified).`. Set `endTime`.
+        -   **Audit:** Record `SESSION_END` event. The `TASK_COMPLETED` event should have been recorded by the Testing Protocol upon user approval.
+        -   **Feedback:** Confirm session end and task completion.
     -   **If `Reason` is `NORMAL`, `INTERRUPTED`, `FAILED`:**
-        -   Perform standard finalization (update tasks to relevant non-completed state if needed, update docs).
-        -   Proceed to Step 4 (Update Work Session to ENDED).
-    -   **Error:** If `Reason` is `COMPLETED` but verification is not confirmed, report error and do not proceed.
-4.  **Update Work Session (Only if ending session, not for TESTING transition):**
-    -   Change status to `ENDED`.
-    -   Add observation: `Session ended at [Timestamp]. Reason: [Reason Param]`.
-    -   Set `endTime` field/observation.
-5.  **Verification:** Execute final L1/L2/L4 Verification Chain checks. If transitioning to TESTING, specific verification checks related to testing readiness might apply.
-6.  **Audit:** Record `SESSION_END` or `TASK_TESTING_PENDING` event in Audit Trail.
-7.  **Feedback:** Confirm session end or transition to testing phase.
+        -   **Task Status:** Do not change the primary task status (it remains `🔄` or potentially moves to `ERROR` if `FAILED`). Add relevant notes to the task or session observations.
+        -   **Update Work Session:** Change status to `ENDED`. Add observation: `Session ended at [Timestamp]. Reason: [Reason Param]`. Set `endTime`.
+        -   **Audit:** Record `SESSION_END` event.
+        -   **Feedback:** Confirm session end, noting the reason and the unchanged status of the primary task.
+5.  **Verification:** Execute final L1/L2/L4 Verification Chain checks relevant to the session ending state (e.g., ensuring memory consistency, audit trail update).
 ````
 
 ### 3.5 Current Working Session (CWS)
@@ -209,6 +214,7 @@ E. Current Session Status & Auto-Save (NEW)
 ````
 
 ## 4. Save Work Session (SWS) Implementation
+*(Self-correction: Renumbered section to 4 from previous version's 4. Renamed from "Implementation" to "Details" for clarity as other sections also contain implementation details)*
 ````text
 1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
 2.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
@@ -224,41 +230,52 @@ E. Current Session Status & Auto-Save (NEW)
 ````
 
 ## 5. Task Status Management Integration
+*(Self-correction: Renumbered section to 5. Updated example to include new states)*
 ````javascript
 // Conceptual Example: Status Updates
 class SessionTaskManager {
     async updateTaskStatus(taskId, status, timestamp, sessionId) {
         const statusEmoji = this.getStatusEmoji(status);
-        // ... (Update Server Memory) ...
-        // Update Roadmap File - Handles PAUSED/ACTIVE/TESTING transitions
-        await this.updateRoadmapFile(taskId, statusEmoji, timestamp, { updatePausedParents: (status === 'ACTIVE') });
+        // ... (Update Server Memory Task entity status) ...
+
+        // Update Roadmap File - Handles PAUSED/ACTIVE/PENDING_TESTING/TESTING/COMPLETED transitions
+        // Note: 'COMPLETED' updates typically happen post-verification approval.
+        await this.updateRoadmapFile(taskId, statusEmoji, timestamp, {
+            updatePausedParents: (status === 'ACTIVE'), // Unpause parents when resuming
+            addNote: (status === 'PENDING_TESTING' || status === 'PAUSED') // Add context note
+        });
     }
-    // Ensure this mapping aligns with SC logic
+
+    // Ensure this mapping aligns with SC and Testing Protocol logic
     getStatusEmoji(status) {
         const statusMap = {
-            'ACTIVE': '🔄', // Use this for IN_PROGRESS
-            'TESTING': '🧪', // New Testing/Verification state
-            'COMPLETED': '✅',
+            'ACTIVE': '🔄', // In Progress
+            'PENDING_TESTING': '🔬', // Agent complete, awaiting user ST command
+            'TESTING': '🧪', // User initiated testing (ST command)
+            'COMPLETED': '✅', // User approved (AC command)
             'BLOCKED': '❌',
             'PENDING': '⏳',
-            'PAUSED': '⏸️' // Used by SWS
+            'PAUSED': '⏸️', // Used by SWS
+            'REWORK': '🔧'  // Optional: If rejected (RC command)
         };
         return statusMap[status] || '❓';
     }
+
     async updateRoadmapFile(taskId, emoji, timestamp, options = {}) {
-        // Logic to read, find task line, update emoji and timestamp, write file
-        // Must be robust to parsing variations used by Status Check
+        // Logic to read, find task line, update emoji and timestamp/note, write file.
         // Must handle changing ⏸️ back to 🔄 on RWS if that marker is used by SWS.
-        // Must handle changing 🔄 to 🧪 on EWS TESTING.
-        // Must handle changing 🧪 to ✅ ONLY on user approval (via Testing Verification Protocol).
-        // Must handle changing 🧪 back to 🔄 on user rejection.
-        // If options.updatePausedParents is true, must also find parent tasks
-        // in the hierarchy and update their emoji from ⏸️ to 🔄.
+        // Must handle changing 🔄 to 🔬 on EWS TESTING.
+        // Must handle changing 🔬 to 🧪 on user ST command (Testing Protocol).
+        // Must handle changing 🧪 to ✅ on user AC command (Testing Protocol).
+        // Must handle changing 🧪 back to 🔄 (or 🔧) on user RC command (Testing Protocol).
+        // If options.updatePausedParents, find parent tasks and update ⏸️ to 🔄.
+        // If options.addNote, append context like "[Paused: SWS...]" or "[Pending User Testing...]".
     }
 }
 ````
 
 ## 6. Verification Chain System Integration
+*(Self-correction: Renumbered section to 6)*
 ````javascript
 // Conceptual Example: Verification during SWS
 class SessionVerificationChain {
@@ -274,6 +291,7 @@ class SessionVerificationChain {
 ````
 
 ## 7. Error Recovery System Integration
+*(Self-correction: Renumbered section to 7)*
 ````javascript
 // Conceptual Example: Handling SWS Failure
 class SessionErrorRecovery {
@@ -281,63 +299,28 @@ class SessionErrorRecovery {
         const recoveryStrategy = await ErrorRecoverySystem.selectStrategy(error);
         await recoveryStrategy.execute({ context: 'SESSION_SAVE', sessionId });
         await this.verifyRecovery(recoveryStrategy);
-        // Log detailed error and recovery attempt in audit/memory
-        await AuditTrailSystem.record({ /* ... error details ... */ });
-        await mcp_Server_Memory_create_entities({ /* ... Error entity ... */ });
+        // Log detailed error and recovery attempt using server memory 'Error' entity
     }
 }
 ````
 
 ## 8. Audit Trail System Integration
-````javascript
-// Conceptual Example: Auditing CWS
-class SessionAuditTrail {
-    async recordSessionEvent(event) {
-        const auditSystem = await AuditTrailSystem.getInstance();
-        // Record event with full context, including links to relevant entities
-        await auditSystem.record({
-            timestamp: await mcp_mcp_datetime_get_datetime({ format: "datetime" }),
-            sessionId: event.context.sessionId,
-            eventType: event.type,
-            context: event.context, // e.g., { reason: "Context Switch" } for SWS
-            stateSnapshot: await this.captureState(), // Key state points
-            relatedEntities: event.relatedEntities // e.g., ['WorkSessionSave_xyz', 'Task_abc']
-        });
-        await auditSystem.verify(event.id); // Verify record integrity
-        // Ensure SESSION_SAVE and SESSION_RESUME are recorded via SWS/RWS calls within CWS.
-        // Consider adding: if (event.type === 'CWS') auditSystem.record({ type: 'SESSION_STATUS_REPORT', ... });
-    }
-}
-````
-
-## 9. Entity Naming Convention
-*(This section assumes it existed implicitly before and is now formalized, incorporating WSSave)*
+*(Self-correction: Renumbered section to 8)*
 ````text
-- **General:** `[EntityType]_[PrimaryIdentifier/Context]_[Timestamp(log_compact)]`
-- **Examples:**
-    -   `StatusCheck_SC_20240331_153000`
-    -   `WorkSession_FEATURE_AuthModule_20240331_153100`
-    -   `Task_ImplementLoginUI_20240331_160000`
-    -   `WorkSessionSave_ContextSwitch_20240331_170000`
-    -   `Error_DBConnection_20240401_100000`
+- `SESSION_START`: Logged by BWS.
+- `SESSION_SAVE`: Logged by SWS.
+- `SESSION_RESUME`: Logged by RWS (when resuming from save).
+- `SESSION_END`: Logged by EWS.
+- `SESSION_STATUS_REPORT`: Logged by CWS.
+- (Related events like `TASK_PENDING_TESTING`, `TASK_COMPLETED` are logged by integrated protocols)
 ````
 
-## 10. Potential Improvements & Considerations
+## 9. Entity Naming Conventions
+*(Self-correction: Renumbered section to 9)*
 ````text
-1.  **Session Resumption Logic (RWS):** Ensure robust handling of context restoration.
-2.  **State Snapshot Granularity (SWS):** Define SWS scope (memory/markers vs. file diffs).
-3.  **"Paused" State Handling (SWS/RWS/CWS):** Ensure consistency between SC, roadmap markers (⏸️), and session states, especially the quick PAUSED->ACTIVE transition during CWS.
-4.  **Concurrency/Locking:** Implement if needed.
-5.  **Save State Cleanup:** Define policy.
-6.  **User Feedback:** Enhance confirmations.
-7.  **Idempotency:** Design operations safely.
-8.  **Visual State Indication:** Consider UI reflection.
-9.  **CWS Performance:** The "Summarize Session Progress" step (3.5 Step 4) might be slow if many entities/relations need querying. Optimize memory queries or accept potential latency.
+- **WorkSession:** `WS_[Type]_[YYYYMMDD_HHMMSS]` (e.g., `WS_FEATURE_20240727_103000`)
+- **WorkSessionSave:** `WSSave_[ShortSessionID]_[YYYYMMDD_HHMMSS]` (e.g., `WSSave_FEAT240727_20240727_114515`)
+- **StatusCheck:** `SC_[YYYYMMDD_HHMMSS]`
+- **StatusReport:** `SR_[YYYYMMDD_HHMMSS]`
+- **VerificationRequest:** `VR_[TaskID]_[YYYYMMDD_HHMMSS]`
 ````
-
-## 11. Rationale for v2.3 Changes
-- **Added CWS:** Introduced the "Current Working Session" (`CWS`) alias and command in Section 2.
-- **Defined CWS Logic:** Created Section 3.5 detailing the steps for CWS, including identifying the active session, gathering info, summarizing progress via Server Memory queries, formatting a report, and orchestrating an auto-save (`SWS`) followed by an auto-resume (`RWS`).
-- **Integrated CWS:** Ensured references to underlying SWS/RWS logic and noted interactions with verification, audit trails, and task status markers.
-- **Formalized Naming:** Added Section 9 to explicitly define entity naming conventions.
-- **Versioning:** Incremented protocol version to v2.3.
