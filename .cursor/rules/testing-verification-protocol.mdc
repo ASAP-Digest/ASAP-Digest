@@ -74,7 +74,16 @@ This protocol defines the mandatory process for verifying implemented functional
     -   **On User Approval (`AC [TaskID]`):**
         -   Verify the `TaskID` matches the active verification request (`🧪`).
         -   Acquire current timestamp.
+        -   **Mandatory Approval Verification (MUST):** MUST explicitly query and verify that the corresponding `VerificationRequest` entity in Server Memory has status `APPROVED` **before** updating the `Task` entity status to `COMPLETED`. Halt and trigger UERP if verification fails.
         -   **Update Verification Request:** Update the `VerificationRequest` entity status to `APPROVED`. Add observation with user confirmation and timestamp.
+        -   **Update Task Status (Completed):**
+            -   Update the target `Task` entity status to `COMPLETED` in Server Memory.
+            -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp.
+        -   **(Optional WSMP Trigger):** If task completion might conclude a logical work block, WSMP *could* be triggered or updated based on this completion.
+        -   **Verification:** Perform L5 verification check (confirming user approval is logged).
+        -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED` events.
+        -   **Trigger WSMP Completion Logic (MUST):** Immediately and automatically invoke the specific logic block within `work-session-management-protocol.mdc` responsible for handling `EWS COMPLETED`, passing the verified `TaskID`. This MUST be the final action of the successful AC processing branch within TVP. The WSMP logic will handle the final task completion updates and user feedback.
+        -   **(Clarification):** The transition to `COMPLETED` (✅) status for a Task is **SOLELY triggered by the successful processing of the user's `AC [TaskID]` command** after the active testing phase (`🧪`) and cannot be performed based on agent assessment alone.
         -   **Update Task Status (Completed):**
             -   Update the target `Task` entity status to `COMPLETED` in Server Memory.
             -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp.

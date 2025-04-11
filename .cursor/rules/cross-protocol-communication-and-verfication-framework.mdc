@@ -117,6 +117,7 @@ B. Verification Chain Execution
    - Resource cleanup verification
    - Audit trail validation
    - **User approval recorded (for L5)**
+   - **L5 Dependency Check:** For L5 User Acceptance verification, MUST confirm the user approval action (e.g., `AC [TaskID]` command execution) and the corresponding `VerificationRequest` entity status (`APPROVED`) are correctly logged in the Audit Trail and Server Memory **before** related dependent actions (like `EWS COMPLETED` or final documentation updates) can proceed. Trigger UERP if checks fail.
 ```
 
 ## 4. Protocol Synchronization Framework

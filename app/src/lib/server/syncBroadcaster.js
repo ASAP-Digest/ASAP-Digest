@@ -24,19 +24,20 @@ export function createEventStream(clientId) {
             controller.enqueue(`data: ${JSON.stringify({ type: 'connection-ready' })}\n\n`);
         },
         cancel() {
-            console.log(`[SyncBroadcaster] Client disconnected: ${clientId}`);
+            console.log(`[SyncBroadcaster] Stream cancelled for client: ${clientId}. Removing controller.`);
             controllers.delete(clientId);
         },
     });
 
     // Keep-alive mechanism (send a comment every 20 seconds)
     const keepAliveInterval = setInterval(() => {
+        console.debug(`[SyncBroadcaster] Keep-alive check for client: ${clientId}`);
         if (controllers.has(clientId)) {
             try {
                  // Send a comment line (ignored by EventSource listeners)
                  controllers.get(clientId)?.enqueue(': keepalive\n\n');
             } catch (error) {
-                 console.error(`[SyncBroadcaster] Error sending keepalive to client ${clientId}:`, error);
+                 console.error(`[SyncBroadcaster] Error sending keepalive to client ${clientId}. Removing controller. Error:`, error);
                  controllers.delete(clientId); // Clean up if error occurs
                  clearInterval(keepAliveInterval);
             }
@@ -83,9 +84,9 @@ export function broadcastSyncUpdate(userId, updatedAt = null) {
             console.log(`[SyncBroadcaster] Sending update for user ${userId} to client ${clientId}`);
             controller.enqueue(`data: ${message}\n\n`);
         } catch (error) {
-            console.error(`[SyncBroadcaster] Failed to send message to client ${clientId}:`, error);
-            // Optional: Clean up controller if sending fails?
-            // controllers.delete(clientId); 
+            console.error(`[SyncBroadcaster] Failed to send message to client ${clientId}. Error:`, error);
+            // Consider removing the controller here if sending fails consistently
+            // controllers.delete(clientId);
         }
     });
 }
