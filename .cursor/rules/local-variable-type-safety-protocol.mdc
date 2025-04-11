@@ -7,13 +7,13 @@ alwaysApply: true
 
 ## 1. Purpose
 
-This protocol establishes the standard practice for ensuring type safety when working with local variables within JavaScript functions, especially when using JSDoc for type checking. It specifically addresses scenarios where variables hold values whose types are **union types** (representing multiple possible structures) or objects where the presence of specific properties cannot be guaranteed at compile time by the type checker. This is common when dealing with return values from external libraries (e.g., database drivers, API clients) or dynamic data transformations. The goal is to prevent potential runtime errors and satisfy linter checks by explicitly verifying the shape or type of data *before* accessing potentially non-existent properties.
+This protocol establishes the standard practice for ensuring type safety when working with local variables within JavaScript functions, especially when using JSDoc for type checking. It specifically addresses scenarios where variables hold values whose types are **union types** (representing multiple possible structures) or objects where the presence of specific properties cannot be guaranteed at compile time by the type checker. This is common when dealing with return values from external libraries (e.g., database drivers, API clients) or dynamic data transformations. The goal is to prevent potential runtime errors and satisfy linter checks by explicitly verifying the shape or type of data *before* accessing potentially non-existent properties or passing the variable to functions requiring a narrower type.
 
 ## 2. Core Principles
 
--   **Proactive Verification:** Type guards MUST be implemented *before* accessing properties on variables that might hold union types or objects with optional properties. Do not assume the shape of data returned from external sources.
+-   **Proactive Verification:** Type guards MUST be implemented *before* accessing properties on variables that might hold union types or objects with optional properties, or before passing them to functions with stricter type requirements. Do not assume the shape of data returned from external sources.
 -   **Explicit Guards:** Use clear and appropriate JavaScript runtime checks (type guards) to narrow down the type of a variable within a specific code block.
--   **Avoid Unsafe Access:** Directly accessing properties on a variable without a preceding, relevant type guard that confirms the property's existence is NOT PERMITTED if the variable's type definition allows for shapes where the property might be absent.
+-   **Avoid Unsafe Usage:** Directly accessing properties on a variable, **or passing it as an argument to a function requiring a narrower type (e.g., passing `string | null` to a function expecting `string`)**, without a preceding, relevant type guard that confirms the property's existence or narrows the type appropriately, is NOT PERMITTED if the variable's type definition allows for shapes/types that would violate the usage context.
 
 ## 3. Identifying Potential Issues
 
@@ -23,10 +23,11 @@ Be vigilant for type safety issues when:
 -   Working with data from external APIs or libraries where the exact response structure might vary.
 -   Processing data where transformations might lead to different possible output shapes.
 -   Using libraries whose JSDoc/TypeScript definitions utilize union types for return values (like `mysql2/promise`'s `QueryResult`).
+-   Passing variables to functions whose parameter types are more restrictive than the variable's current type (e.g., requiring non-null).
 
 ## 4. Required Type Guard Implementation
 
-Before accessing a specific property (`prop`) on a variable (`myVar`) whose type might not guarantee the presence of `prop`, you MUST use one or more appropriate type guards within the same logical scope.
+Before accessing a specific property (`prop`) on a variable (`myVar`) whose type might not guarantee the presence of `prop`, or before passing `myVar` to a function that requires a more specific type than `myVar` currently holds, you MUST use one or more appropriate type guards within the same logical scope.
 
 ### 4.1 Common Type Guards
 
@@ -37,14 +38,14 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
 
     if (apiResult.success && 'data' in apiResult) {
       // SAFE: 'data' is guaranteed to exist here
-      console.log(apiResult.data.toUpperCase()); 
+      console.log(apiResult.data.toUpperCase());
     } else if (!apiResult.success && 'error' in apiResult) {
       // SAFE: 'error' is guaranteed to exist here
       console.error(apiResult.error);
     }
     ````
 
--   **Type Check (`typeof`):** For distinguishing between primitive types.
+-   **Type Check (`typeof`):** For distinguishing between primitive types. Also effective for checking against `undefined`.
     ````javascript
     /** @type {string | number} */
     let value = getConfigValue();
@@ -52,8 +53,8 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
     if (typeof value === 'string') {
       // SAFE: Treat as string
       console.log(value.trim());
-    } else {
-      // SAFE: Treat as number (assuming only string/number possible)
+    } else if (typeof value === 'number') {
+      // SAFE: Treat as number
       console.log(value.toFixed(2));
     }
     ````
@@ -67,7 +68,7 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
 
     if (result instanceof CustomError) {
       // SAFE: Access CustomError specific properties
-      console.error('Custom Error Code:', result.code); 
+      console.error('Custom Error Code:', result.code);
     } else if (result instanceof Error) {
       // SAFE: Access standard Error properties
       console.error('Standard Error:', result.message);
@@ -84,7 +85,7 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
       // SAFE: dbResult[0] is the array of rows for SELECT
       const rows = dbResult[0];
       console.log(`Found ${rows.length} users.`);
-      rows.forEach(user => console.log(user.email)); 
+      rows.forEach(user => console.log(user.email));
     } else if (dbResult && typeof dbResult[0] === 'object' && dbResult[0] !== null && !Array.isArray(dbResult[0])) {
        // Handle OkPacket, ResultSetHeader etc. based on specific properties if needed
        // Example: Checking for affectedRows after an UPDATE/DELETE
@@ -92,14 +93,26 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
     }
     ````
 
--   **Null/Undefined Check:** Always necessary when a value might be absent.
+-   **Truthiness/Null/Undefined Check:** Often sufficient for guarding against `null` or `undefined` before usage, especially when passing to functions.
     ````javascript
     /** @type {{ user?: { name: string } }} */
     let session = getSessionData();
 
+    // Guarding before property access
     if (session.user && typeof session.user.name === 'string') {
         // SAFE: 'user' exists and 'name' exists
         console.log(session.user.name);
+    }
+
+    /** @type {string | null} */
+    let userId = findUserId();
+    /** @param {string} id */
+    function processUserId(id) { /* ... */ }
+
+    // Guarding before function call
+    if (userId) {
+        // SAFE: userId is guaranteed to be a non-null string here
+        processUserId(userId);
     }
     ````
 
@@ -111,28 +124,30 @@ The `connection.execute()` method often returns a `QueryResult`, which is a tupl
 
 ````javascript
 // usersResult type is QueryResult (complex union)
-const [usersResult] = await connection.execute(sql, params); 
+const [usersResult] = await connection.execute(sql, params);
 
-if (usersResult && typeof usersResult === 'object') { 
+if (usersResult && typeof usersResult === 'object') {
     // UNSAFE / LINTER ERROR: 'affectedRows'/'insertId' may not exist on all object
     // types within the QueryResult union, even if it's an object.
-    // const affectedRows = usersResult.affectedRows; 
-    // const insertId = usersResult.insertId; 
+    // const affectedRows = usersResult.affectedRows;
+    // const insertId = usersResult.insertId;
 }
 ````
 
 **Corrected Pattern (Using Type Guard):**
 
 ````javascript
-const [usersResult] = await connection.execute(sql, params); 
+const [usersResult] = await connection.execute(sql, params);
 
 // Type Guard: Check for specific properties expected from INSERT/UPDATE results
-if (usersResult && typeof usersResult === 'object' && 
-    'affectedRows' in usersResult && 'insertId' in usersResult) {
-    
-    // SAFE: The 'in' operator guarantees these properties exist within this block.
-    const affectedRows = usersResult.affectedRows ?? 0;
-    const insertId = usersResult.insertId ?? 0; 
+if (usersResult && typeof usersResult === 'object' &&
+    !Array.isArray(usersResult) && // Ensure it's not the RowDataPacket[] array
+    'affectedRows' in usersResult) { // Check for a property common to OkPacket/ResultSetHeader
+
+    // SAFE: The 'in' operator suggests this is likely OkPacket or ResultSetHeader.
+    // Access properties defensively, using nullish coalescing if needed.
+    const affectedRows = ('affectedRows' in usersResult) ? (usersResult.affectedRows ?? 0) : 0;
+    const insertId = ('insertId' in usersResult) ? (usersResult.insertId ?? 0) : 0;
 
     console.log(`Operation affected ${affectedRows} rows.`);
     if (insertId > 0) {
@@ -141,7 +156,7 @@ if (usersResult && typeof usersResult === 'object' &&
 } else if (Array.isArray(usersResult)) {
     // Handle SELECT results (rows are in usersResult itself if using execute without destructuring the tuple)
     console.log(`Query returned ${usersResult.length} rows.`);
-} 
+}
 // Add other 'else if' blocks as needed for other QueryResult possibilities
 ````
 
@@ -150,7 +165,7 @@ if (usersResult && typeof usersResult === 'object' &&
 When reviewing code involving local variables with potentially ambiguous types:
 
 -   [ ] Is the variable's type potentially a union type or an object with optional properties (especially if from an external source)?
--   [ ] Are specific properties of this variable being accessed?
--   [ ] Is there an appropriate type guard (e.g., `'prop' in obj`, `typeof`, `instanceof`, `Array.isArray`, null check) in the same logical block *before* the property access?
--   [ ] Does the type guard correctly narrow the type to ensure the accessed property exists in that block?
--   [ ] Is unsafe direct access to potentially non-existent properties avoided?
+-   [ ] Are specific properties of this variable being accessed, **OR** is the variable being passed as an argument to a function?
+-   [ ] Is there an appropriate type guard (e.g., `'prop' in obj`, `typeof`, `instanceof`, `Array.isArray`, truthiness check `if (variable)`) in the same logical block *before* the property access or function call?
+-   [ ] Does the type guard correctly narrow the type to ensure the accessed property exists, or that the variable's type matches the function's parameter requirement, within that block?
+-   [ ] Is unsafe direct property access or function argument passing avoided?

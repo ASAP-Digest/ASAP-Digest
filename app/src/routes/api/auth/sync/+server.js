@@ -502,7 +502,13 @@ export async function POST({ request }) {
         if (!newUpdatedAt) { // Log if fallback was used
              console.warn(`[Sync API] Using fallback timestamp (${timestampToBroadcast}) for broadcast for user ${baUserId} as DB fetch failed or returned null.`);
         }
-        broadcastSyncUpdate(baUserId, timestampToBroadcast); 
+        // Add type guard for baUserId before calling broadcastSyncUpdate
+        if (baUserId) {
+          broadcastSyncUpdate(baUserId, timestampToBroadcast);
+        } else {
+          // Log if baUserId was null and broadcast was skipped
+          console.warn(`[Sync API] Broadcast skipped because baUserId was null after update attempt.`);
+        }
         
         if (connection) await connection.release();
         const message = updateResult.affectedRows > 0 ? 'User data synchronized' : 'Sync completed, no data changed';
