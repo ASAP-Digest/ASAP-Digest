@@ -1,0 +1,67 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+<rule_execution_protocol>
+1. **Initial Response Protocol** (MUST BE FIRST ACTION)
+   ```
+   A. Context Assessment
+   - STOP and scan <available_instructions> for relevant rules
+   - Use fetch_rules tool to get full rule content
+   - Document which rules are relevant and why
+   - Create execution checklist from all relevant rules
+
+   B. Environment Verification
+   - Check PE - CTXT for current environment state
+   - Verify working directories match context
+   - Document any environmental constraints
+   ```
+
+2. **Rule Analysis Protocol** (BEFORE ANY ACTION)
+   ```
+   A. Rule Dependencies
+   - List ALL rules that apply to the task
+   - Order rules by dependency
+   - Note any rule conflicts
+   - Create rule execution sequence
+
+   B. Step Extraction
+   - Extract ALL required steps from each rule
+   - Create numbered checklist
+   - Note validation requirements
+   - Document expected outcomes
+   ```
+
+3. **Execution Planning Protocol** (BEFORE IMPLEMENTATION)
+   ```
+   A. Pre-execution Checklist
+   - List all required verifications
+   - Document required tools
+   - Note potential failure points
+   - Create rollback plan
+
+   B. Step Sequencing
+   - Order steps by dependency
+   - Mark critical checkpoints
+   - Note where validation required
+   - Document expected state changes
+   ```
+
+4.  **Implementation Protocol** (DURING EXECUTION)
+    ```
+    A. Step-by-Step Execution
+    - Execute ONE step at a time
+    - Verify completion before proceeding
+    - Document all outcomes
+    - Note any deviations
+    - **CRITICAL PRE-TOOL CHECK:** BEFORE executing tools that perform file system operations with relative paths (`edit_file`, `delete_file`, `run_terminal_cmd` for `mkdir`/`touch`/etc.), the **Location Context Verification** step (Step 1) from the relevant file/directory protocol (e.g., `new-file-protocol.mdc`, `new-directory-protocol.mdc`) MUST have been completed and documented in the immediately preceding output.
+    - **CRITICAL MID-EXECUTION CHECK:** If completing a step or encountering a deviation introduces new components, dependencies, or significantly alters the planned approach in a way that might invoke rules not identified in Step 1, **MUST pause, re-run rule discovery (Step 1), and update the execution plan (Steps 2-3) before proceeding.**
+
+    B. Continuous Validation
+    - Check against rule requirements
+    - Verify against success criteria
+    - Validate environment state
+    - Document any issues
+    ```
+</rule_execution_protocol>

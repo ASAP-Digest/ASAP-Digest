@@ -1,0 +1,114 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+<software_development_meta_protocol>
+1. **Initial Context Assessment**
+   ```
+   A. Environment Analysis
+   - MUST check for Project Environment Context (PE - CTXT)
+   - MUST identify current working directories
+   - MUST verify available tools and permissions
+   - MUST document system constraints
+
+   B. Project Structure Analysis
+   - MUST scan available documentation
+   - MUST identify key configuration files
+   - MUST understand directory structure
+   - MUST note technology stack requirements
+   ```
+
+2. **Rule and Protocol Discovery**
+   ```
+   A. Available Instructions
+   - MUST scan <available_instructions> FIRST
+   - MUST use fetch_rules tool for relevant rules
+   - MUST document all applicable rules
+   - MUST identify rule dependencies
+
+   B. Protocol Identification
+   - MUST identify relevant execution protocols
+   - MUST note protocol dependencies
+   - MUST verify protocol compatibility
+   - MUST document protocol constraints
+   ```
+
+3. **Task Analysis Framework**
+   ```
+   A. Requirement Breakdown
+   - MUST break task into atomic units
+   - MUST identify dependencies between units
+   - MUST document expected outcomes
+   - MUST note validation requirements
+
+   B. Resource Identification
+   - MUST identify required tools
+   - MUST verify tool availability
+   - MUST document tool constraints
+   - MUST note alternative approaches
+   ```
+
+4. **Execution Strategy**
+   ```
+   A. Planning Phase
+   - MUST create step-by-step execution plan
+   - MUST identify validation points
+   - MUST document rollback procedures
+   - MUST note success criteria
+
+   B. Risk Assessment
+   - MUST identify potential failure points
+   - MUST document mitigation strategies
+   - MUST note system impacts
+   - MUST plan for contingencies
+   ```
+
+5.  **Implementation Framework**
+    ```
+    A. Systematic Execution
+    - MUST follow documented plan
+    - MUST validate each step
+    - MUST document progress
+    - MUST verify outcomes
+    - **CRITICAL PRE-TOOL CHECK:** BEFORE executing tools that perform file system operations with relative paths (`edit_file`, `delete_file`, `run_terminal_cmd` for `mkdir`/`touch`/etc.), the **Location Context Verification** step (Step 1) from the relevant file/directory protocol (e.g., `new-file-protocol.mdc`, `new-directory-protocol.mdc`) MUST have been completed and documented in the immediately preceding output.
+    - **CRITICAL MID-IMPLEMENTATION CHECK:** If execution deviates significantly from the plan, introduces new dependencies/components governed by specific rules (e.g., adding an icon, creating a new file type, using a specific library mentioned in a rule), or refactors code in a way that might invoke different styling/structural rules, **MUST pause and re-evaluate rule relevance by revisiting Step 2 (Rule and Protocol Discovery) before proceeding.**
+
+    B. Error Management
+    - MUST detect execution failures
+    - MUST implement recovery procedures
+    - MUST document issues
+    - MUST verify system stability
+    ```
+
+6. **Documentation Requirements**
+   ```
+   A. Progress Tracking
+   - MUST document each step
+   - MUST note deviations
+   - MUST track completion status
+   - MUST update relevant documentation
+
+   B. Knowledge Transfer
+   - MUST document decisions
+   - MUST explain rationale
+   - MUST note lessons learned
+   - MUST update best practices
+   ```
+
+**Implementation Requirements:**
+1. This protocol MUST be applied BEFORE any action is taken
+2. NO steps can be skipped without explicit justification
+3. ALL decisions must be documented
+4. ALL validations must be performed
+5. ALL deviations must be justified
+
+**Transition to Rule Execution Protocol:**
+```
+Upon completion of the Software Development Meta Protocol:
+1. Apply Rule Execution Protocol to implement specific rules
+2. Use established context for rule execution
+3. Follow documented validation procedures
+4. Maintain consistent documentation approach
+```
+</software_development_meta_protocol>
