@@ -1,0 +1,150 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Strict Visual Enforcement Protocol
+
+## 1. Purpose
+
+This protocol defines the automated and semi-automated checks to enforce the rules specified in `golden-ratio-design-system-protocol.mdc`. It is designed to be executed primarily by an LLM agent within the IDE, leveraging tools like `grep_search` and integrating with `ui-check.mdc`. The goal is to catch violations of the strict visual system early in the development process.
+
+## 2. Activation
+
+Triggered automatically upon modification of `.svelte` files within UI directories (e.g., `app/components/`, `app/src/routes/`) or manually via alias (e.g., `svep`).
+
+## 3. Core Verification Checklist & Procedures
+
+*Execute these checks sequentially. Report violations immediately, referencing the specific rule from `golden-ratio-design-system-protocol.mdc`.*
+
+1.  **Color Syntax Verification:**
+    *   **Goal:** Ensure only HSL variables are used for themeable colors.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search target file(s) for:
+        ````regex
+        \b(bg|text|border|ring|fill|stroke)-(?![\[]hsl\(var\(--)([a-zA-Z]+-[0-9]+)\b
+        ````
+        *Explanation: Flags direct Tailwind color names like `bg-blue-500`.*
+        ````regex
+        style=".*(color|background):.*(#|rgb|rgba\()"
+        ````
+        *Explanation: Flags inline hex/rgb colors.*
+    *   **Criteria:** MUST find zero matches for either query.
+    *   **Output:** Report "PASS" or "FAIL: Found direct color usage: [List Violations with Lines]". (Ref: GRDS Protocol 4)
+
+2.  **Spacing Grid Verification:**
+    *   **Goal:** Ensure spacing values adhere to the 8pt (or 4pt exception) grid.
+    *   **Tool:** `grep_search` + Calculation
+    *   **Procedure:**
+        1.  Grep for spacing classes using the regex:
+            ````regex
+            \b(p|m|gap|space-[xy]|pl|pr|pt|pb|ml|mr|mt|mb)-(\[?([0-9.]+(rem|px)?)\]?|\d+)\b
+            ````
+        2.  For each match:
+            *   If it's a standard Tailwind utility (e.g., `p-4`, `m-2`), extract the number (`4`, `2`). Multiply by the base unit (usually 4px in Tailwind) to get pixels (e.g., `4 * 4px = 16px`).
+            *   If it's an arbitrary value (e.g., `p-[1.5rem]`, `m-[10px]`), extract the value and unit. Convert to pixels (assuming 1rem = 16px).
+        3.  Check if the calculated pixel value is divisible by 8.
+        4.  If not divisible by 8, check if it's divisible by 4. If divisible by 4, check for an accompanying comment justifying the exception (e.g., `<!-- 4pt exception for icon alignment -->`).
+    *   **Criteria:** All calculated pixel values MUST be divisible by 8, OR divisible by 4 AND have a documented exception comment.
+    *   **Output:** Report "PASS" or "FAIL: Found non-grid spacing: [List Violations with Class, Calculated Pixel Value, and Line Number]". (Ref: GRDS Protocol 3)
+
+3.  **Typography Size Verification:**
+    *   **Goal:** Ensure only the 5 defined font size variables are used.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search target file(s) for:
+        ````regex
+        \btext-(?!(xs|sm|base|lg|xl)\b)(\[var\(--font-size-(xs|sm|base|lg|xl)\)\]|[a-zA-Z0-9\[\]-]+)
+        ````
+        *Explanation: Flags Tailwind size classes other than xs-xl AND arbitrary text sizes.*
+        ````regex
+        text-\[var\(--font-size-(?!xs|sm|base|lg|xl)[a-zA-Z]+.*\)\]
+        ````
+        *Explanation: Flags usage of undefined `--font-size-*` variables.*
+    *   **Criteria:** MUST find zero matches. Only `text-[var(--font-size-xs|sm|base|lg|xl)]` (or potentially mapped classes if defined) allowed.
+    *   **Output:** Report "PASS" or "FAIL: Found disallowed font size usage: [List Violations with Lines]". (Ref: GRDS Protocol 2)
+
+4.  **Typography Weight Verification:**
+    *   **Goal:** Ensure only the 2 defined font weight variables/classes are used.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search target file(s) for:
+        ````regex
+        \bfont-(thin|light|normal|medium|bold|extrabold|black)\b
+        ````
+        *Explanation: Flags direct Tailwind weight classes.*
+        ````regex
+        font-\[var\(--font-weight-(?!regular|semibold)[a-zA-Z]+.*\)\]
+        ````
+        *Explanation: Flags usage of undefined `--font-weight-*` variables.*
+    *   **Criteria:** MUST find zero matches for disallowed patterns. Only `font-[var(--font-weight-regular|semibold)]` allowed.
+    *   **Output:** Report "PASS" or "FAIL: Found disallowed font weight usage: [List Violations with Lines]". (Ref: GRDS Protocol 2)
+
+5.  **Border Radius Variable Verification:**
+    *   **Goal:** Ensure only defined border radius variables are used.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search target file(s) for:
+        ````regex
+        \brounded-(?!\[var\(--radius-.*\)])(none|sm|md|lg|xl|2xl|3xl|full)\b
+        ````
+        *Explanation: Flags direct Tailwind radius classes.*
+        ````regex
+        rounded-\[var\(--radius-(?!none|sm|md|lg|xl|2xl|full)[a-zA-Z]+.*\)\]
+        ````
+        *Explanation: Flags usage of undefined `--radius-*` variables.*
+    *   **Criteria:** MUST find zero matches for disallowed patterns. Only `rounded-[var(--radius-...)]` allowed.
+    *   **Output:** Report "PASS" or "FAIL: Found disallowed border radius usage: [List Violations with Lines]". (Ref: GRDS Protocol 2 Checklist)
+
+6.  **Icon Import Verification:**
+    *   **Goal:** Ensure icons are imported only from the compatibility layer.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search `<script>` section for `import .* from 'lucide-svelte'`.
+    *   **Criteria:** MUST find zero matches.
+    *   **Output:** Report "PASS" or "FAIL: Found direct import from 'lucide-svelte'". (Ref: GRDS Protocol 2 Checklist, `icon-management.mdc`)
+
+7.  **Icon Component Usage Verification:**
+    *   **Goal:** Ensure icons are rendered using the `Icon` wrapper.
+    *   **Tool:** Code Analysis / `grep_search`
+    *   **Query:** Search template section for capitalized tags matching known Lucide icon names (e.g., `<AlertCircle`, `<Check`, `<Home`) NOT wrapped in `<Icon ...>`. *This might require a list of known icons or more complex parsing.*
+    *   **Criteria:** Disallowed direct usage. Must use `<Icon icon={IconName} ... />`.
+    *   **Output:** Report "PASS" or "FAIL: Found direct Lucide component usage". (Ref: GRDS Protocol 2 Checklist, `icon-management.mdc`)
+
+8.  **Motion Variable Verification:**
+    *   **Goal:** Ensure transitions use defined duration/easing variables.
+    *   **Tool:** `grep_search`
+    *   **Query:** Search for hardcoded values in transition/animation properties:
+        ````regex
+        \b(transition|animation-duration|animation-timing-function):(?!\s*var\(--)[^;]+;
+        ````
+        *Explanation: Flags direct values not using `var(...)`.*
+        ````regex
+        \b(duration|ease)-\[(?!var\(--)[^\]]+\]
+        ````
+        *Explanation: Flags arbitrary Tailwind duration/ease values not using `var(...)`.*
+    *   **Criteria:** MUST find zero matches. Must use `var(--duration-...)` and `var(--ease-...)`.
+    *   **Output:** Report "PASS" or "FAIL: Found hardcoded transition/animation values". (Ref: GRDS Protocol 7)
+
+9.  **Component State Syntax Verification:**
+    *   **Goal:** Check for presence of required state classes on interactive elements.
+    *   **Tool:** Code Analysis / `grep_search`
+    *   **Procedure:** Identify interactive elements (button, a, input, select, textarea). Check if they have classes for `:hover`, `:focus-visible`, `:active`, `disabled:`.
+    *   **Query (Example for focus):** Search interactive elements lacking `focus-visible:ring-[hsl(var(--ring))]` (or the specific focus style).
+    *   **Query (Example for disabled):** Search interactive elements with `disabled` attribute lacking `disabled:opacity-50` AND `disabled:cursor-not-allowed`.
+    *   **Criteria:** Required state classes MUST be present.
+    *   **Output:** Report "PASS" or "FAIL: Missing required state class [State] on element [Element Type/ID]". (Ref: GRDS Protocol 8)
+
+10. **Visual Heuristic Check (UI Check Integration):**
+    *   **Goal:** Perform visual checks based on the Golden Ratio system guide.
+    *   **Tool:** `ui-check.mdc`
+    *   **Procedure:**
+        1.  Trigger `ui-check.mdc`.
+        2.  Provide context: "Verifying visual adherence to Golden Ratio Enhanced Design System Protocol v1.1. Focus on layout proportions (GR guideline), color balance (60/30/10 guideline), spacing rhythm (8pt grid), typography hierarchy, component states, and focus visibility."
+        3.  Await "yes" or "no" response from `ui-check`.
+    *   **Criteria:** MUST receive "yes" response.
+    *   **Output:** Report "PASS" or "FAIL: Visual check failed. Reason: [Reason from ui-check]". (Ref: GRDS Protocol 2 Checklist, `ui-check.mdc`)
+
+## 4. Violation Handling
+
+*   If any check fails, the protocol MUST halt further automated actions (like commits or deployments).
+*   Report all violations clearly, referencing the specific rule from `golden-ratio-design-system-protocol.mdc` and the file/line number.
+*   Agent MUST attempt to fix violations based on the design system rules.
+*   After fixes, re-run this entire protocol for verification.
+

@@ -1,0 +1,275 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Golden Ratio Enhanced Design System Protocol v1.1
+
+## 1. Core Philosophy
+
+This system prioritizes **consistency, predictability, and automated enforcement** using LLMs. It leverages Tailwind 4, adheres to Atomic Design principles, and incorporates the Golden Ratio (φ ≈ 1.618) for natural visual harmony, particularly in typography and potentially layout proportions. Rules are designed to be **binary and testable**.
+
+*   **Reference Implementation:** shadcn/ui (for component structure inspiration).
+*   **Automation Goal:** Enable LLM agents within the IDE (like Cursor) to automatically flag violations of these core standards during development via the `strict-visual-enforcement-protocol.mdc`.
+*   **Design Intent:** Create a visually striking dark interface with neon accents, balancing energy and clarity.
+
+## 2. LLM Enforcement Summary & Checklist
+
+*(Self-correction: Added Section 2 based on Suggestion 1)*
+
+*This section summarizes key rules for automated LLM verification. It should be referenced by `strict-visual-enforcement-protocol.mdc`.*
+
+**Binary Checks:**
+
+*   [ ] **Color Syntax:** ALL themeable colors MUST use `hsl(var(--<color-name>))` syntax.
+*   [ ] **Direct Color Usage:** NO direct Tailwind color classes (e.g., `bg-blue-500`) or hex/rgb values for themeable colors.
+*   [ ] **Font Family Variables:** Font families MUST be applied using `font-[var(--...)]`.
+*   [ ] **Font Size Variables:** Text sizes MUST use defined variables (`text-[var(--font-size-...)]`). Only the 5 defined sizes allowed.
+*   [ ] **Font Weight Variables:** Font weights MUST use defined variables (`font-[var(--font-weight-...)]`). Only the 2 defined weights allowed.
+*   [ ] **Spacing Grid:** All padding, margin, gap values MUST be divisible by 8px (or 4px if explicitly documented exception).
+*   [ ] **Border Radius Variables:** Border radii MUST use defined variables (`rounded-[var(--radius-...)]`).
+*   [ ] **Icon Imports:** Icons MUST be imported ONLY from `$lib/utils/lucide-compat.js`.
+*   [ ] **Icon Component:** Icons MUST be rendered using the `Icon` wrapper component.
+*   [ ] **Motion Variables:** Transitions/Animations MUST use defined duration/easing variables.
+
+**Contextual Checks (For LLM Heuristics / `ui-check.mdc`):**
+
+*   [ ] **Color Palette Adherence:** Verify semantic color usage (e.g., `--functional-error` for errors, `--link` for actions).
+*   [ ] **Typography Hierarchy:** Check appropriate variable usage (e.g., larger sizes for headings).
+*   [ ] **Component State Implementation:** Verify visual representation of states matches Section 8.
+*   [ ] **Accessibility (Contrast/Focus):** Check contrast ratios and focus state visibility/styling.
+
+---
+
+## 3. Typography System (Golden Ratio Scale)
+
+*(Self-correction: Renumbered subsequent sections)*
+
+*   **Base Size:** `--font-size-base: 16px` (configurable via `:root`).
+*   **Golden Ratio (φ):** `--phi: 1.618;` (defined in `:root`).
+*   **Scale (5 Sizes ONLY):**
+    *   `--font-size-xl: calc(var(--font-size-base) * var(--phi) * var(--phi));` (~42px) - *Use Case: Primary Page Titles (H1 equivalent).*
+    *   `--font-size-lg: calc(var(--font-size-base) * var(--phi));` (~26px) - *Use Case: Section Headings (H2 equivalent), Large Standout Text.*
+    *   `--font-size-base: 1rem;` (16px) - *Use Case: Standard Body Text, Component Labels, Input Text.*
+    *   `--font-size-sm: calc(var(--font-size-base) / var(--phi));` (~10px) - *Use Case: Secondary/Muted Text, Helper Text, Small Labels.*
+    *   `--font-size-xs: calc(var(--font-size-base) / var(--phi) / var(--phi));` (~6px) - *Use Case: Very fine print, legal text (use sparingly). Consider clamping minimum practical size (e.g., `clamp(0.5rem, calc(var(--font-size-base) / var(--phi) / var(--phi)), 0.75rem)`) if needed.*
+*   **Font Weights (2 Weights ONLY):**
+    *   `--font-weight-regular: 400;` - *Use Case: Body text, standard UI elements.*
+    *   `--font-weight-semibold: 600;` - *Use Case: All headings (H1-H6 equivalent), emphasized text.*
+*   **Line Heights:**
+    *   `--line-height-heading: 1.2;` - *Use Case: For text using `--font-size-lg` and `xl`.*
+    *   `--line-height-body: 1.6;` (Approximation of φ) - *Use Case: For text using `--font-size-base`, `sm`, `xs`.*
+*   **Font Families:**
+    *   `--font-sans: 'Inter', system-ui, ...;` - *Use Case: Headings, UI elements.*
+    *   `--font-body: 'Rubik', 'Open Sans', ...;` - *Use Case: Body text.*
+    *   `--font-mono: 'JetBrains Mono', ...;` - *Use Case: Code snippets, numerical data.*
+*   **Implementation:**
+    *   Define variables in `:root` within `globals.css` (or equivalent).
+    *   Use Tailwind's `@theme` directive to register variables (e.g., `--font-sans: var(--font-sans);`).
+    *   Apply using `font-[var(--...)]`, `text-[var(--...)]`, `leading-[var(--...)]` syntax.
+    *   **Anti-Pattern Example:** `<p class="text-lg font-bold">` (Uses direct Tailwind class instead of variable).
+*   **LLM Check (Reference: Section 2 Checklist):** Verify only the 5 size variables and 2 weight variables are used via `var()`. Flag direct Tailwind size/weight classes (e.g., `text-2xl`, `font-bold`).
+
+## 4. Spacing System (Strict 8pt Grid)
+
+*   **Base Unit:** 8px.
+*   **Rule:** All padding, margin, gap, and other spacing values MUST be multiples of 8px. Multiples of 4px MAY be allowed for fine-tuning icon padding or tightly nested elements *only* if explicitly documented as an exception within the component's code comments.
+*   **Scale (CSS Variables):**
+    *   `--spacing-half: 0.25rem;` (4px - For documented exceptions ONLY)
+    *   `--spacing-1: 0.5rem;` (8px)
+    *   `--spacing-2: 1rem;` (16px)
+    *   `--spacing-3: 1.5rem;` (24px)
+    *   `--spacing-4: 2rem;` (32px)
+    *   `--spacing-5: 2.5rem;` (40px)
+    *   `--spacing-6: 3rem;` (48px)
+    *   `--spacing-8: 4rem;` (64px)
+    *   `--spacing-10: 5rem;` (80px)
+    *   `--spacing-12: 6rem;` (96px)
+    *   `--spacing-16: 8rem;` (128px)
+*   **Implementation:**
+    *   Define variables in `:root`.
+    *   Register with `@theme` if needed (e.g., `--spacing-1: var(--spacing-1)`).
+    *   Primarily use standard Tailwind utilities mapped to the 8px scale (e.g., `p-2`=16px, `m-3`=24px, `gap-4`=32px). Verify your `tailwind.config.js` maps these correctly if extending the theme.
+    *   For values not covered by default utilities, use `p-[var(--spacing-N)]`, `m-[var(--spacing-N)]` etc.
+    *   **Anti-Pattern Example:** `<div class="p-[17px]">` (Arbitrary value not divisible by 8 or 4). Correct: `<div class="p-[var(--spacing-2)]">` or `<div class="p-2">`.
+    *   **Anti-Pattern Example:** `<div class="p-[var(--spacing-half)]">` used without a comment explaining the exception.
+*   **LLM Check (Reference: Section 2 Checklist):** Extract values from spacing utilities/variables. Verify divisibility by 8 (or 4 with documentation). Flag arbitrary pixel values.
+
+## 5. Color System (5 Logical + Functional Set | HSL Variables)
+
+*(Self-correction: Integrated the 5-color system defined previously)*
+
+*   **Philosophy:** Uses 5 core logical colors + essential functional colors. Assumes a dark theme as default (See Section 7 for Dark Mode Strategy).
+*   **Syntax:** ALL themeable colors MUST use `hsl(var(--<color-name>))` syntax.
+*   **Anti-Pattern Example:** `<button class="bg-pink-500">` or `style="color: #FF00FF;"`. Correct: `<button class="bg-[hsl(var(--brand))]">`.
+
+### 5.1 Core Logical Color Definitions (`:root`)
+
+```css
+  /* 1. Canvas (Base Background/Text - Approx. 60%) */
+  --canvas-bg: 220 13% 10%;        /* Dark Blue-Gray */
+  --canvas-fg: 210 40% 98%;        /* Off-White */
+  --canvas-fg-muted: 210 40% 80%;  /* Light Gray for secondary text */
+
+  /* 2. Brand (Primary Identity - Sparingly, <10%) */
+  --brand: 326 100% 60%;           /* Neon Pink */
+  --brand-fg: 210 40% 98%;         /* Off-White (for text on Brand bg) */
+
+  /* 3. Accent (Secondary Highlight - Sparingly, <10%) */
+  --accent: 175 98% 60%;           /* Neon Cyan */
+  --accent-fg: 220 13% 18%;        /* Dark (for text on Accent bg) */
+
+  /* 4. Link (Interactive Elements - Approx. 10%) */
+  --link: var(--brand);             /* Use Brand color for actions */
+  --link-fg: var(--brand-fg);      /* Text on Link background */
+
+  /* 5. Visited (Visited Links Only) */
+  --visited: 326 70% 50%;          /* Desaturated/Darker Pink */
+  --visited-fg: 210 40% 98%;
+```
+
+### 5.2 Functional Color Definitions (`:root`)
+
+*(Self-correction: Added based on Suggestion 3)*
+*These are exceptions to the 5-color rule, used ONLY for specific feedback states.*
+
+```css
+  /* Functional Feedback States */
+  --functional-error: 0 90% 60%;          /* Neon Red */
+  --functional-error-fg: 210 40% 98%;     /* Off-White */
+  --functional-success: 145 100% 60%;     /* Neon Green */
+  --functional-success-fg: 220 13% 10%;   /* Dark */
+  /* Optional: --functional-warning, --functional-warning-fg */
+```
+
+### 5.3 UI Element Definitions (`:root`)
+
+*Derived or specific variables for common elements.*
+
+```css
+  /* UI Elements */
+  --border: hsl(var(--canvas-bg) / 0.1); /* Subtle border derived from bg */
+  --input-bg: hsl(var(--canvas-bg) / 0.05); /* Slightly offset input bg */
+  --input-border: var(--border);
+  --ring: var(--link); /* Focus ring uses Link color */
+```
+
+### 5.4 Tailwind `@theme` Registration
+
+```css
+/* In main CSS file (e.g., globals.css) */
+@import "tailwindcss";
+
+@theme {
+  --color-canvas-bg: hsl(var(--canvas-bg));
+  --color-canvas-fg: hsl(var(--canvas-fg));
+  --color-canvas-fg-muted: hsl(var(--canvas-fg-muted));
+  /* ... register all other logical, functional, and UI element colors ... */
+  --color-link: hsl(var(--link));
+  --color-functional-error: hsl(var(--functional-error));
+  --color-border: var(--border);
+  --color-input-bg: var(--input-bg);
+  --color-ring: hsl(var(--ring));
+}
+```
+
+### 5.5 Usage Guidelines & Color Ratio (Guideline - For Review)
+
+*   **Logical Colors:** Apply semantically. `--canvas-*` for base layout/text, `--link` for primary actions, `--brand`/`--accent` for highlights, `--visited` only for `a:visited`.
+*   **Functional Colors:** Use *only* for their specific purpose (e.g., `--functional-error` in form validation messages, error notifications). They override logical colors in these contexts.
+*   **60/30/10 Guideline:** Aim for roughly 60% `--canvas-*` colors, 30% secondary (`--accent`, borders, input backgrounds, muted text), and 10% primary action/brand (`--link`, `--brand`). Functional colors are outside this ratio. *This is a visual balance guideline for review (`ui-check.mdc`), not a strict automatable rule.*
+*   **Anti-Pattern Example:** Using `--functional-error` for a standard button's background. Using `--link` for large background areas.
+
+*   **LLM Check (Reference: Section 2 Checklist):** Verify HSL syntax. Flag direct color usage. Check variable names against allowed list. Heuristically check functional color context.
+
+## 6. Layout System (Breakpoints & Golden Ratio Guideline)
+
+*   **Breakpoints:** MUST use only the defined breakpoints. Project defaults:
+    *   `sm: 640px`
+    *   `md: 768px`
+    *   `lg: 1024px`
+    *   `xl: 1280px`
+    *   `2xl: 1536px`
+    *   *(Add/modify as needed, ensure tailwind.config.js matches)*
+*   **Golden Ratio Layout (Guideline - For Review):** Strive for major layout divisions (sidebar/content, header/content) approximating φ (1:1.618) where aesthetically pleasing. Document significant deviations.
+*   **Implementation:** Use Tailwind responsive modifiers (`md:`, `lg:`, etc.).
+*   **Anti-Pattern Example:** `xxl:p-4` (Using an undefined breakpoint).
+*   **LLM Check:** Verify modifier syntax and that only defined breakpoint prefixes are used. Visual check via `ui-check.mdc` for Golden Ratio guideline.
+
+## 7. Motion & Animation Standards
+
+*(Self-correction: Added Section 7 based on Suggestion 4)*
+
+*   **Goal:** Ensure smooth, consistent, and purposeful motion.
+*   **Variables (`:root`):** Define limited, mandatory options.
+    ```css
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1); /* Example easing */
+    /* Add 1-2 more standard easing options if needed */
+    ```
+*   **Rule:** All CSS transitions and keyframe animations MUST use combinations of these predefined duration and easing variables.
+*   **Implementation:** Apply using Tailwind utilities: `transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]`.
+*   **Performance:** Animations should primarily target `transform` and `opacity`.
+*   **Anti-Pattern Example:** `transition: all 250ms ease-in-out;` (Using hardcoded values).
+*   **LLM Check (Reference: Section 2 Checklist):** `grep` for hardcoded `transition`, `animation-duration`, `animation-timing-function` values. Verify usage of `var(--duration-...)` and `var(--ease-...)`.
+
+## 8. Standardized Component States
+
+*(Self-correction: Added Section 8 based on Suggestion 1)*
+
+*   **Goal:** Define consistent visual feedback for all interactive states using the defined color/motion system.
+*   **Rule:** All interactive components (buttons, links, inputs, etc.) MUST implement visual styles for the following states according to these guidelines:
+    *   **`Default`:** Base style using logical colors (`Canvas`, `Link`, `Brand`, `Accent`).
+    *   **`:hover`:** Apply subtle changes. Examples:
+        *   Backgrounds: Slightly lighten/darken using HSL adjustments OR apply a subtle `--border`. (e.g., `hover:bg-[hsl(var(--link)/0.9)]`).
+        *   Text: Change color slightly (e.g., `hover:text-[hsl(var(--link)/0.9)]`).
+        *   Use `--duration-fast`.
+    *   **`:focus-visible` (Keyboard Focus):** MUST apply the `--ring` variable using `outline` or `box-shadow`. Ensure sufficient offset. (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--canvas-bg))]`).
+    *   **`:active` (Pressed):** Apply subtle changes indicating interaction. Examples:
+        *   Slightly darker background shade (e.g., `active:bg-[hsl(var(--link)/0.8)]`).
+        *   Subtle transform (e.g., `active:scale-[0.98]`).
+        *   Use `--duration-fast`.
+    *   **`[disabled]` / `.disabled`:** MUST apply `opacity-50` AND `cursor-not-allowed`. Ensure text contrast remains acceptable (consider a dedicated `--disabled-fg` variable if needed, derived from `--canvas-fg`).
+    *   **`.loading` (or similar state):** Implement using a standard indicator (e.g., spinner using `--link` color). Define how it replaces/overlays content.
+*   **Implementation:** Use Tailwind state modifiers (`hover:`, `focus-visible:`, `active:`, `disabled:`).
+*   **LLM Check:** Verify presence of state modifiers on interactive elements. Check `:focus-visible` uses `--ring`. Check `disabled:` includes `opacity-50` and `cursor-not-allowed`. Visual verification via `ui-check.mdc`.
+
+## 9. Dark Mode Strategy
+
+*(Self-correction: Added Section 9 based on Suggestion 2)*
+
+*   **Default Mode:** This design system is **Dark Mode First/Only**. The variables defined in Section 5 (`--canvas-bg`, `--canvas-fg`, etc.) constitute the required dark theme.
+*   **Implementation:** No special `.dark` class or selectors are needed unless explicitly overriding specific elements for contextual reasons (which should be avoided). Ensure the base HTML tag does not apply conflicting light-mode classes.
+*   **LLM Check:** Verify no `.light` class selectors are used for theming. Check for absence of `@media (prefers-color-scheme: light)` overrides applied to core variables.
+
+## 10. Component Architecture (Atomic Design)
+
+*   **Structure:** Atoms -> Molecules -> Organisms.
+*   **Consistency:** Components MUST be built using rules from Sections 3-9.
+*   **Primitives:** Leverage headless UI (e.g., Radix via shadcn/ui).
+*   **LLM Check:** Analyze imports. Check props against system rules.
+
+## 11. Accessibility
+
+*   **Contrast:** Text MUST meet WCAG AA (4.5:1). Non-text SHOULD meet 3:1. (Tool/Visual Check - `ui-check.mdc`).
+*   **Keyboard Navigation:** MUST be fully navigable.
+*   **Focus States:** MUST be clearly visible using `--ring` (See Section 8).
+*   **Semantic HTML:** MUST use appropriate tags.
+*   **ARIA:** MUST use ARIA attributes where needed.
+*   **LLM Check:** Flag missing `alt`. Check for `aria-*`. Check `:focus-visible` styles use `--ring`. Linting tools (ESLint-a11y) are recommended (See Section 12).
+
+## 12. Tooling & Process Integration
+
+*(Self-correction: Added Section 12 based on Suggestion 5 & 6)*
+
+*   **Code Formatting:** MUST use Prettier with the `prettier-plugin-tailwindcss` configured according to project standards. Run automatically via pre-commit hook.
+*   **Linting:** MUST use ESLint with relevant plugins (Svelte, Accessibility (e.g., `eslint-plugin-jsx-a11y` adapted for Svelte), potentially Stylelint for CSS issues). Run automatically via pre-commit hook and/or CI.
+*   **LLM Enforcement:** The `strict-visual-enforcement-protocol.mdc` MUST be executed:
+    *   On file save within the IDE (if feasible).
+    *   Via a pre-commit hook (using tools like Husky).
+    *   As a required check in the CI/CD pipeline (e.g., GitHub Actions).
+    *   Commit/Merge MUST be blocked if violations are found.
+*   **Visual Review:** The `ui-check.mdc` protocol SHOULD be used for reviewing significant UI changes, focusing on aspects not easily automated (layout harmony, color balance, animation feel).
+
+---

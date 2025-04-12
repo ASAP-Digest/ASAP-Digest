@@ -3,98 +3,37 @@ description:
 globs: 
 alwaysApply: true
 ---
-# ASAP Digest Stack
+# ASAP Digest Stack v1.1
 
-1. Core Technologies:
-   - "pnpm"
-   - "Tailwind 4 [^1]"
-   - "SvelteKit 2"
-   - "Svelte 5 (not Svelte 4)"
-   - "Shadcn-svelte for Svelte 5 [^2]"
-   - "Better Auth"
-     - **Configuration:** MUST follow `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)`
-     - **Route Handling:** MUST follow `[better-auth-route-handling.mdc](mdc:.cursor/rules/better-auth-route-handling.mdc)`
-   - "Lucide" Icons using `[lucide-compat.js](mdc:app/src/lib/utils/lucide-compat.js)` as our compatibility layer
-   - "JavaScript + JSDocs No `*.ts`"
-   - All Functions use `[new-function-protocol.mdc](mdc:.cursor/rules/new-function-protocol.mdc)`
-   - All Files use `[new-file-protocol.mdc](mdc:.cursor/rules/new-file-protocol.mdc)`
-   - All Directories use `[new-directory-protocol.mdc](mdc:.cursor/rules/new-directory-protocol.mdc)`
+1.  **Core TechnologPackage Manager)
+    *   `Tailwind 4` (CSSage governed by `golden-ratiootocol.mdc`)
+    *   `SvelteKit 2` (Application Framework)
+    *   `Svelte 5` (UI Compileradcn-svelte for Svelteves/Library - Integration go.mdc`)
+    *   `Better Auth` (Authentication Library)
+        *   Configuration: MUST follow `better-auth-config.mdc`
+        *   Route Handling: MUST follow `better-auth-route-handling.mdc`
+    *   `Lucide` Icons (via `$lib/utils/lucide-compat.js` - Usage governed by `icon-management.mdc`)
+    *   `JavaScript + JSDocs` (NO `.ts` files for application logic)
 
-2. Icon Management System:
-   - Use `/app/src/lib/utils/lucide-compat.js` as SINGLE source of truth
-   - NEVER import icons directly from 'lucide-svelte'
-   - ALL icons must be:
-     - Added to iconPaths object
-     - Exported using createIconObject
-     - Documented in component usage
-   - Maintain icon audit list in documentation
-   - Follow naming convention (PascalCase exports, camelCase paths)
+2.  **Core Protocols & Guides:**
+    *   **Visual Styling & Primitives:** MUST follow `golden-ratio-design-system-protocol.mdc`
+    *   **Svelte/Tailwind/Shadcn Integration:** MUST follow `sk2-scns5-t4-int.mdc`
+    *   **Icon Management:** MUST follow `icon-management.mdc`
+    *   **Functions:** MUST follow `new-function-protocol.mdc`
+    *   **Files:** MUST follow `new-file-protocol.mdc`
+    *   **Directories:** MUST follow `new-directory-protocol.mdc`
+    *   **JSDoc Typing:** MUST follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`
+    *   **State Management:** MUST follow `server-memory-rules.mdc` and related WSMP/Task protocols.
 
-3. Styling Requirements:
-   - Use HSL variable syntax for theme colors:
-     ````html
-     <!-- CORRECT -->
-     <div class="text-[hsl(var(--primary))]">
-     <!-- INCORRECT -->
-     <div class="text-primary">
-     ````
-   - Use standard Tailwind utilities for spacing/sizing when available:
-     - Use: `w-5`, `h-5`, `p-4`, `m-2`
-     - Only use arbitrary values when necessary: `w-[1.37rem]`
-   - NEVER use style blocks in Svelte components
-   - NEVER use @reference or @apply
-   - Use CSS variables for theme colors when style blocks are unavoidable
+3.  **Development Environment:**
+    *   SvelteKit Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
+    *   WordPress Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
 
-4. Component Development:
-   - Use Svelte 5 Runes syntax EXCLUSIVELY
-   - NO export let - We are in Runes Mode
-   - Import Shadcn components directly from .svelte files
-   - Add explicit JSDoc type annotations
-   - Set explicit list-none class on ul/li elements
-   - Use direct imports from lucide-compat.js for icons
+4.  **Enforcement:**
+    *   Visual rules enforced by `strict-visual-enforcement-protocol.mdc`.
+    *   Code formatting/linting enforced by tools defined in `tooling-setup-guide.mdc`.
 
-5. Performance Guidelines:
-   - Use direct imports to reduce bundle size
-   - Implement proper responsive transitions with CSS variables
-   - Monitor component re-renders
-   - Use proper lazy loading for routes
-   - Implement proper code splitting
-
-6. Build Configuration:
-   - Ensure tailwind.config.js includes all component files:
-     ````javascript
-     content: [
-       "./src/**/*.{html,js,svelte,ts}",
-       "./src/**/*.{svelte,js,ts,jsx,tsx}"
-     ]
-     ````
-   - Verify proper tree-shaking
-   - Monitor bundle size
-   - Use proper environment variables
-
-7. Development Environment:
-   - SvelteKit Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
-   - Use JavaScript + JSDocs (NO TypeScript)
-   - Follow new-function-protocol.mdc for all functions
-   - Follow new-file-protocol.mdc for all files
-   - Follow new-directory-protocol.mdc for all directories
-
-==**IMPORTANT**==
-- DO NOT CHANGE the technology stack
-- Use Tailwind 4 Design Systems for [^3]:
-  - Layout
-  - Spacing
-  - Sizing
-  - Colors
-  - Backgrounds
-  - Borders
-  - Effects
-  - Filters
-  - Transforms
-  - Interactivity
-- Apply these rules to EVERY project file
-- Update ANY files not in line with these rules to fulfill requirements
-
-[^1]: "https://tailwindcss.com/docs/installation/framework-guides/sveltekit"
-[^2]: "https://next.shadcn-svelte.com/docs/migration/svelte-5"
-[^3]: "https://tailwindcss.com/docs"
+**IMPORTANT:**
+*   DO NOT CHANGE the core technology stack without explicit approval and protocol updates.
+*   Apply referenced protocols to ALL relevant project files.
+*   Update ANY files not adhering to these protocols and the core stack requirements.

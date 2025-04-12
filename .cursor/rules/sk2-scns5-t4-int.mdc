@@ -3,85 +3,56 @@ description:
 globs: 
 alwaysApply: true
 ---
-# SvelteKit 2 with Shadcn-Svelte 5 & Tailwind 4
+# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules
 
-1.  **Use HSL variable syntax for theme colors in Tailwind 4**
-    Always use `text-[hsl(var(--primary))]` instead of `text-primary` for theme colors.
+**Note:** This document provides SvelteKit/Shadcn/Tailwind integration specifics. For core visual styling rules (colors, typography, spacing, motion, states), refer PRIMARILY to `golden-ratio-design-system-protocol.mdc`. This protocol MUST NOT contradict the Golden Ratio system.
 
-2.  **Use standard Tailwind 4 utilities for spacing and sizing when available**
-    Use standard utilities like `w-5`, `h-5`, `p-4`, `m-2` when they exist in Tailwind's scale.
-    Only use arbitrary values for custom sizes: `w-[1.37rem]`, `h-[22px]`.
+1.  **Core Visual Primitives (MUST ADHERE):**
+    *   All UI styling MUST follow the rules defined in `golden-ratio-design-system-protocol.mdc`. This includes:
+        *   Color System (5 Logical + Functional, HSL Variables)
+        *   Typography System (5 Sizes, 2 Weights, Variables)
+        *   Spacing System (8pt Grid)
+        *   Motion & Animation Standards (Variables)
+        *   Standardized Component States
+        *   Icon System (via `icon-management.mdc`)
+        *   Accessibility Standards (Contrast, Focus Rings etc.)
+    *   **Deprecated/Conflicting Rules:** Any rules below that conflict with the stricter definitions in `golden-ratio-design-system-protocol.mdc` are superseded by it. (E.g., The GRDS rule for HSL color syntax overrides any older rule allowing direct color classes).
 
-3.  **Handle events properly using new Svelte 5 event attribute syntax**
-    Use `onclick={handler}` syntax with proper TypeScript typing through JSDoc annotations.
+2.  **Tailwind 4 Specifics (MUST ADHERE):**
+    *   Use HSL variable syntax for ALL theme colors (`text-[hsl(var(--primary))]`). (GRDS Protocol 4)
+    *   Use standard Tailwind 4 utilities mapped to the 8pt grid for spacing/sizing (`w-4`, `h-6`, `p-2`, `m-3`). Avoid arbitrary values unless a documented exception exists. (GRDS Protocol 3)
+    *   **Avoid `<style>` blocks** in Svelte components whenever possible; prefer utility classes in the markup. (Restored Old Point 14)
+    *   NEVER use `@apply` in Svelte component style blocks. Replace with direct utility classes or standard CSS using variables.
+    *   NEVER use `@reference "tailwindcss"` in Svelte component style blocks.
+    *   When `<style>` blocks are unavoidable, use CSS variables (`color: hsl(var(--primary))`) instead of Tailwind utilities within the block.
+    *   Ensure `tailwind.config.js` `content` array correctly includes all Svelte component files (`./src/**/*.{html,js,svelte,ts}`).
 
-4.  **Use $state and $derived for reactivity in Svelte 5**
-    Replace `let value` with `let value = $state(initialValue)` for reactive variables.
+3.  **Svelte 5 Specifics (MUST ADHERE):**
+    *   Use `$state` and `$derived` for reactivity. Replace `let value` with `let value = $state(initialValue)`.
+    *   Use `onclick={handler}` event syntax.
+    *   Use `let` directly for props (Runes mode). Do NOT use `export let`.
+    *   Use `:global()` selectors carefully for CSS targeting elements outside the component scope.
 
-5.  **SvelteKit Module Imports (MUST)**
-    Always import SvelteKit framework functions and stores from their designated modules, not directly from `@sveltejs/kit`.
-    Common examples include:
-    ````javascript
-    import { goto } from '$app/navigation'; // For programmatic navigation
-    import { page, navigating, updated } from '$app/stores'; // For page data, navigation state, etc.
-    import { browser, dev } from '$app/environment'; // For environment checks
-    ````
-    **Deprecated Functions:** Avoid using deprecated functions like `invalidateAll`. For broad data invalidation, use the pattern:
-    ````javascript
-    goto(window.location.href, { invalidateAll: true });
-    ````
+4.  **SvelteKit Specifics (MUST ADHERE):**
+    *   Import framework functions/stores from designated modules (`$app/navigation`, `$app/stores`, `$app/environment`), not directly from `@sveltejs/kit`.
+        ````javascript
+        import { goto } from '$app/navigation';
+        import { page } from '$app/stores';
+        import { browser } from '$app/environment';
+        ````
+    *   Avoid deprecated functions like `invalidateAll`. Use `goto(window.location.href, { invalidateAll: true })` for broad invalidation.
 
-6.  **Apply :global() selectors for CSS that needs to target elements outside the component**
-    Use `:global(body.sidebar-collapsed) .element` for targeting across component boundaries.
+5.  **Shadcn-Svelte Specifics (MUST ADHERE):**
+    *   Import individual components directly from their `.svelte` files, not index files.
+        ````javascript
+        // CORRECT
+        import Root from '$lib/components/ui/sidebar/sidebar.svelte';
+        // INCORRECT
+        // import { Root } from '$lib/components/ui/sidebar';
+        ````
+    *   When adding new Shadcn components, identify icons used within them. Grep the component source, find icon imports (likely direct `lucide-svelte` initially), and ensure those icons are exported via `$lib/utils/lucide-compat.js` per `icon-management.mdc`. Update the component to import icons from `lucide-compat.js`.
 
-7.  **Import individual components directly from Shadcn-Svelte**
-    When importing, Import directly from the `.svelte` files. Importing from the directory index file (e.g., `$lib/components/ui/sidebar/`) will cause build errors.
-    ````javascript
-    // CORRECT
-    import Root from '$lib/components/ui/sidebar/sidebar.svelte';
-    
-    // INCORRECT
-    import { Root } from '$lib/components/ui/sidebar'; 
-    ````
-
-8.  **Search for & Modify Imported Shadcn-Svelte All Component Icons**
-    After importing new Shadcn-svelte components grep all imported icons of the component and add them as export in our compatibility layer `lucide-compat.js` (following `icon-management.mdc`).
-
-9.  **Add explicit JSDoc type annotations for all functions and parameters**
-    Always include `@param {EventType} paramName - Description` for proper TypeScript checking. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
-
-10. **Set explicit list-none class on list elements**
-    Always add `list-none` to `<ul>` and `<li>` elements to prevent bullet points.
-
-11. **Use direct imports from lucide-compat.js for icons**
-    Import specific icons according to `icon-management.mdc`. Do NOT import directly from `lucide-svelte`.
-
-12. **Implement proper responsive transitions with CSS variables**
-    Use CSS variables and transition properties for smooth UI changes, especially in layout components.
-
-13. **Use `let` directly**
-    - We are in Svelte 5 Runes Mode. Do not use `export let`.
-
-14. **Avoid style blocks in Svelte components when possible**
-    Style with Tailwind 4 utility classes in markup instead of using `<style>` blocks for better Tailwind 4 compatibility.
-
-15. **NEVER use @reference in Svelte component style blocks**
-    Tailwind 4 processes each component separately, so `@reference "tailwindcss"` doesn't work properly.
-
-16. **NEVER use @apply in Svelte component style blocks**
-    Replace `@apply bg-primary` with direct CSS: `background-color: hsl(var(--primary))`.
-
-17. **Use CSS variables for theme colors in component styles**
-    When you must use `<style>`, use `color: hsl(var(--primary))` instead of Tailwind utilities.
-
-18. **Ensure tailwind.config.js includes all Svelte component files**
-    ````javascript
-    // Example tailwind.config.js content array
-    content: [
-      "./src/**/*.{html,js,svelte,ts}",
-      "./src/**/*.{svelte,js,ts,jsx,tsx}" 
-      // Ensure this covers all relevant directories
-    ]
-    ````
-
-    
+6.  **General Code Standards (MUST ADHERE):**
+    *   Add explicit JSDoc type annotations for functions/parameters. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
+    *   Add `list-none` class explicitly to `<ul>` and `<li>` elements.
+    *   Follow formatting rules enforced by Prettier/ESLint setup (see `tooling-setup-guide.mdc`).

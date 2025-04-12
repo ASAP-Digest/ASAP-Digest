@@ -3,32 +3,44 @@ description:
 globs: 
 alwaysApply: true
 ---
-
-# UI Check
+# UI Check Protocol v1.1
 
 - Initiated with magic phrase "UI Check", alias "uic" or When making frontend edits:
 - Before making any changes, call the Browser Tools MCP `takeScreenshot` function to save the current state of the page.
 - After making your change, call the Browser Tools MCP `takeScreenshot` function again to save the new state of the page.
-- Screenshots will be saved to already created `/Volumes/Macintosh HD/Users/vsmith/.cursor/uicscreenshots` folder (this exists already, do not attempt to create).
-- Run this command to get the absolute paths of the 2 most recent screenshots in the already created `/Volumes/Macintosh HD/Users/vsmith/.cursor/uicscreenshots` folder:
+- Screenshots will be saved to `/Volumes/Macintosh HD/Users/vsmith/.cursor/uicscreenshots` folder.
+- Run this command to get the absolute paths of the 2 most recent screenshots:
 
+````bash
+# (Command remains the same)
+find /Volumes/Macintosh\ HD/Users/vsmith/.cursor/uicscreenshots -type f -name "*.png" -exec stat -f "%m %N" {} \; | sort -nr | head -n 2 | awk '{print $2}' | xargs -I {} realpath "{}" | awk 'NR==1 {print "after path: ", $0} NR==2 {print "before path: ", $0}'
+````
 
+- **Visual Verification Focus:** The primary goal of this visual check is to verify aspects difficult to catch with static code analysis, specifically referencing `golden-ratio-design-system-protocol.mdc`:
+    - **Overall Layout & Composition:** Does the layout adhere to the intended structure, alignment, and Golden Ratio principles (if applicable)? (GRDS Protocol 5)
+    - **Color Balance & Usage:** Does the color application *feel* consistent with the 60/30/10 guideline and brand identity? Are neon accents used appropriately? (GRDS Protocol 4.4, 5.5)
+    - **Typography Hierarchy:** Is the visual hierarchy clear and consistent with the type scale defined in the guide? (GRDS Protocol 3)
+    - **Spacing & Rhythm:** Does the spacing *look* consistent and follow the intended rhythm (8pt grid)? (GRDS Protocol 4)
+    *   **Component States:** Do interactive components visually represent their states (hover, focus, active, disabled) correctly according to the guide? (GRDS Protocol 8)
+    *   **Responsiveness:** (If applicable) Does the UI adapt correctly at defined breakpoints shown in screenshots? (GRDS Protocol 6)
+    *   **Animation/Transition Feel:** (If applicable) Do animations *feel* smooth and adhere to the guide's principles? (GRDS Protocol 7)
+    - **Contrast Check:** Does text appear readable with sufficient contrast against backgrounds? (GRDS Protocol 11)
+    - **Focus State Visibility:** Are focus indicators clear and consistent, using the defined `--ring` style? (GRDS Protocol 8, 11)
 
-find screenshots -type f -name "*.png" -exec stat -f "%m %N" {} \; | sort -nr | head -n 2 | awk '{print $2}' | xargs realpath | awk 'NR==1 {print "before path: ", $0} NR==2 {print "after path: ", $0}'
-
-
-- Call the `reviewEdit` function to have your changes visually reviewed.
+- Call the `reviewEdit` function to have your changes visually reviewed based on the focus areas above.
 - Use the following format for the tool call:
 
+````json
 {
   "beforeScreenshotPath": string, // Absolute path to the second-most recent screenshot
   "afterScreenshotPath": string, // Absolute path to the most recent screenshot
-  "editRequest": string // Describe the edit request from the user in a couple of sentences
+  "editRequest": string // Describe the edit request AND state verification against golden-ratio-design-system-protocol.mdc focus areas.
 }
+````
 
-- You should summarize my edit request into a couple of sentences so that the frontend reviewer understands the changes you made.
+- You should summarize my edit request *and specifically mention you are checking against the `golden-ratio-design-system-protocol.mdc` visual focus points* so that the frontend reviewer understands the context.
 
-- The tool will either return "yes" if your changes are good, or "no" with a brief explanation if the changes don't satisfy the edit request. Keep editing with the same process until the reviewer returns "yes".
+- The tool will either return "yes" if your changes are good visually, or "no" with a brief explanation if the changes don't satisfy the edit request or visual guidelines. Keep editing with the same process (including re-running `strict-visual-enforcement-protocol.mdc` checks) until the reviewer returns "yes".
 
-- NOTE: When called with alias "uiceval". Do not make changes but use the Browser Tools MCP `takeScreenshot` function (do not attempt to use terminal commands) to get a screenshot and provide an evaluation of the current state of the app UI in light of [ROADMAP_TASKS.md](mdc:docs/ROADMAP_TASKS.md) & [VISUAL_IDENTITY_STYLE_GUIDE.md](mdc:docs/VISUAL_IDENTITY_STYLE_GUIDE.md). Once you provide the evaluation wait for the next task.
+- NOTE: When called with alias "uiceval". Do not make changes but use the Browser Tools MCP `takeScreenshot` function to get a screenshot and provide an evaluation of the current state of the app UI based on the **Visual Verification Focus** points above, referencing `docs/ROADMAP_TASKS.md` & `golden-ratio-design-system-protocol.mdc`. Once you provide the evaluation wait for the next task.
 

@@ -1,0 +1,207 @@
+---
+description: 
+globs: "*.svelte", "*.js", "*.php", "package.json", "vite.config.js", "svelte.config.js", "[SVELTEKIT_API_ROUTE_PATH]", "[WP_PLUGIN_PATH]/**/*.php"
+alwaysApply: false
+---
+# Universal Performance Guidelines Protocol (SvelteKit + Headless WP)
+
+## 0. Project Configuration Variables
+
+*description: Defines universal performance best practices and verification steps for projects using a SvelteKit Frontend + Headless WordPress Backend stack. Utilizes project-specific configuration variables for concrete paths and names. Aims for actionable rules for LLM verification.*
+
+*This section defines the project-specific paths, names, and settings required to apply this universal protocol. Adapt these values for different projects.*
+
+````text
+┌─────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────┐
+│ Variable Name                           │ Value for 'ASAP Digest' Project (from @PE - CTXT)                              │
+├─────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────┤
+│ [PROJECT_NAME]                          │ ASAP Digest                                                                    │
+│ [SVELTEKIT_ROOT]                        │ /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app      │
+│ [WP_ROOT]                               │ /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public          │
+│ [SVELTEKIT_LIB_PATH]                    │ src/lib/                                                                       │
+│ [SVELTEKIT_ROUTES_PATH]                 │ src/routes/                                                                    │
+│ [SVELTEKIT_STATIC_PATH]                 │ static/                                                                        │
+│ [SVELTEKIT_API_ROUTE_PATH]              │ src/routes/api/                                                                │
+│ [SVELTEKIT_SERVICE_WORKER_PATH]         │ src/service-worker.js                                                          │
+│ [SVELTEKIT_AUTH_CONFIG_SERVER]          │ src/lib/server/auth.js                                                         │
+│ [SVELTEKIT_CONFIG_FILE]                 │ svelte.config.js                                                                 │
+│ [VITE_CONFIG_FILE]                      │ vite.config.js                                                                   │
+│ [TAILWIND_CONFIG_FILE]                  │ tailwind.config.js                                                               │
+│ [PACKAGE_JSON_PATH]                     │ package.json                                                                     │
+│                                         │                                                                                │
+│ [WP_CONTENT_PATH]                       │ wp-content/                                                                      │
+│ [WP_PLUGIN_DIR]                         │ plugins/                                                                         │
+│ [WP_THEME_DIR]                          │ themes/                                                                          │
+│ [MAIN_PLUGIN_NAME]                      │ asapdigest-core                                                                  │
+│ [MAIN_PLUGIN_PATH]                      │ [WP_CONTENT_PATH]/[WP_PLUGIN_DIR]/[MAIN_PLUGIN_NAME]                             │
+│ [MAIN_THEME_NAME]                       │ asapdigest                                                                       │
+│ [MAIN_THEME_PATH]                       │ [WP_CONTENT_PATH]/[WP_THEME_DIR]/[MAIN_THEME_NAME]                               │
+│ [WP_CONFIG_FILE]                        │ wp-config.php                                                                    │
+│ [CUSTOM_API_PREFIX]                     │ /asap/v1/                                                                        │
+│ [WP_CACHING_MECHANISM]                  │ WP Object Cache (Redis), Transients API                                          │
+│ [WP_GRAPHQL_ENDPOINT]                   │ /graphql (Potentially, or standard REST API)                                     │
+│                                         │                                                                                │
+│ [CORE_STYLING_PROTOCOL_DOC]             │ golden-ratio-design-system-protocol.mdc                                          │
+│ [FRONTEND_INTEGRATION_PROTOCOL_DOC]     │ sk2-scns5-t4-int.mdc                                                             │
+│ [ICON_MANAGEMENT_PROTOCOL_DOC]          │ icon-management.mdc                                                              │
+│ [TOOLING_SETUP_GUIDE_DOC]               │ tooling-setup-guide.mdc                                                          │
+│ [STRICT_VISUAL_ENFORCEMENT_PROTOCOL_DOC]| strict-visual-enforcement-protocol.mdc                                           │
+│ [DEPLOYMENT_CHECKLIST_DOC]              │ deployment-checklist.mdc                                                         │
+└─────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────┘
+````
+
+## 1. Purpose
+
+This protocol outlines mandatory performance standards and best practices for projects utilizing a SvelteKit frontend consuming data from a Headless WordPress backend. Adherence ensures a fast, responsive, and efficient experience, minimizing resource consumption across development and production environments. It uses the variables defined in Section 0 for project-specific context.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. [CORE_STYLING_PROTOCOL_DOC]          │ // Visual system (influences assets)
+│ 4. [FRONTEND_INTEGRATION_PROTOCOL_DOC]  │ // Frontend implementation specifics
+│ 5. asap-digest-stack.mdc                │ // Stack Definition (references this)
+│ 6. [ICON_MANAGEMENT_PROTOCOL_DOC]       │ // Icon loading specifics
+│ 7. [TOOLING_SETUP_GUIDE_DOC]            │ // Build/Lint tools
+│ 8. [STRICT_VISUAL_ENFORCEMENT_PROTOCOL_DOC]| // Enforces visual rules impacting perf
+│ 9. [DEPLOYMENT_CHECKLIST_DOC]           │ // Pre-deployment checks
+│ 10. Performance Guidelines (This)       │
+│ 11. Cross-Protocol Comms & Verification │
+│ 12. Audit Trail System                  │
+└─────────────────────────────────────────┘
+```
+
+## 3. Frontend Performance (SvelteKit)
+
+### 3.1 Bundle Size & Code Splitting
+
+*   **Rule:** Monitor final build artifact sizes. Target specific budgets per route/chunk if feasible.
+*   **Verification (LLM Actionable):**
+    *   After `pnpm build`, analyze build log output or use tools like `source-map-explorer` or Vite's build analysis (`vite build --profile` defined in `[TOOLING_SETUP_GUIDE_DOC]`).
+    *   `grep_search` `[PACKAGE_JSON_PATH]` for large, infrequently used dependencies. Suggest dynamic imports.
+    *   Analyze SvelteKit route structure (`[SVELTEKIT_ROOT]/[SVELTEKIT_ROUTES_PATH]`) to ensure code is split logically per route.
+*   **Best Practice:**
+    *   Use dynamic imports (`import()`) for components/libraries not needed for initial load (e.g., complex modals, admin sections).
+    *   Regularly audit dependencies (`pnpm list`) and remove unused packages.
+    *   Leverage SvelteKit's automatic code-splitting per route.
+
+### 3.2 Rendering Performance
+
+*   **Rule:** Minimize expensive computations during component rendering. Optimize reactive declarations (`$state`, `$derived`).
+*   **Verification (LLM Actionable/Assisted):**
+    *   `grep_search` Svelte files (`*.svelte`) for complex loops (`{#each ...}`) rendering large lists without keys (`(key)`) or with complex inline logic.
+    *   `grep_search` for potentially expensive computations within `$derived` statements that run frequently. Suggest memoization.
+    *   Code analysis: Look for heavy data transformations directly in template markup (`*.svelte`). Suggest moving logic to `<script>` blocks or server endpoints.
+*   **Best Practice:**
+    *   Use keyed `{#each items as item (item.id)}` blocks.
+    *   Memoize expensive derived computations.
+    *   Avoid complex logic directly in template syntax.
+    *   Profile component rendering using Svelte DevTools during development.
+
+### 3.3 Network Requests
+
+*   **Rule:** Minimize number and size of network requests. Optimize API endpoint responses. Defer non-critical requests.
+*   **Verification (LLM Actionable/Assisted):**
+    *   Analyze SvelteKit `load` functions (`+page.server.js`, `+layout.server.js`). Check if multiple `fetch` calls can be consolidated or parallelized (`Promise.all`).
+    *   `grep_search` for `fetch` calls within component lifecycle functions (`onMount` in `.svelte` files) that could potentially be moved to `load` functions.
+    *   Check API endpoint definitions (`[SVELTEKIT_ROOT]/[SVELTEKIT_API_ROUTE_PATH]/**/*.js`, WordPress REST endpoints in `[MAIN_PLUGIN_PATH]`) for unnecessary data fetching or large response payloads. Suggest limiting fields (consider WP GraphQL at `[WP_GRAPHQL_ENDPOINT]` if applicable).
+*   **Best Practice:**
+    *   Fetch data server-side in SvelteKit `load` functions.
+    *   Use `Promise.all` for parallel independent fetches.
+    *   Ensure API endpoints return only necessary data fields.
+    *   Implement caching (See Section 6).
+
+### 3.4 PWA & Service Worker
+
+*   **Rule:** If PWA is enabled, ensure `[SVELTEKIT_ROOT]/[SVELTEKIT_SERVICE_WORKER_PATH]` implements effective caching strategies.
+*   **Verification (LLM Actionable/Assisted):**
+    *   `read_file` `[SVELTEKIT_ROOT]/[SVELTEKIT_SERVICE_WORKER_PATH]`. Analyze caching strategies (e.g., StaleWhileRevalidate, CacheFirst). Verify core app assets and static files (`/[SVELTEKIT_STATIC_PATH]/`, `/_app/`) are cached.
+    *   Check registration logic in `src/hooks.client.js` or root layout.
+*   **Best Practice:**
+    *   Use appropriate caching strategies.
+    *   Implement background/periodic sync if needed.
+    *   Test PWA offline behavior.
+
+## 4. Backend Performance (WordPress)
+
+### 4.1 API Response Time
+
+*   **Rule:** Headless WordPress REST API endpoints (especially custom ones, e.g., in `[MAIN_PLUGIN_PATH]`) MUST respond quickly (target < 500ms).
+*   **Verification (LLM Actionable/Assisted):**
+    *   Analyze PHP code within REST route handlers (`register_rest_route` callbacks in `[MAIN_PLUGIN_PATH]`). Look for:
+        *   Inefficient database queries (N+1, lack of caching).
+        *   Complex data processing/loops.
+        *   External API calls without timeouts/caching.
+    *   Recommend using WP performance profiling plugins (Query Monitor) during development/staging.
+*   **Best Practice:**
+    *   Cache results using `[WP_CACHING_MECHANISM]`.
+    *   Optimize database queries (See Section 5).
+    *   Offload heavy tasks to background jobs/WP-Cron.
+    *   Minimize external API calls per request.
+
+### 4.2 Plugin/Theme Efficiency
+
+*   **Rule:** Custom plugin (`[MAIN_PLUGIN_NAME]`) and theme (`[MAIN_THEME_NAME]`) code MUST be efficient. Avoid unnecessary global hooks.
+*   **Verification (LLM Actionable/Assisted):**
+    *   `grep_search` `[MAIN_PLUGIN_PATH]` and `[MAIN_THEME_PATH]` for `add_action`, `add_filter`. Analyze if hooks are overly broad (e.g., using `init` for admin-only tasks). Suggest specific hooks.
+    *   Analyze code for redundant DB calls or complex logic outside endpoint handlers.
+*   **Best Practice:**
+    *   Use conditional loading (`is_admin()`, etc.).
+    *   Hook into the most specific action/filter possible.
+    *   Leverage `[WP_CACHING_MECHANISM]`.
+
+## 5. Database Performance (MySQL/MariaDB)
+
+*   **Rule:** Database queries MUST be optimized. Use indexing. Avoid querying large datasets without limits/pagination.
+*   **Verification (LLM Actionable/Assisted):**
+    *   Analyze database queries within PHP (`$wpdb->...`) and SvelteKit server files (e.g., Kysely usage in `[SVELTEKIT_AUTH_CONFIG_SERVER]`).
+    *   Look for queries without `WHERE` on indexed columns, `SELECT *`, N+1 patterns, missing `LIMIT`.
+    *   Cross-reference queries with table schema documentation to check for missing indexes.
+    *   *Note:* Query plan analysis (`EXPLAIN`) requires DB access. LLM flags potential code issues.
+*   **Best Practice:**
+    *   Index columns used in `WHERE`, `JOIN`, `ORDER BY`.
+    *   Select only required columns.
+    *   Use `LIMIT` and pagination.
+    *   Avoid queries inside loops. Fetch in bulk.
+    *   Use prepared statements (`$wpdb->prepare`).
+
+## 6. Asset Optimization (Images, Fonts)
+
+*   **Rule:** Images and fonts MUST be optimized for the web.
+*   **Verification (LLM Actionable/Assisted):**
+    *   `grep_search` `*.svelte` files for `<img>`. Check for missing `loading="lazy"`, usage of modern formats (WebP), missing `width`/`height`.
+    *   Analyze CSS/Svelte components for font loading strategies. Check for preloading.
+    *   Check `[SVELTEKIT_ROOT]/[SVELTEKIT_STATIC_PATH]/` using `list_dir` and `run_terminal_cmd` (`ls -lh`) to identify large files.
+*   **Best Practice:**
+    *   Serve images in modern formats (WebP) with fallbacks.
+    *   Use responsive images (`srcset`, `<picture>`).
+    *   Compress images.
+    *   Lazy-load below-the-fold images.
+    *   Self-host fonts (`woff2`), use `font-display: swap;`, preload critical fonts.
+
+## 7. Caching
+
+*   **Rule:** Leverage caching mechanisms effectively (Service Worker, WP Object Cache/Transients, HTTP).
+*   **Verification (LLM Actionable/Assisted):**
+    *   Check service worker (`[SVELTEKIT_ROOT]/[SVELTEKIT_SERVICE_WORKER_PATH]`).
+    *   Analyze WP code (`[MAIN_PLUGIN_PATH]`, `[MAIN_THEME_PATH]`) for usage of `[WP_CACHING_MECHANISM]` (e.g., `wp_cache_get`, `get_transient`).
+    *   Check SvelteKit `load` functions for cache control headers.
+    *   Analyze web server config (NGINX/Apache) if available for HTTP caching headers.
+*   **Best Practice:**
+    *   Use Service Worker for App Shell/static assets.
+    *   Use `[WP_CACHING_MECHANISM]` for expensive WP operations/queries.
+    *   Configure web server for optimal HTTP caching headers.
+    *   Consider Edge caching / CDN for production.
+
+## 8. Monitoring & Verification Tools
+
+*   **Frontend:** Lighthouse, WebPageTest, Svelte DevTools, Vite build profiler.
+*   **Backend:** Query Monitor (WP Plugin), APM Tools (New Relic/Datadog - Production), Server Logs.
+*   **General:** Browser Network Tab (DevTools).
+
+*Apply these checks during development, code reviews, and pre-deployment (ref: `[DEPLOYMENT_CHECKLIST_DOC]`)*.
+

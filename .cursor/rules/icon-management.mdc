@@ -3,87 +3,96 @@ description: Icon Management System Rules
 globs: ["app/src/lib/utils/lucide-compat.js", "app/src/lib/components/ui/icon/icon.svelte", "**/*.svelte"]
 alwaysApply: true
 ---
+# Icon Management System Rules
 
-# Icon Management System
+1.  **Core Principles:**
+    *   Use `$lib/utils/lucide-compat.js` as the SINGLE source of truth for icon components.
+    *   NEVER import icons directly from `lucide-svelte` in UI components.
+    *   ALL icons MUST be wrapped with the `$lib/components/ui/icon/icon.svelte` component for rendering.
+    *   ALL icons MUST be exported from `lucide-compat.js` using the `createIconObject` utility (if applicable) or as direct re-exports.
 
-1. **Core Principles:**
-   - Use `/app/src/lib/utils/lucide-compat.js` as SINGLE source of truth
-   - NEVER import icons directly from 'lucide-svelte'
-   - ALL icons MUST be wrapped with the Icon component
-   - ALL icons MUST be exported through lucide-compat.js
+2.  **Adding New Icons:**
+    ````javascript
+    // In lucide-compat.js
+    import { NewIconName } from 'lucide-svelte';
+    // If using a utility like createIconObject (adapt if just re-exporting):
+    // import { createIconObject } from './icon-utils';
+    // export const NewIconName = createIconObject(NewIconName);
 
-2. **Adding New Icons:**
-   ```javascript
-   // In lucide-compat.js
-   import { NewIcon } from 'lucide-svelte'
-   import { createIconObject } from './icon-utils'
-   
-   export const NewIcon = createIconObject(newIcon)
-   ```
+    // OR if just re-exporting directly:
+    export { NewIconName };
+    ````
+    *   Ensure the icon exists in `lucide-svelte`.
+    *   Add the export line to `lucide-compat.js`.
 
-3. **Using Icons in Components:**
-   ```javascript
-   // CORRECT
-   import Icon from '$lib/components/ui/icon/icon.svelte'
-   import { NewIcon } from '$lib/utils/lucide-compat.js'
-   
-   // In template:
-   <Icon icon={NewIcon} class="w-4 h-4" />
-   
-   // INCORRECT - Never do this
-   import { NewIcon } from 'lucide-svelte'
-   <NewIcon class="w-4 h-4" />
-   ```
+3.  **Using Icons in Components:**
+    ````javascript
+    // CORRECT
+    import Icon from '$lib/components/ui/icon/icon.svelte';
+    import { Check, Home } from '$lib/utils/lucide-compat.js'; // Import specific icons
 
-4. **Icon Sizing:**
-   - Use Tailwind classes for consistent sizing
-   - Default sizes: w-4 h-4 (16px)
-   - Available sizes: w-3 h-3 (12px), w-4 h-4 (16px), w-5 h-5 (20px), w-6 h-6 (24px)
-   - Use arbitrary values only when necessary: w-[18px] h-[18px]
+    // In template:
+    <Icon icon={Home} class="w-4 h-4" />
+    <button>
+      <Icon icon={Check} size={16} /> Submit
+    </button>
 
-5. **Icon Colors:**
-   - Use HSL color variables:
-     ```html
-     <Icon icon={NewIcon} class="text-[hsl(var(--primary))]" />
-     ```
-   - For state changes, use group-hover/focus classes:
-     ```html
-     <button class="group">
-       <Icon icon={NewIcon} class="text-[hsl(var(--muted))] group-hover:text-[hsl(var(--primary))]" />
-     </button>
-     ```
+    // INCORRECT - Never do this
+    // import { Home } from 'lucide-svelte';
+    // <Home class="w-4 h-4" />
+    ````
 
-6. **Error Prevention:**
-   - Always check if icon is already in lucide-compat.js before adding
-   - Verify SSR compatibility by testing in production build
-   - Check icon rendering in both light and dark modes
-   - Test icon animations and transitions if used
+4.  **Icon Sizing:**
+    *   MUST use standard Tailwind utility classes reflecting the 8pt grid (from `golden-ratio-design-system-protocol.mdc`).
+    *   Examples: `w-4 h-4` (16px), `w-5 h-5` (20px - requires 4px exception documented or adjustment), `w-6 h-6` (24px).
+    *   Avoid arbitrary size values (e.g., `w-[17px]`) unless absolutely necessary and documented.
+    *   Default size often handled by the `Icon` component prop, but can be overridden by class.
 
-7. **Performance Considerations:**
-   - Icons are tree-shaken when imported from lucide-compat.js
-   - Use appropriate sizing to prevent layout shifts
-   - Minimize icon state changes to prevent re-renders
-   - Consider lazy loading for routes with many icons
+5.  **Icon Colors:**
+    *   MUST use HSL color variables syntax from `golden-ratio-design-system-protocol.mdc`.
+        ````html
+        <Icon icon={Home} class="text-[hsl(var(--link))]" />
+        ````
+    *   For state changes, use utility classes (e.g., `group-hover:`):
+        ````html
+        <button class="group flex items-center gap-2">
+          <Icon icon={Home} class="text-[hsl(var(--canvas-fg-muted))] group-hover:text-[hsl(var(--link))]" />
+          Home
+        </button>
+        ````
+    *   Default color is often `currentColor`, inheriting from parent text color.
 
-8. **Accessibility:**
-   - Always provide aria-label when icon is semantic:
-     ```html
-     <Icon icon={NewIcon} class="w-4 h-4" aria-label="Action description" />
-     ```
-   - Use aria-hidden="true" for decorative icons:
-     ```html
-     <Icon icon={NewIcon} class="w-4 h-4" aria-hidden="true" />
-     ```
-   - Ensure sufficient color contrast for icon colors
+6.  **Error Prevention:**
+    *   Always check `lucide-compat.js` before adding a potentially duplicate icon.
+    *   Verify SSR compatibility.
+    *   Test rendering in the defined theme (Dark Mode First).
 
-9. **Troubleshooting:**
-   - If icon doesn't render, verify export in lucide-compat.js
-   - If SSR errors occur, check import path and Icon wrapper usage
-   - For sizing issues, check parent container constraints
-   - For color issues, verify HSL variable syntax
+7.  **Performance Considerations:**
+    *   Direct imports from `lucide-compat.js` support tree-shaking.
+    *   Use appropriate, consistent sizing.
+
+8.  **Accessibility:**
+    *   MUST provide `aria-label` when the icon conveys meaning and has no adjacent text label.
+        ````html
+        <button aria-label="Close">
+          <Icon icon={X} class="w-4 h-4" />
+        </button>
+        ````
+    *   MUST use `aria-hidden="true"` for decorative icons OR when adjacent text describes the action.
+        ````html
+        <span>
+          <Icon icon={Info} class="w-4 h-4 mr-1 inline-block align-middle" aria-hidden="true" />
+          Additional Information
+        </span>
+        ````
+    *   Ensure sufficient color contrast for the icon's color against its background (Ref: GRDS Protocol 11).
+
+9.  **Troubleshooting:**
+    *   Icon not rendering: Check export in `lucide-compat.js` and import path in component. Verify `<Icon>` wrapper usage.
+    *   Sizing issues: Check Tailwind classes and parent constraints.
+    *   Color issues: Verify HSL variable syntax and parent text color.
 
 10. **Documentation:**
-    - Document new icons added to lucide-compat.js
-    - Note icon usage in component documentation
-    - Update icon audit list if maintained
-    - Document any custom icon behaviors or animations 
+    *   Document reasoning for any custom icon utilities (like `createIconObject`).
+    *   Note icon usage patterns in component documentation if complex.
+

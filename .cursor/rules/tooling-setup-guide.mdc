@@ -1,0 +1,156 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Tooling Setup Guide
+
+## 1. Purpose
+
+This guide details the setup and configuration for essential development tooling required in the ASAP Digest project. Enforcing consistent code style and catching potential issues automatically improves code quality, maintainability, and developer experience. These tools should be integrated into the development workflow via pre-commit hooks and CI checks.
+
+## 2. Core Tools
+
+*   **Prettier:** Automated code formatter.
+*   **ESLint:** Pluggable JavaScript and Svelte linter.
+*   **prettier-plugin-tailwindcss:** Prettier plugin for sorting Tailwind classes.
+*   **eslint-plugin-svelte:** ESLint plugin for Svelte files.
+*   **eslint-plugin-jsx-a11y (adapted):** Linter for accessibility rules (requires careful configuration for Svelte).
+*   **Husky:** Tool for managing Git hooks (e.g., pre-commit).
+*   **lint-staged:** Run linters on staged files in Git.
+
+## 3. Installation (using pnpm)
+
+*Run these commands in the SvelteKit root directory (`/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`)*
+
+````bash
+# Install Prettier & Tailwind Plugin
+pnpm add -D prettier prettier-plugin-tailwindcss
+
+# Install ESLint & Svelte Plugin
+pnpm add -D eslint eslint-plugin-svelte
+
+# Install Accessibility Plugin (Adapt as needed)
+# Note: Direct jsx-a11y might need wrappers or alternative Svelte-specific a11y linters
+pnpm add -D eslint-plugin-jsx-a11y
+
+# Install Husky & lint-staged
+pnpm add -D husky lint-staged
+npx husky init
+````
+
+## 4. Configuration
+
+### 4.1 Prettier (`.prettierrc` or `prettier` key in `package.json`)
+
+````json
+{
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "printWidth": 80,
+  "tabWidth": 2,
+  "useTabs": false
+}
+````
+
+### 4.2 ESLint (`.eslintrc.js`)
+
+````javascript
+// .eslintrc.js (Example configuration - adjust as needed)
+module.exports = {
+  root: true,
+  parserOptions: {
+    ecmaVersion: 2021,
+    sourceType: 'module',
+  },
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+  },
+  extends: [
+    'eslint:recommended',
+    // Consider adding a recommended Svelte config if available
+    // 'plugin:jsx-a11y/recommended' // Requires adaptation for Svelte
+  ],
+  plugins: [
+    'svelte' // Use 'eslint-plugin-svelte' if using newer versions
+    // 'jsx-a11y' // If using the accessibility plugin
+  ],
+  overrides: [
+    {
+      files: ['*.svelte'],
+      processor: 'svelte/svelte', // Use 'svelte/svelte' with newer eslint-plugin-svelte
+    },
+  ],
+  settings: {
+    // Add svelte settings if required by the plugin
+  },
+  rules: {
+    // --- Add custom rules here ---
+    // Example: Enforce semi-colons
+    'semi': ['error', 'always'],
+    // Example: Enforce single quotes
+    'quotes': ['error', 'single'],
+
+    // --- Accessibility Rules (Examples - Need Svelte Adaptation) ---
+    // These might need specific Svelte wrappers or alternatives
+    // 'jsx-a11y/alt-text': 'warn',
+    // 'jsx-a11y/anchor-is-valid': 'warn',
+    // 'jsx-a11y/click-events-have-key-events': 'warn',
+    // 'jsx-a11y/no-noninteractive-element-interactions': 'warn',
+    // 'jsx-a11y/label-has-associated-control': 'warn',
+
+    // --- Svelte Specific Rules (Add based on plugin docs) ---
+    // 'svelte/no-unused-svelte-ignore': 'warn',
+    // 'svelte/no-dupe-else-if-blocks': 'error',
+  },
+  ignorePatterns: ['node_modules/', 'build/', 'dist/', 'static/'],
+};
+````
+*Note: ESLint configuration, especially for Svelte and Accessibility, requires careful setup based on the specific versions of plugins used. Consult `eslint-plugin-svelte` documentation.*
+
+### 4.3 lint-staged (`lint-staged` key in `package.json`)
+
+````json
+{
+  "lint-staged": {
+    "*.{js,svelte}": ["eslint --fix", "prettier --write"],
+    "*.{css,md,json}": ["prettier --write"]
+  }
+}
+````
+
+### 4.4 Husky (`.husky/pre-commit`)
+
+*Ensure this file is executable (`chmod +x .husky/pre-commit`)*
+
+````bash
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+npx lint-staged
+````
+
+## 5. Workflow Integration
+
+1.  **Pre-Commit Hook:** The configured Husky hook will automatically run `lint-staged` before each commit. `lint-staged` will then run Prettier and ESLint on the files staged for commit. Commits will fail if linting errors occur.
+2.  **IDE Integration:** Configure your IDE (e.g., VS Code, Cursor) to use the project's ESLint and Prettier configurations for real-time feedback and formatting on save.
+3.  **CI Pipeline (Recommended):** Add steps to your CI workflow (e.g., GitHub Actions) to run format checks (`prettier --check .`) and lint checks (`eslint .`). Fail the build if checks do not pass.
+
+    ````yaml
+    # Example GitHub Action step
+    # - name: Lint and Format Check
+    #   run: |
+    #     pnpm run lint # Assuming 'lint' script runs eslint .
+    #     pnpm run format:check # Assuming 'format:check' script runs prettier --check .
+    ````
+
+## 6. Verification
+
+*   Ensure linters and formatters run without errors.
+*   Confirm the pre-commit hook blocks commits with linting errors or formatting issues.
+*   Verify CI checks fail on PRs with violations.
+

@@ -17,7 +17,8 @@ This style guide documents the comprehensive Atomic Design System for ASAP Diges
 9. [Imagery Guidelines](#imagery-guidelines)
 10. [Implementation Guidelines](#implementation-guidelines)
 11. [Accessibility Standards](#accessibility-standards)
-12. [Versioning](#versioning)
+12. [LLM Enforcement Summary And Checklist](#llm-enforcement-summary-and-checklist)
+13. [Versioning](#versioning)
 
 ## Design Philosophy
 
@@ -142,12 +143,27 @@ Our color system reflects our "energy & mystery" brand identity with vibrant neo
 
 ### Usage Guidelines
 
-- **ALWAYS** use the HSL variable syntax: `bg-[hsl(var(--primary))]`
-- **NEVER** use direct color names: `bg-blue-500`
-- Use neon colors as accents and highlights, not for large areas
-- Maintain sufficient contrast ratios (minimum 4.5:1 for normal text)
-- Dark backgrounds should dominate, with neon colors as "bursts of energy"
-- For gradients, transition between neon colors for dynamic energy effects
+- **ALWAYS** use the HSL variable syntax:
+
+    ```html
+    <!-- CORRECT -->
+    <div class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">...</div>
+    ```
+
+- **NEVER** use direct color names or hex/rgb values for themeable colors:
+
+    ```html
+    <!-- INCORRECT - Violates Themeability -->
+    <div class="bg-pink-500 text-[#FFFFFF]">...</div>
+    <div style="background-color: #ff007f;">...</div>
+    ```
+
+- Use neon colors as accents and highlights, not for large areas.
+- Maintain sufficient contrast ratios (minimum 4.5:1 for normal text).
+- Dark backgrounds should dominate, with neon colors as "bursts of energy".
+- For gradients, transition between neon colors for dynamic energy effects.
+
+
 
 ### Color Combinations
 
@@ -440,7 +456,9 @@ Our component library is built using Svelte 5 with a consistent architecture for
 
 ### Icon System
 
-ASAP Digest uses the Lucide icon library with a custom compatibility layer for Svelte 5 runes mode.
+    ASAP Digest uses the Lucide icon library with a custom compatibility layer for Svelte 5 runes mode.
+
+    *Enforcement: See `icon-management.mdc` for implementation rules and `visual-style-enforcement-protocol.mdc` for verification checks.*
 
 #### Icon Implementation
 
@@ -1263,6 +1281,32 @@ All interactive elements should have visible focus states:
   box-shadow: var(--focus-ring);
 }
 ```
+
+## LLM Enforcement Summary And Checklist
+
+*This section distills key visual identity rules into a concise checklist format, primarily intended for automated verification by LLM agents and integration into enforcement protocols like `visual-style-enforcement-protocol.mdc`. Refer to the detailed sections below for full context and examples.*
+
+**Core Principles (Binary Checks):**
+
+*   [ ] **Color Syntax:** ALL themeable colors MUST use the `hsl(var(--<color-name>))` syntax (e.g., `bg-[hsl(var(--primary))]`).
+*   [ ] **Direct Color Usage:** NO direct Tailwind color classes (e.g., `bg-blue-500`) or hex/rgb values SHOULD be used for themeable colors. (Exception: specific, documented non-theme utility colors).
+*   [ ] **Font Family Variables:** Font families MUST be applied using CSS variables (e.g., `font-[var(--font-sans)]`).
+*   [ ] **Font Size Variables:** Text sizes MUST be applied using defined font size variables (e.g., `text-[var(--font-size-base)]`).
+*   [ ] **Font Weight Variables:** Font weights MUST be applied using defined font weight variables (e.g., `font-[var(--font-weight-bold)]`).
+*   [ ] **Border Radius Variables:** Border radii MUST be applied using defined radius variables (e.g., `rounded-[var(--radius-md)]`).
+*   [ ] **Icon Imports:** Icons MUST be imported ONLY from `$lib/utils/lucide-compat.js` (or the correct path as defined in `icon-management.mdc`).
+*   [ ] **Icon Component:** Icons MUST be rendered using the `Icon` wrapper component (ref: `icon-management.mdc`).
+
+**Consistency & Usage Checks (Requires Contextual Analysis):**
+
+*   [ ] **Spacing Scale Adherence:** Spacing utilities (padding, margin, gap) SHOULD primarily use values from the defined spacing scale (ref: Spacing System section). Arbitrary values SHOULD be used sparingly and ideally documented.
+*   [ ] **Color Palette Adherence:** Color variable usage SHOULD align with the semantic purpose defined in the Color System section (e.g., `--primary` for main actions, `--destructive` for errors).
+*   [ ] **Typography Scale Adherence:** Font size usage SHOULD align with the semantic hierarchy defined in the Typography System section (e.g., larger variables for headings, smaller for secondary text).
+*   [ ] **Component State Implementation:** Interactive components MUST implement all required states (Default, Hover, Focus, Active, Disabled, Loading) visually consistent with this guide.
+*   [ ] **Accessibility - Contrast:** Text SHOULD meet WCAG AA contrast ratios against its background (minimum 4.5:1). (Requires visual or tool-based check).
+*   [ ] **Accessibility - Focus:** Focus states MUST be visible and use the defined `--focus-ring` variable/style.
+
+
 
 ## Versioning
 
