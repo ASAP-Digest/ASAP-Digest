@@ -156,72 +156,56 @@ function formatUserReport(reportData, formattedReportTime) { /* ... formatting l
 The user-facing output MUST follow this structure:
 
 ````markdown
+
 ---
 # **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
 ---
-### **`✅ Recently Completed Tasks (Last 72h):`**
-- Logic:
-  - Get current time (T). Calculate T minus 72 hours (T-72).
-  - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-72 and T.
-  - Find `TaskCompletion` entities in Server Memory with a timestamp between T-72 and T.
-  - Combine and deduplicate lists, sort by timestamp (most recent first).
-  - Display all found entries. If none, state "*No tasks completed in the last 72 hours.*"
-- Format: `- Task Name (MM.DD.YY | HH:MM AM/PM TimeZone)`
 
-### **`🧪 Testing Pipeline:`**
-- Logic:
-  - Find all tasks marked `🔬` (Pending Testing) in `ROADMAP_TASKS.md`. Extract state entry timestamp if available.
-  - Find all tasks marked `🧪` (Testing) in `ROADMAP_TASKS.md`. Extract state entry timestamp if available.
-  - Format using Markdown tables. If a section is empty, state "*None*".
-- Format:
-  `🔬 Pending User Initiation:`
-  | Task Name | Entered Queue | Priority? |
-  |---|---|---|
-  | [Task Name] | [MM.DD.YY | HH:MM AM/PM TimeZone] | [Yes/No] |
-  | ... | ... | ... |
+### **`✅ Recently Completed (Last 72h):`**
+  *   `[Task Name]` _(Completed: MM.DD.YY | HH:MM AM/PM TimeZone)_
+  *   `[Task Name]` _(Completed: MM.DD.YY | HH:MM AM/PM TimeZone)_
+  *   _(If none: ✨ No tasks completed recently.)_
 
-  `🧪 Actively Testing:`
-  | Task Name | Started Testing |
-  |---|---|
-  | [Task Name] | [MM.DD.YY | HH:MM AM/PM TimeZone] |
-  | ... | ... |
+---
 
-### **`🎯 Current / Operational Priority:`**
-- Logic (Hierarchical):
-  1.  **Blocked (`❌`):** Find the first task marked `❌` in `ROADMAP_TASKS.md`. Reason: "Blocked Task".
-  2.  **Error (`Error` Entity):** Search Server Memory for active `Error` entities. If found, the *first* error is priority. Reason: "Active Error". Include error details.
-  3.  **Pending Test (`🔬`):** Find the first task marked `🔬` in `ROADMAP_TASKS.md`. Reason: "Ready for User Testing Initiation".
-  4.  **Active Test (`🧪`):** Find the first task marked `🧪` in `ROADMAP_TASKS.md`. Reason: "Active Testing Phase".
-  5.  **In Progress (`🔄`):** Find the first task marked `🔄` in `ROADMAP_TASKS.md`. Reason: "Next In Progress".
-  6.  **Pending (`⏳`):** Find the first task marked `⏳` in `ROADMAP_TASKS.md`. Reason: "Next Pending".
-- Format: `- [Emoji] **[Task Name]** (Reason: [Determined Reason from Hierarchy Logic]. [Include Error details if applicable])`
+### **`🔬🧪 Testing Pipeline:`**
+  *   **`🔬 Pending Initiation:`**
+      *   `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_ - Priority? [Yes/No]
+      *   `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_ - Priority? [Yes/No]
+      *   _(If none: 👍 None pending initiation.)_
+  *   **`🧪 Actively Testing:`**
+      *   `[Task Name]` _(Started: [MM.DD.YY | HH:MM AM/PM TimeZone])_
+      *   _(If none: 👍 None actively testing.)_
 
+---
 
-### **`⏳ Upcoming Tasks (After Priority):`**
-- Logic:
-  - Find the task identified as the current priority.
-  - List the next 3-5 tasks that appear *after* the priority task in `ROADMAP_TASKS.md` and are marked `⏳`.
-  - Format using Markdown table.
-- Format:
-  | Task Name |
-  |---|
-  | [Task Name] |
-  | ... |
+### **`🎯 Current Priority:`**
+  *   **`[Emoji]`** **`[Task Name]`**
+      *   _Reason:_ `[Determined Reason from Hierarchy Logic]`
+      *   _(If Error):_ `🚨 Error Details: [Error Message Summary]`
+
+---
+
+### **`⏳ Upcoming Tasks (Next 3-5 Pending):`**
+  *   `[Task Name]`
+  *   `[Task Name]`
+  *   `[Task Name]`
+  *   _(If none: 👍 No pending tasks after priority.)_
+
+---
 
 ### **`❌ Blocked Tasks:`**
-- Logic: List all tasks marked `❌` in `ROADMAP_TASKS.md`. Format using Markdown table. If none, state "*None*".
-- Format:
-  | Task Name |
-  |---|
-  | [Task Name] |
-  | ... |
+  *   `[Task Name]` _(Reason: [If available])_
+  *   `[Task Name]` _(Reason: [If available])_
+  *   _(If none: 👍 No blocked tasks.)_
+
+---
 
 ### **`⚙️ Overall Context:`**
-- Logic:
-  - Identify the current priority task.
-  - Determine its immediate parent subtask from the structure in `ROADMAP_TASKS.md` or `ASAP_DIGEST_ROADMAP.md`.
-- Format: `Currently working within: [Parent Subtask Name] > **[Priority Task Name]**`
+  *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`**
+
 ---
+
 ````
 
 ## 8. Error Prevention and Handling
