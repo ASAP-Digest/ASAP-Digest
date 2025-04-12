@@ -3,10 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.4
+# Enhanced Work Session Management Protocol (WSMP) v2.5
 
 ## 1. Protocol Integration Layer
-*(Self-correction: Added Testing & Verification Protocol v1.1 to the integration list)*
+*(Self-correction: Updated version number, no change in layers)*
 ````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
@@ -16,7 +16,7 @@ alwaysApply: true
 │ 3. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
 │ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules
 │ 5. Session Management Protocol (This)   │
-│ 6. Status Check Protocol                │
+│ 6. Status Check Protocol (v2.1+)        │ // Updated version requirement
 │ 7. Cross-Protocol Comms & Verification   │
 │ 8. Universal Error Resolution Protocol  │
 │ 9. Audit Trail System                   │
@@ -29,7 +29,7 @@ alwaysApply: true
 A. Start New Session
 - Command: "Begin Work Session" or alias "BWS"
 - Purpose: Initiates a NEW tracked work session.
-- Prerequisites: MUST run "Status Check" (SC) immediately prior to BWS.
+- Prerequisites: MUST run "Status Check" (SC v2.1+) immediately prior to BWS.
 - Optional Parameters: Session Type (DEBUG, FEATURE, FIX, REFACTOR), Priority Issue (inferred from SC).
 
 B. Save Session State
@@ -56,22 +56,21 @@ E. Current Session Status & Auto-Save
 ## 3. Context Establishment & Session Lifecycle Management
 
 ### 3.1 Session Initiation (BWS)
-````text
-1.  **Pre-Check:** Execute "Status Check" (SC).
-2.  **Analyze SC Output:** Extract `🎯 Current / Operational Priority` and `⚙️ Overall Context` from the SC report.
+*(Self-correction: Explicitly mention updated priority analysis for v2.5)*
+1.  **Pre-Check:** Execute "Status Check" (SC) - *MUST use v2.1 or later*.
+2.  **Analyze SC Output:** Extract `🎯 Current / Operational Priority` (reflecting the new `🔬`/`🧪` logic), `🧪 Testing Pipeline`, and `⚙️ Overall Context` from the SC report.
 3.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
 4.  **Generate Session ID:** Create a new, unique session ID following the updated naming convention (See Section 9).
 5.  **Entity Creation:** Create `WorkSession` entity in Server Memory with the generated ID, including:
     - Start timestamp.
     - Session Type (from param or inferred).
-    - Priority Issue (from SC or parameter).
+    - Priority Issue (from SC, potentially `🔬` or `🧪` state).
     - Overall Context (from SC).
     - Link to the preceding `StatusCheck` entity.
     - Status: `ACTIVE`.
 6.  **Verification:** Execute L1/L3 Verification Chain checks.
 7.  **Audit:** Record `SESSION_START` event in Audit Trail.
-8.  **Feedback:** Confirm session start with the new Session ID.
-````
+8.  **Feedback:** Confirm session start with the new Session ID, explicitly stating the priority task identified based on the updated SC logic.
 
 ### 3.2 Save Work Session (SWS)
 ````text
@@ -97,6 +96,7 @@ E. Current Session Status & Auto-Save
 ````
 
 ### 3.3 Resume Work Session (RWS)
+*(Self-correction: Minor clarification on fallback logic for v2.5)*
 ````text
 1.  **Identify Target Save State & Initiate Fallback:**
     - If `saveSessionID` parameter is provided:
@@ -149,11 +149,11 @@ E. Current Session Status & Auto-Save
 7.a. **Execute State Synchronization Verification (RWS - Active):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (should be `ACTIVE`) and the `docs/ROADMAP_TASKS.md` `🔄` marker. Trigger UERP on failure.
 8.  **Verification:** Execute L1/L3 Verification Chain checks.
 9.  **Audit:** Record `SESSION_RESUME` event in Audit Trail. (If resuming from save state) or `SESSION_START` (if resuming from marker).
-10. **Feedback:** Confirm session resumption or start, stating the active Session ID and the priority task.
+10. **Feedback:** Confirm session resumption or start, stating the active Session ID and the priority task (which might have been determined by fallback logic if a new session was started).
 ````
 
 ### 3.4 End Work Session (EWS)
-*(Self-correction: Updated EWS flow to integrate TESTING state transition)*
+*(Self-correction: No changes needed here based on the request, EWS logic is consistent with TVP v1.1)*
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error "EWS Error: No active work session found." and stop.
 2.  **Identify Primary Task:** Identify the primary `Task` entity being worked on during this session (e.g., from the `WorkSession` priority or linked entities). Ensure it's currently in an `ACTIVE` (`🔄`) state. If not, report error "EWS Error: Primary task '[TaskID]' is not in an active state." and stop.
@@ -218,114 +218,105 @@ E. Current Session Status & Auto-Save
 10. **Feedback:** Output the formatted report (from Step 5) to the user, followed by a confirmation message like "Session auto-saved and resumed. Continue workflow."
 ````
 
-## 4. Save Work Session (SWS) Implementation
-*(Self-correction: Renumbered section to 4 from previous version's 4. Renamed from "Implementation" to "Details" for clarity as other sections also contain implementation details)*
-````text
-1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
-2.  **Verification:** Execute L1/L2/L3 Verification Chain checks (ensuring state consistency *before* saving).
-3.  **Entity Creation:** Create `WorkSessionSave` entity in Server Memory, including:
-    - Save timestamp.
-    - Link to the active `WorkSession` entity.
-    - Save Reason (if provided).
-    - Observations summarizing key state points (e.g., active task ID, relevant open files/entities, current error state if any).
-4.  **Task Status Marker:** Consider updating the primary active task (🔄) in `docs/ROADMAP_TASKS.md` to a "paused" state (e.g., ⏸️ `[Paused: SWS - Timestamp]`) to reflect interruption clearly for the next SC run.
-5.  **Relation Creation:** Link `WorkSessionSave` entity to relevant `Task`, `Error`, or `Code` entities representing the current state.
-6.  **Audit:** Record `SESSION_SAVE` event in Audit Trail.
-7.  **Feedback:** Provide confirmation to the user, including the `WorkSessionSave` entity name/ID for potential future resumption.
+## 4. Save State Verification & Integrity
+````markdown
+*(Added reference to new checks)*
+- **Pre-Save Checks:** Before executing SWS, run relevant L1/L2/L3 Verification Chain checks to ensure the current state is consistent.
+- **Post-Save Verification:** Implement the mandatory verification check in SWS (Step 6 & 7) to confirm the `WorkSessionSave` entity was successfully created in Server Memory before proceeding.
+- **Roadmap Sync Check:** Implement the mandatory `State Synchronization Verification` check (Step 9.a in SWS) if using the optional roadmap marker.
 ````
 
-## 5. Task Status Management Integration
-*(Self-correction: Renumbered section to 5. Updated example to include new states)*
-````javascript
-// Conceptual Example: Status Updates
-class SessionTaskManager {
-    async updateTaskStatus(taskId, status, timestamp, sessionId) {
-        const statusEmoji = this.getStatusEmoji(status);
-        // ... (Update Server Memory Task entity status) ...
-
-        // Update Roadmap File - Handles PAUSED/ACTIVE/PENDING_TESTING/TESTING/COMPLETED transitions
-        // Note: 'COMPLETED' updates typically happen post-verification approval.
-        await this.updateRoadmapFile(taskId, statusEmoji, timestamp, {
-            updatePausedParents: (status === 'ACTIVE'), // Unpause parents when resuming
-            addNote: (status === 'PENDING_TESTING' || status === 'PAUSED') // Add context note
-        });
-    }
-
-    // Ensure this mapping aligns with SC and Testing Protocol logic
-    getStatusEmoji(status) {
-        const statusMap = {
-            'ACTIVE': '🔄', // In Progress
-            'PENDING_TESTING': '🔬', // Agent complete, awaiting user ST command
-            'TESTING': '🧪', // User initiated testing (ST command)
-            'COMPLETED': '✅', // User approved (AC command)
-            'BLOCKED': '❌',
-            'PENDING': '⏳',
-            'PAUSED': '⏸️', // Used by SWS
-            'REWORK': '🔧'  // Optional: If rejected (RC command)
-        };
-        return statusMap[status] || '❓';
-    }
-
-    async updateRoadmapFile(taskId, emoji, timestamp, options = {}) {
-        // Logic to read, find task line, update emoji and timestamp/note, write file.
-        // Must handle changing ⏸️ back to 🔄 on RWS if that marker is used by SWS.
-        // Must handle changing 🔄 to 🔬 on EWS TESTING.
-        // Must handle changing 🔬 to 🧪 on user ST command (Testing Protocol).
-        // Must handle changing 🧪 to ✅ on user AC command (Testing Protocol).
-        // Must handle changing 🧪 back to 🔄 (or 🔧) on user RC command (Testing Protocol).
-        // If options.updatePausedParents, find parent tasks and update ⏸️ to 🔄.
-        // If options.addNote, append context like "[Paused: SWS...]" or "[Pending User Testing...]".
-    }
-}
+## 5. Task Status Synchronization (`PAUSED`, `ACTIVE` States)
+````markdown
+*(Added reference to new checks)*
+- **SWS:** When pausing, if the optional roadmap marker (`⏸️`) is used, a `State Synchronization Verification` (Step 9.a) MUST be performed.
+- **RWS:** When resuming, update the roadmap marker back to `🔄` (if it was changed) and perform a `State Synchronization Verification` (Step 7.a).
 ````
 
-## 6. Verification Chain System Integration
-*(Self-correction: Renumbered section to 6)*
-````javascript
-// Conceptual Example: Verification during SWS
-class SessionVerificationChain {
-    async verifyBeforeSave(sessionId) {
-        // Ensure protocol states are valid before saving
-        await VerificationChainSystem.verifyLevel({ level: 'L1', context: { sessionId } });
-        // Ensure data consistency (memory reflects reality) before saving
-        await VerificationChainSystem.verifyLevel({ level: 'L2', context: { sessionId } });
-        // Ensure system integrity (no dangling locks/resources)
-        await VerificationChainSystem.verifyLevel({ level: 'L3', context: { sessionId } });
-    }
-}
+## 6. Mandatory Post-Update State Synchronization Verification Protocol v1.0
+````markdown
+# Mandatory Post-Update State Synchronization Verification Protocol v1.0
+
+## 1. Purpose
+This protocol defines the mandatory verification steps required *immediately after* any operation that updates BOTH a `Task` entity's status/timestamp in Server Memory AND the corresponding task line's status emoji/timestamp in `docs/ROADMAP_TASKS.md`. It ensures these two critical state representations remain synchronized.
+
+## 2. Activation
+- Triggered automatically by protocols like `work-session-management-protocol.mdc` (specifically within SWS, RWS, EWS TESTING, and EWS COMPLETED steps) and `update-memory.mdc` after they perform parallel updates to Memory and the roadmap file.
+
+## 3. Protocol Integration
+- Depends on `Server Memory Rules`, `Task Tracking Protocol` (for understanding roadmap format), `Cross-Protocol Comms & Verification`, and `UERP`.
+
+## 4. Verification Steps
+1.  **Identify Target Task:** The calling protocol MUST provide the `TaskID` (or equivalent identifier) of the task whose state was just updated.
+2.  **Get Memory State:**
+    - Use `mcp_Server_Memory_open_nodes` to fetch the `Task` entity corresponding to the `TaskID`.
+    - Extract the *current* `status` field (e.g., `PAUSED`, `ACTIVE`, `PENDING_TESTING`, `COMPLETED`).
+    - Extract the *current* `lastUpdateTs` field or relevant timestamp observation.
+3.  **Get Roadmap State:**
+    - Use `read_file` to read the content of `docs/ROADMAP_TASKS.md`.
+    - Use string parsing or regex to locate the line corresponding to the `TaskID`.
+    - Extract the *current* status emoji (e.g., `⏸️`, `🔄`, `🔬`, `✅`).
+    - Extract the *current* timestamp appended to the line (if any).
+4.  **Compare States:**
+    - **Status Mapping:** Convert the Memory `status` and the Roadmap `emoji` to a common comparable format based on the defined mapping (e.g., `PAUSED` maps to `⏸️`, `ACTIVE` maps to `🔄`, etc.).
+    - **Timestamp Comparison:** Compare the Memory timestamp and the Roadmap timestamp. Allow for minor discrepancies (e.g., a few seconds) due to processing time between updates. Define an acceptable tolerance window (e.g., +/- 10 seconds).
+5.  **Verification Outcome:**
+    - **SUCCESS:** If the mapped statuses match AND the timestamps are within the tolerance window, the verification passes. Log `STATE_SYNC_VERIFY_PASS` in Audit Trail.
+    - **FAILURE:** If the statuses do NOT match OR the timestamps are outside the tolerance window, the verification fails.
+        - Log `STATE_SYNC_VERIFY_FAIL` in Audit Trail, including details of the mismatch (Memory vs. Roadmap status/timestamp).
+        - **Trigger UERP:** Immediately trigger the `Universal Error Resolution Protocol`, reporting a critical state synchronization failure. Halt the calling protocol's execution flow if appropriate.
+
+## 5. Error Handling
+- Handle errors during Memory reads or file reads gracefully, but treat such errors as a verification failure, potentially triggering UERP.
 ````
 
-## 7. Error Recovery System Integration
-*(Self-correction: Renumbered section to 7)*
-````javascript
-// Conceptual Example: Handling SWS Failure
-class SessionErrorRecovery {
-    async handleSaveError(error, sessionId) {
-        const recoveryStrategy = await ErrorRecoverySystem.selectStrategy(error);
-        await recoveryStrategy.execute({ context: 'SESSION_SAVE', sessionId });
-        await this.verifyRecovery(recoveryStrategy);
-        // Log detailed error and recovery attempt using server memory 'Error' entity
-    }
-}
+## 7. Error Handling & Recovery
+````markdown
+-   **WSMP Errors:** Use UERP for handling failures during session management (e.g., cannot update Memory, critical verification failures).
+-   **Task Errors:** Link `Error` entities to the `WorkSession` if errors occur during task execution within the session.
+-   **Inconsistent State:** Failures detected by `Mandatory Post-Update State Synchronization Verification Protocol` MUST trigger UERP.
 ````
 
-## 8. Audit Trail System Integration
-*(Self-correction: Renumbered section to 8)*
-````text
-- `SESSION_START`: Logged by BWS.
-- `SESSION_SAVE`: Logged by SWS.
-- `SESSION_RESUME`: Logged by RWS (when resuming from save).
-- `SESSION_END`: Logged by EWS.
-- `SESSION_STATUS_REPORT`: Logged by CWS.
-- (Related events like `TASK_PENDING_TESTING`, `TASK_COMPLETED` are logged by integrated protocols)
+## 8. Session Entity Schema & Naming Convention
+````markdown
+### 8.1 Entity Types
+-   `WorkSession`: Represents an active or ended work period.
+-   `WorkSessionSave`: Represents a snapshot of a paused WorkSession.
+
+### 8.2 `WorkSession` Observations/Fields (Examples)
+-   `startTime`: ISO 8601 timestamp.
+-   `endTime`: ISO 8601 timestamp (set on EWS).
+-   `status`: `ACTIVE`, `PAUSED`, `ENDED`.
+-   `sessionType`: `DEBUG`, `FEATURE`, `FIX`, `REFACTOR`, `GENERAL`.
+-   `priorityTaskID`: Name/ID of the main task focused on.
+-   `overallContext`: String describing the broader goal (from SC).
+-   `triggeringStatusCheckID`: Name/ID of the SC entity that initiated this session.
+-   `linkedSaveStateID`: Name/ID of the `WorkSessionSave` if paused via SWS.
+-   `resumedFromSaveStateID`: Name/ID of the `WorkSessionSave` this session was resumed from via RWS.
+-   `endReason`: `NORMAL`, `INTERRUPTED`, `TESTING`, `COMPLETED`, `FAILED` (set on EWS).
+
+### 8.3 `WorkSessionSave` Observations/Fields (Examples)
+-   `saveTime`: ISO 8601 timestamp.
+-   `linkedWorkSessionID`: Name/ID of the `WorkSession` being saved.
+-   `saveReason`: String provided during SWS.
+-   `activeTaskID`: Name/ID of the task being worked on when saved.
+-   `openFiles`: List of relevant file paths (optional).
+-   `currentErrorState`: Link to active `Error` entity if applicable.
+
+### 8.4 Naming Convention
+-   `WorkSession`: `WS_[Type]_[YYYYMMDD]_[HHMMSS]` (e.g., `WS_FEATURE_20250412_153000`)
+-   `WorkSessionSave`: `WSSave_[SessionIDShort]_[YYYYMMDD]_[HHMMSS]` (e.g., `WSSave_WSFEAT250412_20250412_160000`)
 ````
 
-## 9. Entity Naming Conventions
-*(Self-correction: Renumbered section to 9)*
-````text
-- **WorkSession:** `WS_[Type]_[YYYYMMDD_HHMMSS]` (e.g., `WS_FEATURE_20240727_103000`)
-- **WorkSessionSave:** `WSSave_[ShortSessionID]_[YYYYMMDD_HHMMSS]` (e.g., `WSSave_FEAT240727_20240727_114515`)
-- **StatusCheck:** `SC_[YYYYMMDD_HHMMSS]`
-- **StatusReport:** `SR_[YYYYMMDD_HHMMSS]`
-- **VerificationRequest:** `VR_[TaskID]_[YYYYMMDD_HHMMSS]`
+## 9. Version Control & Documentation
+````markdown
+-   **Commits:** Recommend committing changes frequently, potentially triggered by `SWS` or `EWS`.
+-   **Branching:** Use feature branches aligned with `WorkSession` goals.
+-   **Documentation:** `EWS` should trigger updates to relevant documentation (e.g., `ROADMAP_TASKS.md`, `DEPLOYMENT_CHECKLIST.md`).
+````
+
+## 10. Mandatory Pre-Completion Verification
+````markdown
+*(Integrated directly into EWS COMPLETED logic in Section 3.4)*
+- Before finalizing a task as `COMPLETED` (✅) via `EWS COMPLETED`, the system MUST re-verify that the associated `VerificationRequest` entity in Server Memory has the status `APPROVED`. This check prevents erroneous completion if the user approval step in the `Testing & Verification Protocol` was somehow bypassed or failed. Failure of this check MUST halt `EWS COMPLETED` and trigger UERP.
 ````

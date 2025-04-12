@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Status Check Protocol (Project Status Report) v2.0
+# Status Check Protocol (Project Status Report) v2.1
 
 ## 1. Protocol Restrictions
 ````markdown
@@ -102,7 +102,7 @@ async function executeProjectStatusCheck() {
     const activeErrors = await searchRecentMemory('Error', 0); // Search all active errors
 
     // 5. Parse and Analyze Data
-    // Parse roadmapTasksContent to get all tasks with statuses (✅, 🔄, ⏳, ❌) and timestamps.
+    // Parse roadmapTasksContent to get all tasks with statuses (✅, 🔄, ⏳, ❌, 🔬, 🧪) and timestamps.
     // Identify sections based on parsing results and rules defined in Section 7.
     const reportData = parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp);
 
@@ -145,7 +145,7 @@ function formatUserReport(reportData, reportTimestamp) { /* ... formatting logic
 ````
 
 ## 7. Status Report Structure & Logic
-````markdown
+*(Self-correction: Added Testing Pipeline section and updated Priority Logic for v2.1)*
 The user-facing output MUST follow this structure:
 
 ---
@@ -158,25 +158,38 @@ The user-facing output MUST follow this structure:
   - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-24 and T.
   - Find `TaskCompletion` entities in Server Memory with a timestamp between T-24 and T.
   - Combine and deduplicate lists, sort by timestamp (most recent first).
-  - Display the top 3-5 entries.
+  - Display the top 3-5 entries. If none, state "*No tasks completed in the last 24 hours.*"
 - Format: `- Task Name (Completion Timestamp)`
+
+### **`🧪 Testing Pipeline:`**
+- Logic:
+  - Find all tasks marked `🔬` (Pending Testing) in `ROADMAP_TASKS.md`.
+  - Find all tasks marked `🧪` (Testing) in `ROADMAP_TASKS.md`.
+  - List them separately. If none in a category, state "*None*".
+- Format:
+  - `🔬 Pending User Initiation:`
+  -   `- [Task Name] (Note if marked **PRIORITY**)`
+  - `🧪 Actively Testing:`
+  -   `- [Task Name]`
 
 ### **`🎯 Current / Operational Priority:`**
 - Logic (Hierarchical):
-  1.  Find the first task marked ❌ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Blocked Task".
-  2.  If no blockers, search Server Memory for active `Error` entities. If found, the *first* error encountered is the priority. Reason: "Active Error". Include error details if possible.
-  3.  If no blockers or errors, find the first task marked 🔄 in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next In Progress".
-  4.  If none of the above, find the first task marked ⏳ in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next Pending".
+  1. Find the first task marked `❌` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Blocked Task".
+  2. If no blockers, search Server Memory for active `Error` entities. If found, the *first* error encountered is the priority. Reason: "Active Error". Include error details if possible.
+  3. If no blockers or errors, find the first task marked `🔬` in `ROADMAP_TASKS.md` (especially if marked `**PRIORITY:**`). If found, this is the priority. Reason: "Ready for Testing".
+  4. If none of the above, find the first task marked `🧪` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Active Testing".
+  5. If none of the above, find the first task marked `🔄` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next In Progress".
+  6. If none of the above, find the first task marked `⏳` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next Pending".
 - Format: `- [Emoji] Task Name (Reason for Priority)`
 
 ### **`⏳ Upcoming Tasks:`**
 - Logic:
   - Find the task identified as the current priority in the previous step within `ROADMAP_TASKS.md`.
-  - List the next 3 tasks that appear *after* the priority task and are marked ⏳.
+  - List the next 3 tasks that appear *after* the priority task and are marked `⏳`.
 - Format: `- Task Name`
 
 ### **`❌ Blocked Tasks:`**
-- Logic: List all tasks marked ❌ in `ROADMAP_TASKS.md`.
+- Logic: List all tasks marked `❌` in `ROADMAP_TASKS.md`. If none, state "*None*".
 - Format: `- Task Name`
 
 ### **`⚙️ Overall Context:`**
@@ -185,8 +198,6 @@ The user-facing output MUST follow this structure:
   - Find which major Task group (e.g., "Task 3: Develop Core Application Screens") from `ASAP_DIGEST_ROADMAP.md` (or LLM versions) this task belongs to.
 - Format: `Currently working within: [Major Task Group Title]`
 ---
-
-````
 
 ## 8. Error Prevention and Handling
 ````
