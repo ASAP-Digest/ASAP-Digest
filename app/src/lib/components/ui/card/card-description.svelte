@@ -6,4 +6,5 @@
 
 <p bind:this={ref} class={cn("text-[hsl(var(--muted-foreground))] text-sm", className)} {...restProps}>
 	{@render children?.()}
+	<!-- DEBUG: Static Content -->
 </p>

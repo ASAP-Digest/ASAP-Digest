@@ -3,6 +3,7 @@
   import CardExample from '$lib/components/layout/CardExample.svelte';
   import { Button, Link, Typography } from '$lib/components/atoms';
   import DesignSystemLayout from '$lib/components/layout/DesignSystemLayout.svelte';
+  import { browser } from '$app/environment';
   
   /**
    * Handle link click events
@@ -86,6 +87,12 @@
       </div>
     </div>
     
+    <div class="mt-[calc(var(--spacing-unit)*8)]">
+      <Typography variant="h2">Minimal Typography Test</Typography>
+      <Typography variant="p">This is direct text content inside Typography.</Typography>
+      <Typography variant="h3">Another one.</Typography>
+    </div>
+
     <div class="mt-[calc(var(--spacing-unit)*8)]">
       <Typography variant="h2">Card Component</Typography>
       

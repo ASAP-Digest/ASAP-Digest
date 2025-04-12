@@ -1,7 +1,5 @@
 <script>
   import { page } from '$app/stores';
-  import { Button } from '$lib/components/ui/button';
-  import { ArrowLeft } from '$lib/utils/lucide-icons';
   import { goto } from '$app/navigation';
 
   /** @type {string} */
@@ -33,12 +31,25 @@
   }
 </script>
 
-<div class="flex flex-col items-center justify-center min-h-[80vh] p-4 text-center">
-  <h1 class="text-4xl font-bold mb-4 text-[hsl(var(--foreground))]">{status}</h1>
-  <h2 class="text-2xl font-semibold mb-2 text-[hsl(var(--foreground))]">{title}</h2>
-  <p class="text-[hsl(var(--muted-foreground))] mb-8">{message}</p>
-  <Button onclick={goBack} variant="outline" class="gap-2">
-    <ArrowLeft class="w-4 h-4" />
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 1rem; text-align: center; background-color: #222; color: #eee;">
+  <h1 style="font-size: 2.25rem; font-weight: bold; margin-bottom: 1rem;">{status}</h1>
+  <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">{title}</h2>
+  <p style="color: #aaa; margin-bottom: 2rem;">{message}</p>
+  
+  <!-- Basic HTML button -->
+  <button 
+    type="button"
+    onclick={goBack} 
+    style="padding: 0.5rem 1rem; border: 1px solid #555; background-color: #333; border-radius: 0.375rem; cursor: pointer;"
+  >
     Go Back
-  </Button>
+  </button>
+  
+  <!-- Display stack trace in dev mode -->
+  {#if $page.error?.stack && import.meta.env.DEV}
+    <div style="margin-top: 1.5rem; background-color: #333; padding: 1rem; border-radius: 0.375rem; text-align: left; font-size: 0.75rem; font-family: monospace; max-width: 800px; overflow-x: auto;">
+      <h3 style="margin-bottom: 0.5rem; font-weight: 600;">Stack Trace (Dev Mode)</h3>
+      <pre style="white-space: pre-wrap; word-break: break-all;">{$page.error.stack}</pre>
+    </div>
+  {/if}
 </div> 

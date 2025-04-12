@@ -6,4 +6,5 @@
 
 <div bind:this={ref} class={cn("flex flex-col space-y-1.5 p-6 pb-0", className)} {...restProps}>
 	{@render children?.()}
+  <!-- <p>CardHeader Content Placeholder</p> -->
 </div>

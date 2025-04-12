@@ -1,6 +1,7 @@
 <!-- Typography.svelte - Atomic typography component -->
 <script>
   import { cn } from "$lib/utils";
+  // import { Snippet } from 'svelte'; // Remove invalid runtime import
 
   /** @typedef {'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'caption' | 'blockquote' | 'code'} TypographyVariant */
   
@@ -10,28 +11,17 @@
     bold = false,
     italic = false,
     color = /** @type {string|null} */ (null),
-    children = /** @type {import('svelte').Snippet | undefined} */ (undefined)
+    children = /** @type {import('svelte').Snippet | undefined} */ (undefined) // Correct JSDoc type usage 
   } = $props();
-  
-  // Map variants to HTML tags (defaults to variant name if not specified)
+
+  // Map variants to HTML tags
   /** @type {Record<string, string>} */
   const variantToTag = {
-    'caption': 'p',
-    'h1': 'h1',
-    'h2': 'h2',
-    'h3': 'h3',
-    'h4': 'h4',
-    'h5': 'h5',
-    'h6': 'h6',
-    'p': 'p',
-    'blockquote': 'blockquote',
-    'code': 'code'
+    'caption': 'p', 'h1': 'h1', 'h2': 'h2', 'h3': 'h3', 'h4': 'h4', 'h5': 'h5', 'h6': 'h6',
+    'p': 'p', 'blockquote': 'blockquote', 'code': 'code'
   };
   
-  // Compute the HTML tag to render
-  let tag = $derived(variantToTag[variant] || 'p');
-  
-  // Compute static CSS class mappings rather than computing them at runtime
+  // Static CSS class mappings
   /** @type {Record<string, string>} */
   const variantClassMap = {
     'h1': "text-[var(--font-size-4xl)] font-[var(--font-weight-extrabold)] leading-[var(--line-height-tight)] tracking-[var(--tracking-tighter)] mb-[calc(var(--spacing-unit)*8)]",
@@ -45,24 +35,30 @@
     'blockquote': "pl-[calc(var(--spacing-unit)*6)] border-l-[4px] border-[hsl(var(--border))] italic text-[var(--font-size-lg)] mb-[calc(var(--spacing-unit)*5)]",
     'code': "font-mono bg-[hsl(var(--muted))] px-[calc(var(--spacing-unit)*1.5)] py-[calc(var(--spacing-unit)*0.8)] rounded-[var(--radius-sm)] text-[var(--font-size-sm)]"
   };
-  
-  // Simple direct lookup instead of computing via function
+
+  // Compute the HTML tag to render
+  let tag = $derived(variantToTag[variant] || 'p');
+
+  // Compute static CSS class mappings rather than computing them at runtime
   let variantClasses = $derived(variantClassMap[variant] || variantClassMap.p);
-  
+
   // Simplify font modifier computation
   let fontModifiers = $derived([
     bold ? "font-[var(--font-weight-bold)]" : "",
     italic ? "italic" : ""
   ].filter(Boolean).join(" "));
-  
+
   // Simplify color style calculation
   let colorStyle = $derived(color ? `color: ${color};` : '');
+
+  $: finalClass = cn(
+    variantClasses,
+    fontModifiers,
+    className
+  );
 </script>
 
-<svelte:element
-  this={tag}
-  class={cn(variantClasses, fontModifiers, className)}
-  style={colorStyle}
->
-  {@render children?.()}
+<!-- Render the dynamic tag with merged classes and attributes -->
+<svelte:element {tag} class={finalClass} style={colorStyle}>
+  {@render children()} <!-- Render children directly -->
 </svelte:element> 

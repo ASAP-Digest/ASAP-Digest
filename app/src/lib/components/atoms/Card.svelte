@@ -2,12 +2,17 @@
 <script>
   import { cn } from "$lib/utils";
 
+  /** @typedef {import('svelte').Snippet} Snippet */
+
   let {
     className = "",
     hover = false,
     bordered = false,
     shadow = true,
-    children = /** @type {import('svelte').Snippet | undefined} */ (undefined)
+    // children prop removed - replaced by named snippets
+    header = /** @type {Snippet | undefined} */ (undefined),
+    content = /** @type {Snippet | undefined} */ (undefined),
+    footer = /** @type {Snippet | undefined} */ (undefined)
   } = $props();
   
   // Using simple concatenation instead of complex derived computation
@@ -20,5 +25,14 @@
 </script>
 
 <div class={cn(cardClasses, className)}>
-  {@render children?.()}
+  {#if header}
+    {@render header()}
+  {/if}
+  {#if content}
+    {@render content()}
+  {/if}
+  {#if footer}
+    {@render footer()}
+  {/if}
+  <!-- <p>Card Content Placeholder</p> -->
 </div> 
