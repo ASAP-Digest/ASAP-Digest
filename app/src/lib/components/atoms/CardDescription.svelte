@@ -3,8 +3,13 @@
   import { cn } from "$lib/utils.js";
   import Typography from './Typography.svelte';
 
-  // Access props using the $props rune
-  const { class: className, ...restProps } = $props();
+  // Destructure all props, including children and textContent
+  const { 
+    class: className, 
+    children = undefined,
+    textContent = "",
+    ...restProps 
+  } = $props();
 </script>
 
 <Typography 
@@ -15,6 +20,9 @@
     className
   )}
   {...restProps}
+  {textContent}  
 >
-  {@render children?.()}
+  {#if children}
+    {@render children()} <!-- Pass children snippet down -->
+  {/if}
 </Typography> 

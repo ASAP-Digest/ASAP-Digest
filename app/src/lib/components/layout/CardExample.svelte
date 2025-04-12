@@ -17,11 +17,9 @@
   <Card hover={true}>
     {#snippet header()}
       <CardHeader>
+        <!-- Restore dynamic CardTitle -->
         <CardTitle>Card Example</CardTitle>
-        <CardDescription>This card showcases our atomic components</CardDescription>
-        <!-- <Typography variant="p" className="text-[hsl(var(--muted-foreground))] text-sm">
-          This card showcases our atomic components (Directly in Header)
-        </Typography> -->
+        <CardDescription textContent="This card showcases our atomic components" />
       </CardHeader>
     {/snippet}
 
@@ -33,10 +31,9 @@
         lazy={true} 
       />
       <CardContent>
-        <Typography variant="p">
-          This is an example of how our atomic components can be used together to create 
-          consistent UI elements following our style guide.
-        </Typography>
+        <!-- Restore Typography, using textContent prop -->
+        <Typography variant="p" textContent="This is an example of how our atomic components can be used together to create consistent UI elements following our style guide." />
+        <!-- <p>Static content placeholder for SSR debugging.</p> -->
       </CardContent>
     {/snippet}
 

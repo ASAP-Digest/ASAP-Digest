@@ -1,19 +1,24 @@
 <!-- Typography.svelte - Atomic typography component -->
 <script>
   import { cn } from "$lib/utils";
-  // import { Snippet } from 'svelte'; // Remove invalid runtime import
+  /** @typedef {import('svelte/elements').HTMLAttributes<HTMLElement>} HTMLAttributes */
+  /** @typedef {import('svelte').Snippet} Snippet */
 
   /** @typedef {'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'caption' | 'blockquote' | 'code'} TypographyVariant */
-  
-  let {
-    variant = /** @type {TypographyVariant} */ ('p'),
-    className = "",
-    bold = false,
-    italic = false,
-    color = /** @type {string|null} */ (null),
-    children = /** @type {import('svelte').Snippet | undefined} */ (undefined) // Correct JSDoc type usage 
+
+  // Destructure props, make children optional, add textContent
+  let { 
+    variant = /** @type {TypographyVariant} */ ('p'), 
+    className = "", 
+    bold = false, 
+    italic = false, 
+    color = /** @type {string | null} */ (null),
+    children = /** @type {Snippet | undefined} */ (undefined), // Optional snippet prop
+    textContent = "" // Add optional textContent prop
   } = $props();
 
+  // --- Restore Internal Logic --- 
+  
   // Map variants to HTML tags
   /** @type {Record<string, string>} */
   const variantToTag = {
@@ -39,26 +44,38 @@
   // Compute the HTML tag to render
   let tag = $derived(variantToTag[variant] || 'p');
 
-  // Compute static CSS class mappings rather than computing them at runtime
+  // Compute static CSS class mappings
   let variantClasses = $derived(variantClassMap[variant] || variantClassMap.p);
 
-  // Simplify font modifier computation
+  // Compute font modifiers
   let fontModifiers = $derived([
     bold ? "font-[var(--font-weight-bold)]" : "",
     italic ? "italic" : ""
   ].filter(Boolean).join(" "));
 
-  // Simplify color style calculation
+  // Compute color style
   let colorStyle = $derived(color ? `color: ${color};` : '');
 
-  $: finalClass = cn(
+  // Compute the final class list
+  let computedClass = $derived(cn(
     variantClasses,
     fontModifiers,
-    className
-  );
+    className 
+  ));
+
 </script>
 
-<!-- Render the dynamic tag with merged classes and attributes -->
-<svelte:element {tag} class={finalClass} style={colorStyle}>
-  {@render children()} <!-- Render children directly -->
-</svelte:element> 
+<!-- Render children snippet if provided, otherwise render textContent prop -->
+<svelte:element this={tag} class={computedClass} style={colorStyle}>
+  {#if children}
+    {@render children()}
+  {:else if textContent}
+    {textContent}
+  {/if}
+</svelte:element>
+
+<!-- Original Code:
+<svelte:element this={tag} class={computedClass} style={colorStyle}>
+  {@render children}
+</svelte:element>
+--> 
