@@ -34,6 +34,15 @@ app/src/lib/components/ui/README.md
 /docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
 class-environment-config.php
 
+# Playwright
+node_modules/
+app/tests/
+app/tests-examples/
+app/test-results/
+app/playwright-report/
+app/blob-report/
+app/playwright/.cache/
+
 # ignore everything in the "wp-content" directory, except:
 # mu-plugins, plugins, and themes directories
 
