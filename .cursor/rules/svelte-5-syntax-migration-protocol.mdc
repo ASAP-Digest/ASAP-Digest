@@ -1,9 +1,11 @@
 ---
 description: 
-globs: app/src/routes/**/*.svelte, app/src/lib/components/**/*.svelte, app/src/lib/components/ui/**/*.svelte, app/src/lib/components/guards/**/*.svelte, app/src/lib/components/widgets/**/*.svelte, app/src/lib/components/layouts/**/*.svelte, app/src/routes/(auth)/**/*.svelte, app/src/routes/(protected)/**/*.svelte, app/src/routes/api/**/*.svelte, app/src/routes/billing/**/*.svelte, app/src/routes/dashboard/**/*.svelte, app/src/routes/demo/**/*.svelte, app/src/routes/design-system/**/*.svelte, app/src/routes/digest/**/*.svelte, app/src/routes/explore/**/*.svelte, app/src/routes/notifications/**/*.svelte, app/src/routes/plans/**/*.svelte, app/src/routes/profile/**/*.svelte, app/src/routes/settings/**/*.svelte, app/src/routes/today/**/*.svelte, app/src/lib/components/shadcn/**/*.svelte
-alwaysApply: false
+globs: 
+alwaysApply: true
 ---
-# Svelte 5 Syntax Migration Protocol with Type Definition Integration (SSMP+TDM)
+# Svelte 5 Syntax Migration Protocol with Type Definition Integration
+
+*(Self-correction: Added checks for prop/snippet passthrough)*
 
 ## 1. Pre-Migration Type Analysis
 ```typescript
@@ -26,25 +28,47 @@ declare global {
  * @typedef {Object} ComponentProps
  * @property {string} title - The component title
  * @property {(event: MouseEvent) => void} onClick - Click handler
+ * @property {import('svelte').Snippet | undefined} [children] - Optional content snippet
  */
 
 // INCORRECT - Old Svelte 4 style
 export let title;
+export let onClick;
 
 // CORRECT - Svelte 5 with JSDoc types
 /** @type {ComponentProps} */
-const props = $props();
+const { title, onClick, children } = $props();
 ```
 
 ### 2.2 Slot Migration
 ```javascript
 // INCORRECT - Old slot syntax
 <slot name="header" />
+<slot /> <!-- Default slot -->
 
 // CORRECT - New render syntax with JSDoc types
-/** @type {import('./types').HeaderProps} */
-const headerProps = $props();
-{@render headerProps.children()}
+/**
+ * @typedef {import('svelte').Snippet<[ItemType]>} RowSnippet
+ * @typedef {import('svelte').Snippet} ChildrenSnippet
+ */
+const {
+    header: headerSnippet, // Assuming header is passed as a named prop
+    children = undefined,  // Default children snippet
+    /** @type {RowSnippet} */ row // Example typed snippet prop
+} = $props();
+
+// Render named snippet prop
+{#if headerSnippet}
+    {@render headerSnippet()}
+{/if}
+
+// Render default children snippet
+{#if children}
+    {@render children()}
+{/if}
+
+// Render snippet prop with arguments
+{@render row(item)}
 ```
 
 ## 3. Type Definition Requirements
@@ -72,10 +96,11 @@ declare global {
  * @property {string} variant - Button variant
  * @property {string} [size] - Optional size
  * @property {() => void} onClick - Click handler
+ * @property {import('svelte').Snippet | undefined} [children] - Optional content
  */
 
 /** @type {ButtonProps} */
-const buttonProps = $props();
+const { variant, size, onClick, children } = $props();
 ```
 
 ## 4. Implementation Checklist
@@ -84,11 +109,12 @@ const buttonProps = $props();
 For each component:
 [ ] 1. Add JSDoc types to app.d.ts if global
 [ ] 2. Add local types via JSDoc if component-specific
-[ ] 3. Update props to use $props() with types
-[ ] 4. Migrate slots to {@render} with types
-[ ] 5. Update parent components
-[ ] 6. Run type checking
-[ ] 7. Update documentation
+[ ] 3. Update props to use $props() with types (destructure preferred)
+[ ] 4. Migrate slots to {@render snippetNameOrChildren()}
+[ ] 5. **Verify Prop/Snippet Passthrough:** Ensure wrapper components correctly pass props (esp. `children` or alternatives) to underlying components.
+[ ] 6. Update parent components using the migrated component
+[ ] 7. Run type checking (e.g., `pnpm check`)
+[ ] 8. Update relevant documentation
 ```
 
 ## 5. Error Prevention Rules
@@ -97,11 +123,13 @@ For each component:
 1. NEVER use TypeScript syntax in .js files
 2. ALWAYS use JSDoc for type definitions in .js files
 3. ALWAYS define shared types in app.d.ts
-4. NEVER mix slot and render syntax
-5. ALWAYS use $props() for prop access
-6. ALWAYS use {@render} for child content
-7. ALWAYS update parent components together
-8. ALWAYS run full test suite after changes
+4. NEVER mix slot and render snippet syntax within the same component usage
+5. ALWAYS use $props() for prop access in Svelte 5 components
+6. ALWAYS use {@render snippetOrChildren()} for rendering passed snippets/content
+7. **ALWAYS verify content prop (`children`, `textContent`, etc.) passthrough when creating/refactoring wrapper components.**
+8. ALWAYS update parent components when child prop/snippet signatures change
+9. ALWAYS run full test suite after changes
+10. BE AWARE of potential SSR issues when rendering components accepting `children` snippets within nested named snippets passed through intermediate components; consider explicit content props (like `textContent`) as a workaround if necessary.
 ```
 
 ## 6. Type Location Rules
@@ -118,10 +146,11 @@ declare global {
 
 ### 6.2 Local Types
 ```javascript
-// In component .js files ONLY
+// In component .js/.svelte files ONLY
 /**
- * @typedef {Object} LocalComponent
+ * @typedef {Object} LocalComponentProps
  * @property {string} prop - Description
+ * @property {import('svelte').Snippet} children - Content snippet
  */
 ```
 
@@ -130,7 +159,9 @@ declare global {
 ### 7.1 Global Type Documentation
 ```typescript
 /**
- * @description Component base interface
+ * @description Component base interface defining common optional attributes.
+ * @property {string} [class] - Optional CSS class string.
+ * @property {unknown} [key: string] - Allows other attributes.
  * @since 1.0.0
  */
 interface ComponentBase {
@@ -142,10 +173,11 @@ interface ComponentBase {
 ### 7.2 Local Type Documentation
 ```javascript
 /**
- * @typedef {Object} ComponentProps
- * @property {string} title - The component title
- * @property {boolean} [isActive] - Optional active state
- * @property {(event: MouseEvent) => void} onClick - Click handler
+ * @typedef {Object} ComponentProps Specific props for MyComponent.
+ * @property {string} title - The component title (required).
+ * @property {boolean} [isActive=false] - Optional active state, defaults to false.
+ * @property {(event: MouseEvent) => void} onClick - Click handler (required).
+ * @property {import('svelte').Snippet | undefined} [children] - Optional content snippet.
  * @since 1.0.0
  */
 ```
@@ -154,31 +186,32 @@ interface ComponentBase {
 
 ### 8.1 Pre-migration Check
 ```plaintext
-1. Scan for existing TypeScript files
-2. Document all component props
-3. Document all slot usage
-4. Create type migration plan
-5. Update app.d.ts with shared types
+1. Scan for existing TypeScript files (`.ts`, `.tsx`) - Should be none for application logic.
+2. Document all component props (`export let`) for each component being migrated.
+3. Document all slot usage (`<slot>`, `$$slots`) for each component.
+4. Create type migration plan (identify global vs local types).
+5. Update app.d.ts with necessary shared/global types.
 ```
 
 ### 8.2 Migration Steps
 ```plaintext
-1. Convert props to $props() with types
-2. Convert slots to {@render}
-3. Update parent components
-4. Add missing types
-5. Run type checking
-6. Test components
-7. Update documentation
+1. Convert props (`export let`) to use a single destructured `$props()` call with JSDoc types.
+2. Convert default slots (`<slot>`) to use `{@render children()}` (ensure `children` is in `$props`).
+3. Convert named slots (`<slot name="xyz">`) to require a corresponding named snippet prop (e.g., `xyzSnippet`) passed via `$props()` and render with `{@render xyzSnippet()}`.
+4. Update parent components passing content/slots to use the new snippet prop syntax.
+5. Add missing JSDoc types (local or global).
+6. Run type checking (`pnpm check`).
+7. Test components visually and functionally.
+8. Update component documentation (props, snippets).
 ```
 
 ### 8.3 Post-migration Verification
 ```plaintext
-1. Verify no TypeScript syntax in .js
-2. Verify all props use $props()
-3. Verify all slots use {@render}
-4. Verify all types are documented
-5. Verify tests pass
-6. Verify build succeeds
+1. Verify no TypeScript syntax remains in migrated `.js` or `.svelte` files.
+2. Verify all props access uses the destructured `const { ... } = $props();` pattern.
+3. Verify all slot rendering uses `{@render ...()}` syntax.
+4. Verify prop/snippet passthrough in wrapper components.
+5. Verify all JSDoc types are present and documented.
+6. Verify tests pass.
+7. Verify build succeeds (`pnpm build`).
 ```
-

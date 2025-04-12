@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules
+# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules v1.1
+
+*(Self-correction: Added Component Composition Rule)*
 
 **Note:** This document provides SvelteKit/Shadcn/Tailwind integration specifics. For core visual styling rules (colors, typography, spacing, motion, states), refer PRIMARILY to `golden-ratio-design-system-protocol.mdc`. This protocol MUST NOT contradict the Golden Ratio system.
 
@@ -30,29 +32,47 @@ alwaysApply: true
 3.  **Svelte 5 Specifics (MUST ADHERE):**
     *   Use `$state` and `$derived` for reactivity. Replace `let value` with `let value = $state(initialValue)`.
     *   Use `onclick={handler}` event syntax.
-    *   Use `let` directly for props (Runes mode). Do NOT use `export let`.
+    *   Use `let` directly for props (Runes mode). Do NOT use `export let`. Use `$props()` to access props.
     *   Use `:global()` selectors carefully for CSS targeting elements outside the component scope.
+    *   Render snippets using the function call syntax: `{@render children()}` or `{@render children?.()}` for optional snippets.
 
 4.  **SvelteKit Specifics (MUST ADHERE):**
     *   Import framework functions/stores from designated modules (`$app/navigation`, `$app/stores`, `$app/environment`), not directly from `@sveltejs/kit`.
-        ````javascript
+````javascript
         import { goto } from '$app/navigation';
         import { page } from '$app/stores';
         import { browser } from '$app/environment';
-        ````
+````
     *   Avoid deprecated functions like `invalidateAll`. Use `goto(window.location.href, { invalidateAll: true })` for broad invalidation.
 
 5.  **Shadcn-Svelte Specifics (MUST ADHERE):**
     *   Import individual components directly from their `.svelte` files, not index files.
-        ````javascript
+````javascript
         // CORRECT
         import Root from '$lib/components/ui/sidebar/sidebar.svelte';
         // INCORRECT
         // import { Root } from '$lib/components/ui/sidebar';
-        ````
+````
     *   When adding new Shadcn components, identify icons used within them. Grep the component source, find icon imports (likely direct `lucide-svelte` initially), and ensure those icons are exported via `$lib/utils/lucide-compat.js` per `icon-management.mdc`. Update the component to import icons from `lucide-compat.js`.
 
 6.  **General Code Standards (MUST ADHERE):**
     *   Add explicit JSDoc type annotations for functions/parameters. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
     *   Add `list-none` class explicitly to `<ul>` and `<li>` elements.
     *   Follow formatting rules enforced by Prettier/ESLint setup (see `tooling-setup-guide.mdc`).
+    *   **Component Composition & Prop Passthrough:** When creating wrapper components (e.g., components in `$lib/components/atoms` that utilize components from `$lib/components/ui`), ensure that all relevant props, **especially the `children` snippet or alternative content props (like `textContent`)**, are correctly passed down from the wrapper to the underlying component. Failure to pass down content props can lead to unexpected rendering issues or SSR errors like `ReferenceError: children is not defined` in the underlying component.
+
+````svelte
+        <!-- Example: atoms/Wrapper.svelte using ui/Underlying.svelte -->
+        <script>
+          import Underlying from '$lib/components/ui/Underlying.svelte';
+          // Receive children and textContent
+          let { children, textContent = "", ...rest } = $props(); // Ensure defaults if optional
+        </script>
+
+        <Underlying {...rest} {textContent}> {/* Pass textContent down */}
+          {#if children}
+            {@render children()} {/* Pass children snippet down */}
+          {/if}
+        </Underlying>
+````
+    *   **(Optional SSR Note):** Be aware that rendering components accepting `children` snippets inside nested named snippets (`{#snippet name()}`) passed through intermediate components can sometimes cause SSR errors (`ReferenceError: children is not defined`) in Svelte 5 Runes, even if components handle optional children correctly. If this occurs, consider using an explicit prop (like `textContent`) for the content instead of the `children` snippet as a workaround for that specific usage.
