@@ -155,8 +155,9 @@ function formatUserReport(reportData, formattedReportTime) { /* ... formatting l
 *(Self-correction: Incorporated suggestions, using Markdown tables, clearer priority, detailed context, and consistent timestamp format)*
 The user-facing output MUST follow this structure:
 
+````markdown
 ---
-## **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
+# **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
 ---
 ### **`✅ Recently Completed Tasks (Last 72h):`**
 - Logic:
@@ -195,6 +196,7 @@ The user-facing output MUST follow this structure:
   6.  **Pending (`⏳`):** Find the first task marked `⏳` in `ROADMAP_TASKS.md`. Reason: "Next Pending".
 - Format: `- [Emoji] **[Task Name]** (Reason: [Determined Reason from Hierarchy Logic]. [Include Error details if applicable])`
 
+
 ### **`⏳ Upcoming Tasks (After Priority):`**
 - Logic:
   - Find the task identified as the current priority.
@@ -220,6 +222,7 @@ The user-facing output MUST follow this structure:
   - Determine its immediate parent subtask from the structure in `ROADMAP_TASKS.md` or `ASAP_DIGEST_ROADMAP.md`.
 - Format: `Currently working within: [Parent Subtask Name] > **[Priority Task Name]**`
 ---
+````
 
 ## 8. Error Prevention and Handling
 ````text
