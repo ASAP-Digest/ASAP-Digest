@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Status Check Protocol (Project Status Report) v2.1
+# Status Check Protocol (Project Status Report) v2.2
 
 ## 1. Protocol Restrictions
 ````markdown
@@ -20,11 +20,11 @@ B. Entity Creation Limits
 ````
 
 ## 2. Activation Methods
-````
+````text
 A. Primary Triggers
 - Command or alias "SC".
 - Integration: Can be called by BWS/EWS protocols as part of their flow.
-- Context: Used in WSMP (Work Session Management Protocol) for state assessment.
+- Context: Used in WSMP (Work Session Management Protocol v2.5+) for state assessment.
 
 B. Secondary Triggers
 - Pre-session validation (if integrated into BWS).
@@ -33,7 +33,7 @@ B. Secondary Triggers
 ````
 
 ## 3. Protocol Chain and Command Flow
-````
+````text
 1. Status Check ("SC")
    - READ-ONLY operation regarding project files.
    - Creates `StatusCheck` and `StatusReport` entities for logging.
@@ -55,30 +55,35 @@ B. Secondary Triggers
 ````
 
 ## 4. Protocol Integration Layer
-````
+````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. Status Check Protocol                │
-│ 2. Work Session Management Protocol     │
-│ 3. Memory Maintenance Protocol          │
+│ 1. Status Check Protocol (This)         │
+│ 2. Work Session Management Proto (v2.5+)│
+│ 3. Server Memory Rules (v2.0+)          │
 │ 4. Task Tracking Protocol               │
 │ 5. Software Development Meta Protocol   │
 │ 6. Rule Execution Protocol              │
+│ 7. Format Time Protocol                 │ // For timestamp consistency
+│ 8. Cross-Protocol Comms & Verification   │
+│ 9. Audit Trail System                   │
 └─────────────────────────────────────────┘
 ````
+*(Self-correction: Updated WSMP version, added Format Time Protocol, refined layers)*
 
 ## 5. Status Check Implementation (Conceptual Steps)
 ````javascript
 async function executeProjectStatusCheck() {
     // 1. Initialize timestamp for report and logging
     const reportTimestamp = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
-    const formattedTime = await mcp_mcp_datetime_get_datetime({ format: "log_compact" }); // Or use FT logic
+    const formattedReportTime = await mcp_mcp_datetime_get_datetime({ format: "MM.DD.YY | HH:MM AM/PM TimeZone" }); // Use Format Time protocol
+    const logTimestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
 
     // 2. Create status check entity in Server Memory
     await mcp_Server_Memory_create_entities({
         entities: [{
-            name: `StatusCheck_${formattedTime}`,
+            name: `StatusCheck_${logTimestamp}`,
             entityType: "StatusCheck",
             observations: [
                 `Project status check initiated at ${reportTimestamp}`,
@@ -88,36 +93,36 @@ async function executeProjectStatusCheck() {
     });
 
     // 3. Read Roadmap Files
-    // Use read_file tool for 'docs/ROADMAP_TASKS.md'
-    // Use read_file tool for 'docs/ASAP_DIGEST_ROADMAP.md' (or relevant LLM-split version)
-    // Handle potential large file reads if necessary.
     const roadmapTasksContent = await readFileContents('docs/ROADMAP_TASKS.md');
     const mainRoadmapContent = await readFileContents('docs/ASAP_DIGEST_ROADMAP.md'); // Or LLM version
 
-    // 4. Check Recent Server Memory (Last 24h)
-    // Calculate timestamp for 24 hours ago
-    // Use mcp_Server_Memory_search_nodes for TaskCompletion entities (by type and potentially observation content/timestamp)
-    // Use mcp_Server_Memory_search_nodes for active Error entities
-    const recentCompletions = await searchRecentMemory('TaskCompletion', 24);
-    const activeErrors = await searchRecentMemory('Error', 0); // Search all active errors
+    // 4. Check Recent Server Memory (e.g., Last 72h)
+    // Calculate timestamp for 72 hours ago
+    const recentCompletions = await searchRecentMemory('TaskCompletion', 72); // Updated lookback
+    const activeErrors = await searchRecentMemory('Error', 0, ['status=active']); // Filter for active errors
 
     // 5. Parse and Analyze Data
-    // Parse roadmapTasksContent to get all tasks with statuses (✅, 🔄, ⏳, ❌, 🔬, 🧪) and timestamps.
+    // Parse roadmapTasksContent to get all tasks with statuses and timestamps.
+    // Parse mainRoadmapContent to understand task hierarchy for detailed context.
     // Identify sections based on parsing results and rules defined in Section 7.
     const reportData = parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp);
 
     // 6. Generate Structured Report (User Facing)
-    const userReport = formatUserReport(reportData, reportTimestamp);
+    const userReport = formatUserReport(reportData, formattedReportTime); // Use formatted time
 
     // 7. Create status report entity in Server Memory
     await mcp_Server_Memory_create_entities({
         entities: [{
-            name: `StatusReport_${formattedTime}`,
+            name: `StatusReport_${logTimestamp}`,
             entityType: "StatusReport",
             observations: [
                 `Report generated at ${reportTimestamp}`,
-                `Summary: ${reportData.summary}`, // Store a brief summary or the full report text
-                // Add key findings like priority task ID, number of blocked tasks etc.
+                `Summary: ${reportData.summary}`, // Store a brief summary
+                `PriorityTask: ${reportData.priorityTask?.id}`,
+                `PriorityReason: ${reportData.priorityTask?.reason}`,
+                `BlockedTasksCount: ${reportData.blockedTasks?.length || 0}`,
+                `PendingTestingCount: ${reportData.pendingTestingTasks?.length || 0}`,
+                `ActiveTestingCount: ${reportData.activeTestingTasks?.length || 0}`,
             ]
         }]
     });
@@ -128,81 +133,97 @@ async function executeProjectStatusCheck() {
 
 // Helper function placeholders (implementation requires specific parsing logic)
 async function readFileContents(filePath) { /* ... use read_file ... */ }
-async function searchRecentMemory(entityType, hoursAgo) { /* ... use mcp_Server_Memory_search_nodes ... */ }
+async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes with time filtering and provided filters ... */ }
 function parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp) { /* ... parsing logic ... */ }
-function formatUserReport(reportData, reportTimestamp) { /* ... formatting logic ... */ }
-
+function formatUserReport(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc. ... */ }
 ````
-*(Note: The JavaScript is conceptual to illustrate the flow involving tool calls and logic)*
+*(Note: The JavaScript is conceptual to illustrate the flow)*
 
 ## 6. Information Sources Hierarchy
-````
+````text
 1.  **Primary:** `docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
 2.  **Secondary:**
-    -   Server Memory: For `TaskCompletion` entities (last 24h) and active `Error` entities.
-    -   `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For overall context (Major Task Group).
-    -   Current Timestamp (`mcp_mcp_datetime_get_datetime` or "FT"): For defining the "recent" window.
+    -   Server Memory:
+        -   `TaskCompletion` entities (last 72h)
+        -   Active `Error` entities (for priority determination and details)
+        -   Potentially `Task` entities for state entry timestamps if not in roadmap.
+    -   `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For overall context and task hierarchy (Major Task Group, Parent Subtask).
+    -   Current Timestamp (`format-time.mdc`): For defining the "recent" window and report time.
 ````
 
 ## 7. Status Report Structure & Logic
-*(Self-correction: Added Testing Pipeline section and updated Priority Logic for v2.1)*
+*(Self-correction: Incorporated suggestions, using Markdown tables, clearer priority, detailed context, and consistent timestamp format)*
 The user-facing output MUST follow this structure:
 
 ---
-## **`📅 Status Check Report (Timestamp)`**
-*(Timestamp format: "YYYY-MM-DD HH:MM:SS" or similar)*
+## **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
 ---
-### **`✅ Recently Completed Tasks (Last 24h):`**
+### **`✅ Recently Completed Tasks (Last 72h):`**
 - Logic:
-  - Get current time (T). Calculate T minus 24 hours (T-24).
-  - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-24 and T.
-  - Find `TaskCompletion` entities in Server Memory with a timestamp between T-24 and T.
+  - Get current time (T). Calculate T minus 72 hours (T-72).
+  - Find tasks marked ✅ in `ROADMAP_TASKS.md` with a timestamp between T-72 and T.
+  - Find `TaskCompletion` entities in Server Memory with a timestamp between T-72 and T.
   - Combine and deduplicate lists, sort by timestamp (most recent first).
-  - Display the top 3-5 entries. If none, state "*No tasks completed in the last 24 hours.*"
-- Format: `- Task Name (Completion Timestamp)`
+  - Display all found entries. If none, state "*No tasks completed in the last 72 hours.*"
+- Format: `- Task Name (MM.DD.YY | HH:MM AM/PM TimeZone)`
 
 ### **`🧪 Testing Pipeline:`**
 - Logic:
-  - Find all tasks marked `🔬` (Pending Testing) in `ROADMAP_TASKS.md`.
-  - Find all tasks marked `🧪` (Testing) in `ROADMAP_TASKS.md`.
-  - List them separately. If none in a category, state "*None*".
+  - Find all tasks marked `🔬` (Pending Testing) in `ROADMAP_TASKS.md`. Extract state entry timestamp if available.
+  - Find all tasks marked `🧪` (Testing) in `ROADMAP_TASKS.md`. Extract state entry timestamp if available.
+  - Format using Markdown tables. If a section is empty, state "*None*".
 - Format:
-  - `🔬 Pending User Initiation:`
-  -   `- [Task Name] (Note if marked **PRIORITY**)`
-  - `🧪 Actively Testing:`
-  -   `- [Task Name]`
+  `🔬 Pending User Initiation:`
+  | Task Name | Entered Queue | Priority? |
+  |---|---|---|
+  | [Task Name] | [MM.DD.YY | HH:MM AM/PM TimeZone] | [Yes/No] |
+  | ... | ... | ... |
+
+  `🧪 Actively Testing:`
+  | Task Name | Started Testing |
+  |---|---|
+  | [Task Name] | [MM.DD.YY | HH:MM AM/PM TimeZone] |
+  | ... | ... |
 
 ### **`🎯 Current / Operational Priority:`**
 - Logic (Hierarchical):
-  1. Find the first task marked `❌` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Blocked Task".
-  2. If no blockers, search Server Memory for active `Error` entities. If found, the *first* error encountered is the priority. Reason: "Active Error". Include error details if possible.
-  3. If no blockers or errors, find the first task marked `🔬` in `ROADMAP_TASKS.md` (especially if marked `**PRIORITY:**`). If found, this is the priority. Reason: "Ready for Testing".
-  4. If none of the above, find the first task marked `🧪` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Active Testing".
-  5. If none of the above, find the first task marked `🔄` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next In Progress".
-  6. If none of the above, find the first task marked `⏳` in `ROADMAP_TASKS.md`. If found, this is the priority. Reason: "Next Pending".
-- Format: `- [Emoji] Task Name (Reason for Priority)`
+  1.  **Blocked (`❌`):** Find the first task marked `❌` in `ROADMAP_TASKS.md`. Reason: "Blocked Task".
+  2.  **Error (`Error` Entity):** Search Server Memory for active `Error` entities. If found, the *first* error is priority. Reason: "Active Error". Include error details.
+  3.  **Pending Test (`🔬`):** Find the first task marked `🔬` in `ROADMAP_TASKS.md`. Reason: "Ready for User Testing Initiation".
+  4.  **Active Test (`🧪`):** Find the first task marked `🧪` in `ROADMAP_TASKS.md`. Reason: "Active Testing Phase".
+  5.  **In Progress (`🔄`):** Find the first task marked `🔄` in `ROADMAP_TASKS.md`. Reason: "Next In Progress".
+  6.  **Pending (`⏳`):** Find the first task marked `⏳` in `ROADMAP_TASKS.md`. Reason: "Next Pending".
+- Format: `- [Emoji] **[Task Name]** (Reason: [Determined Reason from Hierarchy Logic]. [Include Error details if applicable])`
 
-### **`⏳ Upcoming Tasks:`**
+### **`⏳ Upcoming Tasks (After Priority):`**
 - Logic:
-  - Find the task identified as the current priority in the previous step within `ROADMAP_TASKS.md`.
-  - List the next 3 tasks that appear *after* the priority task and are marked `⏳`.
-- Format: `- Task Name`
+  - Find the task identified as the current priority.
+  - List the next 3-5 tasks that appear *after* the priority task in `ROADMAP_TASKS.md` and are marked `⏳`.
+  - Format using Markdown table.
+- Format:
+  | Task Name |
+  |---|
+  | [Task Name] |
+  | ... |
 
 ### **`❌ Blocked Tasks:`**
-- Logic: List all tasks marked `❌` in `ROADMAP_TASKS.md`. If none, state "*None*".
-- Format: `- Task Name`
+- Logic: List all tasks marked `❌` in `ROADMAP_TASKS.md`. Format using Markdown table. If none, state "*None*".
+- Format:
+  | Task Name |
+  |---|
+  | [Task Name] |
+  | ... |
 
 ### **`⚙️ Overall Context:`**
 - Logic:
   - Identify the current priority task.
-  - Find which major Task group (e.g., "Task 3: Develop Core Application Screens") from `ASAP_DIGEST_ROADMAP.md` (or LLM versions) this task belongs to.
-- Format: `Currently working within: [Major Task Group Title]`
+  - Determine its immediate parent subtask from the structure in `ROADMAP_TASKS.md` or `ASAP_DIGEST_ROADMAP.md`.
+- Format: `Currently working within: [Parent Subtask Name] > **[Priority Task Name]**`
 ---
 
 ## 8. Error Prevention and Handling
-````
+````text
 -   Gracefully handle errors during file reading (`read_file`) or memory searches (`mcp_Server_Memory_search_nodes`).
 -   If `ROADMAP_TASKS.md` cannot be read or parsed, the report should indicate this failure clearly.
 -   Log any errors encountered during the status check itself into a relevant `Error` entity in Server Memory if possible, or include in the `StatusReport` entity's observations.
 ````
-
