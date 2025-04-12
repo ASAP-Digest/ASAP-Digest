@@ -1,0 +1,167 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Golden Ratio System Protocol Apply (GRSPA) v1.0
+
+## 1. Purpose
+
+This protocol defines the systematic procedure for applying the rules specified in `golden-ratio-design-system-protocol.mdc` (GRDSP) across a defined scope of project files, typically `.svelte` components. It aims to automate the process of bringing existing or new code into compliance with the core visual standards, leveraging LLM capabilities for analysis and refactoring, while integrating with existing verification and state management protocols.
+
+## 2. Protocol Integration Layer
+
+This protocol interacts with and depends upon numerous other system protocols:
+
+````text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // For executing *this* protocol
+│ 3. Golden Ratio Design System (GRDSP)   │ // The rules to apply/verify
+│ 4. Strict Visual Enforcement Protocol   │ // Source of verification logic/regex
+│ 5. Visual Style Enforcement Protocol    │ // Additional verification checks
+│ 6. Server Memory Rules (v2.0+)          │ // GRSPA_Session state, logging
+│ 7. Task Tracking Protocol               │ // Optional: Link GRSPA to a Task
+│ 8. Cross-Protocol Comms & Verify(v2.1+) │ // State validation (L1/L2)
+│ 9. Universal Error Resolution (UERP)    │ // Handling critical failures
+│ 10. Audit Trail System                  │ // Logging key GRSPA events
+│ 11. Tooling Setup Guide                 │ // Post-edit linting/formatting
+│ 12. Rule Formatting Protocol            │ // This file's formatting standard
+│ 13. Work Session Management Proto       │ // Potential context source/trigger
+└─────────────────────────────────────────┘
+````
+
+## 3. Activation
+
+*   **Primary Trigger:** Alias `GRSPA`.
+*   **Optional Parameters:**
+    *   `scope`: Glob pattern specifying target files/directories (e.g., `"app/src/components/ui/**/*.svelte"`). Defaults to all `.svelte` files within relevant directories defined in `.cursorrules` (e.g., `app/**/*.svelte`).
+    *   `mode`: Specifies execution behavior.
+        *   `dry-run` (Default): Analyzes files, identifies violations, logs proposed changes, but makes NO edits.
+        *   `interactive`: Analyzes files, proposes changes, requires user confirmation for each file or batch, prompts for resolving ambiguities.
+        *   `auto-apply`: Analyzes files, automatically applies unambiguous changes. Logs ambiguities and skips ambiguous changes or files with errors. **Use with extreme caution.**
+    *   `taskID`: Optional ID of a `Task` entity this GRSPA run is associated with.
+
+## 4. Scope Definition
+
+1.  Determine target file patterns based on the `scope` parameter or `.cursorrules` defaults.
+2.  Identify relevant file extensions (primarily `.svelte`).
+3.  Use appropriate tools (`list_dir`, `run_terminal_cmd find ...`) to generate a definitive list of absolute file paths matching the scope. Store this list.
+
+## 5. Initialization & State Management
+
+1.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
+2.  **Entity Creation:** Create a `GRSPA_Session` entity in Server Memory.
+    *   **Name:** `GRSPA_Session_[Timestamp(log_compact)]`
+    *   **entityType:** `GRSPA_Session`
+    *   **Fields/Observations:**
+        *   `startTime`: Current timestamp.
+        *   `targetScope`: The determined scope pattern(s).
+        *   `mode`: Execution mode (`dry-run`, `interactive`, `auto-apply`).
+        *   `status`: `INITIALIZING`.
+        *   `totalFiles`: Count of files identified in Scope Definition.
+        *   `processedFiles`: List of files successfully processed (analyzed, potentially edited & verified). Initially empty.
+        *   `compliantFiles`: List of files found compliant without edits. Initially empty.
+        *   `editedFiles`: List of files edited and verified. Initially empty.
+        *   `failedFiles`: List of files where errors occurred (read, edit, verification). Initially empty.
+        *   `skippedFiles`: List of files skipped (e.g., due to unresolved ambiguity in `auto-apply` mode). Initially empty.
+        *   `pendingFiles`: Full list of files from Scope Definition. Initially populated.
+        *   `ambiguities`: List of logged ambiguities needing resolution. Initially empty.
+3.  **Task Linking:** If `taskID` parameter provided, create a `relatedTo` relation between `GRSPA_Session` and the `Task` entity.
+4.  **Update Status:** Change `GRSPA_Session` status to `RUNNING`.
+5.  **Audit:** Record `GRSPA_SESSION_START` event in Audit Trail, including mode and scope.
+6.  **Feedback:** Inform user GRSPA session started in `{mode}` mode, targeting `{totalFiles}` files.
+
+## 6. File Iteration & Processing Loop
+
+Iterate through each `filePath` in the `pendingFiles` list stored in the `GRSPA_Session` entity. For each file:
+
+1.  **Update State:** Remove `filePath` from `pendingFiles`. Log start of processing for `filePath` in session observations.
+2.  **Read File:**
+    *   Use `read_file` tool to get file content.
+    *   **Contingency (Read Error):** If read fails, log error to session, add `filePath` to `failedFiles`, record `GRSPA_FILE_READ_ERROR` in Audit Trail, trigger UERP (optional, might just log and continue), proceed to next file.
+3.  **Analyze for Violations:**
+    *   Apply checks based on GRDSP and `strict-visual-enforcement-protocol.mdc`. Use `grep_search` or internal analysis.
+    *   Identify all GRDSP violations (lines, violation type, non-compliant value).
+    *   **If No Violations:** Add `filePath` to `compliantFiles`, log compliance, record `GRSPA_FILE_COMPLIANT` audit event, proceed to next file.
+4.  **Generate Proposed Edits:**
+    *   For each violation, determine the required GRDSP-compliant value/syntax.
+    *   **Mapping Logic (Crucial & Complex):**
+        *   **Colors:** Use a predefined mapping (e.g., common Tailwind `bg-red-500` -> `bg-[hsl(var(--functional-error))]`). Flag unknown colors as ambiguities.
+        *   **Spacing:** Calculate pixel value, find nearest 8px/4px multiple, map to corresponding `--spacing-N` variable or utility class. Log the conversion (e.g., `p-[17px] -> p-2 (16px)`).
+        *   **Typography/Radius/Shadows:** Replace non-variable classes/values with corresponding GRDSP `var(--...)` syntax.
+        *   **Icons:** Generate edits to replace direct imports/usage with `Icon` wrapper and `lucide-compat.js` imports.
+    *   Compile all proposed changes into a structured format (e.g., list of { line, violation, proposedEdit }).
+5.  **Handle Ambiguities & User Interaction (`interactive` mode):**
+    *   Identify ambiguities (e.g., unmappable colors, conflicting rules). Log them in `GRSPA_Session.ambiguities`.
+    *   **If `mode = interactive`:**
+        *   Pause execution.
+        *   Present violations and proposed unambiguous edits for `filePath`.
+        *   Present ambiguities separately, requesting user input/clarification (e.g., "Which variable should `bg-purple-700` map to?").
+        *   Request confirmation to apply proposed edits (Yes/No/Skip File/Abort Session).
+        *   Wait for user response. Log decision. If user provides mapping, update proposed edits. If skipping file, add to `skippedFiles` and proceed to next file. If aborting, go to Section 8 (Completion).
+    *   **If `mode = auto-apply`:** Log ambiguities. Skip applying ambiguous edits. Continue with unambiguous ones. If *any* ambiguity exists, consider adding file to `skippedFiles` instead of applying partial changes, depending on desired strictness.
+    *   **If `mode = dry-run`:** Log violations, proposed edits, and ambiguities. Do not proceed to editing/verification. Add file to `processedFiles`. Proceed to next file.
+6.  **Apply Edits (if mode=`interactive` (approved) or `auto-apply`):**
+    *   Construct `edit_file` tool call payload based on approved/unambiguous edits.
+    *   Execute `edit_file`.
+    *   **Contingency (Edit Failure):** If `edit_file` fails or diff is unexpected (consider `reapply` once), log error, add `filePath` to `failedFiles`, record `GRSPA_FILE_EDIT_ERROR`, trigger UERP, proceed to next file (or halt session based on severity).
+7.  **Post-Edit Linting/Formatting (if edits applied):**
+    *   Run configured linters/formatters (Prettier/ESLint via `run_terminal_cmd pnpm run format:file -- {filePath}`) on the modified file.
+    *   **Contingency (Format Error):** If formatting fails, log error, add `filePath` to `failedFiles` (potentially), record `GRSPA_FILE_FORMAT_ERROR`, proceed (or halt).
+8.  **Verification (Post-Edit / Post-Format):**
+    *   Re-read the modified file content (`read_file`).
+    *   Re-run GRDSP analysis checks (Step 3 logic) on the *new* content.
+    *   **Contingency (Verification Failure):** If violations persist, log error, add `filePath` to `failedFiles` (treat as failure), record `GRSPA_FILE_VERIFY_FAIL`, trigger UERP, proceed to next file (or halt).
+9.  **Update State (Success):**
+    *   If edits applied and verification passed: Add `filePath` to `editedFiles`.
+    *   Add `filePath` to `processedFiles`.
+    *   Record `GRSPA_FILE_EDIT_SUCCESS`, `GRSPA_FILE_VERIFY_PASS` audit events.
+    *   Log success details in session observations.
+10. **Loop:** Proceed to the next file in `pendingFiles`.
+
+## 7. Completion & Reporting
+
+1.  **Trigger:** Loop completes (all files processed) or session aborted by user/error.
+2.  **Timestamp:** Get current timestamp.
+3.  **Update Session Entity:**
+    *   Set `status` to `COMPLETED`, `FAILED`, or `ABORTED`.
+    *   Set `endTime` observation/field.
+    *   Ensure `processedFiles`, `compliantFiles`, `editedFiles`, `failedFiles`, `skippedFiles`, `ambiguities` lists are accurate.
+4.  **Generate Report:** Create a final summary:
+    *   Session ID, Mode, Scope, Duration.
+    *   Counts: Total, Processed, Compliant, Edited, Failed, Skipped.
+    *   List of Failed Files (with error reasons).
+    *   List of Skipped Files (with reasons).
+    *   List of Unresolved Ambiguities.
+5.  **Audit:** Record `GRSPA_SESSION_END` event.
+6.  **Feedback:** Present the final report to the user. Suggest next steps (review failures/ambiguities, run tests, commit changes).
+
+## 8. Error Handling & Recovery (UERP Integration)
+
+*   **File-Level Errors:** Errors during read, edit, format, or verification of a single file SHOULD be logged to the `GRSPA_Session`, the file added to `failedFiles`, and the process should generally continue to the next file unless a critical UERP condition is met.
+*   **Session-Level Errors:** Critical failures (e.g., tool unavailable, inability to update Server Memory, multiple consecutive file errors) MAY trigger UERP and halt the entire session.
+*   **Partial Completion:** If halted, the `GRSPA_Session` entity reflects the state (processed, pending, failed files), potentially allowing for a future run targeting only `pendingFiles` or `failedFiles`. Protocol needs enhancement for explicit resume functionality based on a session ID.
+
+## 9. Version Control Integration
+
+*   **Recommendation:** ALWAYS run on a dedicated branch (`git checkout -b feature/grspa-apply`).
+*   **Recommendation:** Run in `dry-run` mode first to review proposed changes.
+*   **Recommendation:** Use `interactive` mode for controlled application.
+*   **Staging:** This protocol does NOT automatically stage or commit changes. The user is responsible for reviewing and committing the applied edits.
+
+## 10. Performance & Batching Considerations
+
+*   **Large Projects:** Processing hundreds/thousands of files can be slow and resource-intensive.
+*   **Batching (Future Enhancement):** For very large projects, consider enhancing the protocol to process files in batches (e.g., 50 at a time), updating Server Memory state between batches. This adds complexity to state management and resumption.
+*   **Tool Efficiency:** `grep_search` is generally faster than full `read_file` + analysis for initial violation checks if patterns are precise enough.
+
+## 11. Refinement & Future Work
+
+*   The **Mapping Logic** (Section 6, Step 4) is the most critical and potentially fragile part, especially for color mapping. It may require significant iteration and refinement based on real-world usage and common non-compliant patterns found in the codebase. A dedicated mapping configuration file might be beneficial.
+*   Consider using Abstract Syntax Tree (AST) parsing for `.svelte` files instead of purely regex-based analysis for more robust violation detection and refactoring.
+*   Develop explicit session resume functionality based on a `GRSPA_Session` ID.
+*   Implement optional batch processing.
+
