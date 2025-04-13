@@ -3,12 +3,12 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Work Session Activation Protocol v2.5
+# Work Session Activation Protocol v2.7
 
-*(Self-correction: Updated version, integration points, and RWS description)*
+*(Self-correction: Updated version, integration points, and RWS description based on new testing state handling)*
 
 ## 1. Purpose
-This protocol defines the commands and procedures for initiating agent workflow (`IAW`), initiating testing (`ST`), beginning (`BWS`), and concluding (`EWS`) formal work sessions. It ensures integration with the `Status Check Protocol (v2.1+)`, the `Enhanced Work Session Management Protocol (WSMP v2.9+)`, and the `Testing & Verification Protocol v1.3+`.
+This protocol defines the commands and procedures for initiating agent workflow (`IAW`), initiating testing (`ST`), beginning (`BWS`), and concluding (`EWS`) formal work sessions. It ensures integration with the `Status Check Protocol (v2.1+)`, the `Enhanced Work Session Management Protocol (WSMP v2.10+)`, and the `Testing & Verification Protocol v1.3+`.
 
 ## 2. Protocol Integration Layer
 *(Self-correction: Updated WSMP, this protocol's version)*
@@ -19,7 +19,7 @@ This protocol defines the commands and procedures for initiating agent workflow 
 │ 1. Software Development Meta Protocol   │
 │ 2. Rule Execution Protocol              │
 │ 3. Status Check Protocol (v2.1+)        │ // Input Source for IAW/BWS
-│ 4. Enhanced Work Session Mgmt (v2.9+)   │ // Activated Protocol (Handles RWS/BWS/EWS logic) (Updated)
+│ 4. Enhanced Work Session Mgmt (v2.10+)  │ // Activated Protocol (Handles RWS/BWS/EWS logic) (Updated)
 │ 5. Memory Maintenance Protocol          │ // Entity management via WSMP
 │ 6. Testing & Verification Protocol v1.3+│ // Handles EWS TESTING/COMPLETED & ST Command
 │ 7. Cross-Protocol Comms & Verification   │
@@ -52,23 +52,23 @@ This protocol defines the commands and procedures for initiating agent workflow 
 
 ### 3.3. Resume Work Session (RWS)
 -   **Command:** `Resume Work Session` or alias `RWS`
--   **Purpose:** Resumes a previously saved (`⏸️`) session, or initiates a new session (`BWS`) based on a complex fallback logic considering errors, testing status, and task hierarchy. See `WSMP v2.9+` for detailed logic.
+-   **Purpose:** Resumes a previously saved (`⏸️`) session, or initiates a new session (`BWS`) based on a complex fallback logic considering errors, testing status, and task hierarchy. See `WSMP v2.10+` for detailed logic. It can now trigger a BWS session to continue work on tasks currently in the `TESTING` (`🧪`) state.
 -   **Parameters:**
     -   **`[saveSessionID]` (Optional):** If provided, attempts to resume the specific saved session.
-    -   **(No ID Provided):** Triggers the hierarchy-aware fallback logic in `WSMP v2.9+` (`Error` -> `⏸️` -> `🧪` (Report) -> `🔄` -> `🔬` (Report) -> `⏳` -> `❌`).
--   **WSMP v2.9+ Handling:** Defined in `work-session-management-protocol.mdc`.
+    -   **(No ID Provided):** Triggers the hierarchy-aware fallback logic in `WSMP v2.10+` (`Error` -> `⏸️` -> `🧪` (BWS) -> `🔄` -> `🔬` (Report) -> `⏳` -> `❌`).
+-   **WSMP v2.10+ Handling:** Defined in `work-session-management-protocol.mdc`.
 
 ### 3.4. Begin Work Session (BWS)
 -   **Command:** `Begin Work Session` or alias `BWS`
 -   **Purpose:** Initiates a tracked work session targeting a specific task.
 -   **Prerequisites:**
     -   MUST execute `Status Check` (`SC` v2.1+) immediately prior to `BWS`. The session will target the highest priority task identified by `SC` (unless overridden by specific RWS fallback).
--   **WSMP v2.9+ Handling:** Defined in `work-session-management-protocol.mdc`. Handles context analysis based on the preceding SC, session creation, state loading, verification, and audit logging.
+-   **WSMP v2.10+ Handling:** Defined in `work-session-management-protocol.mdc`. Handles context analysis based on the preceding SC, session creation, state loading, verification, and audit logging.
 
 ### 3.5. End Work Session (EWS)
 -   **Command:** `End Work Session` or alias `EWS`
--   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.9+`.
--   **WSMP v2.9+ Handling & Parameters:** Requires an active `WorkSession`. Accepts an optional `Reason` (`TESTING`, `COMPLETED`, `NORMAL`, `INTERRUPTED`, `FAILED`). Integrates with `Testing & Verification Protocol v1.3+` for `TESTING` and `COMPLETED` reasons.
+-   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.10+`.
+-   **WSMP v2.10+ Handling & Parameters:** Requires an active `WorkSession`. Accepts an optional `Reason` (`TESTING`, `COMPLETED`, `NORMAL`, `INTERRUPTED`, `FAILED`). Integrates with `Testing & Verification Protocol v1.3+` for `TESTING` and `COMPLETED` reasons.
 
 ## 4. Standard Workflow Example (`IAW -> RWS -> BWS`)
 ````bash
@@ -85,7 +85,7 @@ IAW
 # Step 2: User attempts to resume/start work
 RWS
 
-# --- (Agent executes WSMP v2.9+ RWS fallback logic) ---
+# --- (Agent executes WSMP v2.10+ RWS fallback logic) ---
 # (Assuming no blocking errors, paused, or testing tasks)
 # Agent: RWS Fallback: Found deepest active task: Task_DEF (🔄).
 # Agent: Initiating BWS for Task_DEF.
@@ -98,17 +98,16 @@ RWS
 ## 5. Implementation Notes
 -   This protocol primarily defines the **user-facing commands and the trigger sequence**.
 -   The detailed execution logic for `ST` resides in `Testing & Verification Protocol v1.3+`.
--   The detailed execution logic for `RWS` and `BWS` resides in `Enhanced Work Session Management Protocol v2.9+`.
+-   The detailed execution logic for `RWS` and `BWS` resides in `Enhanced Work Session Management Protocol v2.10+`.
 -   The `agent_workflow_initialized` flag is a conceptual state marker for the agent during the interaction.
 
 ## 6. Verification Checklist (for this protocol)
-*(Self-correction: Updated checks for v2.5)*
--   [ ] `IAW` command definition updated (runs SC, sets flag, waits for ST, RWS, or BWS).
+*(Self-correction: Updated checks for v2.7)*
+-   [ ] `IAW` command definition unchanged.
 -   [ ] `ST` command definition unchanged.
--   [ ] `RWS` command definition and description updated to mention fallback logic and WSMP v2.9+.
+-   [ ] `RWS` command definition and description updated to reflect new fallback behavior triggering BWS for `🧪` tasks and reference WSMP v2.10+.
 -   [ ] `BWS` command definition unchanged.
 -   [ ] `EWS` command definition unchanged.
--   [ ] Protocol integration layer lists correct protocol versions (`SC v2.1+`, `WSMP v2.9+`, `TVP v1.3+`).
+-   [ ] Protocol integration layer lists correct protocol versions (`SC v2.1+`, `WSMP v2.10+`, `TVP v1.3+`).
 -   [ ] Workflow example updated to show `IAW -> RWS`.
 -   [ ] Formatting adheres to `rule-formatting-protocol.mdc`.
-
