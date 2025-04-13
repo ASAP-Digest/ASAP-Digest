@@ -3,51 +3,55 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Testing & Verification Protocol v1.1
+# Testing & Verification Protocol v1.3
 
 ## 1. Purpose
-This protocol defines the mandatory process for verifying implemented functionality, starting automatically when the agent deems development complete, and requiring explicit user interaction to begin active testing and final approval before a task can be marked as fully completed (`✅`). It ensures quality control and alignment with user expectations.
+This protocol defines the mandatory process for verifying implemented functionality. It covers:
+1.  The automatic transition of tasks from `ACTIVE` (`🔄`) to `PENDING_TESTING` (`🔬`) when the agent deems development complete.
+2.  The user-initiated start of active testing for specific tasks (`ST [TaskID]`).
+3.  A user-initiated command (`ST` without ID) to start testing for *all* pending tasks.
+4.  The user approval/rejection flow (`AC`/`RC`) before a task can be marked as fully completed (`✅`).
 
 ## 2. Protocol Integration Layer
+*(Self-correction: Updated WSMP and WSAP versions)*
 ````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │ // Overall Guidance
 │ 2. Rule Execution Protocol              │ // Rule Application
-│ 3. Work Session Mgmt Proto (v2.0/2.4+)  │ // May log agent decision point
+│ 3. Work Session Mgmt Proto (v2.7+)      │ // Trigger for Auto-Initiation (EWS TESTING) (Updated)
 │ 4. Task Tracking Protocol               │ // Roadmap Update Logic (🔬, 🧪 states)
 │ 5. Server Memory Rules (v2.0+)          │ // Defines Verification entities
 │ 6. Cross-Protocol Comms & Verify (v2.1+)│ // Handles L5 Verification
 │ 7. UI Check Protocol                    │ // Potential tool during active testing
-│ 8. Status Check Protocol (v2.0+)        │ // Reports tasks in 🔬 & 🧪 states
+│ 8. Status Check Protocol (v2.1+)        │ // Reports tasks in 🔬 & 🧪 states
 │ 9. Audit Trail System                   │ // Records verification steps/results
+│ 10. Work Session Activation Proto v2.4+ │ // Defines ST command triggers (Updated)
 └─────────────────────────────────────────┘
 ````
-*(Self-correction: Adjusted WSMP integration description)*
 
 ## 3. Activation & Triggers
 
--   **Primary Trigger (Automatic):** Initiated **proactively by the agent** when it determines the development work for an active task (`🔄`) is complete and ready for review.
--   **User Trigger (Manual):** `Start Testing [TaskID]` or alias `ST [TaskID]` - Issued by the user to begin the active testing phase for a task currently in the Pending Testing (`🔬`) state.
--   **Context:** Requires an identified target `Task` entity.
+-   **Agent Trigger (Automatic via EWS TESTING):** Initiated by `WSMP v2.7+` when an `EWS` command includes the `TESTING` reason. Marks the associated task as `PENDING_TESTING` (`🔬`).
+-   **User Trigger (Specific Task):** `Start Testing [TaskID]` or alias `ST [TaskID]`. Issued by the user to begin active testing for a *specific* task currently in the `PENDING_TESTING` (`🔬`) state.
+-   **User Trigger (All Pending Tasks):** `Start Testing` or alias `ST` (issued *without* a `TaskID`). Must follow an `IAW` command. Initiates testing for *all* `🔬` tasks.
+-   **Context:** Requires an identified target `Task` entity (or operates on all `🔬` tasks for ID-less `ST`).
 
 ## 4. Core Actions & Sequence
 
-1.  **Auto-Initiation (Agent Triggered):**
+1.  **Auto-Initiation (Agent Triggered via EWS TESTING):**
+    -   (Handled by `WSMP v2.7+`)
     -   Agent identifies the target `Task` entity ID (currently `🔄`).
     -   Acquire current timestamp (`mcp_mcp_datetime_get_datetime`).
     -   **Verify Preconditions:** Ensure the task is currently in `ACTIVE` (`🔄`) state.
     -   **Update Task Status (Pending Testing):**
         -   Update the target `Task` entity status to `PENDING_TESTING` in Server Memory.
         -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🔬` emoji. Add an observation/note indicating it's ready for user testing.
-    -   **Entity Creation (Verification Request):** Create a new entity in Server Memory (e.g., `VerificationRequest`) linked to the `Task` entity. Include:
-        -   Timestamp initiated by agent.
-        -   Target Task ID.
-        -   Status: `PENDING_USER_INITIATION`.
-        -   Observations noting agent readiness determination.
+    -   **Entity Creation (Verification Request):** Create a new entity in Server Memory (`VerificationRequest`) linked to the `Task` entity. Include: Timestamp initiated, Target Task ID, Status: `PENDING_USER_INITIATION`, Observations.
+    -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
     -   **Audit:** Record `TASK_PENDING_TESTING` event.
-    -   **Notify User:** Inform the user that "[Task Name] (`[TaskID]`)" is now ready for testing (`🔬`) and awaits the `ST [TaskID]` command.
+    -   **Notify User:** Inform the user that "[Task Name] (`[TaskID]`)" is now ready for testing (`🔬`) and awaits the `ST [TaskID]` command (or `ST` without ID).
 
 2.  **Testing Activation (User Triggered - `ST [TaskID]`):**
     -   Verify the specified `TaskID` corresponds to a task currently in `PENDING_TESTING` (`🔬`) state and has a `VerificationRequest` entity with status `PENDING_USER_INITIATION`.
@@ -56,73 +60,86 @@ This protocol defines the mandatory process for verifying implemented functional
     -   **Update Task Status (Testing):**
         -   Update the target `Task` entity status to `TESTING` in Server Memory.
         -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🧪` emoji.
-    -   **Audit:** Record `TASK_TESTING_STARTED` event.
-    -   **Proceed:** Agent begins evidence gathering (Step 3).
+    -   **Execute State Synchronization Verification (ST [ID] - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`TESTING`) and the `docs/ROADMAP_TASKS.md` `🧪` marker. Trigger UERP on failure.
+    -   **Audit:** Record `TASK_TESTING_STARTED` event for the specific task.
+    -   **Proceed:** Agent begins evidence gathering (Step 4) for *this specific task*.
 
-3.  **Evidence Gathering & Presentation (Agent Action - Post `ST`):**
-    -   Execute automated tests if configured. Log results as observations to the `VerificationRequest` entity.
-    -   Perform manual checks as required by the task type (e.g., run `ui-check.mdc`). Attach results/screenshots/paths as observations.
-    -   Generate a summary report of test results and changes made.
-    -   Present the summary, evidence (links, paths, results), and the target `Task` details clearly to the user.
+3.  **Testing Activation (User Triggered - `ST` without ID):**
+    -   **Verify Precondition:** Check internal flag `agent_workflow_initialized = true` (set by `IAW`). If false, report error "Must run 'IAW' before using 'ST' without a Task ID." and stop.
+    -   Acquire current timestamp.
+    -   **Find Pending Tasks:** Search Server Memory for all `Task` entities with status `PENDING_TESTING` (`🔬`).
+    -   **If no `🔬` tasks found:** Report "No tasks are currently pending testing (`🔬`). Use `BWS` to start work on the next task." and stop.
+    -   **Transition Tasks:** For *each* identified `🔬` task:
+        -   Verify it has a linked `VerificationRequest` entity with status `PENDING_USER_INITIATION`. If not, log warning/error for that task but continue with others.
+        -   Update the `VerificationRequest` status to `ACTIVE`.
+        -   Update the `Task` entity status to `TESTING` in Server Memory.
+        -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🧪` emoji.
+        -   **Execute State Synchronization Verification (ST [no ID] - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`TESTING`) and the `docs/ROADMAP_TASKS.md` `🧪` marker for *each* task transitioned. Trigger UERP on failure for any task.
+        -   **Audit:** Record `TASK_TESTING_STARTED` event for *each* task.
+    -   **Notify User:** Report to the user: "Starting active testing (`🧪`) for the following tasks: [List Task Names/IDs]. Use BWS to begin work on the next task."
 
-4.  **Request User Approval (Agent Action - Post Evidence):**
-    -   Explicitly ask the user to review the presented evidence and approve or reject the completion of the task.
-    -   State the required commands for approval (`Approve Completion` / `AC [TaskID]`) or rejection (`Reject Completion` / `RC [TaskID] [Reason]`).
-    -   **Wait for explicit user input.** This protocol pauses here until the user responds with `AC` or `RC`.
+4.  **Evidence Gathering & Presentation (Agent Action - Post `ST [TaskID]`):**
+    -   *(This step applies when testing a specific task, initiated by `ST [TaskID]`)*
+    -   Execute automated tests if configured for the specific task. Log results as observations to the `VerificationRequest` entity.
+    -   Perform manual checks (e.g., `ui-check.mdc`). Attach results as observations.
+    -   Generate a summary report for the *specific task*.
+    -   Present the summary, evidence, and task details to the user.
 
-5.  **Process User Decision (Agent Action - Post Approval/Rejection):**
+5.  **Request User Approval (Agent Action - Post Evidence for Specific Task):**
+    -   *(This step applies only after Step 4 for a specific task)*
+    -   Explicitly ask the user to review the presented evidence and approve (`AC [TaskID]`) or reject (`RC [TaskID] [Reason]`) the completion of the specific task being tested.
+    -   **Wait for explicit user input.**
+
+6.  **Process User Decision (Agent Action - Post Approval/Rejection for Specific Task):**
+    -   *(This step applies only after Step 5 for a specific task)*
     -   **On User Approval (`AC [TaskID]`):**
-        -   Verify the `TaskID` matches the active verification request (`🧪`).
-        -   Acquire current timestamp.
-        -   **Mandatory Approval Verification (MUST):** MUST explicitly query and verify that the corresponding `VerificationRequest` entity in Server Memory has status `APPROVED` **before** updating the `Task` entity status to `COMPLETED`. Halt and trigger UERP if verification fails.
-        -   **Update Verification Request:** Update the `VerificationRequest` entity status to `APPROVED`. Add observation with user confirmation and timestamp.
-        -   **Update Task Status (Completed):**
-            -   Update the target `Task` entity status to `COMPLETED` in Server Memory.
-            -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp.
-        -   **(Optional WSMP Trigger):** If task completion might conclude a logical work block, WSMP *could* be triggered or updated based on this completion.
-        -   **Verification:** Perform L5 verification check (confirming user approval is logged).
-        -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED` events.
-        -   **Trigger WSMP Completion Logic (MUST):** Immediately and automatically invoke the specific logic block within `work-session-management-protocol.mdc` responsible for handling `EWS COMPLETED`, passing the verified `TaskID`. This MUST be the final action of the successful AC processing branch within TVP. The WSMP logic will handle the final task completion updates and user feedback.
-        -   **(Clarification):** The transition to `COMPLETED` (✅) status for a Task is **SOLELY triggered by the successful processing of the user's `AC [TaskID]` command** after the active testing phase (`🧪`) and cannot be performed based on agent assessment alone.
-        -   **Update Task Status (Completed):**
-            -   Update the target `Task` entity status to `COMPLETED` in Server Memory.
-            -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to `✅` emoji and append completion timestamp.
-        -   **(Optional WSMP Trigger):** If task completion might conclude a logical work block, WSMP *could* be triggered or updated based on this completion.
-        -   **Verification:** Perform L5 verification check (confirming user approval is logged).
-        -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED` events.
-        -   **Trigger WSMP Completion Logic (MUST):** Immediately and automatically invoke the specific logic block within `work-session-management-protocol.mdc` responsible for handling `EWS COMPLETED`, passing the verified `TaskID`. This MUST be the final action of the successful AC processing branch within TVP. The WSMP logic will handle the final task completion updates and user feedback.
+        -   Verify the `TaskID` matches an active verification request (`🧪`).
+        -   Acquire timestamp.
+        -   **Mandatory Approval Verification (MUST):** Verify the `VerificationRequest` entity status is `APPROVED` before updating the `Task`. Halt/UERP if failed.
+        -   **Update Verification Request:** Update status to `APPROVED`. Add observation.
+        -   **Update Task Status (Completed):** Update `Task` entity to `COMPLETED` in Memory. Update roadmap to `✅` + timestamp.
+        -   **Execute State Synchronization Verification (AC - Completed):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`COMPLETED`) and the `docs/ROADMAP_TASKS.md` `✅` marker/timestamp. Trigger UERP on failure.
+        -   **Verification:** Perform L5 verification check.
+        -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED`.
+        -   **Trigger WSMP Completion Logic (MUST):** Invoke `EWS COMPLETED` logic in `WSMP v2.7+` for session finalization related to this specific task.
     -   **On User Rejection (`RC [TaskID] [Reason]`):**
-        -   Verify the `TaskID` matches the active verification request (`🧪`).
-        -   Acquire current timestamp.
-        -   **Update Verification Request:** Update the `VerificationRequest` entity status to `REJECTED`. Add observation with user rejection, reason, and timestamp.
-        -   **Update Task Status (Active/Rework):**
-            -   Update the target `Task` entity status back to `ACTIVE` (`🔄`) or a designated `REWORK` state in Server Memory.
-            -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` back to `🔄` (or `🔧` if using rework state). Add note about rejection.
-        -   **Feedback:** Acknowledge rejection, log the reason, and indicate the task is back in the active development queue. Potentially trigger a new `WorkSession` targeting the rework via WSMP.
-        -   **Audit:** Record `TASK_VERIFICATION_REJECTED` event.
+        -   Verify `TaskID` matches active request (`🧪`).
+        -   Acquire timestamp.
+        -   **Update Verification Request:** Update status to `REJECTED`. Add observation.
+        -   **Update Task Status (Active/Rework):** Update `Task` entity back to `ACTIVE` (`🔄`) or `REWORK`. Update roadmap back to `🔄` or `🔧`. Add note.
+        -   **Execute State Synchronization Verification (RC - Rework):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`ACTIVE`/`REWORK`) and the `docs/ROADMAP_TASKS.md` `🔄`/`🔧` marker. Trigger UERP on failure.
+        -   **Feedback:** Acknowledge rejection, log reason.
+        -   **Audit:** Record `TASK_VERIFICATION_REJECTED`.
 
 ## 5. State Management
--   Introduces the `🔬` (PENDING_TESTING) state for tasks, indicating agent completion awaiting user initiation.
--   Uses the `🧪` (TESTING) state during active user verification.
--   Manages the lifecycle of a `VerificationRequest` entity in Server Memory (`PENDING_USER_INITIATION`, `ACTIVE`, `APPROVED`, `REJECTED`).
+-   Introduces `🔬` (PENDING_TESTING) state.
+-   Uses `🧪` (TESTING) state during active testing.
+-   Manages `VerificationRequest` entity lifecycle (`PENDING_USER_INITIATION`, `ACTIVE`, `APPROVED`, `REJECTED`).
+-   ID-less `ST` command transitions multiple tasks `🔬` -> `🧪`.
 
 ## 6. Error Handling
--   Handle cases where the agent attempts to trigger verification on a non-active task.
--   Handle cases where the user attempts `ST` on a task not in `PENDING_TESTING` state.
--   Handle cases where required verification steps (during Step 3) fail. Log these failures and present them to the user.
--   Handle incorrect user input (e.g., wrong Task ID for `ST`/`AC`/`RC`).
+-   Handle `ST [TaskID]` on tasks not in `🔬` state.
+-   Handle `ST` (no ID) when `IAW` flag is not set.
+-   Handle `ST` (no ID) when no `🔬` tasks exist.
+-   Handle evidence gathering failures.
+-   Handle incorrect user input (`AC`/`RC` with wrong ID).
+-   Handle state synchronization verification failures rigorously via UERP.
 
 ## 7. Verification Checklist
--   [ ] Agent proactively triggers protocol when development is deemed complete?
--   [ ] Task status updated to `🔬` in Memory and Roadmap upon agent trigger?
--   [ ] `VerificationRequest` entity created with status `PENDING_USER_INITIATION`?
--   [ ] User notified that task is awaiting `ST` command?
--   [ ] `ST [TaskID]` command correctly transitions task to `🧪` state?
--   [ ] `VerificationRequest` status updated to `ACTIVE` upon `ST` command?
--   [ ] Evidence gathered and presented *after* `ST` command?
--   [ ] Explicit user approval (`AC`/`RC`) requested after evidence?
--   [ ] User decision (`AC`/`RC`) correctly processed?
+-   [ ] Agent proactively triggers protocol via `EWS TESTING`?
+-   [ ] Task status updated to `🔬` upon agent trigger?
+-   [ ] `VerificationRequest` created with `PENDING_USER_INITIATION`?
+-   [ ] `ST [TaskID]` command correctly transitions specific task to `🧪` state?
+-   [ ] `VerificationRequest` status updated to `ACTIVE` upon `ST [TaskID]` command?
+-   [ ] **New:** `ST` (no ID) command requires preceding `IAW`?
+-   [ ] **New:** `ST` (no ID) finds all `🔬` tasks?
+-   [ ] **New:** `ST` (no ID) transitions all found `🔬` tasks to `🧪` state in Memory and Roadmap?
+-   [ ] **New:** `ST` (no ID) updates all corresponding `VerificationRequest` entities to `ACTIVE`?
+-   [ ] Evidence gathered and presented *after* `ST [TaskID]` command?
+-   [ ] Explicit user approval (`AC`/`RC`) requested after evidence for specific task?
+-   [ ] User decision (`AC`/`RC`) correctly processed for specific task?
 -   [ ] Task status updated to `✅` or `🔄`/`🔧` based on decision?
--   [ ] Audit trail updated for all stages (`PENDING_TESTING`, `TESTING_STARTED`, `VERIFICATION_APPROVED/REJECTED`)?
+-   [ ] Audit trail updated for all stages?
 -   [ ] L5 verification performed on approval?
+-   [ ] State Synchronization Verification executed at specified points?
 

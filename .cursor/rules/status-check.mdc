@@ -170,8 +170,8 @@ The user-facing output MUST follow this structure:
 
 ### **`🔬🧪 Testing Pipeline:`**
   *   **`🔬 Pending Initiation:`**
-      *   `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_ - Priority? [Yes/No]
-      *   `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_ - Priority? [Yes/No]
+      *   Priority? [Yes/No] - `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
+      *   Priority? [Yes/No] - `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
       *   _(If none: 👍 None pending initiation.)_
   *   **`🧪 Actively Testing:`**
       *   `[Task Name]` _(Started: [MM.DD.YY | HH:MM AM/PM TimeZone])_

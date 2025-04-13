@@ -3,24 +3,23 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Work Session Activation Protocol v2.2
-*(Self-correction: Incremented version number)*
+# Work Session Activation Protocol v2.4
 
 ## 1. Purpose
-This protocol defines the commands and procedures for initiating (`BWS`) and concluding (`EWS`) formal work sessions. It ensures integration with the `Status Check Protocol (v2.1+)` for context establishment, the `Enhanced Work Session Management Protocol (WSMP v2.5+)` for managing the session lifecycle, and the `Testing & Verification Protocol v1.1` for handling task completion validation.
+This protocol defines the commands and procedures for initiating agent workflow (`IAW`), initiating testing (`ST`), beginning (`BWS`), and concluding (`EWS`) formal work sessions. It ensures integration with the `Status Check Protocol (v2.1+)`, the `Enhanced Work Session Management Protocol (WSMP v2.7+)`, and the `Testing & Verification Protocol v1.3+`.
 
 ## 2. Protocol Integration Layer
-*(Self-correction: Updated WSMP version and SC version)*
+*(Self-correction: Updated WSMP, TVP, and this protocol's version)*
 ````text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │
 │ 2. Rule Execution Protocol              │
-│ 3. Status Check Protocol (v2.1+)        │ // Input Source for BWS (Updated)
-│ 4. Enhanced Work Session Mgmt (v2.5+)   │ // Activated Protocol (Handles BWS/EWS logic) (Updated)
+│ 3. Status Check Protocol (v2.1+)        │ // Input Source for IAW/BWS
+│ 4. Enhanced Work Session Mgmt (v2.7+)   │ // Activated Protocol (Handles BWS/EWS logic) (Updated)
 │ 5. Memory Maintenance Protocol          │ // Entity management via WSMP
-│ 6. Testing & Verification Protocol v1.1 │ // Handles EWS TESTING/COMPLETED via WSMP
+│ 6. Testing & Verification Protocol v1.3+│ // Handles EWS TESTING/COMPLETED & ST Command (Updated)
 │ 7. Cross-Protocol Comms & Verification   │
 │ 8. Audit Trail System                   │
 └─────────────────────────────────────────┘
@@ -28,78 +27,89 @@ This protocol defines the commands and procedures for initiating (`BWS`) and con
 
 ## 3. Activation Commands & Flow
 
-### 3.1. Begin Work Session (BWS)
+### 3.1. Initiate Agent Workflow (IAW)
+-   **Command:** `Initiate Agent Workflow` or alias `IAW`
+-   **Purpose:** Signals the agent's readiness to work, checks project status, and awaits further instruction (typically `ST` or direct `BWS`).
+-   **Execution:**
+    1.  MUST execute `Status Check` (`SC` v2.1+) immediately.
+    2.  MUST report the output of `SC` to the user.
+    3.  MUST set an internal state flag: `agent_workflow_initialized = true`.
+    4.  MUST explicitly state it is awaiting the next command (`ST` or `BWS`).
+    5.  MUST NOT initiate any work or start a work session (`BWS`) automatically.
+
+### 3.2. Start Testing (ST)
+-   **Command:** `Start Testing` or alias `ST`
+-   **Purpose:** Initiates the active testing phase for tasks ready for verification.
+-   **Parameters:**
+    -   **`[TaskID]` (Optional):** If provided, triggers testing *only* for the specified task ID (must be in `🔬` state). Handled by `Testing & Verification Protocol v1.3+`.
+    -   **(No TaskID Provided):** If issued *after* `IAW` (flag `agent_workflow_initialized = true`) and *without* a specific `TaskID`, triggers the following sequence handled by `Testing & Verification Protocol v1.3+`:
+        1.  Transition all tasks currently in `PENDING_TESTING` (`🔬`) state to `TESTING` (`🧪`) state.
+        2.  Notify the user which tasks have entered testing.
+-   **Prerequisites:**
+    -   If `[TaskID]` is provided, the task must be in `PENDING_TESTING` (`🔬`).
+    -   If no `[TaskID]` is provided, the `IAW` command must have been executed previously in the current interaction sequence (`agent_workflow_initialized = true`).
+
+### 3.3. Begin Work Session (BWS)
 -   **Command:** `Begin Work Session` or alias `BWS`
--   **Prerequisite:** MUST execute `Status Check` (`SC` v2.1+) immediately prior to `BWS`. The output of `SC` provides essential context, including the updated priority hierarchy (`❌` -> `Error` -> `🔬` -> `🧪` -> `🔄` -> `⏳`) and the testing pipeline status.
--   **Purpose:** Initiates a tracked work session using context from the preceding `SC` report. Triggers the start sequence defined in `WSMP v2.5+`.
--   **WSMP v2.5+ Handling:**
-    -   Analyzes the preceding `SC` report for `🎯 Current / Operational Priority` (reflecting new logic), `🧪 Testing Pipeline`, and `⚙️ Overall Context`.
-    -   Gets current timestamp.
-    -   Creates `WorkSession` entity in Server Memory (linking to the `StatusCheck` entity).
-    -   Manages optional parameters like `Session Type`.
-    -   Loads state if resuming a saved session (though `RWS` is dedicated).
-    -   Performs Verification Chain checks.
-    -   Records `SESSION_START` in Audit Trail.
+-   **Purpose:** Initiates a tracked work session targeting a specific task.
+-   **Prerequisites:**
+    -   MUST execute `Status Check` (`SC` v2.1+) immediately prior to `BWS`. The session will target the highest priority task identified by `SC`.
+-   **WSMP v2.7+ Handling:** Defined in `work-session-management-protocol.mdc`. Handles context analysis based on the preceding SC, session creation, state loading, verification, and audit logging.
 
-### 3.2. End Work Session (EWS)
+### 3.4. End Work Session (EWS)
 -   **Command:** `End Work Session` or alias `EWS`
--   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.5+`, which handles task status updates, documentation, and potential transitions based on the `Reason`.
--   **WSMP v2.5+ Handling & Parameters:**
-    -   Requires an active `WorkSession`.
-    -   Accepts an optional `Reason` parameter (`TESTING`, `COMPLETED`, `NORMAL`, `INTERRUPTED`, `FAILED`).
-    -   The `TESTING` reason triggers the `Testing & Verification Protocol v1.1` via WSMP.
-    -   The `COMPLETED` reason requires prior successful completion of the `Testing & Verification Protocol v1.1`.
-    -   Handles session finalization, entity updates, verification, and audit logging based on the `Reason`.
+-   **Purpose:** Formally closes the *active* work session. Triggers the finalization sequence defined in `WSMP v2.7+`.
+-   **WSMP v2.7+ Handling & Parameters:** Requires an active `WorkSession`. Accepts an optional `Reason` (`TESTING`, `COMPLETED`, `NORMAL`, `INTERRUPTED`, `FAILED`). Integrates with `Testing & Verification Protocol v1.3+` for `TESTING` and `COMPLETED` reasons.
 
-## 4. Standard Workflow Example
-*(Self-correction: Updated example to reflect testing flow and potential new priority)*
+## 4. Standard Workflow Example (`IAW -> ST -> BWS`)
 ````bash
-# Step 1: Check the current project status
-SC
+# Step 1: Initiate workflow and check status
+IAW
 
-# --- (SC Output Received - Potentially showing 🔬 as priority) ---
+# --- (Agent runs SC, reports status, sets flag, waits) ---
 # Example SC Output Snippet:
-# 🧪 Testing Pipeline:
-# 🔬 Pending User Initiation:
-#   - Task_ABC (Ready for Testing)
-# 🧪 Actively Testing:
-#   - None
 # 🎯 Current / Operational Priority:
 # - 🔬 Task_ABC (Reason: Ready for Testing)
 # ---
+# ⏳ Upcoming Tasks (Next 3-5 Pending):
+# - Task_DEF
+# - Task_GHI
+# ---
+# Agent: Status checked. Workflow initiated. Awaiting next command (ST or BWS).
 
-# Step 2: Begin the work session, using context from SC
-#    (Priority is now Task_ABC based on SC v2.1+ logic)
-BWS FEATURE
+# Step 2: User starts testing for all pending tasks
+ST
 
-# --- (Work session is now active, managed by WSMP) ---
-# ... Perform development tasks (maybe on Task_ABC or another if user overrides) ...
+# --- (Agent executes TVP logic for ST [no ID]) ---
+# Agent: Starting testing for Task_ABC (🔬 -> 🧪). Use BWS to begin work on the next task.
+
+# Step 3: User explicitly starts work session
+BWS
+
+# --- (Agent runs SC again, identifies highest priority, starts session) ---
+# Agent: Running Status Check...
+# Agent: Status Check Complete. Highest priority is Task_DEF (⏳).
+# Agent: Beginning work session for Task_DEF (⏳ -> 🔄). Session ID: WS_Feature_20250412_170500.
+
+# --- (Work session is now active on Task_DEF) ---
 # ...
-
-# Step 3a: End the work session, moving task to Testing phase
-# EWS TESTING
-
-# --- (WSMP ends session, triggers Testing Protocol) ---
-# Agent informs user: Task '...' ready for testing (🔬). Use ST [TaskID] to begin.
-
-# --- OR ---
-
-# Step 3b: End the work session if interrupted
-# EWS INTERRUPTED
 ````
 
 ## 5. Implementation Notes
--   This protocol acts as the **trigger mechanism**.
--   Actual state management is handled by `WSMP v2.5+` and integrated protocols (`Testing & Verification`, `Status Check`).
--   The mandatory `SC` before `BWS` ensures sessions start with the most up-to-date context reflecting the new priority rules.
+-   This protocol primarily defines the **user-facing commands and the trigger sequence**.
+-   The detailed execution logic for `ST` (with or without ID) resides in `Testing & Verification Protocol v1.3+`.
+-   The detailed execution logic for `BWS` resides in `Enhanced Work Session Management Protocol v2.7+`.
+-   The `agent_workflow_initialized` flag is a conceptual state marker for the agent during the interaction.
 
 ## 6. Verification Checklist (for this protocol)
-*(Self-correction: Updated checks)*
--   [ ] `BWS`/`EWS` commands documented.
--   [ ] Prerequisite of running `SC` (v2.1+) before `BWS` stated (MUST).
--   [ ] Linkage to `WSMP v2.5+` activation is clear.
--   [ ] Description of `SC` context includes updated priority understanding (`🔬`/`🧪`).
--   [ ] `EWS` description includes `Reason` parameter and mentions TVP integration.
--   [ ] Workflow example reflects potential new priorities from `SC`.
--   [ ] Protocol integration layer lists correct protocol versions.
+*(Self-correction: Updated checks for v2.4)*
+-   [ ] `IAW` command definition updated (runs SC, sets flag, waits).
+-   [ ] `ST` command definition includes ID-less variant.
+-   [ ] Prerequisite for ID-less `ST` (must follow `IAW`) is stated.
+-   [ ] ID-less `ST` description accurately reflects it *only* transitions tasks to testing.
+-   [ ] `BWS` command definition states it *always* runs SC and targets the highest priority task.
+-   [ ] Protocol integration layer lists correct protocol versions (`SC v2.1+`, `WSMP v2.7+`, `TVP v1.3+`).
+-   [ ] Workflow example demonstrates the `IAW -> ST -> BWS` flow.
 -   [ ] Formatting adheres to `rule-formatting-protocol.mdc`.
+
+
