@@ -7,11 +7,11 @@ alwaysApply: true
 
 0. **Initiate Agent Workflow Key Terms**
    - This workflow initiated by key terms "Initiate Agent Workflow" or alias "IAW"
-   - "IAW" + Priority: __issue__. Sets __issue__ as top blocking operational priority to solve.
+   - "IAW" + P: **issue** . Sets **issue** as top blocking operational priority to solve.
 
 1. **Begin Work Protocol**
-   - Begin by Running "Status Check" or "SC"
-   - Review `@PE - CTXT` - to understand project structure & configuration (DO NOT OUTPUT)
+   - Begin by Running "Status Check" or "SC". **ONLY OUPUT THE REPORT**.
+   - Review `@PE - CTXT` - to understand project structure & configuration **DO NOT OUTPUT**
    - Set "## 🛠️ Operational Context" using `pwd` command + `OP` from `SC`
    - Clock in using format: ### 🕚 "MM.DD.YY | HH:MM AM/PM `TimeZone`"
    - Check working directory: `pwd`

@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.8
+# Enhanced Work Session Management Protocol (WSMP) v2.9
 
 ## 1. Protocol Integration Layer
 *(Self-correction: Updated version number and integration points)*
@@ -14,23 +14,24 @@ alwaysApply: true
 │ 1. Software Development Meta Protocol   │
 │ 2. Rule Execution Protocol              │
 │ 3. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
-│ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules
+│ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules v2.1+ (Updated)
 │ 5. Session Management Protocol (This)   │
 │ 6. Status Check Protocol (v2.1+)        │ // Required for BWS context
 │ 7. Cross-Protocol Comms & Verification   │
 │ 8. Universal Error Resolution Protocol  │
 │ 9. Audit Trail System                   │
-│ 10. Testing & Verification Protocol v1.3+│ // Handles task verification flow, triggered by EWS (Updated)
-│ 11. Work Session Activation Proto v2.4+ │ // Defines trigger commands (IAW, ST, BWS, EWS) (Updated)
+│ 10. Testing & Verification Protocol v1.3+│ // Handles task verification flow, triggered by EWS
+│ 11. Work Session Activation Proto v2.5+ │ // Defines trigger commands (IAW, ST, BWS, EWS, RWS) (Updated)
 └─────────────────────────────────────────┘
 ````
 
 ## 2. Activation Commands & Flow
+*(Self-correction: Minor clarification on RWS trigger)*
 ````text
 A. Start New Session (BWS)
 - Command: "Begin Work Session" or alias "BWS"
-- Triggered By: Manual User Command (via WSAP v2.4+) - Requires preceding SC.
-- Purpose: Initiates a NEW tracked work session, targeting the highest priority task identified by the preceding Status Check.
+- Triggered By: Manual User Command (via WSAP v2.5+) - Requires preceding SC. Can also be triggered internally by RWS fallback.
+- Purpose: Initiates a NEW tracked work session, targeting the highest priority task identified by the preceding Status Check or RWS fallback.
 - Optional Parameters: Session Type (DEBUG, FEATURE, FIX, REFACTOR).
 
 B. Save Session State (SWS)
@@ -40,7 +41,8 @@ B. Save Session State (SWS)
 
 C. Resume Saved Session (RWS)
 - Command: "Resume Work Session" or alias "RWS"
-- Purpose: Resumes a previously saved work session or handles fallback logic.
+- Triggered By: Manual User Command (via WSAP v2.5+).
+- Purpose: Resumes a specific saved session (`[saveSessionID]`) or initiates the hierarchy-aware fallback logic to determine the next action (potentially starting a new BWS or reporting testing status).
 - Optional Parameters: `saveSessionID`.
 
 D. End Session (EWS)
@@ -57,29 +59,30 @@ E. Current Session Status & Auto-Save (CWS)
 ## 3. Context Establishment & Session Lifecycle Management
 
 ### 3.1 Session Initiation (BWS)
-*(Self-correction: Reverted logic - BWS always runs SC and targets highest priority)*
-1.  **Determine Trigger Source:** BWS is triggered manually by the user.
-2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.1+).
+*(No change needed from v2.8)*
+1.  **Determine Trigger Source:** BWS is triggered manually by the user or via RWS fallback.
+2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.1+) *unless* triggered by RWS fallback which has already determined the target.
 3.  **Analyze SC Output & Select Target Task:**
-    -   Identify the `🎯 Current / Operational Priority` task from the *newly run* SC report (using ❌ > Error > 🔬 > 🧪 > 🔄 > ⏳ logic). This is the `targetTask`.
+    -   If triggered manually: Identify the `🎯 Current / Operational Priority` task from the *newly run* SC report. This is the `targetTask`.
+    -   If triggered by RWS fallback: Use the `targetTask` determined by the RWS logic.
 4.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
 5.  **Generate Session ID:** Create a unique session ID (See Section 5).
 6.  **Entity Creation:** Create `WorkSession` entity in Server Memory including:
     - Start timestamp.
     - Session Type (from param or inferred).
-    - Target Task ID (`targetTask`) identified in Step 3.
-    - Overall Context (from relevant SC).
-    - Link to the relevant `StatusCheck` entity.
+    - Target Task ID (`targetTask`).
+    - Overall Context (from relevant SC or RWS analysis).
+    - Link to the relevant `StatusCheck` entity (if applicable).
     - Status: `ACTIVE`.
 7.  **Task Status Update (if applicable):**
-    -   If the `targetTask` status was `PENDING` (`⏳`), update its status to `ACTIVE` (`🔄`) in Server Memory and `docs/ROADMAP_TASKS.md`.
+    -   If the `targetTask` status was `PENDING` (`⏳`) or `BLOCKED` (`❌` - only if selected due to linked `Error`), update its status to `ACTIVE` (`🔄`) in Server Memory and `docs/ROADMAP_TASKS.md`. Add observation noting the reason (e.g., "Targeting blocked task to resolve error").
     -   **Execute State Synchronization Verification (BWS - Active):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`ACTIVE`) and the `docs/ROADMAP_TASKS.md` `🔄` marker. Trigger UERP on failure.
 8.  **Verification:** Execute L1/L3 Verification Chain checks.
 9.  **Audit:** Record `SESSION_START` event in Audit Trail.
 10. **Feedback:** Confirm session start with the Session ID, explicitly stating the `targetTask` being worked on.
 
 ### 3.2 Save Work Session (SWS)
-*(No changes required for this logic based on the request)*
+*(No change needed from v2.8)*
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. If none, report error.
 2.  **Timestamp:** Get current timestamp (`mcp_mcp_datetime_get_datetime`).
@@ -97,23 +100,67 @@ E. Current Session Status & Auto-Save (CWS)
 ````
 
 ### 3.3 Resume Work Session (RWS)
-*(No changes required for this logic based on the request)*
+*(Self-correction: Updated to detail the new hierarchy-aware fallback logic incorporating Error priority)*
 ````text
-1.  **Identify Target Save State & Initiate Fallback:** Logic to find specific save ID, most recent save, or fallback to roadmap `⏸️` / `🔄` markers, initiating a new session if needed based on deepest paused/in-progress task. Stop if nothing found.
-2.  **Retrieve Saved State:** (If save entity found) Get `WorkSessionSave` and linked `WorkSession` ID.
-3.  **Retrieve Work Session:** (If save entity found) Fetch linked `WorkSession`. Verify it's `PAUSED`.
-4.  **Timestamp:** Get current timestamp.
-5.  **Update Work Session:** Change status back to `ACTIVE`. Add observation about resumption/new session start.
-6.  **Restore Context (Informational):** Log restored/new context.
-7.  **Task Status Marker Update:** Update roadmap task marker back to `🔄` if `⏸️` was used. Ensure target task is `🔄` if resuming from marker.
-7.a. **Execute State Synchronization Verification (RWS - Active):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`ACTIVE`) and the `docs/ROADMAP_TASKS.md` `🔄` marker. Trigger UERP on failure.
-8.  **Verification:** Execute L1/L3 Verification Chain checks.
-9.  **Audit:** Record `SESSION_RESUME` or `SESSION_START`.
-10. **Feedback:** Confirm session resumption/start, stating Session ID and priority task.
+1.  **Check for Specific Save ID:** If `saveSessionID` parameter is provided:
+    -   Attempt to retrieve the specified `WorkSessionSave` entity and its linked `WorkSession`.
+    -   Verify the linked `WorkSession` status is `PAUSED`.
+    -   If successful, proceed to Step 7 (Update Work Session for Resumption).
+    -   If fails (not found, not paused), report error and proceed to Fallback Logic (Step 2).
+
+2.  **Fallback Logic - Priority 1: Check for Active Blocking Errors:**
+    -   Query Server Memory for `Error` entities with `status=active`.
+    -   Check for explicit `blockedBy` relations linking active errors to non-`✅` `Task` entities.
+    -   If found: Select the highest priority blocked task (`targetTask`). Proceed to Step 6 (Initiate BWS for Fallback).
+    -   If not found, proceed to Step 3.
+
+3.  **Fallback Logic - Priority 2: Check for Explicitly Paused (`⏸️`):**
+    -   Scan `docs/ROADMAP_TASKS.md` for any task marked `⏸️`.
+    -   If found: Select the highest priority one (`targetTask`). Proceed to Step 6 (Initiate BWS for Fallback).
+    -   If not found, proceed to Step 4.
+
+4.  **Fallback Logic - Priority 3: Check for Actively Testing (`🧪`):**
+    -   Scan `docs/ROADMAP_TASKS.md` for any task marked `🧪`.
+    -   If found: Select the highest priority one. **Report** its status (e.g., "`Task X` is actively testing (`🧪`). Awaiting user approval (`AC`/`RC`).") and **stop the RWS process.**
+    -   If not found, proceed to Step 5.
+
+5.  **Fallback Logic - Priority 4: Find Deepest "In Progress" (`🔄`):**
+    -   Scan `docs/ROADMAP_TASKS.md` for all tasks marked `🔄`.
+    -   Select the `🔄` task that is **lowest/deepest** in the hierarchy (`targetTask`).
+    -   If found: Proceed to Step 6 (Initiate BWS for Fallback).
+    -   If not found, proceed to Step 5a.
+
+5a. **Fallback Logic - Priority 5: Check for Pending Testing (`🔬`):**
+    -   Scan `docs/ROADMAP_TASKS.md` for any task marked `🔬`.
+    -   If found: Select the highest priority one. **Report** its status (e.g., "`Task Y` is pending testing (`🔬`). Use `ST [TaskID]` or `ST` to initiate.") and **stop the RWS process.**
+    -   If not found, proceed to Step 5b.
+
+5b. **Fallback Logic - Priority 6: Find Highest Priority "Pending" (`⏳`):**
+    -   Scan `docs/ROADMAP_TASKS.md` for tasks marked `⏳`.
+    -   Select the highest priority one (`targetTask`).
+    -   If found: Proceed to Step 6 (Initiate BWS for Fallback).
+    -   If not found, proceed to Step 5c.
+
+5c. **Fallback Logic - Priority 7: Handle Blocked/No Tasks (`❌`, None):**
+    -   If only `❌` (without active linked error) or `✅` tasks remain, **Report** that no actionable tasks are available and **stop the RWS process.**
+
+6.  **Initiate BWS for Fallback:** (If Steps 2, 3, 5, or 5b identified a `targetTask`)
+    -   Execute the logic from Section 3.1 (BWS), passing the determined `targetTask`. This will create a *new* `WorkSession` entity focused on the identified task. Stop RWS execution here, as BWS takes over.
+
+7.  **Update Work Session for Resumption:** (If Step 1 successfully found a specific `saveSessionID` and paused session)
+    -   Retrieve the linked `WorkSession` entity.
+    -   Timestamp: Get current timestamp.
+    -   Update `WorkSession` status back to `ACTIVE`. Add observation about resumption referencing the `saveSessionID`.
+    -   Restore Context (Informational): Log restored context.
+    -   Task Status Marker Update: Update roadmap task marker from `⏸️` back to `🔄`.
+    -   **Execute State Synchronization Verification (RWS - Active):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`ACTIVE`) and the `docs/ROADMAP_TASKS.md` `🔄` marker. Trigger UERP on failure.
+    -   Verification: Execute L1/L3 Verification Chain checks.
+    -   Audit: Record `SESSION_RESUME`.
+    -   Feedback: Confirm session resumption, stating Session ID and priority task.
 ````
 
 ### 3.4 End Work Session (EWS)
-*(Self-correction: Ensure integration with TVP v1.3+)*
+*(No change needed from v2.8)*
 ````text
 1.  **Identify Active Session:** Determine the currently active `WorkSession` entity. Stop if none.
 2.  **Identify Primary Task:** Identify the primary `Task` entity being worked on. Verify it's `ACTIVE` (`🔄`). Stop if not.
@@ -140,7 +187,7 @@ E. Current Session Status & Auto-Save (CWS)
 ````
 
 ### 3.5 Current Working Session (CWS)
-*(No changes required for this logic based on the request)*
+*(No change needed from v2.8)*
 ````text
 1.  **Identify Active Session:** Stop if none.
 2.  **Timestamp:** Get current timestamp.
@@ -155,151 +202,154 @@ E. Current Session Status & Auto-Save (CWS)
 ````
 
 ## 4. State Management & Synchronization
-*(No changes required for this logic based on the request)*
+*(Self-correction: Added Error state consideration)*
 - Manages `WorkSession` entity states (`ACTIVE`, `PAUSED`, `ENDED`).
 - Creates/Manages `WorkSessionSave` entities.
-- Coordinates with Task Tracking Protocol for roadmap updates (`🔄`, `⏸️`, `✅`, `🔬`, `🧪`).
-- Utilizes Server Memory for session context and state persistence.
+- Coordinates with Task Tracking Protocol for roadmap updates (`🔄`, `⏸️`, `✅`, `🔬`, `🧪`, `❌`).
+- Utilizes Server Memory for session context, state persistence, and `Error` entity status.
 - Employs Cross-Protocol Verification to ensure consistency.
 
 ## 5. Session Identification & Naming
-*(Self-correction: No change needed here)*
+*(No change needed from v2.8)*
 - **Session ID:** `WS_[Type]_[Timestamp(log_compact)]` (e.g., `WS_Feature_20240331_153100`)
 - **Save ID:** `WSSave_[SessionIDShort]_[Timestamp(log_compact)]` (e.g., `WSSave_WSF240331_20240331_170000`)
 
 ## 6. Error Handling & Recovery (UERP Integration)
+*(Self-correction: Added Error handling in RWS)*
 - Handles errors like no active session, failed verification, failed entity creation/read during SWS.
 - Uses UERP for critical failures.
 - SWS includes verification step to prevent entering paused state if save failed.
-- RWS includes fallback logic for missing save states or inconsistencies.
+- RWS includes comprehensive fallback logic for missing save states, inconsistencies, and prioritizes active blocking errors.
 
 ## 7. Verification Checklist (for this protocol)
-*(Self-correction: Updated checks for v2.7)*
--   [ ] `BWS` logic requires and uses a preceding `SC` to determine the highest priority `targetTask`.
--   [ ] `BWS` updates task status from `⏳` to `🔄` if needed and executes state sync verification.
--   [ ] `SWS` includes verification of `WorkSessionSave` entity creation before proceeding.
--   [ ] `SWS` includes optional roadmap marker update (`⏸️`) and state sync verification.
--   [ ] `RWS` includes fallback logic for missing saves/inconsistencies.
--   [ ] `RWS` includes roadmap marker update (`🔄` from `⏸️`) and state sync verification.
--   [ ] `EWS TESTING` triggers TVP v1.3+ correctly.
--   [ ] `EWS COMPLETED` re-verifies `APPROVED` status from TVP v1.3+.
--   [ ] State Synchronization Verification is executed at all required points (BWS Active, SWS Paused, RWS Active, EWS Testing, EWS Completed).
--   [ ] Protocol integration layer lists correct protocol versions (`SC v2.1+`, `TVP v1.3+`, `WSAP v2.4+`).
+*(Self-correction: Updated checks for v2.9)*
+-   [ ] `BWS` logic accommodates being triggered by RWS fallback.
+-   [ ] `BWS` correctly updates status for tasks starting from `⏳` or `❌` (due to error).
+-   [ ] `SWS` logic unchanged.
+-   [ ] `RWS` logic updated with new hierarchy-aware fallback (`Error` -> `⏸️` -> `🧪` (report/stop) -> `🔄` (deepest) -> `🔬` (report/stop) -> `⏳` -> `❌`).
+-   [ ] `RWS` correctly stops and reports status for `🧪` and `🔬` states during fallback.
+-   [ ] `RWS` correctly triggers `BWS` when fallback selects `Error`, `⏸️`, `🔄`, or `⏳`.
+-   [ ] `EWS` logic unchanged.
+-   [ ] State Synchronization Verification is executed at all required points.
+-   [ ] Protocol integration layer lists correct protocol versions (`SC v2.1+`, `TVP v1.3+`, `WSAP v2.5+`, `Memory v2.1+`).
 -   [ ] Formatting adheres to `rule-formatting-protocol.mdc`.
 
 ## 8. Usage Instructions (New Section)
--   **Starting Work:** Always initiate workflow with `IAW` first. Then, either use `ST` (if tasks are `🔬`) followed by `BWS`, or just `BWS` directly if the priority task is actionable (`🔄`, `⏳`). `BWS` MUST always be preceded by a `Status Check` (either via `IAW` or run immediately before manual `BWS`).
--   **Interruptions:** Use `SWS` to pause work safely, ensuring state is saved to Server Memory and optionally marked on the roadmap.
--   **Resuming Work:** Use `RWS` to pick up where you left off. If a specific save state is known, provide its ID (`RWS [saveSessionID]`); otherwise, the protocol attempts to find the most recent save or fall back to roadmap markers.
--   **Checking Progress:** Use `CWS` during an active session to get a summary of work done *within that session*, automatically save the current state, and continue working.
--   **Ending Work:** Use `EWS` with the appropriate `Reason`:
-    -   `EWS TESTING`: When development is done and the task needs user testing.
-    -   `EWS COMPLETED`: Only after the user has approved the task via the Testing & Verification Protocol (`AC [TaskID]`).
-    -   `EWS NORMAL`/`INTERRUPTED`/`FAILED`: For other session closing scenarios.
+*(Self-correction: Updated RWS description)*
+-   **Starting Work:** Always initiate workflow with `IAW` first. Then, use `RWS` (which handles complex fallback including error checking, resuming paused/active work, or starting pending tasks), or use `BWS` directly *after* `SC` if you want to manually target the top priority from the status check.
+-   **Interruptions:** Use `SWS` to pause work safely.
+-   **Resuming Work:** Use `RWS`. If a specific save state is known, provide its ID (`RWS [saveSessionID]`); otherwise, the protocol executes the full fallback logic to determine the best action (resume, start new, or report testing status).
+-   **Checking Progress:** Use `CWS` during an active session.
+-   **Ending Work:** Use `EWS` with the appropriate `Reason`.
 
 ## 9. Implementation Examples (Conceptual) (New Section)
+*(Self-correction: Added RWS Fallback conceptual example)*
 
 ````javascript
-// Example 1: Begin Work Session (BWS) - Conceptual JS
-async function handleBWS(sessionType = "FEATURE") {
-  // Step 2: Acquire Context (Status Check)
-  const scReport = await executeProjectStatusCheck(); // Assumes SC returns structured data
-  const targetTask = scReport.priorityTask; // Extract priority task ID/Name
+// Example 1: Begin Work Session (BWS) - Conceptual JS (Unchanged)
+async function handleBWS(sessionType = "FEATURE", targetTaskDetails = null) {
+  let scReport, targetTask;
 
-  if (!targetTask) {
-    console.error("BWS Error: No priority task identified by Status Check.");
-    return;
+  if (!targetTaskDetails) {
+    // Triggered manually, run SC
+    scReport = await executeProjectStatusCheck(); // Assumes SC returns structured data
+    targetTask = scReport.priorityTask;
+    if (!targetTask) {
+      console.error("BWS Error: No priority task identified by Status Check.");
+      return;
+    }
+  } else {
+    // Triggered by RWS fallback
+    targetTask = targetTaskDetails;
   }
 
-  // Step 4: Timestamp
-  const startTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
-  const logTs = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
-
-  // Step 5: Generate Session ID
-  const sessionId = `WS_${sessionType}_${logTs}`;
-
-  // Step 6: Entity Creation
-  await mcp_Server_Memory_create_entities({
-    entities: [{
-      name: sessionId,
-      entityType: "WorkSession",
-      observations: [
-        `Session started at ${startTime}`,
-        `Type: ${sessionType}`,
-        `Target Task: ${targetTask.id}`, // Assuming targetTask has an id property
-        `Overall Context: ${scReport.overallContext}`, // Assuming SC provides context
-        `Linked SC: ${scReport.statusCheckEntityId}` // Assuming SC provides its ID
-      ],
-      // Store targetTask details directly if needed
-      fields: { targetTaskId: targetTask.id, targetTaskStatus: targetTask.status }
-    }]
-  });
-  // ... (Create relations etc.) ...
-
-  // Step 7: Task Status Update (if applicable)
-  if (targetTask.status === '⏳') {
-    // Update Task entity in Memory to ACTIVE
-    // Update roadmap file to 🔄
-    // Execute State Synchronization Verification
-  }
-
-  // Step 8-10: Verification, Audit, Feedback
-  console.log(`Work Session ${sessionId} started for task ${targetTask.id}.`);
+  // ... (rest of BWS logic from v2.8 example) ...
 }
 
-// Example 2: Save Work Session (SWS) - Conceptual JS
+// Example 2: Save Work Session (SWS) - Conceptual JS (Unchanged)
 async function handleSWS(activeSessionId, reason = "Manual Save") {
-  // Step 1: Identify Active Session (Assume activeSessionId is valid)
-  // Step 2: Timestamp
-  const saveTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
-  const logTs = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
-  const sessionShortId = activeSessionId.replace(/[^A-Z0-9]/ig, '').substring(0, 10); // Example short ID
+  // ... (SWS logic from v2.8 example) ...
+}
 
-  // Step 3: Pre-Save Verification (Conceptual)
-  // Step 4: Generate Save ID
-  const saveId = `WSSave_${sessionShortId}_${logTs}`;
+// Example 3: Resume Work Session (RWS) - Conceptual JS
+async function handleRWS(saveSessionId = null) {
+  if (saveSessionId) {
+    // Attempt to load specific save state...
+    // If successful, update WorkSession, roadmap, verify, audit, feedback (Step 7 logic)
+    // If fails, fall through to fallback logic
+  }
 
-  // Step 5 & 6: Entity Creation & Verification
-  try {
-    await mcp_Server_Memory_create_entities({
-      entities: [{
-        name: saveId,
-        entityType: "WorkSessionSave",
-        observations: [
-          `Session state saved at ${saveTime}`,
-          `Reason: ${reason}`,
-          `Paused Session: ${activeSessionId}`
-          // Add more context like active task, open files etc.
-        ]
-      }]
-    });
-    // Attempt to immediately read back the entity to verify creation (not shown)
-  } catch (error) {
-    console.error(`SWS Error: Failed to create/verify save entity ${saveId}.`, error);
-    // Abort SWS
+  // --- Fallback Logic ---
+  // Priority 1: Check for Active Blocking Errors
+  const activeErrorTasks = await findTasksBlockedByActiveErrors(); // Query Memory
+  if (activeErrorTasks.length > 0) {
+    const targetTask = selectHighestPriorityTask(activeErrorTasks);
+    console.log(`RWS Fallback: Found active error blocking task ${targetTask.id}. Initiating BWS to resolve.`);
+    await handleBWS("FIX", targetTask); // Start BWS for the blocked task
     return;
   }
 
-  // Step 8: Update Active Session
-  // Fetch WorkSession entity 'activeSessionId'
-  // Add observation: `Session paused by ${saveId} at ${saveTime}`
-  // Update status to PAUSED
+  // Priority 2: Check for Paused (⏸️)
+  const pausedTasks = await findTasksByStatusFromRoadmap('⏸️');
+  if (pausedTasks.length > 0) {
+    const targetTask = selectHighestPriorityTask(pausedTasks);
+    console.log(`RWS Fallback: Found paused task ${targetTask.id}. Initiating BWS to resume.`);
+    await handleBWS("FEATURE", targetTask); // Start BWS for the paused task
+    return;
+  }
 
-  // Step 9: Task Status Marker (Optional)
-  // Find primary task in roadmap
-  // Update marker to ⏸️ [Paused: SWS - saveTime]
+  // Priority 3: Check for Testing (🧪)
+  const testingTasks = await findTasksByStatusFromRoadmap('🧪');
+  if (testingTasks.length > 0) {
+    const targetTask = selectHighestPriorityTask(testingTasks);
+    console.log(`RWS Halted: Task ${targetTask.id} is actively testing (🧪). Awaiting user approval (AC/RC).`);
+    // STOP RWS
+    return;
+  }
 
-  // Step 9a: Execute State Synchronization Verification
+  // Priority 4: Find Deepest In Progress (🔄)
+  const inProgressTasks = await findTasksByStatusFromRoadmap('🔄');
+  if (inProgressTasks.length > 0) {
+    const targetTask = findDeepestTask(inProgressTasks); // Logic needed here
+    console.log(`RWS Fallback: Found deepest active task ${targetTask.id}. Initiating BWS.`);
+    await handleBWS("FEATURE", targetTask); // Start BWS for the deepest active task
+    return;
+  }
 
-  // Step 10: Relation Creation (Link WSSave to WorkSession, Task etc.)
+  // Priority 5: Check for Pending Testing (🔬)
+  const pendingTestTasks = await findTasksByStatusFromRoadmap('🔬');
+  if (pendingTestTasks.length > 0) {
+    const targetTask = selectHighestPriorityTask(pendingTestTasks);
+    console.log(`RWS Halted: Task ${targetTask.id} is pending testing (🔬). Use ST [TaskID] or ST to initiate.`);
+    // STOP RWS
+    return;
+  }
 
-  // Step 11-12: Audit, Feedback
-  console.log(`Work Session ${activeSessionId} saved as ${saveId}.`);
+  // Priority 6: Find Highest Priority Pending (⏳)
+  const pendingTasks = await findTasksByStatusFromRoadmap('⏳');
+  if (pendingTasks.length > 0) {
+    const targetTask = selectHighestPriorityTask(pendingTasks);
+    console.log(`RWS Fallback: No active/paused/testing tasks. Initiating BWS for pending task ${targetTask.id}.`);
+    await handleBWS("FEATURE", targetTask); // Start BWS for the next pending task
+    return;
+  }
+
+  // Priority 7: Handle Blocked/No Tasks
+  console.log("RWS: No actionable tasks found to resume or start.");
 }
+
+// Helper function placeholders (implementation details omitted)
+async function findTasksBlockedByActiveErrors() { /* ... */ }
+async function findTasksByStatusFromRoadmap(statusEmoji) { /* ... */ }
+function selectHighestPriorityTask(tasks) { /* ... */ }
+function findDeepestTask(tasks) { /* ... */ }
+
 ````
 
 ## 10. Documentation & Maintenance (New Section)
+*(No change needed from v2.8)*
 -   This protocol document (`work-session-management-protocol.mdc`) MUST be updated if the session lifecycle, commands, or integrations change.
 -   Ensure referenced protocols (`SC`, `TVP`, `WSAP`, etc.) are kept up-to-date in the Integration Layer section.
 -   Changes to task status representation (e.g., roadmap emojis `🔄`, `⏸️`) MUST be reflected consistently across this protocol, the Task Tracking Protocol, and the Status Check Protocol.
 -   Regularly review the RWS fallback logic (Section 3.3) to ensure it correctly handles potential inconsistencies between Server Memory and roadmap states.
+
