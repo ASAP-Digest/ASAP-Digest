@@ -76,5 +76,18 @@
     "svelte-dnd-action": "^0.9.60",
     "web-push": "^3.6.7",
     "workbox-window": "^7.3.0"
+  },
+  "lint-staged": {
+    "*.{js,svelte}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md,json}": [
+      "prettier --write"
+    ],
+    "../docs/ROADMAP_TASKS.md": [
+      "node ../generate-todotxt.js",
+      "git add ../docs/todotasks.txt"
+    ]
   }
 }
