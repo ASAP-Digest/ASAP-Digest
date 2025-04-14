@@ -33,6 +33,8 @@ wp-content/uploads/*
 app/src/lib/components/ui/README.md
 /docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
 class-environment-config.php
+/docs/VeriDX/VeriDX: High-Level System Documentation.md
+/docs/VeriDX/
 
 # Playwright
 node_modules/

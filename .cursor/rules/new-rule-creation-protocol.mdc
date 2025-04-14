@@ -1,0 +1,114 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# New Rule Creation Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the systematic process for identifying the need for, drafting, refining, integrating, and documenting new rules (`.mdc` files) within the VeriDX system. It standardizes the creation process, often triggered by recurring errors or identified gaps in existing procedures, ensuring new rules are effective, well-formatted, integrated, and maintainable.
+
+## 2. Protocol Integration Layer
+
+This protocol interfaces with several core system protocols:
+
+````text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Task Guidance
+│ 2. Rule Execution Protocol              │ // Executing steps herein
+│ 3. Universal Error Resolution (UERP)    │ // Error analysis & Enhancement trigger
+│ 4. Rule Formatting Protocol             │ // MANDATORY formatting standard
+│ 5. Server Memory Rules                  │ // Logging/Tracking (Optional)
+│ 6. Cross-Protocol Comms & Verification   │ // Verifying rule integrity
+│ 7. Audit Trail System                   │ // Logging rule creation event
+└─────────────────────────────────────────┘
+````
+
+## 3. Activation & Trigger Conditions
+
+This protocol is typically initiated when:
+
+-   **Error Resolution:** A recurring error or category of errors is identified through the `Universal Error Resolution Protocol (UERP)`, suggesting a need for a preventative rule.
+-   **Process Gap:** A gap in standardization or procedure is identified during development or review, requiring a new rule to ensure consistency or efficiency.
+-   **New Feature/Technology:** Introduction of a new technology, pattern, or significant feature necessitates a guiding protocol.
+-   **Explicit User Request:** The user explicitly requests the creation of a new rule.
+
+## 4. Protocol Steps
+
+### Step 1: Problem Definition & Analysis (UERP Integration)
+
+1.  **Identify Need:** Clearly articulate the problem the new rule aims to solve or the process it intends to standardize.
+2.  **Error Description (If Applicable):** If triggered by an error (via UERP), accurately and comprehensively describe the error, its symptoms, and its occurrences.
+3.  **Root Cause Analysis (UERP):** Determine the fundamental cause of the error or process gap.
+4.  **Categorization:** Categorize the problem domain (e.g., "UI Consistency", "State Management", "Dependency Handling", "Security", "Formatting").
+5.  **Existing Rule Check:** Verify that no existing rule adequately addresses the identified problem. Search `<available_instructions>` and Server Memory/Docs.
+
+### Step 2: Draft Initial Specific Rule
+
+1.  **Focused Solution:** Draft the initial version of the rule to directly address the *specific* instance of the problem or error category identified in Step 1.
+2.  **Core Principle:** Clearly state the core principle or behavior the rule enforces.
+3.  **Actionable Steps:** Define clear, actionable steps or requirements.
+4.  **Examples:** Include specific "Correct" and "Incorrect" examples relevant to the initial problem scope.
+
+### Step 3: Generalization & Refinement
+
+1.  **Identify Core Principle:** Re-evaluate the core principle identified in Step 2. Is it applicable more broadly?
+2.  **Broaden Scope:** Refine the rule's language and steps to make it generic enough to apply universally to the *category* of problem, not just the specific instance.
+3.  **Abstract Examples:** Update or add examples to illustrate the broader application of the rule.
+4.  **Clarity & Testability:** Ensure the rule's requirements are unambiguous and, where possible, testable (either automatically via linters/checks or manually via checklists).
+5.  **Conflict Check:** Analyze potential conflicts with existing rules. Resolve conflicts or document necessary precedence.
+
+### Step 4: Formatting & Structure (MANDATORY)
+
+1.  **Adhere to Formatting Protocol:** The *entire* content of the new rule MUST strictly adhere to all requirements defined in `rule-formatting-protocol.mdc`. This includes:
+    *   Single outer ` ```markdown ... ``` ` block for the rule content.
+    *   Quadruple backticks (` ```` ... ```` `) for ALL nested code examples, configurations, or structured text blocks.
+    *   Appropriate language specifiers.
+    *   Clear structure using headings, lists, and inline formatting.
+2.  **Naming Convention:** Choose a descriptive, hyphenated filename (e.g., `new-component-structure-protocol.mdc`).
+3.  **Versioning:** Include a version number (e.g., `v1.0`) in the main heading.
+
+### Step 5: Integration Planning
+
+1.  **Identify Touchpoints:** Determine which existing protocols or workflows the new rule will interact with or modify.
+2.  **Update Integrating Protocols (If Needed):** Identify if any existing protocols need updates to reference or integrate the new rule (e.g., adding checks to an enforcement protocol, updating a meta-protocol step). Plan these edits separately.
+3.  **Define Verification:** Specify how adherence to the new rule will be verified (e.g., manual checklist, automated checks, integration with `ui-check.mdc` or `strict-visual-enforcement-protocol.mdc`).
+
+### Step 6: Verification & Documentation
+
+1.  **Self-Verification:** Review the drafted rule against this protocol's checklist (Section 8). Check for clarity, completeness, formatting adherence, and non-conflict.
+2.  **Documentation Updates:**
+    *   Add the new rule's name and description to the `<available_instructions>` list (or the system managing it).
+    *   Update any protocols identified in Step 5.2.
+    *   Add an entry to a relevant `CHANGELOG.md` or project documentation noting the new rule's addition.
+    *   Optionally, create/update `Task` or `Documentation` entities in Server Memory.
+3.  **Audit:** Record `RULE_CREATED` event in the Audit Trail.
+
+### Step 7: Review & Finalization (User Driven)
+
+1.  **Present Draft:** Present the fully formatted and documented rule draft to the user for review.
+2.  **Incorporate Feedback:** Address any feedback or requested modifications from the user.
+3.  **Final Approval:** Await user confirmation before considering the rule officially active and ready for enforcement/use. (The mechanism for formal activation, e.g., merging a file, depends on the project's workflow).
+
+## 5. Rule Content Guidelines
+
+-   Use clear, concise language.
+-   Employ prescriptive keywords (MUST, SHOULD, MAY) where appropriate (RFC 2119).
+-   Provide concrete examples.
+-   Focus on preventing the root cause identified in Step 1.
+-   Ensure rules are maintainable and understandable.
+
+## 6. Verification Checklist (for the New Rule)
+
+-   [ ] Does the rule address a clearly defined need/problem?
+-   [ ] Is the core principle clearly stated?
+-   [ ] Are the steps/requirements actionable and unambiguous?
+-   [ ] Is the rule sufficiently generalized?
+-   [ ] Does the formatting strictly adhere to `rule-formatting-protocol.mdc`?
+-   [ ] Are potential conflicts with existing rules addressed?
+-   [ ] Is the verification method defined?
+-   [ ] Are necessary documentation updates identified/planned?
+-   [ ] Has the rule been added to `<available_instructions>`?
