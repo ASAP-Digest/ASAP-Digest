@@ -379,7 +379,10 @@
     if (!currentUser) {
       console.debug('[Layout Mount] No active SK session detected. Checking WP sync...');
       try {
-        const response = await fetch('/api/auth/sync'); // Browser sends cookies automatically
+        // Modify the fetch call to include credentials
+        const response = await fetch('/api/auth/sync', {
+          credentials: 'include' // <<< ADD THIS OPTION
+        }); // Browser sends cookies automatically
         if (!response.ok) {
           // Don't throw, just log. The backend handles non-200 for invalid WP sessions etc.
           console.debug(`[Layout Mount] Sync check response not OK: ${response.status}`);

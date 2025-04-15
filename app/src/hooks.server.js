@@ -82,6 +82,43 @@ function validateSyncSecret(request) {
  */
 
 /** @type {import('@sveltejs/kit').Handle} */
+const corsHandle = async ({ event, resolve }) => {
+  // Define allowed origins (adjust for production)
+  const allowedOrigin = dev ? 'http://localhost:5173' : 'https://app.asapdigest.com';
+  const requestOrigin = event.request.headers.get('origin');
+
+  // Default response (will be modified if it's a relevant CORS request)
+  const response = await resolve(event);
+
+  // Check if the request path is our sync endpoint and if origin matches
+  if (event.url.pathname === '/api/auth/sync' && requestOrigin === allowedOrigin) {
+    console.log(`[CORS Handle] Applying CORS headers for /api/auth/sync from origin: ${requestOrigin}`);
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    // Optionally add other headers like Allow-Methods, Allow-Headers if needed
+    // response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    // response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+  }
+
+  // Handle OPTIONS preflight requests for the sync endpoint
+  if (event.request.method === 'OPTIONS' && event.url.pathname === '/api/auth/sync' && requestOrigin === allowedOrigin) {
+    console.log(`[CORS Handle] Handling OPTIONS preflight for /api/auth/sync from origin: ${requestOrigin}`);
+    return new Response(null, {
+      status: 204, // No Content
+      headers: {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', // Allow GET/POST if needed later
+        'Access-Control-Allow-Headers': 'Content-Type, Cookie, X-CSRF-Token', // Allow necessary headers
+        'Access-Control-Max-Age': '86400' // Cache preflight for 1 day
+      }
+    });
+  }
+
+  return response;
+};
+
+/** @type {import('@sveltejs/kit').Handle} */
 const betterAuthHandle = async ({ event, resolve }) => {
     try {
         // Only ignore Vite's internal HMR websocket connection
@@ -114,7 +151,7 @@ const betterAuthHandle = async ({ event, resolve }) => {
 
             if (!isAuthorized) {
                  // Use expectedAuthMethod for clearer error message
-                 const errorMsg = `Invalid ${expectedAuthMethod}`; 
+                 const errorMsg = `Invalid ${expectedAuthMethod}`;
                  console.warn(`[Auth Handle] ${errorMsg} for ${event.url.pathname}`);
                  return new Response(JSON.stringify({ error: errorMsg }), {
                     status: 403,
@@ -145,7 +182,7 @@ const betterAuthHandle = async ({ event, resolve }) => {
 
         // Handle auth routes with Better Auth, *except* our custom sync route
         // which is handled by its own +server.js after secret validation.
-        const isStandardAuthPath = event.url.pathname.startsWith('/api/auth/') && !isSyncPath; 
+        const isStandardAuthPath = event.url.pathname.startsWith('/api/auth/') && !isSyncPath;
 
         if (isStandardAuthPath) {
             console.log(`[Auth Handle] Passing standard auth path ${event.url.pathname} to auth.handler`); // DEBUG
@@ -176,7 +213,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
     const locals = event.locals;
     /** @type {PoolConnection | undefined} */
     let skConnection;
-    console.log(`[hooks.server.js | WP Session] Request Path: ${event.url.pathname}`); 
+    console.log(`[hooks.server.js | WP Session] Request Path: ${event.url.pathname}`);
 
     try {
         // Skip check for API, static, internal routes
@@ -204,7 +241,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
             FROM ba_sessions 
             WHERE session_token = ? AND expires_at > NOW()
         `;
-        /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */ 
+        /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */
         const [sessionResult] = await skConnection.execute(sessionSql, [sessionToken]);
         
         let baUserId = null;
@@ -249,148 +286,108 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                     u.email, 
                     u.avatar_url as avatarUrl, 
                     u.roles, 
-                    u.updated_at as updatedAt,
-                    m.wp_user_id as id, 
-                    m.sync_status as syncStatus
-                FROM ba_users u
-                LEFT JOIN ba_wp_user_map m ON u.id = m.ba_user_id
+                    u.sync_status as syncStatus, 
+                    u.updated_at as updatedAt 
+                FROM ba_users u 
                 WHERE u.id = ?
             `;
-             /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */
+            /** @type {[ (RowDataPacket[] | OkPacket | ResultSetHeader), any ]} */
             const [userResult] = await skConnection.execute(userSql, [baUserId]);
-
-            // Refined Type guard for userResult
+            
             if (Array.isArray(userResult) && userResult.length > 0) {
-                const userRow = userResult[0]; 
-
-                // Runtime check for expected properties
-                if (userRow && typeof userRow === 'object' && 'id' in userRow && 'betterAuthId' in userRow) {
-                     /** @type {User} */
-                    const userDataFromDb = {
+                const userData = userResult[0];
+                if (userData && typeof userData === 'object') {
+                    // @ts-ignore - Type assertion for userData
+                    locals.user = {
+                        id: locals.user?.id || baUserId, // Keep existing ID if somehow present, otherwise use baUserId
+                        betterAuthId: baUserId,
                         // @ts-ignore
-                        id: String(userRow.id), 
+                        displayName: userData.displayName || undefined,
                         // @ts-ignore
-                        betterAuthId: userRow.betterAuthId,
-                        // @ts-ignore - Provide fallback to undefined if null/empty
-                        displayName: userRow.displayName || undefined, 
-                        // @ts-ignore - Provide fallback to undefined if null/empty
-                        email: userRow.email || undefined, 
+                        email: userData.email || undefined,
                         // @ts-ignore
-                        avatarUrl: userRow.avatarUrl ?? undefined, 
+                        avatarUrl: userData.avatarUrl || undefined,
                         // @ts-ignore
-                        roles: JSON.parse(userRow.roles || '[]'), 
+                        roles: userData.roles ? JSON.parse(userData.roles) : [], // Assuming roles are stored as JSON string
                         // @ts-ignore
-                        syncStatus: userRow.syncStatus,
+                        syncStatus: userData.syncStatus || 'unknown',
                         // @ts-ignore
-                        updatedAt: userRow.updatedAt instanceof Date ? userRow.updatedAt.toISOString() : userRow.updatedAt
+                        updatedAt: userData.updatedAt ? new Date(userData.updatedAt).toISOString() : undefined, // Ensure ISO string
+                        sessionToken: sessionToken // Include the session token
                     };
-                    
-                    console.log('[hooks.server.js | SK Session] Fetched user data from ba_users:', userDataFromDb);
-                    // Assigning to App.Locals.user which should expect optional fields correctly
-                    event.locals.user = userDataFromDb;
+                     console.log('[hooks.server.js | SK User] Populated locals.user from SK DB:', locals.user); // DEBUG
                 } else {
-                    console.error(`[hooks.server.js | SK Session] User data row invalid or missing expected properties for ba_user_id: ${baUserId}`);
+                    console.warn(`[hooks.server.js | SK User] User data query for ba_user_id ${baUserId} returned invalid data.`);
                 }
             } else {
-                 console.error(`[hooks.server.js | SK Session] User data not found in ba_users for ba_user_id: ${baUserId}`);
+                 console.warn(`[hooks.server.js | SK User] No user found in ba_users for ba_user_id: ${baUserId}`);
             }
+        } else {
+            // This case should not be reachable if session validation logic is correct
+            console.warn('[hooks.server.js | SK User] baUserId was null after session validation, cannot fetch user.');
         }
 
     } catch (error) {
-        // Type guard for thrown redirect responses or other errors
-        if (error && typeof error === 'object' && 'status' in error && typeof error.status === 'number' && error.status >= 300 && error.status < 400 && 'location' in error) {
-             console.log('[hooks.server.js | Session Handle] Caught redirect error, re-throwing.');
-             throw error; // Re-throw redirects
-        } else if (error instanceof Response) {
-            // If a Response was returned directly (like redirect with cookie clearing)
-            console.log('[hooks.server.js | Session Handle] Caught Response, returning it.');
-            return error; 
-        }
-        // Log other unexpected errors
-        console.error('[hooks.server.js | Session Handle] Unexpected Error:', error);
-
+        console.error('[hooks.server.js | WP Session] Error in session handle:', error);
     } finally {
-         if (skConnection) {
-             try { await skConnection.release(); console.log('[hooks.server.js | SK Session] Released SK DB connection.'); } catch(relErr){ console.error('Failed releasing SK DB connection:', relErr);}
-         }
+        if (skConnection) {
+            await skConnection.release();
+            console.log('[hooks.server.js | SK Session] Released SK DB connection.');
+        }
     }
-    
-    // Always resolve the request
-    console.log('[hooks.server.js | Session Handle] Resolving request. Locals user set:', !!event.locals.user);
+
     return resolve(event);
 };
 
 /** @type {import('@sveltejs/kit').Handle} */
 const protectedRouteHandle = async ({ event, resolve }) => {
-    try {
-        // Skip protection for public routes and API endpoints
-        if (event.url.pathname.startsWith('/api/') || 
-            event.url.pathname.startsWith('/_app/') ||
-            event.url.pathname.startsWith('/@') ||
-            event.url.pathname === '/' ||
-            event.url.pathname === '/login' ||
-            event.url.pathname === '/register' ||
-            event.url.pathname === '/forgot-password') {
-            return resolve(event);
-        }
+    /** @type {App.Locals} */
+    const locals = event.locals;
+    const user = locals.user; // User data populated by wordPressSessionHandle or previous hooks
+    
+    const protectedRoutes = [
+        '/dashboard',
+        '/settings',
+        '/profile',
+        '/billing',
+        // Add other protected routes here
+    ];
+    
+    const isAdminRoute = event.url.pathname.startsWith('/admin');
+    /** @param {User | undefined | null} user */
+    const requiresAdmin = (user) => user?.roles?.includes('administrator');
 
-        // Check if route is protected
-        const isProtectedRoute = event.url.pathname.startsWith('/dashboard') || 
-                               event.url.pathname.startsWith('/account') ||
-                               event.url.pathname.startsWith('/settings');
+    // Check if the current path starts with any protected route
+    const isProtectedRoute = protectedRoutes.some(route => event.url.pathname.startsWith(route));
 
-        if (!isProtectedRoute) {
-            return resolve(event);
-        }
-
-        // Get session token
-        const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
-        if (!sessionToken) {
-            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
-        }
-
-        // Validate session with WordPress
-        const wpResponse = await fetch(`${getWordPressBaseURL()}/wp-json/asap/v1/auth/check-wp-session`, {
-            headers: {
-                'X-Better-Auth-Token': sessionToken,
-                cookie: event.request.headers.get('cookie') || ''
-            }
-        });
-
-        if (!wpResponse.ok) {
-            // Clear invalid session
-            const headers = new Headers();
-            headers.append('Set-Cookie', 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
-            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
-        }
-
-        const data = await wpResponse.json();
-        if (!data.valid) {
-            throw redirect(303, `/login?redirect=${encodeURIComponent(event.url.pathname)}`);
-        }
-
-        // Add user data to event locals for use in routes
-        /** @type {EventLocals} */
-        const eventLocals = event.locals;
-        eventLocals.user = {
-            id: String(data.user_id),
-            betterAuthId: data.better_auth_user_id,
-            displayName: data.display_name,
-            email: data.user_email,
-            avatarUrl: data.avatar_url,
-            roles: data.user_roles,
-            syncStatus: data.sync_status || 'unknown'
-        };
-
-        return resolve(event);
-    } catch (error) {
-        if (error instanceof Response) {
-            throw error;
-        }
-        console.error('Protected route error:', error);
-        throw redirect(303, '/login');
+    if ((isProtectedRoute || isAdminRoute) && !user) {
+        // Redirect to login if trying to access protected/admin route without being logged in
+        const redirectUrl = `/login?redirect=${encodeURIComponent(event.url.pathname)}`;
+        console.log(`[Protected Route] No user found for ${event.url.pathname}. Redirecting to ${redirectUrl}`);
+        throw redirect(303, redirectUrl);
     }
+    
+    if (isAdminRoute && user && !requiresAdmin(user)) {
+        // Redirect to dashboard if trying to access admin route without admin role
+        const redirectUrl = '/dashboard?error=forbidden';
+        console.log(`[Protected Route] User lacks admin role for ${event.url.pathname}. Redirecting to ${redirectUrl}`);
+        throw redirect(303, redirectUrl);
+    }
+
+    // If logged in and accessing root or login page, redirect to dashboard
+    if (user && (event.url.pathname === '/' || event.url.pathname === '/login')) {
+        const redirectUrl = '/dashboard';
+        console.log(`[Protected Route] User logged in, redirecting from ${event.url.pathname} to ${redirectUrl}`);
+        throw redirect(303, redirectUrl);
+    }
+
+    return resolve(event);
 };
 
-/** @type {import('@sveltejs/kit').Handle} */
-export const handle = sequence(betterAuthHandle, wordPressSessionHandle, protectedRouteHandle); 
+// Export the sequence including the new CORS handle *first*
+export const handle = sequence(
+  corsHandle, // Add CORS handling first
+  betterAuthHandle,
+  wordPressSessionHandle,
+  protectedRouteHandle
+); 
