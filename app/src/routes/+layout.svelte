@@ -347,6 +347,80 @@
        lastUpdatedAt = null;
     }
   });
+
+  /**
+   * @typedef {import('$lib/components/ui/toast/use-toast').ToastActionPayload} ToastActionPayload
+   */
+
+  /**
+   * Placeholder for the actual toast function.
+   * Replace with your project's toast implementation.
+   * @param {ToastActionPayload} options
+   */
+  // Remove the placeholder function
+  // function showToast(options) {
+  //  console.log('Showing Toast:', options);
+  // }
+
+  /** @type {User | null | undefined} */
+  let currentUser = $state(undefined); // Use $state for reactivity
+
+  // Subscribe to page store to get user data
+  page.subscribe(value => {
+      // Only update if the initial state is undefined or user logs out
+      if (currentUser === undefined || (currentUser && !value.data.user)) {
+          currentUser = value.data.user;
+      }
+      // Avoid overwriting currentUser if it's already set and page data updates later without user info
+  });
+
+  onMount(async () => {
+    // Only run the check if we haven't determined the user status yet or if they are logged out
+    if (!currentUser) {
+      console.debug('[Layout Mount] No active SK session detected. Checking WP sync...');
+      try {
+        const response = await fetch('/api/auth/sync'); // Browser sends cookies automatically
+        if (!response.ok) {
+          // Don't throw, just log. The backend handles non-200 for invalid WP sessions etc.
+          console.debug(`[Layout Mount] Sync check response not OK: ${response.status}`);
+          const errorData = await response.json().catch(() => ({})); // Attempt to parse error
+          console.debug(`[Layout Mount] Sync error data:`, errorData);
+           // No toast needed here, just means no auto-login happened
+           return;
+        }
+
+        const data = await response.json();
+        console.debug('[Layout Mount] Sync check response OK:', data);
+
+        if (data.valid && data.session_created) {
+          console.log('[Layout Mount] Auto-login successful via sync endpoint.');
+          // Use the imported toasts store directly
+          $toasts.add({
+            title: "Auto Login Successful",
+            description: "You\'ve been automatically logged in based on your WordPress session.",
+            type: "success" // Use 'success' type for consistency
+          });
+          // Reload the page to ensure SvelteKit picks up the new session cookie
+          // and the layout/stores reflect the logged-in state correctly.
+          // Use invalidateAll() + goto() for a smoother transition if preferred,
+          // but location.reload() is simpler and guarantees a fresh state.
+          window.location.reload();
+        } else {
+            console.debug('[Layout Mount] Sync check successful, but no new session created (or autosync inactive).');
+        }
+      } catch (error) {
+        console.error('[Layout Mount] Error during automatic sync check:', error);
+        // Use the imported toasts store directly
+        $toasts.add({
+          title: "Sync Check Error",
+          description: "Could not check login status automatically.",
+          type: "destructive"
+        });
+      }
+    } else {
+         console.debug('[Layout Mount] Active SK session detected. Skipping WP sync check.');
+    }
+  });
 </script>
 
 <svelte:head>

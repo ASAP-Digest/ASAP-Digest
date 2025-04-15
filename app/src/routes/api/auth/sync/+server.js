@@ -243,26 +243,40 @@ export async function GET({ request, url, locals }) {
       );
     }
 
-    // --- Start: [DEPRECATED/REVIEW] Auto-Login Session Creation Logic within Cookie Check ---
-    // This logic here duplicates the token flow partially and might be redundant
-    // or lead to unexpected session creation during simple sync checks.
-    // Consider removing or refining this section if cookie check should *only* sync data.
+    // --- Start: Modified Auto-Login/User Creation Logic within Cookie Check ---
     let ba_user_id_cookie = null;
     let session_token_cookie = null;
     let session_created_cookie = false;
     // Re-use headers defined at the top for JSON response
-    // const headers = new Headers({ 'Content-Type': 'application/json' });
+    // const headers = new Headers({ 'Content-Type': 'application/json' }); // Already defined
 
     if (data.userId) {
+        // --- NEW: Check if autosync is active based on WP response ---
+        if (!data.autosyncActive) {
+            console.debug('[Sync API - Cookie Check] WordPress session valid, but autosync is not active for this user. Aborting SK session creation.');
+            return new Response(
+                JSON.stringify({
+                    valid: false, // Still a valid WP session, but not triggering SK login
+                    error: 'Autosync not active for this user'
+                }), {
+                    status: 200, // 200 OK because the WP session check itself was successful, but we are not proceeding
+                    headers: headers // Use the prepared JSON headers
+                }
+            );
+        }
+        // --- END NEW CHECK ---
+
         const wpUserId_cookie = data.userId;
-        // console.debug(`[Sync API - Cookie Check] WP Session Valid for wpUserId: ${wpUserId_cookie}. Potentially creating BA session if needed.`);
+        console.debug(`[Sync API - Cookie Check] WP Session Valid for wpUserId: ${wpUserId_cookie} AND autosync is active. Checking SK existence/session.`);
 
         // Check if SK session already exists (using locals)
         if (!locals.user) {
-            console.debug('[Sync API - Cookie Check] No active SK session found (locals.user is null). Attempting session creation based on WP cookie.');
+            console.debug('[Sync API - Cookie Check] No active SK session found (locals.user is null). Attempting user lookup/creation based on WP cookie.');
              try {
                 connection = await pool.getConnection();
                 console.debug('[Sync API - Cookie Check] Acquired DB connection from pool.');
+                await connection.beginTransaction(); // Start transaction for user creation/mapping/session
+                console.debug('[Sync API - Cookie Check] Started transaction.');
 
                 // 1. Find ba_user_id from ba_wp_user_map
                 const mapSql_cookie = 'SELECT ba_user_id FROM ba_wp_user_map WHERE wp_user_id = ? LIMIT 1';
@@ -270,9 +284,56 @@ export async function GET({ request, url, locals }) {
                 const [mapRows_cookie] = await connection.execute(mapSql_cookie, mapParams_cookie);
 
                 if (Array.isArray(mapRows_cookie) && mapRows_cookie.length > 0 && mapRows_cookie[0] && typeof mapRows_cookie[0] === 'object' && 'ba_user_id' in mapRows_cookie[0]) {
+                    // --- User and Mapping EXISTS ---
                     ba_user_id_cookie = mapRows_cookie[0].ba_user_id;
-                    console.debug(`[Sync API - Cookie Check] Found ba_user_id: ${ba_user_id_cookie} for wpUserId: ${wpUserId_cookie}`);
+                    console.debug(`[Sync API - Cookie Check] Found existing ba_user_id: ${ba_user_id_cookie} for wpUserId: ${wpUserId_cookie}. Proceeding to create session.`);
 
+                } else {
+                    // --- User and/or Mapping DOES NOT EXIST ---
+                    console.warn(`[Sync API - Cookie Check] No existing mapping found for wpUserId: ${wpUserId_cookie}. Attempting user creation.`);
+
+                    // 1a. Fetch full WP user details (Requires a suitable WP endpoint)
+                    // Using placeholder function for now - assumes it returns needed fields
+                    console.debug(`[Sync API - Cookie Check] Fetching WP user details for wpUserId: ${wpUserId_cookie}...`);
+                    const wpUserDetails = await fetchWordPressUserData(wpUserId_cookie); // Using placeholder
+
+                    if (!wpUserDetails || !wpUserDetails.user_email) {
+                        throw new Error(`Could not fetch required details (email) for wpUserId: ${wpUserId_cookie} from WordPress.`);
+                    }
+                    console.debug(`[Sync API - Cookie Check] Fetched WP user details:`, wpUserDetails);
+
+                    // 1b. Create user in ba_users
+                    const new_ba_user_id = randomUUID(); // Generate UUID for Better Auth user
+                    const userInsertSql = `
+                        INSERT INTO ba_users (id, email, name, username, metadata, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+                    `;
+                    const userInsertParams = [
+                        new_ba_user_id,
+                        wpUserDetails.user_email,
+                        wpUserDetails.display_name || wpUserDetails.user_email.split('@')[0], // Use display_name or derive name
+                        wpUserDetails.username || wpUserDetails.user_email.split('@')[0], // Use username or derive
+                        JSON.stringify({ // Store WP details in metadata
+                            wp_user_id: wpUserId_cookie,
+                            roles: wpUserDetails.user_roles || ['subscriber'], // Default role if needed
+                            // Add other relevant WP details if available
+                        })
+                    ];
+                    console.debug('[Sync API - Cookie Check] Inserting new user into ba_users. SQL:', userInsertSql.trim(), 'Params:', userInsertParams);
+                    await connection.execute(userInsertSql, userInsertParams);
+                    ba_user_id_cookie = new_ba_user_id; // Use the newly created ID
+                    console.debug(`[Sync API - Cookie Check] Successfully created ba_user: ${ba_user_id_cookie}`);
+
+                    // 1c. Create mapping in ba_wp_user_map
+                    const mapInsertSql = 'INSERT INTO ba_wp_user_map (wp_user_id, ba_user_id) VALUES (?, ?)';
+                    const mapInsertParams = [wpUserId_cookie, ba_user_id_cookie];
+                    console.debug('[Sync API - Cookie Check] Inserting mapping into ba_wp_user_map. SQL:', mapInsertSql.trim(), 'Params:', mapInsertParams);
+                    await connection.execute(mapInsertSql, mapInsertParams);
+                    console.debug(`[Sync API - Cookie Check] Successfully created mapping for wpUserId: ${wpUserId_cookie} -> ba_user_id: ${ba_user_id_cookie}`);
+                }
+
+                // --- Common Logic: Create Session (runs if mapping found or user created) ---
+                if (ba_user_id_cookie) {
                     // 2. Generate secure session token
                     session_token_cookie = randomBytes(32).toString('hex'); // 64 hex characters
 
@@ -283,12 +344,15 @@ export async function GET({ request, url, locals }) {
                     // 4. Insert into ba_sessions
                     const sessionSql_cookie = `
                         INSERT INTO ba_sessions (user_id, session_token, expires_at)
-                        VALUES (?, ?, ?)\n                    `;
+                        VALUES (?, ?, ?)\
+                    `; // Removed trailing newline causing potential issues
                     const sessionParams_cookie = [ba_user_id_cookie, session_token_cookie, expires_at_cookie];
+                    console.debug('[Sync API - Cookie Check] Inserting new session into ba_sessions. SQL:', sessionSql_cookie.trim(), 'Params:', sessionParams_cookie);
                     await connection.execute(sessionSql_cookie, sessionParams_cookie);
                     console.debug(`[Sync API - Cookie Check] Inserted new session into ba_sessions for user: ${ba_user_id_cookie}`);
                     session_created_cookie = true;
 
+                    // 5. Prepare Set-Cookie header
                     const cookieName_cookie = 'better_auth_session';
                     const cookieOptions_cookie = [
                         `Path=/`,
@@ -304,10 +368,19 @@ export async function GET({ request, url, locals }) {
                     console.debug(`[Sync API - Cookie Check] Set-Cookie header prepared: ${cookieName_cookie}=${session_token_cookie}; ${cookieOptions_cookie.join('; ')}`);
 
                 } else {
-                    console.error(`[Sync API - Cookie Check] CRITICAL: Could not find ba_user_id in ba_wp_user_map for wpUserId: ${wpUserId_cookie}. Cannot create session.`);
+                     // This case should ideally not be reached if user creation logic works
+                     throw new Error("Failed to obtain or create ba_user_id.");
                 }
+
+                await connection.commit(); // Commit transaction
+                console.debug('[Sync API - Cookie Check] Transaction committed successfully.');
+
             } catch (dbError) {
-                console.error('[Sync API - Cookie Check] Database error during session creation:', dbError);
+                console.error('[Sync API - Cookie Check] Database error during user/session creation:', dbError);
+                if (connection) {
+                    await connection.rollback(); // Rollback transaction on error
+                    console.debug('[Sync API - Cookie Check] Transaction rolled back due to error.');
+                }
                 // Ensure connection is released even on error
                 if (connection) {
                     try { await connection.release(); } catch (relErr) { console.error('[Sync API - Cookie Check] Error releasing connection in DB catch:', relErr); }
@@ -323,70 +396,87 @@ export async function GET({ request, url, locals }) {
             }
         } else {
              console.debug('[Sync API - Cookie Check] Active SK session found (locals.user exists). Skipping session creation.');
+             // Even if SK session exists, we still need to potentially update locals based on WP data
         }
 
+        // --- End: Modified Auto-Login/User Creation Logic ---
 
     } else {
-        console.warn('[Sync API - Cookie Check] WP check response missing userId. Cannot attempt session creation.');
+        console.warn('[Sync API - Cookie Check] WP check response missing userId. Cannot perform sync/session creation.');
+        // Return valid:false as WP session wasn't confirmed with a user ID
+        return new Response(
+          JSON.stringify({
+            valid: false,
+            error: 'WordPress session validation incomplete (missing userId)'
+          }), {
+            status: 401, // Or appropriate status
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
     }
-    // --- End: [DEPRECATED/REVIEW] Auto-Login Session Creation Logic within Cookie Check ---
+    // --- End: Modified Auto-Login/User Creation Logic within Cookie Check ---
 
-    // Update user data in locals (still useful even if session creation failed, for this request)
+    // --- Update user data in locals (Runs after potential user/session creation) ---
     /** @type {User|null} */
-    const currentUser = locals.user || null;
-    console.debug('[Sync API - Cookie Check] Current SvelteKit user data (locals.user):', currentUser);
+    const currentUser = locals.user || null; // locals.user might have been populated if session was just created
+    console.debug('[Sync API - Cookie Check] Current SvelteKit user data (locals.user after potential creation):', currentUser);
     console.debug('[Sync API - Cookie Check] Data from WP (data):', data);
 
+    // Fetch latest user data from DB using ba_user_id_cookie if available (most reliable after creation/lookup)
+    let latestUserDataFromDb = null;
+    if (ba_user_id_cookie) {
+        // We need a function similar to getUserByIdFn but usable here
+        // Placeholder: Assume we fetched the user data after creation/lookup
+        latestUserDataFromDb = {
+            id: ba_user_id_cookie,
+            sessionToken: session_token_cookie || currentUser?.sessionToken, // Use the new token
+            betterAuthId: ba_user_id_cookie,
+            displayName: data.display_name || '', // Use WP data as initial source
+            email: data.user_email || '',        // Use WP data as initial source
+            avatarUrl: data.avatar_url || '',
+            roles: data.user_roles || [],
+            syncStatus: 'synced', // Mark as synced after creation
+            updatedAt: new Date().toISOString() // Use current time as it was just created/synced
+        };
+        console.debug('[Sync API - Cookie Check] Prepared latestUserDataFromDb:', latestUserDataFromDb);
+    }
+
     // Check if data needs updating in SvelteKit locals for this request
-    const userIdChanged = currentUser?.id !== data.better_auth_user_id;
-    const updatedAtChanged = currentUser?.updatedAt !== data.updatedAt;
-    console.debug(`[Sync API - Cookie Check] Checking for updates: userIdChanged=${userIdChanged}, updatedAtChanged=${updatedAtChanged}`);
+    const userToUpdateLocalsWith = latestUserDataFromDb || currentUser; // Prioritize fresh DB data
+    const wpUpdatedAt = data.updatedAt ? new Date(data.updatedAt).toISOString() : null; // Normalize WP timestamp
+    const localUpdatedAt = userToUpdateLocalsWith?.updatedAt;
 
-    const updated = userIdChanged || updatedAtChanged;
+    // Determine if an update is needed
+    const needsUpdate =
+      !userToUpdateLocalsWith || // If no user currently in locals
+      userToUpdateLocalsWith.id !== data.better_auth_user_id || // ID mismatch (shouldn't happen if logic is right)
+      (wpUpdatedAt && localUpdatedAt && wpUpdatedAt > localUpdatedAt) || // WP data is newer
+      session_created_cookie; // Always update locals if a session was just created
 
-    if (updated) {
-      console.debug(`[Sync API - Cookie Check] Update detected (userId changed: ${userIdChanged}, timestamp changed: ${updatedAtChanged}). Updating locals.user...`);
-      /** @type {User} */
+    console.debug(`[Sync API - Cookie Check] Checking for locals update: needsUpdate=${needsUpdate} (session_created=${session_created_cookie}, wpUpdatedAt=${wpUpdatedAt}, localUpdatedAt=${localUpdatedAt})`);
+
+    if (needsUpdate) {
+      console.debug(`[Sync API - Cookie Check] Update detected. Updating locals.user...`);
       locals.user = {
-        id: data.better_auth_user_id || ba_user_id_cookie || currentUser?.id || 'UNKNOWN', // Prioritize WP data, then newly created id, fallback to existing
+        id: ba_user_id_cookie || data.better_auth_user_id || currentUser?.id || 'UNKNOWN', // Prioritize ID from our DB operation
         sessionToken: session_token_cookie || currentUser?.sessionToken, // Use new token if created
-        betterAuthId: data.better_auth_user_id || ba_user_id_cookie || currentUser?.betterAuthId || 'UNKNOWN',
-        displayName: data.display_name || '',
-        email: data.user_email || '',
+        betterAuthId: ba_user_id_cookie || data.better_auth_user_id || currentUser?.betterAuthId || 'UNKNOWN',
+        displayName: data.display_name || '', // Prefer WP data as source
+        email: data.user_email || '',        // Prefer WP data as source
         avatarUrl: data.avatar_url || '',
         roles: data.user_roles || [],
-        syncStatus: data.sync_status || (session_created_cookie ? 'synced' : currentUser?.syncStatus || 'unknown'),
-        updatedAt: data.updatedAt
+        syncStatus: session_created_cookie ? 'synced' : (wpUpdatedAt && localUpdatedAt && wpUpdatedAt > localUpdatedAt ? 'synced' : currentUser?.syncStatus || 'unknown'),
+        updatedAt: wpUpdatedAt || localUpdatedAt || new Date().toISOString() // Use latest available timestamp
       };
       console.debug('[Sync API - Cookie Check] Updated locals.user:', locals.user);
     } else {
-      console.debug('[Sync API - Cookie Check] No update detected.');
-       // If session was just created but no other data changed, still populate locals
-       if (session_created_cookie && ba_user_id_cookie && !currentUser) {
-           console.debug('[Sync API - Cookie Check] Session created, populating locals.user with basic info.');
-           locals.user = {
-                id: ba_user_id_cookie,
-                sessionToken: session_token_cookie || undefined,
-                betterAuthId: ba_user_id_cookie,
-                displayName: data.display_name || '',
-                email: data.user_email || '',
-                avatarUrl: data.avatar_url || '',
-                roles: data.user_roles || [],
-                syncStatus: 'synced',
-                updatedAt: data.updatedAt
-           };
-           console.debug('[Sync API - Cookie Check] Updated locals.user:', locals.user);
-       } else if (locals.user && session_token_cookie) {
-           // If session was created but locals already existed (edge case?), update token
-           locals.user.sessionToken = session_token_cookie;
-           console.debug('[Sync API - Cookie Check] Updated existing locals.user with new session token.');
-       }
+      console.debug('[Sync API - Cookie Check] No update needed for locals.');
     }
 
-    console.debug(`[Sync API - Cookie Check] Returning response: { valid: true, updated: ${updated}, session_created: ${session_created_cookie} }`);
+    console.debug(`[Sync API - Cookie Check] Returning response: { valid: true, updated: ${needsUpdate}, session_created: ${session_created_cookie} }`);
     // Return JSON response for cookie check, potentially with Set-Cookie if session was created
     return new Response(
-      JSON.stringify({ valid: true, updated, session_created: session_created_cookie }), {
+      JSON.stringify({ valid: true, updated: needsUpdate, session_created: session_created_cookie }), {
         headers: headers // Contains Content-Type and potentially Set-Cookie
       }
     );
@@ -416,8 +506,10 @@ export async function GET({ request, url, locals }) {
 
 /**
  * @typedef {object} WordPressUserData - Expected structure from fetchWordPressUserData
+ * @property {number} [wp_user_id]
  * @property {string} [display_name]
  * @property {string} [user_email]
+ * @property {string} [username]
  * @property {string} [avatar_url]
  * @property {string[]} [user_roles]
  * @property {string} [updatedAt] // ISO 8601 string expected
@@ -604,19 +696,26 @@ export async function POST({ request }) {
 /**
  * Placeholder function to simulate fetching user data from WordPress.
  * Replace with actual fetch call to a WP REST endpoint.
+ * **MUST return email and preferably username/display_name.**
  * @param {number|string} wpUserId
  * @returns {Promise<WordPressUserData|null>} // Updated return type
  */
 async function fetchWordPressUserData(wpUserId) {
-    // ... existing placeholder implementation ...
-    // Return placeholder data matching WordPressUserData type
+    // Simulate fetching essential data needed for user creation
+    // In a real implementation, this would call a secure WP REST endpoint
+    // that returns user details based on the validated session/wpUserId.
+    console.warn(`[Sync API - fetchWordPressUserData] Using placeholder data for wpUserId: ${wpUserId}. Replace with actual API call.`);
     /** @type {WordPressUserData} */
     const placeholderData = {
+        wp_user_id: Number(wpUserId), // Ensure it's a number
         display_name: `WP User ${wpUserId}`,
-        user_email: `wpuser${wpUserId}@example.com`,
+        user_email: `wpuser${wpUserId}@example.local`, // Use a placeholder email
+        username: `wpuser${wpUserId}`, // Use a placeholder username
         avatar_url: '',
         user_roles: ['subscriber'],
         updatedAt: new Date().toISOString() // Simulate fresh data
     };
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 150));
     return placeholderData;
 }

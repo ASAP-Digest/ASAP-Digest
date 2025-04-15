@@ -558,7 +558,7 @@ function asap_register_wp_session_check() {
  * @return WP_REST_Response|WP_Error Response object or error
  * @created 03.31.25 | 11:48 AM PDT
  */
-function asap_check_wp_session($request) { // KEEP THIS NAME
+function asap_check_wp_session($request) {
     error_log('[ASAP Digest Check Session] Endpoint /check-wp-session called.'); // ADDED
 
     // Check if user is logged into WordPress
@@ -570,6 +570,23 @@ function asap_check_wp_session($request) { // KEEP THIS NAME
     // Get current WordPress user
     $current_user = wp_get_current_user();
     error_log('[ASAP Digest Check Session] User logged in to WP. WP User ID: ' . $current_user->ID); // ADDED
+
+    // --- Determine if Auto-Sync is Active for this user ---
+    // Option 1: Check a global setting (e.g., from asap_digest_auth_settings option)
+    $auth_settings = get_option('asap_digest_auth_settings');
+    $global_autosync_enabled = isset($auth_settings['auto_sync_enabled']) ? (bool) $auth_settings['auto_sync_enabled'] : false;
+
+    // Option 2: Check a user-specific setting (e.g., user meta)
+    // $user_autosync_preference = get_user_meta($current_user->ID, 'asap_autosync_preference', true);
+    // Let's assume 'enabled' means active, absence or 'disabled' means inactive.
+    // $user_wants_autosync = ($user_autosync_preference === 'enabled');
+
+    // Combine logic (e.g., global must be on, and user hasn't disabled it)
+    // Adjust this logic based on your specific requirements.
+    // For now, let's assume it's active if the global setting is on.
+    $is_autosync_active = $global_autosync_enabled;
+    error_log('[ASAP Digest Check Session] Auto-Sync Active Status: ' . ($is_autosync_active ? 'true' : 'false') . ' (Based on global setting)');
+    // --- End Auto-Sync Check ---
 
     // Sync user to Better Auth if needed
     error_log('[ASAP Digest Check Session] Attempting sync for WP User ID: ' . $current_user->ID); // ADDED
@@ -643,12 +660,16 @@ function asap_check_wp_session($request) { // KEEP THIS NAME
         
         // ---> REMOVED: Session token generation and insertion <---
 
+        // --- MODIFIED RESPONSE ---
         $response_data = [
             'loggedIn' => true,
             'sessionToken' => $sessionToken, // Return existing token or null
-            'userId' => $ba_user_id,
-            'updatedAt' => $updated_at_timestamp // Add the timestamp
+            'userId' => $ba_user_id, // This is the Better Auth user ID
+            'updatedAt' => $updated_at_timestamp,
+            'autosyncActive' => $is_autosync_active // Include the flag
         ];
+        // --- END MODIFIED RESPONSE ---
+
         error_log('[ASAP Digest Check Session] Returning response: ' . print_r($response_data, true)); // ADDED
         return new WP_REST_Response($response_data, 200);
 
