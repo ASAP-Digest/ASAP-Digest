@@ -46,7 +46,7 @@ async function testAuthConnection() {
     // Create Better Auth instance
     const auth = betterAuth({
       secret: process.env.BETTER_AUTH_SECRET || 'test-secret',
-      baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:5173',
+      baseURL: process.env.BETTER_AUTH_URL || 'https://localhost:5173',
       database: {
         type: 'mysql',
         dialect: new MysqlDialect({ pool })

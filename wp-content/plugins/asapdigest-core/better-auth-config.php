@@ -111,7 +111,7 @@ function asap_get_better_auth_base_url() {
     // Default fallback based on environment
     $is_local = (strpos($_SERVER['HTTP_HOST'] ?? '', 'local') !== false);
     if ($is_local) {
-        return 'http://localhost:5173';
+        return 'https://localhost:5173';
     } else {
         return 'https://app.asapdigest.com';
     }

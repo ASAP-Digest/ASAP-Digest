@@ -317,7 +317,7 @@ function asap_generate_digest(WP_REST_Request $request) {
     'https://asapdigest.com/api/generate-podcast',
     'https://asapdigest.local/api/generate-podcast',
     'http://asapdigest.local/api/generate-podcast',
-    'http://localhost:5173/api/generate-podcast'
+    'https://localhost:5173/api/generate-podcast'
   ];
   
   $api_endpoint = $api_endpoints[0]; // Default to first endpoint
@@ -468,7 +468,7 @@ function asap_send_notification(WP_REST_Request $request) {
     'https://asapdigest.com/api/send-push',
     'https://asapdigest.local/api/send-push',
     'http://asapdigest.local/api/send-push',
-    'http://localhost:5173/api/send-push'
+    'https://localhost:5173/api/send-push'
   ];
   
   $api_endpoint = $api_endpoints[0]; // Default to first endpoint
@@ -505,7 +505,7 @@ function asap_add_cors_headers() {
     'https://app.asapdigest.com',  // Add app subdomain
     'https://asapdigest.local',
     'http://asapdigest.local',
-    'http://localhost:5173'
+    'https://localhost:5173'
   ]);
   
   if (in_array($origin, $allowed_origins)) {

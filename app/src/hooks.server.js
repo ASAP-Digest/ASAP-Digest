@@ -84,7 +84,7 @@ function validateSyncSecret(request) {
 /** @type {import('@sveltejs/kit').Handle} */
 const corsHandle = async ({ event, resolve }) => {
   // Define allowed origins (adjust for production)
-  const allowedOrigin = dev ? 'http://localhost:5173' : 'https://app.asapdigest.com';
+  const allowedOrigin = dev ? 'https://localhost:5173' : 'https://app.asapdigest.com';
   const requestOrigin = event.request.headers.get('origin');
   const isSyncPath = event.url.pathname === '/api/auth/sync';
 

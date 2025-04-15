@@ -102,7 +102,7 @@ import { createAuthClient } from "better-auth/svelte";
 import { dev } from '$app/environment';
 
 export const authClient = createAuthClient({
-    baseURL: dev ? 'http://localhost:5173' : 'https://app.asapdigest.com'
+    baseURL: dev ? 'https://localhost:5173' : 'https://app.asapdigest.com'
 });
 ````
 
@@ -128,7 +128,7 @@ const { data: session } = authClient.useSession();
 
 ````plaintext
 BETTER_AUTH_SECRET=your-secret-key
-BETTER_AUTH_URL=http://localhost:5173
+BETTER_AUTH_URL=https://localhost:5173
 DB_HOST=localhost
 DB_PORT=10018
 DB_NAME=local

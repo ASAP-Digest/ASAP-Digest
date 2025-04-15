@@ -15,7 +15,7 @@ const pool = mysql.createPool({
 // Better Auth configuration
 export const auth = betterAuth({
     secret: BETTER_AUTH_SECRET,
-    baseURL: BETTER_AUTH_URL || 'http://localhost:5173',
+    baseURL: BETTER_AUTH_URL || 'https://localhost:5173',
     database: {
         type: 'mysql',
         dialect: new MysqlDialect({ pool })

@@ -152,7 +152,7 @@ trait User_Sync {
             
             // --- BEGIN ADDED CODE: Send data to SvelteKit endpoint ---
             $sync_url = defined('WP_ENVIRONMENT_TYPE') && WP_ENVIRONMENT_TYPE === 'development' 
-                        ? 'http://localhost:5173/api/auth/sync' 
+                        ? 'https://localhost:5173/api/auth/sync' 
                         : 'https://asapdigest.com/api/auth/sync'; // Replace with actual production URL if different
 
             // --- MODIFIED: Retrieve ba_user_id directly from map table ---

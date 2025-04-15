@@ -9,7 +9,7 @@ const requiredVars = {
     DB_PASS: process.env.DB_PASS || 'root',
     DB_NAME: process.env.DB_NAME || 'local',
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'http://localhost:5173'
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'https://localhost:5173'
 };
 
 // Validate environment variables

@@ -62,7 +62,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
      ```bash
      pnpm run dev
      ```
-     - Verify the default app at `http://localhost:5173`.
+     - Verify the default app at `https://localhost:5173`.
 - **Purpose**: Establishes the foundation for the frontend application using SvelteKit with linting and testing tools.
 
 
@@ -242,7 +242,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
 
        // Trigger podcast generation
-       $response = wp_remote_post('https://asapdigest.com/api/generate-podcast' || 'https://asapdigest.local/api/generate-podcast' || 'http://asapdigest.local/api/generate-podcast' || 'http://localhost:5173/api/generate-podcast', [
+       $response = wp_remote_post('https://asapdigest.com/api/generate-podcast' || 'https://asapdigest.local/api/generate-podcast' || 'http://asapdigest.local/api/generate-podcast' || 'https://localhost:5173/api/generate-podcast', [
          'body' => json_encode(['digestId' => $digest_id, 'voiceSettings' => ['voice1' => 'en-US', 'voice2' => 'en-GB', 'rate' => 1.0]]),
          'headers' => ['Content-Type' => 'application/json'],
        ]);
@@ -354,7 +354,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
            'endpoint' => $sub['endpoint'],
            'keys' => ['p256dh' => $sub['p256dh'], 'auth' => $sub['auth']],
          ];
-         $response = wp_remote_post('https://asapdigest.com/api/send-push' || 'https://asapdigest.local/api/send-push' || 'http://asapdigest.local/api/send-push' || 'http://localhost:5173/api/send-push', [
+         $response = wp_remote_post('https://asapdigest.com/api/send-push' || 'https://asapdigest.local/api/send-push' || 'http://asapdigest.local/api/send-push' || 'https://localhost:5173/api/send-push', [
            'body' => json_encode(['subscription' => $subscription, 'payload' => $payload]),
            'headers' => ['Content-Type' => 'application/json'],
          ]);
@@ -370,7 +370,7 @@ Below is the complete, updated development plan for the ASAP Digest project as o
 
      // Add CORS headers for SvelteKit frontend
      function asap_add_cors_headers() {
-       header('Access-Control-Allow-Origin: https://asapdigest.com') || header('Access-Control-Allow-Origin: https://asapdigest.local') || header('Access-Control-Allow-Origin: http://asapdigest.local') || header('Access-Control-Allow-Origin: http://localhost:5173');
+       header('Access-Control-Allow-Origin: https://asapdigest.com') || header('Access-Control-Allow-Origin: https://asapdigest.local') || header('Access-Control-Allow-Origin: http://asapdigest.local') || header('Access-Control-Allow-Origin: https://localhost:5173');
        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
        header('Access-Control-Allow-Headers: Authorization, Content-Type');
      }
