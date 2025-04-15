@@ -86,33 +86,43 @@ const corsHandle = async ({ event, resolve }) => {
   // Define allowed origins (adjust for production)
   const allowedOrigin = dev ? 'http://localhost:5173' : 'https://app.asapdigest.com';
   const requestOrigin = event.request.headers.get('origin');
+  const isSyncPath = event.url.pathname === '/api/auth/sync';
 
-  // Default response (will be modified if it's a relevant CORS request)
-  const response = await resolve(event);
+  console.log(`[CORS Handle Entry] Path: ${event.url.pathname}, Method: ${event.request.method}, Origin: ${requestOrigin}`); // DEBUG
 
-  // Check if the request path is our sync endpoint and if origin matches
-  if (event.url.pathname === '/api/auth/sync' && requestOrigin === allowedOrigin) {
-    console.log(`[CORS Handle] Applying CORS headers for /api/auth/sync from origin: ${requestOrigin}`);
-    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-    // Optionally add other headers like Allow-Methods, Allow-Headers if needed
-    // response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    // response.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+  // Handle OPTIONS preflight requests FIRST
+  if (isSyncPath && event.request.method === 'OPTIONS') {
+    if (requestOrigin === allowedOrigin) {
+      console.log(`[CORS Handle] Handling OPTIONS preflight for ${event.url.pathname} from allowed origin: ${requestOrigin}`); // DEBUG
+      return new Response(null, {
+        status: 204, // No Content
+        headers: {
+          'Access-Control-Allow-Origin': allowedOrigin,
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', // Allow necessary methods
+          'Access-Control-Allow-Headers': 'Content-Type, Cookie, X-CSRF-Token, Authorization', // Allow necessary headers
+          'Access-Control-Max-Age': '86400' // Cache preflight for 1 day
+        }
+      });
+    } else {
+      console.warn(`[CORS Handle] OPTIONS request received for ${event.url.pathname} from DISALLOWED origin: ${requestOrigin}`); // DEBUG
+      // Return a generic response for disallowed origins in preflight
+      return new Response('CORS Origin Not Allowed', { status: 403 });
+    }
   }
 
-  // Handle OPTIONS preflight requests for the sync endpoint
-  if (event.request.method === 'OPTIONS' && event.url.pathname === '/api/auth/sync' && requestOrigin === allowedOrigin) {
-    console.log(`[CORS Handle] Handling OPTIONS preflight for /api/auth/sync from origin: ${requestOrigin}`);
-    return new Response(null, {
-      status: 204, // No Content
-      headers: {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', // Allow GET/POST if needed later
-        'Access-Control-Allow-Headers': 'Content-Type, Cookie, X-CSRF-Token', // Allow necessary headers
-        'Access-Control-Max-Age': '86400' // Cache preflight for 1 day
-      }
-    });
+  // Resolve the request for non-OPTIONS calls
+  const response = await resolve(event);
+
+  // Apply CORS headers to the actual response for the sync path if origin is allowed
+  if (isSyncPath && requestOrigin === allowedOrigin) {
+    console.log(`[CORS Handle] Applying CORS headers to actual response for ${event.url.pathname} from origin: ${requestOrigin}`); // DEBUG
+    response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    // Optional: Add Vary header if your origin logic becomes dynamic
+    // response.headers.append('Vary', 'Origin');
+  } else if (isSyncPath) {
+      console.warn(`[CORS Handle] Actual request received for ${event.url.pathname} from DISALLOWED origin: ${requestOrigin}. Not adding CORS headers.`); // DEBUG
   }
 
   return response;

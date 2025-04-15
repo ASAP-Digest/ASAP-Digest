@@ -35,6 +35,7 @@ app/src/lib/components/ui/README.md
 class-environment-config.php
 /docs/VeriDX/VeriDX: High-Level System Documentation.md
 /docs/VeriDX/
+app/cert/
 
 # Playwright
 node_modules/

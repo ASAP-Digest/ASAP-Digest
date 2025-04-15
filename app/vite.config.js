@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import fs from 'node:fs';
+import mkcert from 'vite-plugin-mkcert';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +22,7 @@ export default defineConfig(({ mode }) => {
 				config: './tailwind.config.js',
 			}),
 			sveltekit(),
+			mkcert(),
 			isAnalyze && visualizer({
 				open: true,
 				gzipSize: true,
@@ -32,6 +35,7 @@ export default defineConfig(({ mode }) => {
 				strict: false,
 				allow: ['..', '../..', '../../node_modules', '.', './node_modules']
 			},
+			https: true,
 			host: env.HOST || 'localhost',
 			port: parseInt(env.PORT || '5173', 10),
 			hmr: {

@@ -74,6 +74,7 @@
     "radix-svelte": "^0.9.0",
     "svelte-chart": "^1.0.0",
     "svelte-dnd-action": "^0.9.60",
+    "vite-plugin-mkcert": "^1.17.8",
     "web-push": "^3.6.7",
     "workbox-window": "^7.3.0"
   },
