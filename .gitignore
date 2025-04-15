@@ -37,6 +37,8 @@ class-environment-config.php
 /docs/VeriDX/
 app/cert/
 
+
+
 # Playwright
 node_modules/
 app/tests/
