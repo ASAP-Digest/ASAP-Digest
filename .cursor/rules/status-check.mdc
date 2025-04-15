@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Status Check Protocol (Project Status Report) v2.2
+# Status Check Protocol (Project Status Report) v2.3
 
 ## 1. Protocol Restrictions
 ````markdown
@@ -24,7 +24,7 @@ B. Entity Creation Limits
 A. Primary Triggers
 - Command or alias "SC".
 - Integration: Can be called by BWS/EWS protocols as part of their flow.
-- Context: Used in WSMP (Work Session Management Protocol v2.5+) for state assessment.
+- Context: Used in WSMP (Work Session Management Protocol v2.10+) for state assessment.
 
 B. Secondary Triggers
 - Pre-session validation (if integrated into BWS).
@@ -37,7 +37,7 @@ B. Secondary Triggers
 1. Status Check ("SC")
    - READ-ONLY operation regarding project files.
    - Creates `StatusCheck` and `StatusReport` entities for logging.
-   - Reads and analyzes roadmap files (`docs/ROADMAP_TASKS.md`, `docs/ASAP_DIGEST_ROADMAP.md` or LLM versions) and recent Server Memory.
+   - Reads and analyzes roadmap files (`docs/ROADMAP_TASKS.md`, LLM versions) and recent Server Memory using the WSMP priority logic.
    - Reports structured project status and exits.
    - **ONLY OUTPUT THE FINAL REPORT**
 
@@ -59,9 +59,9 @@ B. Secondary Triggers
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. Status Check Protocol (This)         │
-│ 2. Work Session Management Proto (v2.5+)│
-│ 3. Server Memory Rules (v2.0+)          │
+│ 1. Status Check Protocol (This v2.3)    │
+│ 2. Work Session Management Proto v2.10+ │ // Source of Priority Logic
+│ 3. Server Memory Rules (v2.1+)          │
 │ 4. Task Tracking Protocol               │
 │ 5. Software Development Meta Protocol   │
 │ 6. Rule Execution Protocol              │
@@ -70,14 +70,13 @@ B. Secondary Triggers
 │ 9. Audit Trail System                   │
 └─────────────────────────────────────────┘
 ````
-*(Self-correction: Updated WSMP version, added Format Time Protocol, refined layers)*
 
 ## 5. Status Check Implementation (Conceptual Steps)
 ````javascript
-async function executeProjectStatusCheck() {
+async function executeProjectStatusCheck_v2_3() {
     // 1. Initialize timestamp for report and logging
     const reportTimestamp = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
-    const formattedReportTime = await mcp_mcp_datetime_get_datetime({ format: "MM.DD.YY | HH:MM AM/PM TimeZone" }); // Use Format Time protocol
+    const formattedReportTime = await getFormattedTime(); // Use Format Time protocol/logic
     const logTimestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
 
     // 2. Create status check entity in Server Memory
@@ -94,21 +93,78 @@ async function executeProjectStatusCheck() {
 
     // 3. Read Roadmap Files
     const roadmapTasksContent = await readFileContents('docs/ROADMAP_TASKS.md');
-    const mainRoadmapContent = await readFileContents('docs/ASAP_DIGEST_ROADMAP.md'); // Or LLM version
+    // Potentially read LLM roadmap versions if needed for hierarchy/context
+    // const mainRoadmapContent = await readFileContents('docs/ASAP_DIGEST_ROADMAP_LLM_X.md');
 
-    // 4. Check Recent Server Memory (e.g., Last 72h)
-    // Calculate timestamp for 72 hours ago
-    const recentCompletions = await searchRecentMemory('TaskCompletion', 72); // Updated lookback
-    const activeErrors = await searchRecentMemory('Error', 0, ['status=active']); // Filter for active errors
+    // 4. Check Recent Server Memory
+    const recentCompletions = await searchRecentMemory('TaskCompletion', 72);
+    const activeErrors = await searchRecentMemory('Error', 0, ['status=active']);
 
-    // 5. Parse and Analyze Data
-    // Parse roadmapTasksContent to get all tasks with statuses and timestamps.
-    // Parse mainRoadmapContent to understand task hierarchy for detailed context.
+    // 5. Parse and Analyze Data (WSMP Priority Logic)
+    // Parse roadmapTasksContent to get all tasks with statuses (Emoji & Timestamp).
     // Identify sections based on parsing results and rules defined in Section 7.
-    const reportData = parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp);
+    // *** BEGIN Priority Logic (Ref: WSMP v2.10, Sec 3.3) ***
+    let priorityTask = null;
+    let priorityReason = "No actionable tasks found.";
+
+    // 5.1: Check Active Blocking Errors
+    const blockedTaskInfo = findHighestPriorityBlockedTask(activeErrors, roadmapTasksContent); // Helper needed
+    if (blockedTaskInfo) {
+        priorityTask = blockedTaskInfo.task;
+        priorityReason = `Blocked by Error: ${blockedTaskInfo.errorSummary}`;
+    }
+
+    // 5.2: Check Paused Tasks (if no error)
+    if (!priorityTask) {
+        const pausedTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '⏸️'); // Helper needed
+        if (pausedTask) {
+            priorityTask = pausedTask;
+            priorityReason = "Paused session";
+        }
+    }
+
+    // 5.3: Check Testing Tasks (if no error/paused)
+    if (!priorityTask) {
+        const testingTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '🧪'); // Helper needed
+        if (testingTask) {
+            priorityTask = testingTask;
+            priorityReason = "Testing Active";
+        }
+    }
+
+    // 5.4: Check Deepest In Progress (if no error/paused/testing)
+    if (!priorityTask) {
+        const inProgressTask = findDeepestTaskByStatus(roadmapTasksContent, '🔄'); // Helper needed
+        if (inProgressTask) {
+            priorityTask = inProgressTask;
+            priorityReason = "Deepest Active Task";
+        }
+    }
+
+    // 5.5: Check Pending Testing (if no error/paused/testing/in progress)
+    if (!priorityTask) {
+        const pendingTestTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '🔬'); // Helper needed
+        if (pendingTestTask) {
+            priorityTask = pendingTestTask;
+            priorityReason = "Pending Testing (Requires ST)"; // Special reason
+        }
+    }
+
+    // 5.6: Check Pending Tasks (if none of the above)
+    if (!priorityTask) {
+        const pendingTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '⏳'); // Helper needed
+        if (pendingTask) {
+            priorityTask = pendingTask;
+            priorityReason = "Next Pending Task";
+        }
+    }
+    // *** END Priority Logic ***
+
+    // Extract other report data (completed, testing pipeline, blocked list etc.)
+    const reportData = parseRoadmapsAndMemoryForReport(roadmapTasksContent, recentCompletions, activeErrors, priorityTask, priorityReason); // Modified Helper
 
     // 6. Generate Structured Report (User Facing)
-    const userReport = formatUserReport(reportData, formattedReportTime); // Use formatted time
+    const userReport = formatUserReport_v2_3(reportData, formattedReportTime); // Use formatted time and updated structure
 
     // 7. Create status report entity in Server Memory
     await mcp_Server_Memory_create_entities({
@@ -118,8 +174,8 @@ async function executeProjectStatusCheck() {
             observations: [
                 `Report generated at ${reportTimestamp}`,
                 `Summary: ${reportData.summary}`, // Store a brief summary
-                `PriorityTask: ${reportData.priorityTask?.id}`,
-                `PriorityReason: ${reportData.priorityTask?.reason}`,
+                `PriorityTask: ${reportData.priorityTask?.id || 'None'}`,
+                `PriorityReason: ${reportData.priorityReason || 'N/A'}`,
                 `BlockedTasksCount: ${reportData.blockedTasks?.length || 0}`,
                 `PendingTestingCount: ${reportData.pendingTestingTasks?.length || 0}`,
                 `ActiveTestingCount: ${reportData.activeTestingTasks?.length || 0}`,
@@ -133,11 +189,14 @@ async function executeProjectStatusCheck() {
 
 // Helper function placeholders (implementation requires specific parsing logic)
 async function readFileContents(filePath) { /* ... use read_file ... */ }
-async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes with time filtering and provided filters ... */ }
-function parseRoadmapsAndMemory(roadmapTasksContent, mainRoadmapContent, recentCompletions, activeErrors, reportTimestamp) { /* ... parsing logic ... */ }
-function formatUserReport(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc. ... */ }
+async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes ... */ }
+async function getFormattedTime() { /* ... use format-time.mdc logic ... */ }
+function findHighestPriorityBlockedTask(activeErrors, roadmapContent) { /* ... logic to link errors to tasks and find highest prio ... */ }
+function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, find highest prio based on order ... */ }
+function findDeepestTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, determine hierarchy, find deepest ... */ }
+function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections ... */ }
+function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflecting updated priority section ... */ }
 ````
-*(Note: The JavaScript is conceptual to illustrate the flow)*
 
 ## 6. Information Sources Hierarchy
 ````text
@@ -147,13 +206,12 @@ function formatUserReport(reportData, formattedReportTime) { /* ... formatting l
         -   `TaskCompletion` entities (last 72h)
         -   Active `Error` entities (for priority determination and details)
         -   Potentially `Task` entities for state entry timestamps if not in roadmap.
-    -   `docs/ASAP_DIGEST_ROADMAP.md` (or LLM versions): For overall context and task hierarchy (Major Task Group, Parent Subtask).
+    -   `docs/ASAP_DIGEST_ROADMAP_LLM_*.md` (or primary if not split): For overall context and task hierarchy (Major Task Group, Parent Subtask).
     -   Current Timestamp (`format-time.mdc`): For defining the "recent" window and report time.
 ````
 
 ## 7. Status Report Structure & Logic
-*(Self-correction: Incorporated suggestions, using Markdown tables, clearer priority, detailed context, and consistent timestamp format)*
-The user-facing output MUST follow this structure:
+The user-facing output MUST follow this structure, with the `🎯 Current Priority` section reflecting the logic from Section 5, Step 5:
 
 ````markdown
 
@@ -163,14 +221,12 @@ The user-facing output MUST follow this structure:
 
 ### **`✅ Recently Completed (Last 72h):`**
   *   `[Task Name]` _(Completed: MM.DD.YY | HH:MM AM/PM TimeZone)_
-  *   `[Task Name]` _(Completed: MM.DD.YY | HH:MM AM/PM TimeZone)_
   *   _(If none: ✨ No tasks completed recently.)_
 
 ---
 
 ### **`🔬🧪 Testing Pipeline:`**
   *   **`🔬 Pending Initiation:`**
-      *   Priority? [Yes/No] - `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
       *   Priority? [Yes/No] - `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
       *   _(If none: 👍 None pending initiation.)_
   *   **`🧪 Actively Testing:`**
@@ -181,12 +237,12 @@ The user-facing output MUST follow this structure:
 
 ### **`🎯 Current Priority:`**
   *   **`[Emoji]`** **`[Task Name]`**
-      *   _Reason:_ `[Determined Reason from Hierarchy Logic]`
-      *   _(If Error):_ `🚨 Error Details: [Error Message Summary]`
+      *   _Reason:_ **`[Determined Reason from WSMP Logic: e.g., "Testing Active", "Paused Session", "Blocked by Error: [Summary]", "Deepest Active Task", "Pending Testing (Requires ST)", "Next Pending Task"]`**
+      *   _(If status is 🔬, add: ➡️ Use `ST [TaskID]` or `ST` to initiate testing.)_
 
 ---
 
-### **`⏳ Upcoming Tasks (Next 3-5 Pending):`**
+### **`⏳ Upcoming Tasks (Next 3-5 Pending After Priority):`**
   *   `[Task Name]`
   *   `[Task Name]`
   *   `[Task Name]`
@@ -195,14 +251,13 @@ The user-facing output MUST follow this structure:
 ---
 
 ### **`❌ Blocked Tasks:`**
-  *   `[Task Name]` _(Reason: [If available])_
-  *   `[Task Name]` _(Reason: [If available])_
+  *   `[Task Name]` _(Reason: [If available from Error entity])_
   *   _(If none: 👍 No blocked tasks.)_
 
 ---
 
 ### **`⚙️ Overall Context:`**
-  *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`**
+  *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`** _(If applicable)_
 
 ---
 
@@ -213,4 +268,5 @@ The user-facing output MUST follow this structure:
 -   Gracefully handle errors during file reading (`read_file`) or memory searches (`mcp_Server_Memory_search_nodes`).
 -   If `ROADMAP_TASKS.md` cannot be read or parsed, the report should indicate this failure clearly.
 -   Log any errors encountered during the status check itself into a relevant `Error` entity in Server Memory if possible, or include in the `StatusReport` entity's observations.
+-   Ensure helper functions for parsing and priority determination handle edge cases (e.g., no tasks in a given state).
 ````

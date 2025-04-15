@@ -19,22 +19,26 @@ This protocol defines the standard formatting requirements for creating and main
 ### 3.1. Single Outer Code Block (Rule File Internal Structure - MUST)
 - The *entire content* of a rule file, when presented *as a complete unit* (either in its `.mdc` file or when showing its full content in a response), MUST be enclosed within a single Markdown code block using triple backticks, specifying `markdown` as the language.
 - **Scope:** This applies to the internal structure of the rule's content itself. See Section 7 for presenting multiple rules in a single response.
+
   ````markdown
-  ```markdown
-  # Rule Title vX.Y
 
-  ## Section 1
-  ... rule content ...
+    ```markdown
+      # Rule Title vX.Y
 
-  ## Section 2: Example
-  ... example illustrating the nested block rule ...
+      ## Section 1
+      ... rule content ...
 
-  ```
+      ## Section 2: Example
+      ... example illustrating the nested block rule ...
+
+    ```
+
   ````
+
 *(Note: The example above demonstrates the *concept* of the outer block for a single rule's content. Do not add extra outer blocks within your rule file itself.)*
 
 ### 3.2. Nested Code/Structure Block Escaping (MUST)
-- Any illustrative code snippets (JavaScript, PHP, Shell, CSS, etc.), configuration examples (YAML, JSON), structured text (like ASCII tables or specific output formats), or any other content requiring preservation of formatting *within* the main rule body (as defined in 3.1) MUST be enclosed in **quadruple backticks** (` ```` `).
+- Any illustrative code snippets (JavaScript, PHP, Shell, CSS, etc.), configuration examples (YAML, JSON), structured text (like ASCII tables or specific output formats), or any other content requiring preservation of formatting *within* the main rule body (as defined in 3.1) MUST be enclosed in **triple backticks** (` ```` `).
 - This prevents the inner block from prematurely closing the outer `markdown` block specified in 3.1.
 - **Example:**
   ````markdown
@@ -42,26 +46,29 @@ This protocol defines the standard formatting requirements for creating and main
 
   Here's how to format a JavaScript function example within your rule:
 
-  ````javascript
-  async function exampleHelper() {
-      // Conceptual steps
-      const timestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
-      await mcp_Server_Memory_create_entities({ /* ... */ });
-      console.log(`Action completed at ${timestamp}`);
-  }
-  ````
+  ```javascript
+
+    async function exampleHelper() {
+        // Conceptual steps
+        const timestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
+        await mcp_Server_Memory_create_entities({ /* ... */ });
+        console.log(`Action completed at ${timestamp}`);
+    }
+
+  ```
 
   And here's how to format a structured text example:
 
   ```text
-  Report Structure:
-  ---
-  ✅ Completed:
-    - Task A (Timestamp)
-  🎯 Priority:
-    - Task B (Reason)
-  ---
+    Report Structure:
+    ---
+    ✅ Completed:
+      - Task A (Timestamp)
+    🎯 Priority:
+      - Task B (Reason)
+    ---
   ```
+
   ````
 
 ### 3.3. Language Specifiers (SHOULD)
@@ -88,19 +95,19 @@ This section demonstrates the required formatting.
 ### 4.1 Configuration Example
 The following configuration snippet MUST be placed within quadruple backticks:
 
-````yaml
+```yaml
 # Sample YAML Configuration
 feature_flags:
   new_dashboard: true
   beta_widgets: false
 api_keys:
   service_a: ${SERVICE_A_KEY}
-````
+```
 
 ### 4.2 Code Example
 Similarly, code examples like this script MUST use quadruple backticks:
 
-````bash
+```bash
 #!/bin/bash
 echo "Starting process..."
 # Add timestamp
@@ -109,13 +116,13 @@ echo "Process started at $TIMESTAMP" >> process.log
 # Placeholder for actual command
 sleep 5
 echo "Process finished."
-````
+```
 ````
 
 ## 6. Verification Checklist (Rule File Content)
 When creating or reviewing a rule's content, ensure the following:
-- [ ] The entire rule content is within a single outer ` ```markdown ... ``` ` block (as per Section 3.1).
-- [ ] All nested code examples, configurations, and structured text blocks use quadruple backticks (` ```` ... ```` `) (as per Section 3.2).
+- [ ] The entire rule content is within a single outer ` ````markdown ... ```` ` block (as per Section 3.1).
+- [ ] All nested code examples, configurations, and structured text blocks use triple backticks (` ``` ... ``` `) (as per Section 3.2).
 - [ ] Language specifiers are used appropriately on inner blocks.
 - [ ] Formatting is consistent throughout the rule.
 - [ ] The rule is clearly structured with headings and lists/bullets.
@@ -124,36 +131,38 @@ When creating or reviewing a rule's content, ensure the following:
 ## 7. Presenting Multiple Rules in Responses (MUST)
 
 - **Context:** This section applies when the assistant is asked to provide the updated content for *multiple different rules* individually within a single conversational response (e.g., "Update rule A and rule B").
-- **Requirement:** When presenting the full content of multiple updated rules in a single response, the complete content of **each rule** MUST be enclosed in its **own, separate, top-level Markdown code block** (` ```markdown ... ``` `).
+- **Requirement:** When presenting the full content of multiple updated rules in a single response, the complete content of **each rule** MUST be enclosed in its **own, separate, top-level Markdown code block** (` ````markdown ... ```` `).
 - **Internal Formatting:** The content *within* each of these separate blocks MUST still adhere to the formatting requirements defined in Sections 3-6 (including the single outer block *concept* for the rule's content itself, and quadruple backticks for nested code).
-- **DO NOT** combine the content of multiple distinct rules into one single, large ` ```markdown ... ``` ` block in the response.
+- **DO NOT** combine the content of multiple distinct rules into one single, large ` ````markdown ... ```` ` block in the response.
 
 - **Conceptual Example Response Structure:**
 
   Okay, here are the updated protocols:
 
   **Updated `rule-a.mdc`:**
-  ```markdown
+  ````markdown
   # Rule A Title v1.1
 
   ## Section A1
   Content for rule A...
 
-  ````javascript
+  ```javascript
   // Nested example for rule A
   console.log('Rule A');
-  ````
   ```
+  ````
 
   **Updated `rule-b.mdc`:**
-  ```markdown
+  ````markdown
   # Rule B Title v2.0
 
   ## Section B1
   Content for rule B...
 
-  ````bash
+  ```bash
   # Nested example for rule B
   echo "Rule B"
-  ````
   ```
+  ````
+
+  
