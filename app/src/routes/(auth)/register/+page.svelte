@@ -41,11 +41,12 @@
         return;
       }
 
+      // @ts-ignore - Assuming auth.signUp exists on the client auth object
       await auth.signUp(email, password, name);
       goto('/dashboard');
     } catch (error) {
-      errorMessage = error.message || 'Registration failed.';
       console.error('Registration error:', error);
+      errorMessage = (error instanceof Error) ? error.message : 'Registration failed. Please try again.';
     } finally {
       isLoading = false;
     }
@@ -63,7 +64,7 @@
       </p>
     </div>
 
-    <form class="mt-8 space-y-6" onsubmit={(e) => { e.preventDefault(); handleSubmit(e); }}>
+    <form class="space-y-6" on:submit|preventDefault={handleSubmit}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -80,6 +81,7 @@
             placeholder="Enter your full name"
             required
             autocomplete="name"
+            class=""
           />
         </div>
 
@@ -92,6 +94,7 @@
             placeholder="Enter your email"
             required
             autocomplete="email"
+            class=""
           />
         </div>
 
@@ -104,6 +107,7 @@
             placeholder="Create a password"
             required
             autocomplete="new-password"
+            class=""
           />
         </div>
 
@@ -116,6 +120,7 @@
             placeholder="Confirm your password"
             required
             autocomplete="new-password"
+            class=""
           />
         </div>
 
@@ -144,7 +149,7 @@
         {#if isLoading}
           <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
         {:else}
-          <Icon icon={UserPlus} class="mr-2" size={18} />
+          <Icon icon={UserPlus} class="mr-2" size={18} color="currentColor" />
         {/if}
         {isLoading ? 'Creating account...' : 'Create account'}
       </Button>

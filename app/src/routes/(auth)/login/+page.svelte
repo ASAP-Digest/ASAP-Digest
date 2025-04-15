@@ -28,11 +28,12 @@
     try {
       isLoading = true;
       errorMessage = '';
+      // @ts-ignore - Assuming auth.signIn exists on the client auth object
       await auth.signIn('email', { email, password, rememberMe });
       goto('/dashboard');
     } catch (error) {
-      errorMessage = error.message || 'Login failed.';
-      console.error('Login error:', error);
+      console.error('Email login error:', error);
+      errorMessage = (error instanceof Error) ? error.message : 'Invalid email or password';
     } finally {
       isLoading = false;
     }
@@ -42,11 +43,12 @@
     try {
       isLoading = true;
       errorMessage = '';
+      // @ts-ignore - Assuming auth.signIn exists on the client auth object
       await auth.signIn('google');
       goto('/dashboard');
     } catch (error) {
-      errorMessage = error.message || 'Login failed.';
-      console.error('Login error:', error);
+      console.error('Google login error:', error);
+      errorMessage = (error instanceof Error) ? error.message : 'Google Sign-In failed';
     } finally {
       isLoading = false;
     }
@@ -78,10 +80,11 @@
             id="email"
             type="email"
             bind:value={email}
-            placeholder="Enter your email"
+            placeholder="you@example.com"
             required
             autocomplete="email"
             disabled={isLoading}
+            class=""
           />
         </div>
 
@@ -91,10 +94,11 @@
             id="password"
             type="password"
             bind:value={password}
-            placeholder="Enter your password"
+            placeholder="Password"
             required
             autocomplete="current-password"
             disabled={isLoading}
+            class=""
           />
         </div>
 

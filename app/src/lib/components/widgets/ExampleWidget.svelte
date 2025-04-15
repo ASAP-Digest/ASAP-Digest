@@ -53,7 +53,6 @@
   {variant}
   {size}
   expandable={true}
-  bind:expanded
   refreshable={true}
   onRefresh={handleRefresh}
 >

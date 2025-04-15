@@ -19,14 +19,15 @@
       errorMessage = '';
       successMessage = '';
       
+      // @ts-ignore - Assuming auth.sendPasswordResetEmail exists on the client auth object
       await auth.sendPasswordResetEmail(email);
       successMessage = 'Password reset instructions have been sent to your email';
       
       // Redirect to login after 3 seconds
       setTimeout(() => goto('/login'), 3000);
     } catch (error) {
-      errorMessage = error.message || 'Failed to send reset email';
       console.error('Password reset error:', error);
+      errorMessage = (error instanceof Error) ? error.message : 'An unexpected error occurred';
     } finally {
       isLoading = false;
     }

@@ -1,7 +1,7 @@
 <script>
-  import { Menu, X, Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-icons.js';
+  // import { Menu, X, Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-icons.js'; // Removed incorrect import
+  import { Menu, X, Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-compat.js'; // Keep this correct import
   import { page } from '$app/stores';
-  import { Home, User, Calendar, Bell, Settings } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   
   /** @type {boolean} */
@@ -25,9 +25,9 @@
     onclick={toggleMenu}
   >
     {#if isOpen}
-      <X class="w-[1.5rem] h-[1.5rem]" />
+      <Icon icon={X} class="w-[1.5rem] h-[1.5rem]" color="currentColor" />
     {:else}
-      <Menu class="w-[1.5rem] h-[1.5rem]" />
+      <Icon icon={Menu} class="w-[1.5rem] h-[1.5rem]" color="currentColor" />
     {/if}
   </button>
   
@@ -48,7 +48,7 @@
       <div class="flex items-center justify-between mb-[2rem]">
         <h2 class="text-[1.25rem] font-semibold">ASAP Digest</h2>
         <button type="button" aria-label="Close menu" onclick={closeMenu}>
-          <X class="w-[1.5rem] h-[1.5rem]" />
+          <Icon icon={X} class="w-[1.5rem] h-[1.5rem]" color="currentColor" />
         </button>
       </div>
       
@@ -58,7 +58,7 @@
           class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Home class="w-[1.25rem] h-[1.25rem]" />
+          <Icon icon={Home} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
           <span>Home</span>
         </a>
         
@@ -67,7 +67,7 @@
           class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/profile' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <User class="w-[1.25rem] h-[1.25rem]" />
+          <Icon icon={User} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
           <span>Profile</span>
         </a>
         
@@ -76,7 +76,7 @@
           class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/calendar' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Calendar class="w-[1.25rem] h-[1.25rem]" />
+          <Icon icon={Calendar} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
           <span>History</span>
         </a>
         
@@ -85,7 +85,7 @@
           class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/notifications' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Bell class="w-[1.25rem] h-[1.25rem]" />
+          <Icon icon={Bell} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
           <span>Notifications</span>
         </a>
         
@@ -94,7 +94,7 @@
           class="flex items-center space-x-[1rem] px-[0.5rem] py-[0.5rem] rounded-md hover:bg-[hsl(var(--muted))] {$page.url.pathname === '/settings' ? 'bg-[hsl(var(--muted))] font-medium' : ''}"
           onclick={closeMenu}
         >
-          <Settings class="w-[1.25rem] h-[1.25rem]" />
+          <Icon icon={Settings} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
           <span>Settings</span>
         </a>
       </nav>
@@ -103,14 +103,14 @@
 </div>
 
 <nav class="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(var(--background))] border-t border-[hsl(var(--border))]">
-  <ul class="flex justify-around items-center p-2">
+  <ul class="flex justify-around items-center p-2 list-none">
     <li>
       <a
         href="/"
         class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         class:text-[hsl(var(--foreground))]={$page.url.pathname === '/'}
       >
-        <Icon icon={Home} class="w-[1.25rem] h-[1.25rem]" />
+        <Icon icon={Home} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
         <span class="text-xs">Home</span>
       </a>
     </li>
@@ -120,7 +120,7 @@
         class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         class:text-[hsl(var(--foreground))]={$page.url.pathname === '/profile'}
       >
-        <Icon icon={User} class="w-[1.25rem] h-[1.25rem]" />
+        <Icon icon={User} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
         <span class="text-xs">Profile</span>
       </a>
     </li>
@@ -130,7 +130,7 @@
         class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         class:text-[hsl(var(--foreground))]={$page.url.pathname === '/today'}
       >
-        <Icon icon={Calendar} class="w-[1.25rem] h-[1.25rem]" />
+        <Icon icon={Calendar} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
         <span class="text-xs">Today</span>
       </a>
     </li>
@@ -140,7 +140,7 @@
         class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         class:text-[hsl(var(--foreground))]={$page.url.pathname === '/notifications'}
       >
-        <Icon icon={Bell} class="w-[1.25rem] h-[1.25rem]" />
+        <Icon icon={Bell} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
         <span class="text-xs">Alerts</span>
       </a>
     </li>
@@ -150,7 +150,7 @@
         class="flex flex-col items-center gap-1 p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
         class:text-[hsl(var(--foreground))]={$page.url.pathname === '/settings'}
       >
-        <Icon icon={Settings} class="w-[1.25rem] h-[1.25rem]" />
+        <Icon icon={Settings} class="w-[1.25rem] h-[1.25rem]" color="currentColor" />
         <span class="text-xs">Settings</span>
       </a>
     </li>

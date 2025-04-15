@@ -258,17 +258,17 @@
       {/if}
     </div>
   
-  <!-- Content -->
-  {:else}
-    <div class="widget-content flex-1">
-      <slot />
-    </div>
-  {/if}
+  <!-- Content slot -->
+  <div class="widget-content flex-1 min-h-0">
+    {#if children}
+      {@render children()}
+    {/if}
+  </div>
   
   <!-- Footer slot -->
-  {#if $$slots.footer && !loading && !error && !offline}
-    <div class="widget-footer mt-[0.75rem] pt-[0.75rem] border-t border-[hsl(var(--border))]">
-      <slot name="footer" />
+  {#if footer}
+    <div class="widget-footer mt-[0.75rem] pt-[0.75rem] border-t border-[hsl(var(--border)/0.5)]">
+      {@render footer()}
     </div>
   {/if}
 </div>

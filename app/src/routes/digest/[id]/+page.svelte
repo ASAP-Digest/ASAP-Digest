@@ -3,6 +3,7 @@
   import * as Icons from '$lib/utils/lucide-icons.js';
   import { AudioPlayer } from '$lib/components/atoms';
   import Icon from '$lib/components/ui/Icon.svelte';
+  import { Button } from '$lib/components/ui/button';
   
   // Mock data - this would come from an API in a real application
   const digestId = $page.params.id;
@@ -163,31 +164,25 @@
   <!-- Navigation and actions -->
   <div class="flex justify-between items-center mb-6">
     <a href="/" class="text-[hsl(var(--primary))] hover:underline flex items-center gap-1">
-      <Icon icon={Icons.ChevronLeft} size={16} />
+      <Icon icon={Icons.ChevronLeft} size={16} color="currentColor" />
       <span>Back to Digests</span>
     </a>
     
     <div class="flex space-x-4">
-      <button 
-        onclick={toggleBookmark}
-        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
-      >
+      <Button variant="outline" size="sm" on:click={toggleBookmark}>
         {#if digest.isSaved}
-          <Icon icon={Icons.BookmarkCheck} size={18} class="text-[hsl(var(--primary))]" />
-          <span class="text-sm">Saved</span>
+          <Icon icon={Icons.BookmarkCheck} size={18} class="text-[hsl(var(--primary))]" color="currentColor" />
+          <span class="text-sm ml-1">Saved</span>
         {:else}
-          <Icon icon={Icons.Bookmark} size={18} />
-          <span class="text-sm">Save</span>
+          <Icon icon={Icons.Bookmark} size={18} color="currentColor" />
+          <span class="text-sm ml-1">Save</span>
         {/if}
-      </button>
+      </Button>
       
-      <button 
-        onclick={shareDigest}
-        class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
-      >
-        <Icon icon={Icons.Share2} size={18} />
-        <span class="text-sm">Share</span>
-      </button>
+      <Button variant="outline" size="sm" on:click={shareDigest}>
+        <Icon icon={Icons.Share2} size={18} color="currentColor" />
+        <span class="text-sm ml-1">Share</span>
+      </Button>
     </div>
   </div>
   
@@ -198,11 +193,11 @@
       
       <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
         <div class="flex items-center gap-1">
-          <Icon icon={Icons.Calendar} size={16} />
+          <Icon icon={Icons.Calendar} size={16} color="currentColor" />
           <span>{digest.date}</span>
         </div>
         <div class="flex items-center gap-1">
-          <Icon icon={Icons.Clock} size={16} />
+          <Icon icon={Icons.Clock} size={16} color="currentColor" />
           <span>{digest.readTime}</span>
         </div>
       </div>
@@ -213,55 +208,60 @@
       
       <!-- Simple button controls for mobile users -->
       <div class="md:hidden flex flex-col sm:flex-row gap-4 mb-4">
-        <button 
-          onclick={togglePlayback}
-          class="flex items-center justify-center gap-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] py-2 px-4 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
+        <Button 
+          on:click={togglePlayback}
+          size="lg"
+          class="flex-1"
         >
           {#if digest.isPlaying}
-            <Icon icon={Icons.Pause} size={18} />
-            <span>Pause</span>
+            <Icon icon={Icons.Pause} size={18} color="currentColor" />
+            <span class="ml-2">Pause</span>
           {:else}
-            <Icon icon={Icons.Play} size={18} />
-            <span>Listen</span>
+            <Icon icon={Icons.Play} size={18} color="currentColor" />
+            <span class="ml-2">Listen</span>
           {/if}
-        </button>
+        </Button>
         
-        <button 
-          onclick={downloadAudio}
-          class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        <Button 
+          on:click={downloadAudio}
+          size="lg"
+          class="flex-1"
         >
-          <Icon icon={Icons.Download} size={18} />
-          <span>Download Audio</span>
-        </button>
+          <Icon icon={Icons.Download} size={18} color="currentColor" />
+          <span class="sr-only">Download Audio</span>
+        </Button>
       </div>
       
       <!-- Advanced audio player for larger screens -->
       <div class="hidden md:block">
-        <AudioPlayer 
-          src={digest.audioUrl}
-          variant="accent"
-          size="default"
-          showControls={true}
-          showVolume={true}
-          showTime={true}
-          showSeek={true}
-          showSkip={true}
-          skipAmount={15}
-          onplay={handleAudioPlay}
-          onpause={handleAudioPause}
-          onended={handleAudioEnded}
-          className="mb-4"
-        />
+        <div class="mt-6 mb-6">
+          <AudioPlayer
+            src={digest.audioUrl}
+            bind:isPlaying={digest.isPlaying}
+            variant="accent"
+            size="default"
+            showControls={true}
+            showVolume={true}
+            showTime={true}
+            showSeek={true}
+            showSkip={true}
+            skipAmount={15}
+            onpause={handleAudioPause}
+            onended={handleAudioEnded}
+            ontimeupdate={handleAudioTimeUpdate}
+            className="mb-4"
+          />
+        </div>
       </div>
       
       <div class="md:flex items-center justify-end hidden">
-        <button 
-          onclick={downloadAudio}
-          class="flex items-center justify-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        <Button 
+          on:click={downloadAudio}
+          size="lg"
         >
-          <Icon icon={Icons.Download} size={18} />
-          <span>Download Audio</span>
-        </button>
+          <Icon icon={Icons.Download} size={18} color="currentColor" />
+          <span class="sr-only">Download Audio</span>
+        </Button>
       </div>
     </div>
   </div>
@@ -292,7 +292,9 @@
             {:else if item.type === 'financial'}
               <h3 class="font-medium mb-2">{item.title}</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400">{item.summary}</p>
-              <div class="text-xs font-medium {item.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">{item.change}</div>
+              <div class="text-xs font-medium {item.change?.startsWith('+') ? 'text-green-600' : 'text-red-600'}">
+                {item.change}
+              </div>
             {:else if item.type === 'xpost'}
               <h3 class="font-medium mb-2">{item.author}</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{item.content}</p>
@@ -319,7 +321,7 @@
                 <div>
                   <span class="text-xs text-gray-500">Volume: {item.volume}</span>
                 </div>
-                <div class="text-xs font-medium {item.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">
+                <div class="text-xs font-medium {item.change?.startsWith('+') ? 'text-green-600' : 'text-red-600'}">
                   {item.change}
                 </div>
               </div>
@@ -354,7 +356,7 @@
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
       disabled={parseInt(digestId) <= 1}
     >
-      <Icon icon={Icons.ChevronLeft} size={18} />
+      <Icon icon={Icons.ChevronLeft} size={18} color="currentColor" />
       <span>Previous Digest</span>
     </button>
     
@@ -363,7 +365,7 @@
       class="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:text-[hsl(var(--primary))] dark:hover:text-[hsl(var(--primary))]"
     >
       <span>Next Digest</span>
-      <Icon icon={Icons.ChevronRight} size={18} />
+      <Icon icon={Icons.ChevronRight} size={18} color="currentColor" />
     </button>
   </div>
 </div> 

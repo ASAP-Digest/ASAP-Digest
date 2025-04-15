@@ -27,11 +27,11 @@
   // Import the functions
   import { getInstallPrompt, getIsInstallable, getIsPWA } from '$lib/stores/pwa.svelte.js';
   // Import local toast components and store
-  import ToastContainer from '$lib/components/ui/toast/toast-container.svelte';
-  import { toasts } from '$lib/stores/toast.js';
+  import { Toaster } from '$lib/components/ui/toast/toast-container.svelte';
+  import { toast } from '$lib/components/ui/toast/index.js';
   // Import required icons
   import { 
-    Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut 
+    Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download 
   } from '$lib/utils/lucide-compat.js';
   import { goto } from '$app/navigation'; // Import goto from correct module
 
@@ -63,11 +63,10 @@
     const currentUser = $page.data.user;
     if (currentUser?.updatedAt && currentUser.updatedAt !== previousUserUpdatedAt) {
       console.log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${currentUser.updatedAt}. Showing toast.`); // DEBUG
-      $toasts.add({
+      toast({
         title: 'Profile Synced',
-        description: 'Your user data has been updated from WordPress.',
-        type: 'success',
-        duration: 5000 // 5 seconds
+        description: 'Your profile details have been updated from WordPress.',
+        variant: 'success'
       });
       previousUserUpdatedAt = currentUser.updatedAt;
     }
@@ -83,6 +82,40 @@
   // Initialize on mount
   onMount(() => {
     let eventSource = null; // Variable to hold the EventSource instance
+
+    // <<< START: Auto-login Check >>>
+    if (browser && !$page.data.user) { // Check if in browser and no user data exists from load
+      console.log('[Layout Auto-Login] No user session found. Checking WP session...');
+      fetch('/api/auth/sync', { credentials: 'include' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); // DEBUG
+          if (data.valid && data.session_created) {
+            console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
+            toast({
+              title: 'Auto-Logged In',
+              description: 'Your session was automatically synchronized.',
+              variant: 'success'
+            });
+            // Invalidate all data to ensure stores and UI reflect the new session
+            // Using goto instead of invalidateAll to potentially force reactivity updates
+            goto(window.location.href, { invalidateAll: true }); 
+          } else {
+            console.log('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '');
+          }
+        })
+        .catch(error => {
+          console.error('[Layout Auto-Login] Error fetching /api/auth/sync:', error);
+        });
+    } else if (browser && $page.data.user) {
+      console.log('[Layout Auto-Login] User session already exists. Skipping WP check.'); // DEBUG
+    }
+    // <<< END: Auto-login Check >>>
 
     if (browser) { // Ensure this runs only in the browser
       console.log('[Layout Sync Listener] Setting up EventSource...');
@@ -112,11 +145,10 @@
                 console.log(`[Layout Sync Listener] Timestamp changed! Old: ${previousUserUpdatedAt}, New from SSE: ${data.updatedAt}. Showing toast.`); // DEBUG
                 
                 // Add the toast notification directly based on SSE data
-                $toasts.add({
+                toast({
                   title: 'Profile Synced',
-                  description: 'Your user data has been updated.', // Simplified description
-                  type: 'success',
-                  duration: 5000 // 5 seconds
+                  description: 'Your profile was updated in another tab or device.',
+                  variant: 'info'
                 });
                 
                 // IMPORTANT: Update the state variable *after* showing the toast, using the timestamp from the SSE message
@@ -338,7 +370,11 @@
       } else if (currentUser.updatedAt !== lastUpdatedAt) {
         // Timestamp has changed, trigger toast
         console.log('[Layout Effect] User data updated via $effect. Old ts:', lastUpdatedAt, 'New ts:', currentUser.updatedAt); // DEBUG
-        toasts.show('Profile synchronized.', 'success');
+        toast({
+          title: 'Profile synchronized.',
+          description: 'Your profile details have been updated from WordPress.',
+          variant: 'success'
+        });
         lastUpdatedAt = currentUser.updatedAt; // Update the stored timestamp
       }
     } else if (lastUpdatedAt !== null && !currentUser) {
@@ -397,11 +433,11 @@
 
         if (data.valid && data.session_created) {
           console.log('[Layout Mount] Auto-login successful via sync endpoint.');
-          // Use the imported toasts store directly
-          $toasts.add({
+          // Use the imported toast function
+          toast({
             title: "Auto Login Successful",
             description: "You\'ve been automatically logged in based on your WordPress session.",
-            type: "success" // Use 'success' type for consistency
+            variant: "success" // Use 'success' type for consistency
           });
           // Reload the page to ensure SvelteKit picks up the new session cookie
           // and the layout/stores reflect the logged-in state correctly.
@@ -413,17 +449,61 @@
         }
       } catch (error) {
         console.error('[Layout Mount] Error during automatic sync check:', error);
-        // Use the imported toasts store directly
-        $toasts.add({
+        // Use the imported toast function
+        toast({
           title: "Sync Check Error",
           description: "Could not check login status automatically.",
-          type: "destructive"
+          variant: "destructive"
         });
       }
     } else {
          console.debug('[Layout Mount] Active SK session detected. Skipping WP sync check.');
     }
   });
+
+  // SSE Listener for Live Sync Updates
+  /** @type {EventSource | null} */
+  let eventSource = $state(/** @type {EventSource | null} */ (null));
+
+  // Update currentUserStore when session changes
+  $effect(() => {
+    // Access the session store's value directly
+    if ($session?.user) { 
+      console.log('[Layout Session Effect] Updating currentUserStore from session:', $session.user);
+      currentUser = $session.user;
+    } else {
+      console.log('[Layout Session Effect] Session null or no user, setting currentUserStore to null.');
+      currentUser = null;
+    }
+  });
+
+  /**
+   * @param {Event & { target: EventTarget | null }} e - The event object.
+   */
+  function handleImageError(e) {
+    console.warn("Image failed to load:", e);
+    const target = /** @type {HTMLImageElement} */ (e.target);
+    if (target) {
+      target.style.display = 'none'; // Hide broken image
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      console.log('[Layout] Attempting sign out...');
+      // @ts-ignore - Assuming auth.signOut exists
+      // Remove callbackUrl if not supported by client-side signOut
+      await auth.signOut({ redirect: true /*, callbackUrl: '/' */ }); 
+      console.log('[Layout] Sign out successful.');
+    } catch (error) {
+      console.error('[Layout] Error during sign out:', error);
+      toast({
+        title: "Logout Error",
+        description: "Could not log out. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  }
 </script>
 
 <svelte:head>
@@ -539,7 +619,7 @@
                   <span>Settings</span>
                 </a>
                 <!-- Use auth client signout -->
-                <button onclick={() => auth.signOut({ callbackUrl: '/' })} class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
+                <button onclick={handleLogout} class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)]">
                   <Icon icon={LogOut} class="w-4 h-4" /> 
                   <span>Logout</span>
                 </button>
@@ -637,7 +717,7 @@
     <PerformanceMonitor />
   {/if}
 
-  <GlobalFAB {isSidebarCollapsed} />
+  <GlobalFAB />
 
   {#if $session}
     <div class="fixed bottom-4 right-4 p-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full shadow-lg">
@@ -650,7 +730,7 @@
 {/if}
 
 <!-- Add local ToastContainer component -->
-<ToastContainer />
+<Toaster />
 
 <style>
   /* Add CSS for lazy-loaded images */

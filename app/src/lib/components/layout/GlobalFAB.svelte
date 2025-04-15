@@ -93,7 +93,7 @@
     class="fab-button"
     onclick={toggleSelector}
   >
-    <Icon icon={Plus} size={24} />
+    <Icon icon={Plus} size={24} color="currentColor" />
   </button>
   
   <!-- Position Toggle (small button) -->
@@ -102,7 +102,7 @@
     onclick={toggleFabPosition}
     title="Toggle position"
   >
-    <Icon icon={fabPosition === 'corner' ? Calendar : LineChart} size={12} />
+    <Icon icon={fabPosition === 'corner' ? Calendar : LineChart} size={12} color="currentColor" />
   </button>
   
   <!-- Success Notification -->
@@ -122,8 +122,8 @@
   <NewItemsSelector 
     showFab={false}
     startOpen={true}
-    on:close={toggleSelector} 
-    on:add={handleAdd} 
+    onclose={toggleSelector}
+    onadd={handleAdd}
   />
 {/if}
 

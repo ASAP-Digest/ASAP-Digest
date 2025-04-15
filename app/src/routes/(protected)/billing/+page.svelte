@@ -238,7 +238,7 @@
           <div class="flex items-start justify-between">
             <div>
               <h2 class="text-xl font-semibold flex items-center">
-                <Icon icon={DollarSign} size={20} class="mr-2" />
+                <Icon icon={DollarSign} size={20} class="mr-2" color="currentColor" />
                 Current Plan
               </h2>
               <div class="mt-4">
@@ -274,9 +274,9 @@
                   <li class="flex items-start">
                     <span class={`inline-flex items-center justify-center h-5 w-5 rounded-full ${feature.included ? 'bg-[hsl(var(--success)/0.2)] text-[hsl(var(--success))]' : 'bg-[hsl(var(--muted)/0.4)] text-[hsl(var(--muted-foreground))]'} mr-2 flex-shrink-0`}>
                       {#if feature.included}
-                        <Icon icon={Check} size={14} />
+                        <Icon icon={Check} size={14} color="currentColor" />
                       {:else}
-                        <Icon icon={X} size={14} />
+                        <Icon icon={X} size={14} color="currentColor" />
                       {/if}
                     </span>
                     <span class={feature.included ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted-foreground))]'}>
@@ -292,7 +292,7 @@
         <!-- Billing Cycle -->
         <div class="bg-[hsl(var(--card))] rounded-lg border border-[hsl(var(--border))] p-6">
           <h2 class="text-xl font-semibold flex items-center">
-            <Icon icon={Clock} size={20} class="mr-2" />
+            <Icon icon={Clock} size={20} class="mr-2" color="currentColor" />
             Billing Cycle
           </h2>
           <div class="mt-4">
@@ -407,14 +407,14 @@
       <div>
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-semibold flex items-center">
-            <Icon icon={CreditCard} size={20} class="mr-2" />
+            <Icon icon={CreditCard} size={20} class="mr-2" color="currentColor" />
             Payment Methods
           </h2>
           <button 
             onclick={addPaymentMethod}
             class="flex items-center bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-md hover:bg-[hsl(var(--primary)/0.9)] transition-colors duration-200"
           >
-            <Icon icon={Plus} size={16} class="mr-1" />
+            <Icon icon={Plus} size={16} class="mr-1" color="currentColor" />
             Add New
           </button>
         </div>
@@ -472,7 +472,7 @@
     {#if activeTab === 'billing-history'}
       <div>
         <h2 class="text-xl font-semibold flex items-center mb-6">
-          <Icon icon={Clock} size={20} class="mr-2" />
+          <Icon icon={Clock} size={20} class="mr-2" color="currentColor" />
           Billing History
         </h2>
         

@@ -86,6 +86,9 @@
   let debugActive = $state(false);
   let debugCollapsedState = $state(false);
   
+  // Added isLoading state variable
+  let isLoading = $state(false);
+  
   // Toggle debug mode
   function toggleDebug() {
     debugActive = !debugActive;
@@ -417,6 +420,19 @@
     if (imgElement instanceof HTMLImageElement) {
       imgElement.onerror = null;
       imgElement.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
+    }
+  }
+
+  // Added handleLinkClick function definition
+  /**
+   * Handles link clicks, closing mobile menu if necessary.
+   * @param {MouseEvent} event - The click event
+   */
+  function handleLinkClick(event) {
+    // Add any specific link handling logic here if needed
+    console.log('Link clicked:', event.currentTarget?.href);
+    if (isMobile) {
+      closeMobileMenu();
     }
   }
 

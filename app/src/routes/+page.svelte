@@ -3,6 +3,7 @@
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   import { onMount } from 'svelte';
   import { page } from '$app/stores'; // Needed to check sidebar state via layout data if passed
+  import WidgetGrid from '$lib/components/layout/WidgetGrid.svelte';
   
   /**
    * @typedef {'normal'|'large'|'full-mobile'|'full-tablet'} WidgetSize
@@ -55,7 +56,7 @@
   // NEW: Get sidebar state from layout (assuming it's passed down or available globally)
   // For simplicity, let's assume we can derive it from screen width for now
   // A better approach might involve a shared store or context API
-  let hasSidebar = $state(false);
+  let hasSidebar = $state(true);
   $effect(() => {
     // Approximation: Sidebar is visible on desktop screens
     hasSidebar = typeof window !== 'undefined' && window.innerWidth >= 1024;
@@ -298,11 +299,12 @@
 
   /**
    * NEW: Enhanced Get column span classes based on widget size and sidebar presence
-   * @param {WidgetSize} size - Widget size
-   * @param {{ hasSidebar: boolean }} options - Options object
-   * @returns {string} - Tailwind classes for column spans
+   * @param {'sm' | 'md' | 'lg'} size
+   * @param {{ hasSidebar: boolean }} [options={ hasSidebar: true }]
+   * @returns {string}
    */
-  function getColSpanClasses(size, { hasSidebar = true } = {}) {
+  function getColSpanClasses(size, options = { hasSidebar: true }) {
+    const { hasSidebar } = options;
     const baseClasses = 'transition-all duration-300';
 
     // Define column spans for different breakpoints and sidebar states
@@ -385,6 +387,16 @@
       cleanupDraggableWidgets(); // Cleanup listeners
     };
   });
+
+  /**
+   * @typedef {import('./$types').PageData} PageData
+   */
+
+  /** @type {PageData} */
+  let { data } = $props(); // Ensure this line is correct
+
+  // Reactive states based on data or local interactions
+  let showOnboarding = $state(!data?.user?.hasCompletedOnboarding);
 </script>
 
 <!-- NEW: Wrap everything in the content-grid -->

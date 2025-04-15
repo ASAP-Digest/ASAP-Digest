@@ -1217,3 +1217,195 @@ function asap_create_ba_wp_user_map_table() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 }
+
+/**
+ * Output buffer callback to modify Set-Cookie headers for WordPress auth cookies.
+ *
+ * Ensures SameSite=None and Secure attributes are present, overriding any
+ * potential modifications made later in the execution cycle.
+ * This approach is used because standard filters (like auth_cookie_attributes)
+ * proved insufficient in the specific environment, likely due to conflicts or
+ * server configurations stripping the SameSite attribute after filter execution.
+ * Output buffering allows modification of headers at the last moment before sending.
+ *
+ * @since TBD // Add version
+ * @param string $buffer The output buffer content (HTML, etc.).
+ * @return string The original buffer (headers are modified directly using header functions).
+ */
+function asap_modify_cookie_headers_callback( $buffer ) {
+    // Check if headers have already been sent; if so, we cannot modify them.
+    if ( headers_sent() ) {
+        return $buffer;
+    }
+
+    // Define the names of WordPress Authentication cookies to target.
+    // Using a map for quick lookups.
+    $auth_cookie_names = [
+        AUTH_COOKIE        => true,
+        SECURE_AUTH_COOKIE => true,
+        LOGGED_IN_COOKIE   => true,
+        // TEST_COOKIE is sometimes used during login, but typically doesn't need SameSite=None.
+        // Add it here if modification is found necessary for login process compatibility.
+        // TEST_COOKIE          => true,
+    ];
+
+    $final_headers = [];
+
+    // Iterate through all headers PHP intends to send.
+    foreach ( headers_list() as $header ) {
+        $header_lower = strtolower($header);
+        // Check if this is a Set-Cookie header.
+        if ( strpos( $header_lower, 'set-cookie:' ) === 0 ) {
+            // Attempt to extract the cookie name.
+            if ( preg_match( '/^Set-Cookie:\s*([^=]+)=/i', $header, $matches ) ) {
+                $cookie_name = $matches[1];
+
+                // Is this one of the WP auth cookies we need to enforce attributes on?
+                if ( isset($auth_cookie_names[$cookie_name]) ) {
+                    // Yes. Start modifying the original header string.
+                    // 1. Remove any existing SameSite attribute (case-insensitive).
+                    $modified_header = preg_replace( '/;\s*SameSite=(Lax|Strict|None)/i', '', $header );
+                    // 2. Remove any existing Secure attribute (case-insensitive).
+                    $modified_header = preg_replace( '/;\s*Secure/i', '', $modified_header );
+
+                    // 3. Append the required attributes reliably.
+                    // Note: We append '; Secure' separately from '; SameSite=None' just in case
+                    // future WP versions or plugins add Secure but not SameSite, 
+                    // though the preg_replace above should handle it.
+                    $modified_header .= '; SameSite=None; Secure';
+
+                    // Add the fully reconstructed/modified header to our list.
+                    $final_headers[] = $modified_header;
+
+                } else {
+                    // It's a different cookie (e.g., session, third-party).
+                    // Preserve it unmodified in our final list.
+                    $final_headers[] = $header;
+                }
+            } else {
+                // Malformed Set-Cookie header (no cookie name?). Preserve it as is.
+                $final_headers[] = $header;
+            }
+        } else {
+            // Not a Set-Cookie header (e.g., Content-Type). Preserve it as is.
+            $final_headers[] = $header;
+        }
+    }
+
+    // Remove *all* original Set-Cookie headers. This is crucial because PHP might
+    // have queued multiple headers for the same cookie name, and we only want
+    // our final modified versions to be sent.
+    header_remove('Set-Cookie');
+
+    // Re-add all the headers we collected (original non-cookie ones, modified auth cookies, original other cookies).
+    // The 'false' parameter in header() is important; it prevents replacing existing
+    // headers of the same name, allowing multiple Set-Cookie headers to be sent.
+    foreach ( $final_headers as $final_header ) {
+        header( $final_header, false );
+    }
+
+    // Return the original page content buffer, unmodified.
+    // All header manipulation was done directly using header() functions.
+    return $buffer;
+}
+
+/**
+ * Start output buffering early to capture and modify cookie headers.
+ * Hooks into 'plugins_loaded' at priority 0 to run as early as possible,
+ * ensuring it catches headers set during WordPress initialization, but
+ * after essential constants (like AUTH_COOKIE) are defined.
+ *
+ * @since TBD // Add version
+ */
+function asap_start_output_buffering_for_cookies() {
+    // Avoid buffering during admin requests, CLI processes, or potentially AJAX 
+    // where full page buffering might be unnecessary or cause issues.
+    if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_ajax() ) {
+        return;
+    }
+    // Start the output buffer, specifying our callback function.
+    ob_start( 'asap_modify_cookie_headers_callback' );
+}
+// Hook early, but after plugins are loaded so constants like AUTH_COOKIE are defined.
+add_action( 'plugins_loaded', 'asap_start_output_buffering_for_cookies', 0 );
+
+/**
+ * Filter the current user determination based on request origin.
+ *
+ * Prevents the auth cookie from being successfully used by requests
+ * originating from non-whitelisted domains, even if SameSite=None
+ * allows the cookie to be sent.
+ *
+ * @since TBD // Add appropriate version
+ *
+ * @param int|false $user_id The user ID determined by WordPress so far, or false.
+ * @return int|false The user ID if the origin is allowed, or false if disallowed.
+ */
+function asap_filter_user_by_origin( $user_id ) {
+    // If no user was initially determined by cookie, nothing to filter.
+    if ( ! $user_id ) {
+        return $user_id;
+    }
+
+    // Define the whitelist of allowed origins
+    $whitelist = [
+        'https://localhost:5173',      // Local SvelteKit Dev
+        'https://app.asapdigest.com',  // Production SvelteKit App
+        'https://asapdigest.local',    // Local WP Admin/Site
+        'https://asapdigest.com',      // Production WP Admin/Site
+    ];
+
+    // Allow requests where ORIGIN is not set (e.g., same-origin, some server-side)
+    if ( ! isset( $_SERVER['HTTP_ORIGIN'] ) || empty( $_SERVER['HTTP_ORIGIN'] ) ) {
+        // Check if the request appears to be same-origin based on HOST vs REFERER as a fallback
+        $http_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
+        $http_referer_host = '';
+        if (isset($_SERVER['HTTP_REFERER'])) {
+            $referer_parts = wp_parse_url($_SERVER['HTTP_REFERER']);
+            if ($referer_parts && isset($referer_parts['host'])) {
+                $http_referer_host = $referer_parts['host'];
+            }
+        }
+
+        // If host matches referer host, likely same-origin or direct access - allow.
+        if (!empty($http_host) && $http_host === $http_referer_host) {
+             return $user_id;
+        }
+        
+        // If Origin isn't set, and it doesn't appear to be a simple same-origin request,
+        // we lean towards caution and deny unless specifically whitelisted elsewhere.
+        // However, for maximum compatibility with non-browser clients or direct access,
+        // let's tentatively allow if Origin is not set. Revisit if issues arise.
+        return $user_id; 
+    }
+
+    $origin = sanitize_text_field( wp_unslash( $_SERVER['HTTP_ORIGIN'] ) );
+    $parsed_origin = wp_parse_url( $origin );
+
+    // Ensure we have scheme and host after parsing
+    if ( ! $parsed_origin || ! isset( $parsed_origin['scheme'] ) || ! isset( $parsed_origin['host'] ) ) {
+        // Invalid Origin header format
+        return false; // Deny requests with malformed Origin headers if a user was found
+    }
+
+    // Reconstruct the origin without path, query, etc. Add port if non-standard.
+    $origin_base = $parsed_origin['scheme'] . '://' . $parsed_origin['host'];
+    if ( isset( $parsed_origin['port'] ) ) {
+         // Add port only if it's non-standard for the scheme
+         if ( ( $parsed_origin['scheme'] === 'http' && $parsed_origin['port'] !== 80 ) || ( $parsed_origin['scheme'] === 'https' && $parsed_origin['port'] !== 443 ) ) {
+              $origin_base .= ':' . $parsed_origin['port'];
+         }
+    }
+
+
+    // Check against the whitelist
+    if ( ! in_array( $origin_base, $whitelist, true ) ) {
+        // Origin is not whitelisted, deny user recognition
+        return false; // Tell WordPress no user is logged in for this request
+    }
+
+    // Origin is whitelisted, allow the originally determined user ID
+    return $user_id;
+}
+// Add the filter with a priority higher than default (10) to run after basic checks.
+add_filter( 'determine_current_user', 'asap_filter_user_by_origin', 20 );

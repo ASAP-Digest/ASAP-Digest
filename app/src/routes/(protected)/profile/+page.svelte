@@ -36,17 +36,17 @@
 </script>
 
 <div class="container mx-auto py-8">
-  <Card>
-    <CardHeader>
-      <CardTitle>Profile Information</CardTitle>
+  <Card class="">
+    <CardHeader class="">
+      <CardTitle class="">Profile Information</CardTitle>
     </CardHeader>
-    <CardContent>
+    <CardContent class="">
       <div class="flex flex-col items-center space-y-4 md:flex-row md:space-x-6 md:space-y-0">
-        <div class="relative h-24 w-24">
+        <div class="relative h-24 w-24 flex-shrink-0">
           {#if user.avatarUrl}
             <Avatar.Root class="h-full w-full">
-              <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
-              <Avatar.Fallback>
+              <Avatar.Image class="" src={user.avatarUrl} alt={user.displayName} />
+              <Avatar.Fallback class="">
                 <Icon icon={CircleUser} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
               </Avatar.Fallback>
             </Avatar.Root>

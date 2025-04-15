@@ -37,6 +37,8 @@
     "cssnano": "^7.0.6",
     "dotenv-cli": "^8.0.0",
     "esm-env": "^1.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",

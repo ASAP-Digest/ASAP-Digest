@@ -7,12 +7,30 @@
   import * as Avatar from '$lib/components/ui/avatar';
   import { CircleUser, Loader2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { DropdownMenu } from '$lib/components/ui/dropdown-menu';
+  import { Settings, CreditCard, LogOut } from 'lucide-icons';
 
-  /** @type {import('./$types').LayoutData} */
-  let { data, children } = $props();
+  /**
+   * @typedef {Object} LayoutData
+   * @property {import('svelte').Snippet | undefined} children
+   * @property {{ user?: User | null }} data - From server load function
+   */
+  
+  // Use standard $props() destructuring
+  /** @type {LayoutData} */
+  let { children, data } = $props();
+  
+  // Access user data reactively from the passed data prop
+  let user = $derived(data?.user || null);
+  
+  // State for loading indicator (remove direct use of useSession here)
+  let isLoading = $state(false); // Manage loading state locally if needed
 
-  /** @type {import('app').App.User | null} */
-  const user = $derived(data.user);
+  // Remove useSession import and usage if user comes from server load data
+  // import { useSession } from '$lib/auth-client';
+  // const { data: session, error: sessionError, isPending: isSessionPending } = useSession();
+  // $effect(() => { isLoading = isSessionPending }); // Remove effect tied to useSession
+
   let eventSource = $state(/** @type {EventSource | null} */ (null));
 
   onMount(() => {
@@ -100,29 +118,49 @@
       }
       // Clear any pending retry timeouts if implemented more robustly
   });
+
+  async function handleLogout() {
+    // ... existing code ...
+  }
 </script>
 
 {#if user}
   <div class="protected-layout">
     <header class="user-header">
       <div class="user-info">
-        {#if user.avatarUrl}
-          <Avatar.Root>
-            <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
-            <Avatar.Fallback>
-              <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
-            </Avatar.Fallback>
-          </Avatar.Root>
-        {:else}
-          <div class="avatar-placeholder">
-            <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" />
-          </div>
-        {/if}
+        <Avatar.Root class="h-9 w-9">
+          <Avatar.Image class="" src={user.avatarUrl} alt={user.displayName || 'User Avatar'} />
+          <Avatar.Fallback class="">
+            <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" color="currentColor" />
+          </Avatar.Fallback>
+        </Avatar.Root>
         <div class="user-details">
           <span class="display-name">{user.displayName}</span>
           <span class="email">{user.email}</span>
         </div>
       </div>
+      <DropdownMenu>
+        <DropdownMenu.Button>
+          <Icon icon={Settings} class="mr-2 h-4 w-4" color="currentColor" />
+        </DropdownMenu.Button>
+        <DropdownMenu.Content class="w-56" align="end">
+          <DropdownMenu.Label>{user.displayName || user.email}</DropdownMenu.Label>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item href="/profile">
+            <Icon icon={Settings} class="mr-2 h-4 w-4" color="currentColor" />
+            <span>Profile</span>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item href="/billing">
+            <Icon icon={CreditCard} class="mr-2 h-4 w-4" color="currentColor" />
+            <span>Billing</span>
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item on:click={handleLogout}>
+            <Icon icon={LogOut} class="mr-2 h-4 w-4" color="currentColor" />
+            <span>Logout</span>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
     </header>
     
     <main>
