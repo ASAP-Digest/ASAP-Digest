@@ -194,6 +194,7 @@ async function createDbSession(baUserId) {
 export async function GET({ request, url, locals }) {
     log('Received request');
 	const headers = new Headers({ 'Content-Type': 'application/json' });
+    const incomingCookieHeader = request.headers.get('cookie') || ''; // Get cookies from the request that hit this endpoint
 
     // --- Check for Token-Based Auto-Login (Existing Logic - Unchanged) ---
 	const loginToken = url.searchParams.get('token');
@@ -290,16 +291,49 @@ export async function GET({ request, url, locals }) {
         if (WP_CHECK_SESSION_URL) {
             try {
                 log(`Fetching WP session status from: ${WP_CHECK_SESSION_URL}`, 'debug');
-                // Fetch from WP endpoint
-                const wpResponse = await fetch(WP_CHECK_SESSION_URL, { credentials: 'include' });
+                
+                // Prepare headers for the fetch call, including forwarded cookies
+                const fetchHeaders = new Headers();
+                if (incomingCookieHeader) {
+                    fetchHeaders.append('Cookie', incomingCookieHeader);
+                    log(`Forwarding incoming Cookie header to WP fetch. Header Content: [${incomingCookieHeader}]`, 'debug'); // Log cookie content
+                } else {
+                    log('No incoming Cookie header found to forward.', 'debug');
+                }
+
+                // Fetch from WP endpoint, explicitly passing headers
+                const wpResponse = await fetch(WP_CHECK_SESSION_URL, { 
+                    credentials: 'include', // Keep this, although manual header might override
+                    headers: fetchHeaders 
+                });
+                
+                // Log response status and headers from WP
+                log(`WP Response Status: ${wpResponse.status}`, 'info');
+                /** @type {Record<string, string>} */
+                const responseHeaders = {};
+                wpResponse.headers.forEach((value, key) => { responseHeaders[key] = value; });
+                log(`WP Response Headers: ${JSON.stringify(responseHeaders)}`, 'debug');
+                
+                // Clone the response to read the body, as it can only be read once
+                const wpResponseClone = wpResponse.clone();
+                const wpResponseBody = await wpResponseClone.text();
+                log(`WP Response Body: ${wpResponseBody}`, 'debug'); // Log the raw body
+
                 if (!wpResponse.ok) {
-                    log(`WordPress session check failed with status ${wpResponse.status}`, 'error');
-                    return json({ valid: false, error: 'WordPress session check failed' }, { status: 502 });
+                    log(`WordPress session check failed with status ${wpResponse.status}. Body: ${wpResponseBody}`, 'error');
+                    // Try parsing error from body if possible, otherwise use generic message
+                    let errorMsg = 'WordPress session check failed';
+                    try {
+                        const errorJson = JSON.parse(wpResponseBody);
+                        errorMsg = errorJson.message || errorMsg;
+                    } catch (e) { /* Ignore parsing error */ }
+                    return json({ valid: false, error: errorMsg }, { status: wpResponse.status }); // Return actual WP status
                 }
 
                 /** @type {WordPressSessionData} */
-                const wpData = await wpResponse.json();
-                log(`Received WP session data: ${JSON.stringify(wpData)}`, 'debug');
+                // Use the original response object here, as clone was used for logging body
+                const wpData = await wpResponse.json(); 
+                log(`Parsed WP session data: ${JSON.stringify(wpData)}`, 'debug'); // Log parsed data
 
                 // --- Process WP Response ---
                 // Use optional chaining and nullish coalescing for safety

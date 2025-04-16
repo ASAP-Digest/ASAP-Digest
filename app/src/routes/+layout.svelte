@@ -88,26 +88,38 @@
       fetch('/api/auth/sync', { credentials: 'include' })
         .then(response => {
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Log the error status but don't redirect here. 
+            // Let the sync endpoint logic decide if a session can be created.
+            // The catch block will handle generic fetch errors.
+            console.warn(`[Layout Auto-Login] Fetch to /api/auth/sync failed with status: ${response.status}`);
+            // We still need to try and parse the body for potential reasons
+            return response.json().catch(() => ({ ok: false, status: response.status, error: 'Failed to parse error body' })); 
           }
           return response.json();
         })
         .then(data => {
-          console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); // DEBUG
-          if (data.valid && data.session_created) {
-            console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
-            toasts.show(
-              'Your session was automatically synchronized.',
-              'success'
-            );
-            // Invalidate all data to ensure stores and UI reflect the new session
-            // Using goto instead of invalidateAll to potentially force reactivity updates
-            goto(window.location.href, { invalidateAll: true }); 
-          } else {
-            console.log('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '');
+          // Check if the response was actually okay before proceeding
+          if (data && data.ok !== false) { 
+              console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); // DEBUG
+              if (data.valid && data.session_created) {
+                console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
+                toasts.show(
+                  'Your session was automatically synchronized.',
+                  'success'
+                );
+                // Invalidate all data to ensure stores and UI reflect the new session
+                goto(window.location.href, { invalidateAll: true }); 
+              } else {
+                // Log why sync didn't happen, but don't redirect
+                console.log('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '(No specific reason provided)');
+              }
+          } else if (data && data.ok === false) {
+              // Log the error reason parsed from the non-ok response
+              console.log(`[Layout Auto-Login] Sync check indicated failure. Status: ${data.status}, Reason: ${data.error || 'Unknown'}`);
           }
         })
         .catch(error => {
+          // Catch network errors or errors thrown from the .then blocks
           console.error('[Layout Auto-Login] Error fetching /api/auth/sync:', error);
         });
     } else if (browser && $page.data.user) {

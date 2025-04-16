@@ -112,7 +112,7 @@ function asap_init_core() {
     add_action('admin_enqueue_scripts', 'asap_enqueue_admin_styles', 30);
     
     // CORS and headers (priority 100+)
-    add_action('rest_api_init', 'asap_add_cors_headers', 10);
+    add_action('rest_api_init', 'asap_add_cors_headers', 15);
 }
 
 // Initialize core functionality early
@@ -500,35 +500,58 @@ function asap_send_notification(WP_REST_Request $request) {
 
 /**
  * @description Add CORS headers for SvelteKit frontend
- * @hook add_action('rest_api_init', 'asap_add_cors_headers', 10)
+ * @hook add_action('rest_api_init', 'asap_add_cors_headers', 15)
  * @since 1.0.0
  * @return void
  * @created 03.30.25 | 03:45 PM PDT
  */
 function asap_add_cors_headers() {
-  $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-  $allowed_origins = apply_filters('asap_allowed_origins', [
-    'https://asapdigest.com',
-    'https://app.asapdigest.com',  // Add app subdomain
-    'https://asapdigest.local',
-    'http://asapdigest.local',
-    'https://localhost:5173'
-  ]);
-  
-  if (in_array($origin, $allowed_origins)) {
-    header("Access-Control-Allow-Origin: " . esc_url_raw($origin));
-  } else {
-    header('Access-Control-Allow-Origin: https://asapdigest.com');
-  }
-  header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Authorization, Content-Type');
-  
-  // Handle preflight OPTIONS requests
-  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Max-Age: 86400'); // Cache preflight response for 24 hours
-    exit(0);
-  }
+  remove_filter('rest_pre_serve_request', 'rest_send_cors_headers'); // Remove default WP CORS headers
+
+  add_filter('rest_pre_serve_request', function($value) {
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $current_site_url = site_url(); // Get the current WP site URL
+    $allowed_origin = '';
+
+    // Determine the allowed cross-origin partner based on the current WP environment
+    if (strpos($current_site_url, 'asapdigest.local') !== false) {
+      // Local environment: WP is asapdigest.local, partner is localhost:5173
+      $allowed_origin = 'https://localhost:5173';
+    } elseif (strpos($current_site_url, 'asapdigest.com') !== false) {
+      // Production environment: WP is asapdigest.com, partner is app.asapdigest.com
+      $allowed_origin = 'https://app.asapdigest.com';
+    }
+    // Add other environments (e.g., staging) if needed
+
+    // Check if the request origin matches the *single* allowed partner for this environment
+    if ($origin === $allowed_origin) {
+      header("Access-Control-Allow-Origin: " . esc_url_raw($origin)); // Allow the specific partner origin
+      header("Access-Control-Allow-Credentials: true"); 
+      header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"); 
+      header("Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce"); 
+    }
+    // If $origin does not match $allowed_origin, no CORS headers are sent, blocking the request.
+
+    // Handle preflight OPTIONS requests specifically for REST API
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+       // Check if the origin is the allowed partner for this environment
+       if ($origin === $allowed_origin) {
+            // Send required CORS headers for OPTIONS preflight
+            // Headers already set above if origin matched, just add Max-Age and exit
+            header('Access-Control-Max-Age: 86400'); // Cache preflight response for 24 hours
+            status_header(204); // No Content for OPTIONS
+            exit(0); // Exit early for OPTIONS requests
+       } else {
+            // If origin is not the allowed partner for OPTIONS, send 403 Forbidden
+            status_header(403);
+            exit(0);
+       }
+    }
+
+    return $value; // Continue with the request processing
+  });
 }
+add_action('rest_api_init', 'asap_add_cors_headers', 15); // Hook into rest_api_init with priority 15
 
 /**
  * @description Register endpoint to update podcast URL
