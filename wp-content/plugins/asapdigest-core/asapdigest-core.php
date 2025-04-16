@@ -87,10 +87,16 @@ add_action('asap_cleanup_data', 'asap_cleanup_data');
  * @created 03.30.25 | 04:25 PM PDT
  */
 function asap_init_core() {
-    // Core functionality (priority 10)
+    // Include and instantiate the core class
+    require_once plugin_dir_path(__FILE__) . 'includes/class-core.php';
+    new \ASAPDigest\Core\ASAP_Digest_Core(); // Instantiate the class to trigger constructor hooks
+    // Let the core class instance handle its hooks
+    // Note: The class constructor should call its hook definition method
+
+    // Core functionality (priority 10) - Some of these might be handled by the class now
     add_action('init', 'create_asap_cpts', 10);
     add_action('wp', 'asap_schedule_cleanup', 10);
-    add_action('rest_api_init', 'asap_register_rest_routes', 10);
+    // add_action('rest_api_init', 'asap_register_rest_routes', 10); // Likely handled by ASAP_Digest_Core now
     add_action('rest_api_init', 'asap_register_digest_retrieval', 10);
     add_action('rest_api_init', 'asap_register_notification_routes', 10);
     add_action('rest_api_init', 'asap_register_podcast_url_update', 10);

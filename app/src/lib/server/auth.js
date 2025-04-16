@@ -378,6 +378,145 @@ async function deleteSessionFn(sessionToken) {
     }
 }
 
+/**
+ * Find user by WordPress ID stored in metadata (Adapter Implementation)
+ * @param {number} wpUserId - WordPress User ID
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserByWpIdFn(wpUserId) {
+    logConfig(`Adapter: getUserByWpId called for WP ID ${wpUserId}`);
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        // Querying JSON metadata requires specific syntax depending on MySQL version
+        // Using JSON_EXTRACT for broader compatibility. Assumes wp_user_id is stored at the root level.
+        const sql = "SELECT * FROM ba_users WHERE JSON_EXTRACT(metadata, '$.wp_user_id') = ? LIMIT 1";
+        const params = [wpUserId];
+        /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
+        const [rows, fields] = await connection.execute(sql, params);
+
+        if (Array.isArray(rows) && rows.length > 0) {
+            const userRow = rows[0];
+            if (userRow && typeof userRow === 'object' && 'id' in userRow && 'email' in userRow) {
+                logConfig(`Adapter: getUserByWpId found user ${userRow.id} for WP ID ${wpUserId}`);
+                let metadata = userRow.metadata;
+                if (typeof metadata === 'string') {
+                    try {
+                        metadata = JSON.parse(metadata);
+                    } catch (e) {
+                        logConfig(`Adapter: Failed to parse metadata for user ${userRow.id}`, 'warn');
+                        metadata = {};
+                    }
+                }
+                // Reconstruct user object similar to getUserByIdFn
+                const user = {
+                    id: String(userRow.id),
+                    email: String(userRow.email),
+                    username: userRow.username ? String(userRow.username) : undefined,
+                    name: userRow.name ? String(userRow.name) : undefined,
+                    metadata: metadata || {},
+                    betterAuthId: String(userRow.id),
+                    displayName: String(userRow.name || userRow.username || userRow.email),
+                    roles: metadata?.roles || [],
+                    syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'),
+                    updatedAt: userRow.updated_at ? new Date(userRow.updated_at).toISOString() : undefined,
+                };
+                return user;
+            } else {
+                 logConfig(`Adapter: getUserByWpId found row but missing expected properties for WP ID ${wpUserId}`, 'warn');
+                return null;
+            }
+        } else {
+            logConfig(`Adapter: getUserByWpId did not find user for WP ID ${wpUserId}`);
+            return null;
+        }
+    } catch (error) {
+        logConfig(`Adapter: Error in getUserByWpId for WP ID ${wpUserId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+/**
+ * Create a new user (Adapter Implementation)
+ * Minimal implementation: creates user with email derived from WP ID and stores wp_user_id in metadata.
+ * Requires enhancement to fetch actual WP user data for better profile creation.
+ * 
+ * @param {{ wpUserId: number, email?: string, username?: string, name?: string, roles?: string[] }} userData - Data for the new user, wpUserId is mandatory.
+ * @returns {Promise<User|null>} The created user object or null on failure
+ */
+async function createUserFn(userData) {
+    const { wpUserId, email, username, name, roles } = userData;
+    logConfig(`Adapter: createUser called for WP ID ${wpUserId}`);
+    if (!wpUserId) {
+        logConfig(`Adapter: createUser failed - wpUserId is required.`, 'error');
+        return null;
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        // Generate a placeholder email if not provided - THIS IS NOT ROBUST FOR PRODUCTION
+        const finalEmail = email || `wp_user_${wpUserId}@asapdigest.local`; 
+        const finalUsername = username || `wp_user_${wpUserId}`;
+        const finalName = name || `WordPress User ${wpUserId}`;
+        const finalRoles = roles || ['subscriber']; // Default role
+
+        // Prepare metadata including the wp_user_id
+        const metadata = {
+            wp_user_id: wpUserId,
+            roles: finalRoles,
+            // Add other default metadata if needed
+        };
+        const metadataJson = JSON.stringify(metadata);
+
+        // Generate a UUID for the new user ID
+        const userId = crypto.randomUUID(); 
+
+        const sql = 'INSERT INTO ba_users (id, email, username, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())';
+        const params = [userId, finalEmail, finalUsername, finalName, metadataJson];
+        
+        /** @type {[import('mysql2/promise').OkPacket|import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
+        const [result, fields] = await connection.execute(sql, params);
+
+        // Check if insert was successful (affectedRows is available on OkPacket/ResultSetHeader)
+        if (result && 'affectedRows' in result && result.affectedRows === 1) {
+            logConfig(`Adapter: createUser successfully created user ${userId} for WP ID ${wpUserId}`);
+            // Return the newly created user object in the standard format
+            const newUser = {
+                id: userId,
+                email: finalEmail,
+                username: finalUsername,
+                name: finalName,
+                metadata: metadata,
+                betterAuthId: userId,
+                displayName: finalName,
+                roles: finalRoles,
+                syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'),
+                // createdAt/updatedAt could be fetched again, but using current time is acceptable here
+                updatedAt: new Date().toISOString() 
+            };
+            return newUser;
+        } else {
+             logConfig(`Adapter: createUser failed to insert user for WP ID ${wpUserId}. Result: ${JSON.stringify(result)}`, 'error');
+            return null;
+        }
+
+    } catch (error) {
+         // Handle potential duplicate email errors etc.
+        logConfig(`Adapter: Error in createUser for WP ID ${wpUserId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return null;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
 // --- Hook Functions Definition ---
 
 /** 
@@ -578,6 +717,21 @@ async function createHmacSha256(message, secret) {
     return hmac.digest('hex');
 }
 
+// Define the adapter object - *INCLUDING NEW FUNCTIONS*
+const adapter = {
+    getUserByEmail: getUserByEmailFn,
+    getUserById: getUserByIdFn,
+    getSessionByToken: getSessionByTokenFn,
+    createSession: createSessionFn,
+    deleteSession: deleteSessionFn,
+    // Add the new functions here:
+    getUserByWpId: getUserByWpIdFn,
+    createUser: createUserFn
+};
+
+// DEBUGGING: Log the complete adapter object
+// console.log('[auth.js DEBUG] Final Adapter object:', adapter);
+
 // Instantiate Better Auth with the Kysely dialect
 export const auth = betterAuth({
     // --- Top-Level Options --- 
@@ -602,12 +756,23 @@ export const auth = betterAuth({
     //   onUserCreation: onUserCreationHook, 
     //   onSessionCreation: onSessionCreationHook,
     // }
+
+    // Configuration using the custom adapter (per this file's structure)
+    adapter: adapter, 
+
+    after: {
+        onUserCreation: onUserCreationHook,
+        onSessionCreation: onSessionCreationHook,
+    },
+    // TODO: Configure email/password, social providers if needed
+    // emailAndPassword: { enabled: true },
 });
 
-// Log successful initialization
-logConfig('Better Auth initialized successfully with Kysely MySQL adapter.');
+// DEBUGGING: Log the initialized auth object
+// console.log('[auth.js DEBUG] Final Auth object:', auth);
 
-export { pool };
+// Potentially export the pool or dialect if needed elsewhere (e.g., for direct DB access)
+export { pool }; // Export the pool
 
 // Keep the default export for auth
 export default auth;

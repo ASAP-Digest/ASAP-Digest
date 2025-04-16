@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# WordPress Class Organization
+# WordPress Class Organization v1.1
+
+*(Self-correction: Added v1.1, updated Section 5 with global namespace instantiation rules)*
 
 Ensures consistent class organization, prevents namespace conflicts, and maintains clean file structure in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, and namespace mismatches that can cause fatal errors.
 
@@ -13,82 +15,131 @@ Ensures consistent class organization, prevents namespace conflicts, and maintai
 - Refactoring plugin structure
 - Debugging class loading issues
 
-1. **One Class, One Location**
-   ```php
-   // CORRECT
-   /admin/class-admin-ui.php
-   namespace ASAPDigest\Admin;
-   class ASAP_Digest_Admin_UI { }
+## 1. One Class, One Location
 
-   // INCORRECT - Same class in two locations
-   /admin/class-admin-ui.php
-   /includes/class-admin-ui.php
-   ```
+Each class MUST exist in only one file location within the plugin.
 
-2. **Directory Structure**
-   ```
-   your-plugin/
-   ├── admin/           # Admin UI classes
-   ├── includes/        # Core functionality
-   │   ├── api/        # API endpoints
-   │   └── db/         # Database operations
-   └── templates/       # View templates
-   ```
+```php
+// CORRECT
+// /admin/class-admin-ui.php
+namespace ASAPDigest\Admin;
+class ASAP_Digest_Admin_UI { }
 
-3. **File Paths & Requires**
-   ```php
-   // CORRECT
-   require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
-   
-   // INCORRECT
-   require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
-   ```
+// INCORRECT - Same class defined in two locations
+// /admin/class-admin-ui.php
+// /includes/class-admin-ui.php
+```
 
-4. **Namespace Structure**
-   ```php
-   // CORRECT - Namespace matches directory
-   // In admin/class-admin-ui.php
-   namespace ASAPDigest\Admin;
-   
-   // In includes/api/class-rest-auth.php
-   namespace ASAPDigest\API;
-   
-   // INCORRECT - Namespace doesn't match location
-   // In admin/class-admin-ui.php
-   namespace ASAPDigest\Core;
-   ```
+## 2. Directory Structure
 
-5. **Class Loading**
-   ```php
-   // CORRECT
-   use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
-   use ASAPDigest\API\ASAP_Digest_REST_Auth;
-   
-   // INCORRECT
-   use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace
-   ```
+Follow a logical directory structure reflecting the class's purpose.
 
-6. **Moving Classes**
-   - Search for all references: `grep -r "class_name" .`
-   - Update require paths
-   - Update namespace
-   - Document in CHANGELOG.md
-   ```markdown
-   ## [1.0.1] - 2024-03-31
-   ### Changed
-   - Moved ASAP_Digest_Admin_UI from includes/ to admin/
-   - Updated namespace to ASAPDigest\Admin
-   ```
+```text
+your-plugin/
+├── admin/           # Admin UI classes
+├── includes/        # Core functionality
+│   ├── api/        # API endpoints
+│   └── db/         # Database operations
+└── templates/       # View templates
+```
 
-**Common Issues This Prevents:**
-- Fatal errors from duplicate class definitions
-- Autoloader failures from mismatched namespaces
-- Confusion about class locations
-- Inconsistent plugin structure
-- Hard-to-track class dependencies
+## 3. File Paths & Requires
 
-**Verification Steps:**
-1. Check for duplicate class files: `find . -name "class-*.php" | sort`
-2. Verify namespaces match directories
-3. Test class autoloading
-4. Validate all require paths
+Use `plugin_dir_path(__FILE__)` for reliable path generation when requiring files. Ensure the path points to the single correct location defined in Section 1.
+
+```php
+// CORRECT
+require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
+
+// INCORRECT (Assuming the class is actually in admin/)
+// require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+```
+
+## 4. Namespace Structure
+
+Namespaces MUST align with the directory structure relative to the plugin's root namespace (e.g., `ASAPDigest`).
+
+```php
+// CORRECT - Namespace matches directory
+// In admin/class-admin-ui.php
+namespace ASAPDigest\Admin;
+
+// In includes/api/class-rest-auth.php
+namespace ASAPDigest\API;
+
+// INCORRECT - Namespace doesn't match location
+// In admin/class-admin-ui.php
+// namespace ASAPDigest\Core; // Should be ASAPDigest\Admin
+```
+
+## 5. Class Loading & Instantiation
+
+**A. Within a Namespaced File:** Use `use` statements to import other namespaced classes.
+
+```php
+// CORRECT (Inside a file like 'includes/class-core.php' which has 'namespace ASAPDigest\Core;')
+namespace ASAPDigest\Core;
+
+use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
+use ASAPDigest\API\ASAP_Digest_REST_Auth;
+
+class Core {
+    public function __construct() {
+        $admin_ui = new ASAP_Digest_Admin_UI();
+        $auth = new ASAP_Digest_REST_Auth();
+    }
+}
+
+// INCORRECT (Inside a namespaced file)
+// use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace for Admin UI class
+```
+
+**B. From the Global Scope (Non-Namespaced Files):** When instantiating a namespaced class from a file that does **not** have its own `namespace` declaration (like the main plugin file `your-plugin.php`), you **MUST** use the fully qualified class name, preceded by a backslash (`\`). `use` statements have no effect in the global scope for instantiation.
+
+```php
+// CORRECT (In a file without 'namespace ...;' declaration, e.g., asapdigest-core.php)
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';
+
+// Instantiate and assign to variable
+$auth_instance = new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+
+// OR if only constructor side-effects are needed:
+new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+
+// INCORRECT (In a file without 'namespace ...;')
+// use ASAPDigest\API\ASAP_Digest_REST_Auth; // 'use' has no effect here for instantiation
+// $instance = new ASAP_Digest_REST_Auth(); // Leads to "Class not found" or linter error
+```
+
+## 6. Moving Classes
+
+When moving a class file:
+1.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
+2.  Update all `require_once` or `include_once` paths pointing to the old location.
+3.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
+4.  Update all `use` statements in other files that referenced the class's old namespace.
+5.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
+6.  Document the change in `CHANGELOG.md`.
+
+```markdown
+## [1.0.1] - 2024-03-31
+### Changed
+- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/`.
+- Updated namespace from `ASAPDigest\Core` to `ASAPDigest\Admin`.
+```
+
+## 7. Common Issues This Prevents:
+- Fatal errors from duplicate class definitions.
+- Autoloader failures (if used) from mismatched namespaces.
+- Confusion about class locations.
+- Inconsistent plugin structure.
+- Hard-to-track class dependencies.
+- "Class not found" errors or linter warnings when instantiating from the global scope.
+
+## 8. Verification Steps:
+1. Check for duplicate class files: `find . -name "class-*.php" | sort`.
+2. Manually verify namespaces match directory structure in key classes.
+3. Verify `require_once` paths are correct.
+4. Test plugin activation and key functionality involving the classes.
+5. Check PHP error logs for "Class not found" errors.
+6. Run linters to check for "Undefined type" errors, especially in the main plugin file or other non-namespaced files.
