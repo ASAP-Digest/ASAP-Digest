@@ -64,7 +64,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.772.0",
     "@huggingface/transformers": "^3.4.0",
-    "@lucide/svelte": "^0.483.0",
     "@stripe/stripe-js": "^6.1.0",
     "@tailwindcss/cli": "^4.0.15",
     "@tailwindcss/postcss": "^4.0.15",

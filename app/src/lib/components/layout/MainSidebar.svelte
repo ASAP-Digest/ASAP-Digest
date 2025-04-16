@@ -172,7 +172,6 @@
   // Accept props including the user data
   let {
     collapsed = false,
-    toggleSidebar = () => { console.error('toggleSidebar prop not provided to MainSidebar'); },
     isMobile = false,
     closeMobileMenu = () => {},
     /** @type {User} */
@@ -250,7 +249,9 @@
   const isDev = import.meta.env.DEV;
   
   // Add observer for element visibility
-  let visibilityObserver = $state(null);
+  let visibilityObserver = $state(/** @type {IntersectionObserver | null} */ (null));
+  let showTopShadow = $state(false);
+  let showBottomShadow = $state(false);
   onMount(() => {
     console.log('[MainSidebar] Component mounted');
     
@@ -425,15 +426,24 @@
 
   // Added handleLinkClick function definition
   /**
-   * Handles link clicks, closing mobile menu if necessary.
-   * @param {MouseEvent} event - The click event
+   * Handles clicks on the sidebar links.
+   *
+   * @param {MouseEvent} event The mouse event.
    */
   function handleLinkClick(event) {
-    // Add any specific link handling logic here if needed
-    console.log('Link clicked:', event.currentTarget?.href);
-    if (isMobile) {
-      closeMobileMenu();
+    // Type assertion for event.target
+    const target = /** @type {Element} */ (event.target);
+    const menuItem = target.closest('a');
+
+    if (menuItem && !menuItem.classList.contains('sidebar-sublink')) {
+      // Close sidebar on main link click if it's collapsible and not a sublink
+      if (isCollapsible && isCollapsed) {
+        // Optional: Add logic if needed when clicking a main link in collapsed state
+      } else if (isCollapsible) {
+        // toggleSidebar(); // Decide if clicking a main link should toggle collapse
+      }
     }
+    // Allow default link navigation
   }
 
   // Function to handle menu item clicks, closing mobile menu if needed
@@ -441,15 +451,26 @@
    * @param {MouseEvent} event
    */
   function handleMenuItemClick(event) {
-    if (isMobile) {
-      // Check if the click target is an anchor tag
-      const target = event.target;
-      if (target instanceof HTMLAnchorElement && target.closest('a')) {
-         closeMobileMenu();
-      }
-    }
-    // Allow default navigation
+    // Type assertion for event.currentTarget
+    const target = /** @type {HTMLAnchorElement} */ (event.currentTarget);
+    console.log('MenuItem clicked:', target.href);
+    // Additional logic if needed
   }
+
+  /**
+   * Toggles the collapsed state of the sidebar.
+   * @param {MouseEvent} event - The mouse event triggering the toggle.
+   */
+  function toggleSidebar(event) {
+    event.preventDefault();
+    if (isCollapsible) {
+      isCollapsed = !isCollapsed;
+      // Optional: Dispatch event or call parent function
+    }
+  }
+
+  // Reactive derived state for sidebar classes
+  let isCollapsible = $state(false);
 </script>
 
 <style lang="postcss">
@@ -820,7 +841,7 @@
       <Group class="pb-[1rem] pt-[1rem]">
         <Menu class="space-y-[0.75rem]" {collapsed}>
           {#each mainNavItems as item (item.label)}
-            <MenuItem {collapsed}>
+            <MenuItem {collapsed} class="">
               <a 
                 href={item.url} 
                 class="menu-item-link px-3!"
@@ -852,7 +873,7 @@
           </GroupLabel>
           <Menu class="space-y-[0.75rem]" {collapsed}>
             {#each devNavItems as item (item.label)}
-              <MenuItem {collapsed}>
+              <MenuItem {collapsed} class="">
                 <a 
                   href={item.url} 
                   class="menu-item-link"
@@ -947,23 +968,23 @@
             
             <div class="py-[0.25rem]">
               <a href="/profile" class="dropdown-item">
-                <span class="sidebar-icon"><Icon icon={User} size={16} /></span>
+                <span class="sidebar-icon"><Icon icon={User} size={16} color="currentColor" /></span>
                 <span>Profile</span>
               </a>
               <a href="/notifications" class="dropdown-item">
-                <span class="sidebar-icon"><Icon icon={Bell} size={16} /></span>
+                <span class="sidebar-icon"><Icon icon={Bell} size={16} color="currentColor" /></span>
                 <span>Notifications</span>
               </a>
               <a href="/billing" class="dropdown-item">
-                <span class="sidebar-icon"><Icon icon={CreditCardIcon} size={16} /></span>
+                <span class="sidebar-icon"><Icon icon={CreditCardIcon} size={16} color="currentColor" /></span>
                 <span>Billing</span>
               </a>
               <a href="/settings" class="dropdown-item">
-                <span class="sidebar-icon"><Icon icon={Settings} size={16} /></span>
+                <span class="sidebar-icon"><Icon icon={Settings} size={16} color="currentColor" /></span>
                 <span>Settings</span>
               </a>
               <a href="/logout" class="dropdown-item">
-                <span class="sidebar-icon"><Icon icon={LogOut} size={16} /></span>
+                <span class="sidebar-icon"><Icon icon={LogOut} size={16} color="currentColor" /></span>
                 <span>Sign Out</span>
               </a>
             </div>

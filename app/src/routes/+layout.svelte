@@ -23,12 +23,11 @@
   import { browser } from '$app/environment';
   import { dev } from '$app/environment';
   import GlobalFAB from '$lib/components/layout/GlobalFAB.svelte';
-  import { fade } from 'svelte/transition';
   // Import the functions
   import { getInstallPrompt, getIsInstallable, getIsPWA } from '$lib/stores/pwa.svelte.js';
   // Import local toast components and store
-  import { Toaster } from '$lib/components/ui/toast/toast-container.svelte';
-  import { toast } from '$lib/components/ui/toast/index.js';
+  import Toaster from '$lib/components/ui/toast/toast-container.svelte';
+  import { toasts } from '$lib/stores/toast.js'; // Correctly import the store
   // Import required icons
   import { 
     Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download 
@@ -63,11 +62,11 @@
     const currentUser = $page.data.user;
     if (currentUser?.updatedAt && currentUser.updatedAt !== previousUserUpdatedAt) {
       console.log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${currentUser.updatedAt}. Showing toast.`); // DEBUG
-      toast({
-        title: 'Profile Synced',
-        description: 'Your profile details have been updated from WordPress.',
-        variant: 'success'
-      });
+      toasts.show(
+        'Your profile details have been updated from WordPress.',
+        'success'
+        // Optionally pass duration if needed, defaults to 5000ms
+      );
       previousUserUpdatedAt = currentUser.updatedAt;
     }
   });
@@ -97,11 +96,10 @@
           console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); // DEBUG
           if (data.valid && data.session_created) {
             console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
-            toast({
-              title: 'Auto-Logged In',
-              description: 'Your session was automatically synchronized.',
-              variant: 'success'
-            });
+            toasts.show(
+              'Your session was automatically synchronized.',
+              'success'
+            );
             // Invalidate all data to ensure stores and UI reflect the new session
             // Using goto instead of invalidateAll to potentially force reactivity updates
             goto(window.location.href, { invalidateAll: true }); 
@@ -145,11 +143,10 @@
                 console.log(`[Layout Sync Listener] Timestamp changed! Old: ${previousUserUpdatedAt}, New from SSE: ${data.updatedAt}. Showing toast.`); // DEBUG
                 
                 // Add the toast notification directly based on SSE data
-                toast({
-                  title: 'Profile Synced',
-                  description: 'Your profile was updated in another tab or device.',
-                  variant: 'info'
-                });
+                toasts.show(
+                  'Your profile was updated in another tab or device.',
+                  'info'
+                );
                 
                 // IMPORTANT: Update the state variable *after* showing the toast, using the timestamp from the SSE message
                 previousUserUpdatedAt = data.updatedAt; 
@@ -370,11 +367,10 @@
       } else if (currentUser.updatedAt !== lastUpdatedAt) {
         // Timestamp has changed, trigger toast
         console.log('[Layout Effect] User data updated via $effect. Old ts:', lastUpdatedAt, 'New ts:', currentUser.updatedAt); // DEBUG
-        toast({
-          title: 'Profile synchronized.',
-          description: 'Your profile details have been updated from WordPress.',
-          variant: 'success'
-        });
+        toasts.show(
+          'Your profile details have been updated from WordPress.',
+          'success'
+        );
         lastUpdatedAt = currentUser.updatedAt; // Update the stored timestamp
       }
     } else if (lastUpdatedAt !== null && !currentUser) {
@@ -434,11 +430,11 @@
         if (data.valid && data.session_created) {
           console.log('[Layout Mount] Auto-login successful via sync endpoint.');
           // Use the imported toast function
-          toast({
-            title: "Auto Login Successful",
-            description: "You\'ve been automatically logged in based on your WordPress session.",
-            variant: "success" // Use 'success' type for consistency
-          });
+          toasts.show(
+            "Auto Login Successful",
+            "You've been automatically logged in based on your WordPress session.",
+            'success' // Use 'success' type for consistency
+          );
           // Reload the page to ensure SvelteKit picks up the new session cookie
           // and the layout/stores reflect the logged-in state correctly.
           // Use invalidateAll() + goto() for a smoother transition if preferred,
@@ -450,11 +446,11 @@
       } catch (error) {
         console.error('[Layout Mount] Error during automatic sync check:', error);
         // Use the imported toast function
-        toast({
-          title: "Sync Check Error",
-          description: "Could not check login status automatically.",
-          variant: "destructive"
-        });
+        toasts.show(
+          "Sync Check Error",
+          "Could not check login status automatically.",
+          'destructive'
+        );
       }
     } else {
          console.debug('[Layout Mount] Active SK session detected. Skipping WP sync check.');
@@ -497,11 +493,11 @@
       console.log('[Layout] Sign out successful.');
     } catch (error) {
       console.error('[Layout] Error during sign out:', error);
-      toast({
-        title: "Logout Error",
-        description: "Could not log out. Please try again later.",
-        variant: "destructive"
-      });
+      toasts.show(
+        "Logout Error",
+        "Could not log out. Please try again later.",
+        'destructive'
+      );
     }
   }
 </script>

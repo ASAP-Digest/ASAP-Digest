@@ -7,8 +7,8 @@
   import * as Avatar from '$lib/components/ui/avatar';
   import { CircleUser, Loader2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { DropdownMenu } from '$lib/components/ui/dropdown-menu';
-  import { Settings, CreditCard, LogOut } from 'lucide-icons';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import { Settings, CreditCard, LogOut } from '$lib/utils/lucide-compat.js';
 
   /**
    * @typedef {Object} LayoutData
@@ -139,10 +139,12 @@
           <span class="email">{user.email}</span>
         </div>
       </div>
-      <DropdownMenu>
-        <DropdownMenu.Button>
-          <Icon icon={Settings} class="mr-2 h-4 w-4" color="currentColor" />
-        </DropdownMenu.Button>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button class="flex items-center p-1 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+            <Icon icon={Settings} class="h-5 w-5" color="currentColor" />
+          </button>
+        </DropdownMenu.Trigger>
         <DropdownMenu.Content class="w-56" align="end">
           <DropdownMenu.Label>{user.displayName || user.email}</DropdownMenu.Label>
           <DropdownMenu.Separator />

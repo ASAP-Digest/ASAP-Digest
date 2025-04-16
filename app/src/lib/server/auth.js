@@ -578,23 +578,34 @@ async function createHmacSha256(message, secret) {
     return hmac.digest('hex');
 }
 
-// Better Auth configuration - Aligning with official MySQL+Kysely Docs
+// Instantiate Better Auth with the Kysely dialect
 export const auth = betterAuth({
-    secret: BETTER_AUTH_SECRET, // Use imported secret directly
-    sessionCookieName: 'better_auth_session',
-    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000,
-    // Use 'database' key as per docs
+    // --- Top-Level Options --- 
+    secret: BETTER_AUTH_SECRET, // REQUIRED: Use imported secret
+    sessionCookieName: 'asap_digest_session', // Optional: Customize cookie name
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional: Session duration (30 days)
+
+    // --- Database Configuration (Using Kysely Dialect) ---
     database: {
-        dialect: dialect, // Provide Kysely dialect
-        type: "mysql",    // Explicitly set type
-        // REMOVED explicit adapter functions (getUserByEmailFn, etc.)
-        // Assuming library uses dialect methods
+        dialect: dialect,   // REQUIRED: Kysely dialect instance
+        type: "mysql",      // REQUIRED: Explicit type for the dialect
+        // DO NOT add explicit adapter functions (getUserByEmailFn, etc.) here
     },
-    after: {
-        onUserCreation: onUserCreationHook,
-        onSessionCreation: onSessionCreationHook,
-    }
+
+    // --- Other Optional Configurations ---
+    // emailAndPassword: { enabled: true }, 
+    // socialProviders: { /* ... */ },
+
+    // --- Optional Lifecycle Hooks ---
+    // Corrected: Removed placeholder hooks import
+    // after: {
+    //   onUserCreation: onUserCreationHook, 
+    //   onSessionCreation: onSessionCreationHook,
+    // }
 });
+
+// Log successful initialization
+logConfig('Better Auth initialized successfully with Kysely MySQL adapter.');
 
 export { pool };
 

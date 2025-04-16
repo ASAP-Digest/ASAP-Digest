@@ -26,7 +26,12 @@
     }
   });
 
-  async function handleSubmit() {
+  /**
+   * Handles the form submission for registration.
+   * @param {Event} event The form submission event.
+   */
+  async function handleSubmit(event) {
+    event.preventDefault();
     try {
       isLoading = true;
       errorMessage = '';
@@ -64,7 +69,7 @@
       </p>
     </div>
 
-    <form class="space-y-6" on:submit|preventDefault={handleSubmit}>
+    <form class="space-y-6" onsubmit={handleSubmit}>
       {#if errorMessage}
         <Alert variant="destructive">
           <AlertDescription>{errorMessage}</AlertDescription>

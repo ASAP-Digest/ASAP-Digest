@@ -36,13 +36,13 @@
 	 */
 
 	let {
-		class: className = '',
+		class: className = /** @type {string | undefined | null} */ (''),
 		variant = /** @type {ButtonVariant} */ ("default"),
 		size = /** @type {ButtonSize} */ ("default"),
-		ref = $bindable(null),
-		href = undefined,
+		ref = /** @type {HTMLButtonElement | HTMLAnchorElement | null} */ ($bindable(null)),
+		href = /** @type {string | undefined | null} */ (undefined),
 		type = /** @type {ButtonType} */ ("button"),
-		children,
+		children = /** @type {import('svelte').Snippet | undefined} */ (undefined),
 		...restProps
 	} = $props();
 </script>

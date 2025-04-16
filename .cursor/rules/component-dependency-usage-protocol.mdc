@@ -1,0 +1,118 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Component Dependency Usage Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines a standard procedure for diagnosing and resolving build-time or runtime errors related to incorrect import or usage of dependencies within the project. This includes internal utilities/stores (`$lib/...`), third-party libraries (`bits-ui`, `lucide-svelte`), framework modules (`$app/...`), and component-local variables/functions. It aims to systematically identify the correct source and usage pattern based on project conventions and established protocols.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Universal Error Resolution (UERP)    │ // Entry point for error handling
+│ 2. Rule Execution Protocol              │ // How this protocol's steps are run
+│ 3. Software Development Meta Protocol   │ // Overall guidance
+│ 4. asap-digest-stack.mdc                │ // Defines core technologies & paths
+│ 5. sk2-scns5-t4-int.mdc                 │ // Svelte/Shadcn/Tailwind specifics
+│ 6. icon-management.mdc                  │ // Icon import/usage rules
+│ 7. svelte-5-syntax-migration-protocol.mdc│ // Svelte 5 specific syntax
+│ 8. jsdoc-complex-parameter-typing.mdc   │ // JSDoc typing rules
+│ 9. local-variable-type-safety-protocol.mdc│// Type guard rules
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger Conditions
+
+This protocol is activated when encountering errors such as:
+
+*   `Cannot find name 'X'`
+*   `'X' is not exported by 'Y'`
+*   `'X' has already been declared` (May indicate import/scope issue)
+*   Runtime: `X is not defined`
+*   Runtime: `X is not a function`
+*   Runtime: `Cannot read properties of undefined (reading 'X')`
+
+## 4. Protocol Steps
+
+### Step 1: Error Analysis
+
+1.  **Identify Error:** Note the exact error message.
+2.  **Identify Location:** Note the file path and line number where the error is reported.
+3.  **Identify Identifier:** Determine the specific variable, function, component, or type name (`X`) causing the error.
+
+### Step 2: Source Identification
+
+Categorize the problematic identifier (`X`) based on its likely origin:
+
+*   **A) Project Utility/Store:** e.g., `toasts`, `cn`, custom helper functions (`$lib/utils/...`, `$lib/stores/...`).
+*   **B) Third-Party Library Primitive:** e.g., `DropdownMenu` from `bits-ui`, `fade` from `svelte/transition`.
+*   **C) Svelte Component:** e.g., `<Button>`, `<Toaster>` (`$lib/components/...`).
+*   **D) Svelte Framework Module:** e.g., `page`, `goto`, `browser` (`$app/...`).
+*   **E) Component-Local Variable/Function:** Defined within the same `<script>` block.
+*   **F) Prop/Snippet:** Passed into the component via `$props()`.
+
+### Step 3: Protocol Check
+
+1.  **Review Relevant Protocols:** Based on the category from Step 2, consult the primary governing protocols:
+    *   (A) Project Utility/Store: Check specific utility/store definition files (if known) or `asap-digest-stack.mdc`.
+    *   (B) Library Primitive: Check `sk2-scns5-t4-int.mdc`, `add-shadcn-svelte-component`, or specific library documentation if available (like the Shadcn docs link used previously).
+    *   (C) Svelte Component: Check `sk2-scns5-t4-int.mdc` (Rule 5 - direct import from `.svelte`), `add-shadcn-svelte-component`.
+    *   (D) Framework Module: Check `sk2-scns5-t4-int.mdc` (Rule 4 - specific `$app/...` imports).
+    *   (E) Local Variable/Function: Check `svelte-5-syntax-migration-protocol.mdc` (runes, scope), `local-variable-type-safety-protocol.mdc`.
+    *   (F) Prop/Snippet: Check `svelte-5-syntax-migration-protocol.mdc` (Rule 2 - `$props()` usage, `@typedef`).
+2.  **Document Expected Pattern:** Note the correct import path, import syntax (named `{ X }`, default `X`, namespace `* as X`), and usage syntax defined by the protocols/docs.
+
+### Step 4: Code Inspection (Source Definition)
+
+1.  **Locate Source File:** Based on Step 2, determine the most likely source file.
+    *   (A) Project Utility/Store: Use `file_search` or knowledge of project structure (`$lib/stores/toast.js`).
+    *   (B) Library Primitive: Refer to docs/protocols. Inspection of `node_modules` is a last resort.
+    *   (C) Svelte Component: Path is usually `$lib/components/...`.
+    *   (D) Framework Module: Path is `$app/...` (cannot inspect directly).
+    *   (E/F) Local/Prop: Source is the same file where the error occurred.
+2.  **Read Source File:** Use `read_file` to read the content of the identified source file (unless it's C, D, E, or F where source is known/implicit).
+3.  **Verify Export/Definition:** Examine the source code to confirm:
+    *   How `X` is defined/exported (`export const X`, `export function X`, `export default X`, part of exported object `export const obj = { X: ... }`, defined with `$state`/`$derived`, defined as function, defined in `$props()`).
+    *   Confirm the *exact* exported name matches the identifier causing the error.
+
+### Step 5: Code Inspection (Usage Context)
+
+1.  **Read Erroring File:** Use `read_file` to get the context around the error line identified in Step 1.
+2.  **Verify Import Statement:** Check if the import statement matches the expected pattern (Step 3) and the verified export (Step 4). Is it named, default, or namespace? Is the path correct?
+3.  **Verify Usage Syntax:** Check how `X` is being used at the error line.
+    *   Is it being called as a function (`X()`)?
+    *   Is it being accessed as a method (`obj.X()`)?
+    *   Is it being used as a component (`<X />`)?
+    *   Is it being accessed as a variable/store (`$X`, `X.value`)?
+    *   Does the usage match its definition/type? (e.g., calling a non-function, accessing properties on `undefined`).
+
+### Step 6: Correction Implementation
+
+1.  **Formulate Edit:** Based on the discrepancies found between expected/verified patterns (Steps 3 & 4) and actual usage (Step 5), determine the necessary code change. This might involve:
+    *   Correcting the import path.
+    *   Changing the import syntax (named vs. default vs. namespace).
+    *   Renaming the identifier if there's a naming conflict.
+    *   Correcting the usage syntax (e.g., changing `X()` to `obj.X()`, adding `$`, using `{@render X()}`).
+    *   Adding necessary type guards (`local-variable-type-safety-protocol.mdc`).
+2.  **Apply Edit:** Use `edit_file` tool to apply the correction.
+
+### Step 7: Verification
+
+1.  **Re-run Build/Lint:** Execute `pnpm build` or relevant linting commands.
+2.  **Confirm Resolution:** Ensure the original error is gone.
+3.  **Check for New Errors:** Verify that the fix did not introduce new errors. If new errors appear, re-initiate this protocol from Step 1 for the new error.
+
+## 5. Common Pitfalls & Examples
+
+*   **Named vs. Default Imports:** Ensure `{ X } from '...'` is used for named exports and `X from '...'` for default exports. Svelte components use default exports.
+*   **Store Usage:** Svelte stores usually require `$storeName` for automatic subscription in templates/derived values. Functions exported from store files might be standalone (`func()`) or methods (`store.func()`).
+*   **Namespace Imports:** When using `import * as Name from '...'`, access members via `Name.X`. Check if library/module intends this usage (e.g., Shadcn components often use this).
+*   **Typos:** Double-check spelling in imports and usage.
+*   **Scope Issues:** Ensure variables/functions are accessible in the scope where they are used. Check for redeclarations (`already declared`).
+*   **Library Version Changes:** Breaking changes in libraries (`bits-ui`) can alter export structures. Refer to changelogs or documentation if imports suddenly break after an update.

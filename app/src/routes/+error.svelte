@@ -9,7 +9,7 @@
   let status = $derived($page.status || 500);
   
   /** @type {string} */
-  let title: string = $derived(() => {
+  let title = $derived(() => {
     switch (status) {
       case 404:
         return 'Page not found';
@@ -49,7 +49,7 @@
   {#if $page.error?.stack && import.meta.env.DEV}
     <div class="mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-md overflow-auto">
       <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Stack Trace (Dev Only):</h3>
-      {/* @ts-ignore - Allow access to potentially non-standard stack property in dev */} 
+      <!-- @ts-ignore - Allow access to potentially non-standard stack property in dev --> 
       <pre class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{JSON.stringify($page.error.stack, null, 2)}</pre>
     </div>
   {/if}

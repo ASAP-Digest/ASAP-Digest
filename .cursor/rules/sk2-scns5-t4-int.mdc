@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules v1.1
+# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules v1.2
 
-*(Self-correction: Added Component Composition Rule)*
+*(Self-correction: Added Component Composition Rule, Added explicit rule against lang="ts", clarified $props usage, clarified internal Shadcn structure vs consumption)*
 
 **Note:** This document provides SvelteKit/Shadcn/Tailwind integration specifics. For core visual styling rules (colors, typography, spacing, motion, states), refer PRIMARILY to `golden-ratio-design-system-protocol.mdc`. This protocol MUST NOT contradict the Golden Ratio system.
 
@@ -23,7 +23,7 @@ alwaysApply: true
 2.  **Tailwind 4 Specifics (MUST ADHERE):**
     *   Use HSL variable syntax for ALL theme colors (`text-[hsl(var(--primary))]`). (GRDS Protocol 4)
     *   Use standard Tailwind 4 utilities mapped to the 8pt grid for spacing/sizing (`w-4`, `h-6`, `p-2`, `m-3`). Avoid arbitrary values unless a documented exception exists. (GRDS Protocol 3)
-    *   **Avoid `<style>` blocks** in Svelte components whenever possible; prefer utility classes in the markup. (Restored Old Point 14)
+    *   **Avoid `<style>` blocks** in Svelte components whenever possible; prefer utility classes in the markup.
     *   NEVER use `@apply` in Svelte component style blocks. Replace with direct utility classes or standard CSS using variables.
     *   NEVER use `@reference "tailwindcss"` in Svelte component style blocks.
     *   When `<style>` blocks are unavoidable, use CSS variables (`color: hsl(var(--primary))`) instead of Tailwind utilities within the block.
@@ -32,28 +32,31 @@ alwaysApply: true
 3.  **Svelte 5 Specifics (MUST ADHERE):**
     *   Use `$state` and `$derived` for reactivity. Replace `let value` with `let value = $state(initialValue)`.
     *   Use `onclick={handler}` event syntax.
-    *   Use `let` directly for props (Runes mode). Do NOT use `export let`. Use `$props()` to access props.
+    *   Use `const { ... } = $props();` for accessing props (Runes mode). Do NOT use `export let`.
     *   Use `:global()` selectors carefully for CSS targeting elements outside the component scope.
     *   Render snippets using the function call syntax: `{@render children()}` or `{@render children?.()}` for optional snippets.
+    *   **NEVER use `lang="ts"` in `<script>` tags for `.svelte` or `.js` files. This project uses JavaScript + JSDoc.**
 
 4.  **SvelteKit Specifics (MUST ADHERE):**
     *   Import framework functions/stores from designated modules (`$app/navigation`, `$app/stores`, `$app/environment`), not directly from `@sveltejs/kit`.
-````javascript
+        ```javascript
         import { goto } from '$app/navigation';
         import { page } from '$app/stores';
         import { browser } from '$app/environment';
-````
+        ```
     *   Avoid deprecated functions like `invalidateAll`. Use `goto(window.location.href, { invalidateAll: true })` for broad invalidation.
 
 5.  **Shadcn-Svelte Specifics (MUST ADHERE):**
-    *   Import individual components directly from their `.svelte` files, not index files.
-````javascript
-        // CORRECT
-        import Root from '$lib/components/ui/sidebar/sidebar.svelte';
+    *   **When Consuming Components:** Import individual components directly from their `.svelte` files, not index files.
+        ```javascript
+        // CORRECT (When using Button in another component/page)
+        import Button from '$lib/components/ui/button/button.svelte';
         // INCORRECT
-        // import { Root } from '$lib/components/ui/sidebar';
-````
-    *   When adding new Shadcn components, identify icons used within them. Grep the component source, find icon imports (likely direct `lucide-svelte` initially), and ensure those icons are exported via `$lib/utils/lucide-compat.js` per `icon-management.mdc`. Update the component to import icons from `lucide-compat.js`.
+        // import { Button } from '$lib/components/ui/button';
+        // import * as Button from '$lib/components/ui/button/index.js'; // Avoid index files
+        ```
+    *   **Internal Structure:** The Shadcn component `.svelte` files themselves (`$lib/components/ui/.../*.svelte`) typically import primitives directly from `bits-ui` (e.g., `import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";`) and use those primitives (e.g., `<DropdownMenuPrimitive.Content>`). This internal structure should generally not be modified unless updating the component itself.
+    *   When adding new Shadcn components, identify icons used within them. Grep the component source, find icon imports (likely direct `lucide-svelte` initially), and ensure those icons are exported via `$lib/utils/lucide-compat.js` per `icon-management.mdc`. Update the component to import icons from `lucide-compat.js` and use the `<Icon>` wrapper.
 
 6.  **General Code Standards (MUST ADHERE):**
     *   Add explicit JSDoc type annotations for functions/parameters. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
@@ -61,7 +64,7 @@ alwaysApply: true
     *   Follow formatting rules enforced by Prettier/ESLint setup (see `tooling-setup-guide.mdc`).
     *   **Component Composition & Prop Passthrough:** When creating wrapper components (e.g., components in `$lib/components/atoms` that utilize components from `$lib/components/ui`), ensure that all relevant props, **especially the `children` snippet or alternative content props (like `textContent`)**, are correctly passed down from the wrapper to the underlying component. Failure to pass down content props can lead to unexpected rendering issues or SSR errors like `ReferenceError: children is not defined` in the underlying component.
 
-````svelte
+        ```svelte
         <!-- Example: atoms/Wrapper.svelte using ui/Underlying.svelte -->
         <script>
           import Underlying from '$lib/components/ui/Underlying.svelte';
@@ -74,5 +77,5 @@ alwaysApply: true
             {@render children()} {/* Pass children snippet down */}
           {/if}
         </Underlying>
-````
+        ```
     *   **(Optional SSR Note):** Be aware that rendering components accepting `children` snippets inside nested named snippets (`{#snippet name()}`) passed through intermediate components can sometimes cause SSR errors (`ReferenceError: children is not defined`) in Svelte 5 Runes, even if components handle optional children correctly. If this occurs, consider using an explicit prop (like `textContent`) for the content instead of the `children` snippet as a workaround for that specific usage.

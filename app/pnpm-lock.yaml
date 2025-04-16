@@ -14,9 +14,6 @@ importers:
       '@huggingface/transformers':
         specifier: ^3.4.0
         version: 3.4.1
-      '@lucide/svelte':
-        specifier: ^0.483.0
-        version: 0.483.0(svelte@5.25.3)
       '@stripe/stripe-js':
         specifier: ^6.1.0
         version: 6.1.0
@@ -63,6 +60,9 @@ importers:
       '@better-auth/cli':
         specifier: ^1.2.5
         version: 1.2.5(@babel/core@7.26.10)(kysely@0.27.6)(mysql2@3.14.0)(typescript@5.8.2)
+      '@lucide/svelte':
+        specifier: ^0.483.0
+        version: 0.483.0(svelte@5.25.3)
       '@melt-ui/pp':
         specifier: ^0.3.0
         version: 0.3.2(@melt-ui/svelte@0.76.2(svelte@5.25.3))(svelte@5.25.3)
