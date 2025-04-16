@@ -512,6 +512,132 @@
       );
     }
   }
+
+  let wpSyncStatus = $state('idle'); // idle, checking, syncing, synced, failed, notLoggedIn, noCheckNeeded
+  let wpAuthBridgeIframe = $state(null); // Reference to the iframe element
+  let wpSyncTimeout = $state(null); // Timeout handler
+  const WP_ORIGIN = 'https://asapdigest.local'; // Define WP Origin (Make env-aware if needed)
+
+  // Function to handle messages from the WP bridge iframe
+  async function handleWpBridgeMessage(event) {
+    if (event.origin !== WP_ORIGIN) {
+      // console.debug('[Layout Bridge] Ignored message from unexpected origin:', event.origin); // Optional debug
+      return;
+    }
+
+    // Clear the timeout since we received a message
+    if (wpSyncTimeout) clearTimeout(wpSyncTimeout);
+
+    const data = event.data;
+    console.log('[Layout Bridge] Received message:', data); // DEBUG
+
+    if (data?.type === 'wpAuthToken' && data.token) {
+      wpSyncStatus = 'syncing';
+      try {
+        const response = await fetch('/api/auth/verify-sync-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: data.token })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result?.success) {
+          wpSyncStatus = 'synced';
+          toasts.show(
+            'Session Synced',
+            'Your WordPress session was automatically detected.',
+            'success'
+          );
+          // Refresh page data to reflect new SK session
+          goto(window.location.href, { invalidateAll: true });
+          // Optionally remove the success indicator after a delay
+          setTimeout(() => { if (wpSyncStatus === 'synced') wpSyncStatus = 'idle'; }, 3000);
+
+        } else {
+          throw new Error(result?.error || 'Token verification failed');
+        }
+      } catch (error) {
+        console.error('[Layout Bridge] Error verifying sync token:', error);
+        wpSyncStatus = 'failed';
+        toasts.show(
+          'Sync Error',
+          'Could not automatically sync session.',
+          'destructive'
+        );
+      } finally {
+         cleanupWpAuthBridge(); // Cleanup after processing token
+      }
+
+    } else if (data?.type === 'wpAuthStatus') {
+       wpSyncStatus = data.loggedIn ? 'failed' : 'notLoggedIn'; // Logged in but no token found is a failure state for sync
+       if(wpSyncStatus === 'failed') console.warn('[Layout Bridge] WP user logged in, but no valid sync token found.');
+       cleanupWpAuthBridge(); // Cleanup after receiving status
+    }
+  }
+
+  // Function to cleanup iframe and listener
+  function cleanupWpAuthBridge() {
+     if (wpSyncTimeout) clearTimeout(wpSyncTimeout);
+     window.removeEventListener('message', handleWpBridgeMessage);
+     if (wpAuthBridgeIframe) {
+        wpAuthBridgeIframe.remove();
+        wpAuthBridgeIframe = null;
+        console.log('[Layout Bridge] Cleaned up iframe and listener.'); // DEBUG
+     }
+     // Don't reset status here, let the indicator show final state
+  }
+
+  // Modify onMount
+  onMount(() => {
+    let localEventSource = null; // Rename to avoid conflict if eventSource was global before
+
+    // --- Sync Check Logic using iFrame ---
+    if (browser && !$page.data.user) {
+        console.log('[Layout Mount] No SK session, initiating WP session check via iframe...');
+        wpSyncStatus = 'checking';
+
+        // Setup listener first
+        window.addEventListener('message', handleWpBridgeMessage);
+
+        // Create and append iframe
+        const iframe = document.createElement('iframe');
+        iframe.id = 'wp-auth-bridge';
+        iframe.style.display = 'none'; // Keep it hidden
+        iframe.src = `${WP_ORIGIN}/`; // Load WP homepage (or any page with wp_footer)
+        document.body.appendChild(iframe);
+        wpAuthBridgeIframe = iframe; // Store reference
+
+        // Set timeout for response
+        wpSyncTimeout = setTimeout(() => {
+            console.warn('[Layout Bridge] Timeout waiting for message from WP bridge iframe.');
+            if (wpSyncStatus === 'checking') { // Only fail if still checking
+                 wpSyncStatus = 'failed';
+                 toasts.show('Sync Timeout', 'Could not check WP session status.', 'warning');
+            }
+            cleanupWpAuthBridge();
+        }, 15000); // 15 second timeout
+
+    } else if (browser && $page.data.user) {
+        console.log('[Layout Mount] Active SK session detected, skipping WP iframe check.');
+        wpSyncStatus = 'noCheckNeeded'; // Set status if check is skipped
+    }
+    // --- End Sync Check Logic ---
+
+
+    // ... rest of existing onMount logic (EventSource, resize, localStorage, SW, etc.) ...
+    // Make sure to use `localEventSource` for the SSE logic if it was defined here
+
+    // Cleanup function
+    return () => {
+        cleanupWpAuthBridge(); // Ensure cleanup on component destroy
+        if (localEventSource) {
+          console.log('[Layout Sync Listener] Closing EventSource connection on destroy.');
+          localEventSource.close();
+        }
+        // ... other cleanup (resize listener etc.) ...
+      };
+  });
 </script>
 
 <svelte:head>
@@ -735,6 +861,23 @@
       </span>
     </div>
   {/if}
+
+  <!-- Sync Status Indicator -->
+  <div class="fixed bottom-4 right-4 text-xl z-[var(--z-fab)] pointer-events-none transition-opacity duration-500"
+       class:opacity-0={wpSyncStatus === 'idle' || wpSyncStatus === 'noCheckNeeded'} >
+    {#if wpSyncStatus === 'checking'}
+      <span class="animate-pulse text-yellow-400" title="Checking WP Session...">⚡️</span>
+    {:else if wpSyncStatus === 'syncing'}
+      <span class="animate-spin text-blue-400" title="Syncing Session...">⚙️</span>
+    {:else if wpSyncStatus === 'synced'}
+      <span class="text-green-500" title="Session Synced!">✅</span>
+    {:else if wpSyncStatus === 'failed'}
+      <span class="text-red-500" title="Sync Failed">❌</span>
+     {:else if wpSyncStatus === 'notLoggedIn'}
+       <!-- Optional: Show greyed out? Or keep hidden via opacity-0 -->
+       <!-- <span class="text-gray-500" title="Not logged into WP">🔌</span> -->
+    {/if}
+  </div>
 {/if}
 
 <!-- Add local ToastContainer component -->

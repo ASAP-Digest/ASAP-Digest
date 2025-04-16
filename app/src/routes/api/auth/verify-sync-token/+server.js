@@ -1,0 +1,290 @@
+import { json } from '@sveltejs/kit';
+import { pool } from '$lib/server/auth'; // Assuming pool is exported from auth.js
+import { randomUUID, randomBytes } from 'node:crypto';
+
+// Assuming these helper functions are moved to a shared utility or redefined here if needed
+// We need findUserByWpId, createUserFromWpId, createDbSession
+// For simplicity, let's copy/adapt them here for now. Ideally, refactor later.
+
+// --- Copied/Adapted Helper Functions (from /api/auth/sync/+server.js) ---
+
+/**
+ * Logs messages with context
+ * @param {string} message
+ * @param {'debug' | 'info' | 'warn' | 'error'} [level='info']
+ */
+function log(message, level = 'info') {
+    const prefix = '[POST /api/auth/verify-sync-token]';
+    // Basic console logging, adjust as needed
+    console[level] ? console[level](`${prefix} ${message}`) : console.log(`${prefix} ${message}`);
+}
+
+/**
+ * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
+ */
+/**
+ * @typedef {Object} UserMetadata
+ * @property {number} wp_user_id
+ * @property {string[]} [roles]
+ */
+/**
+ * @typedef {Object} User
+ * @property {string} id - Better Auth User ID (UUID)
+ * @property {string} email - User email
+ * @property {string} [username] - Optional username from WP
+ * @property {string} [name] - Optional display name from WP
+ * @property {UserMetadata} metadata - User metadata
+ * @property {string} betterAuthId - Better Auth User ID (should match id)
+ * @property {string} displayName - Primary display name (likely from WP)
+ * @property {string[]} roles - User roles (likely from WP)
+ * @property {string} [updatedAt] - Timestamp of last update
+ */
+
+/**
+ * Helper to find user by WP ID directly using the pool
+ * @param {number} wpUserId
+ * @returns {Promise<User | null>}
+ */
+async function findUserByWpId(wpUserId) {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = "SELECT * FROM ba_users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.wp_user_id')) = ? LIMIT 1";
+        /** @type {[RowDataPacket[], any]} */
+        const [rows] = await connection.execute(sql, [String(wpUserId)]);
+        if (Array.isArray(rows) && rows.length > 0) {
+            const userRow = rows[0];
+            if (userRow && typeof userRow === 'object' && 'id' in userRow) {
+                 let metadata = userRow.metadata;
+                if (typeof metadata === 'string') try { metadata = JSON.parse(metadata); } catch { metadata = {}; }
+                /** @type {User} */
+                const user = {
+                    id: String(userRow.id),
+                    email: String(userRow.email),
+                    username: userRow.username ? String(userRow.username) : undefined,
+                    name: userRow.name ? String(userRow.name) : undefined,
+                    metadata: metadata || {},
+                    betterAuthId: String(userRow.id),
+                    displayName: String(userRow.name || userRow.username || userRow.email),
+                    roles: metadata?.roles || [],
+                    updatedAt: userRow.updated_at ? new Date(userRow.updated_at).toISOString() : undefined,
+                };
+                return user;
+            }
+        }
+        return null;
+    } finally {
+        connection?.release();
+    }
+}
+
+/**
+ * Helper to fetch minimal WP user details (placeholder/requires implementation)
+ * @param {number} wpUserId
+ * @returns {Promise<{email: string, displayName: string} | null>}
+ */
+async function fetchWpUserDetails(wpUserId) {
+    // --- Placeholder ---
+    // In a real scenario, this would make a secure server-to-server call
+    // to a dedicated WP endpoint to get email/display name for the given wpUserId.
+    // The endpoint MUST be protected (e.g., require an API key or shared secret).
+    log(`Placeholder: Fetching WP user details for ${wpUserId}`, 'warn');
+    if (wpUserId > 0) {
+        return {
+            email: `wpuser${wpUserId}@example.local`, // Placeholder email
+            displayName: `WP User ${wpUserId}` // Placeholder name
+        };
+    }
+    return null;
+    // --- End Placeholder ---
+}
+
+
+/**
+ * Helper to create a user directly using the pool
+ * @param {number} wpUserId
+ * @param {string} email
+ * @param {string} displayName
+ * @returns {Promise<User | null>}
+ */
+async function createUserFromWpData(wpUserId, email, displayName) {
+    if (!wpUserId || !email) {
+        log(`Cannot create user: Missing wpUserId or email.`, 'error');
+        return null;
+    }
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const finalName = displayName || `WordPress User ${wpUserId}`;
+        const finalUsername = email; // Use email as username
+        const finalRoles = ['subscriber'];
+        const metadata = { wp_user_id: wpUserId, roles: finalRoles };
+        const metadataJson = JSON.stringify(metadata);
+        const userId = randomUUID();
+
+        const sql = 'INSERT INTO ba_users (id, email, username, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())';
+        /** @type {[import('mysql2/promise').OkPacket | import('mysql2/promise').ResultSetHeader, any]} */
+        const [result] = await connection.execute(sql, [userId, email, finalUsername, finalName, metadataJson]);
+
+        if (result && 'affectedRows' in result && result.affectedRows === 1) {
+            /** @type {User} */
+            const newUser = {
+                id: userId, email: email, username: finalUsername, name: finalName,
+                metadata: metadata, betterAuthId: userId, displayName: finalName, roles: finalRoles,
+                updatedAt: new Date().toISOString()
+            };
+            log(`Created new Better Auth user ${userId} linked to wpUserId ${wpUserId}`, 'info');
+            return newUser;
+        }
+        log(`Failed to create user for wpUserId ${wpUserId}.`, 'error');
+        return null;
+    } catch (dbError) {
+        log(`Database error during user creation for wpUserId ${wpUserId}: ${dbError instanceof Error ? dbError.message : dbError}`, 'error');
+        return null;
+    } finally {
+        connection?.release();
+    }
+}
+
+/**
+ * Helper to create a session directly using the pool
+ * @param {string} baUserId
+ * @returns {Promise<{sessionToken: string, expiresAt: Date} | null>}
+ */
+async function createDbSession(baUserId) {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sessionToken = randomBytes(32).toString('hex');
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiry
+
+        const sql = 'INSERT INTO ba_sessions (user_id, token, expires_at) VALUES (?, ?, ?)';
+        /** @type {[import('mysql2/promise').OkPacket | import('mysql2/promise').ResultSetHeader, any]} */
+        const [result] = await connection.execute(sql, [baUserId, sessionToken, expiresAt]);
+
+        if (result && 'affectedRows' in result && result.affectedRows === 1) {
+            return { sessionToken, expiresAt };
+        }
+        log(`Failed to create session in DB for baUserId ${baUserId}`, 'error');
+        return null;
+    } catch(dbError) {
+         log(`DB Error creating session for baUserId ${baUserId}: ${dbError instanceof Error ? dbError.message : dbError}`, 'error');
+         return null;
+    }
+     finally {
+        connection?.release();
+    }
+}
+
+// --- End Helper Functions ---
+
+
+/**
+ * Handles POST requests to verify a WP sync token and establish an SK session.
+ * @type {import('./$types').RequestHandler}
+ */
+export async function POST({ request }) {
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    let tokenToValidate;
+
+    try {
+        const payload = await request.json();
+        tokenToValidate = payload?.token;
+
+        if (!tokenToValidate || typeof tokenToValidate !== 'string') {
+            log('Missing or invalid token in request payload.', 'warn');
+            return json({ success: false, error: 'Invalid request: Missing token.' }, { status: 400, headers });
+        }
+        log(`Received token for validation: ${tokenToValidate.substring(0, 6)}...`, 'debug');
+
+    } catch (e) {
+        log(`Error parsing request body: ${e instanceof Error ? e.message : e}`, 'error');
+        return json({ success: false, error: 'Invalid request body.' }, { status: 400, headers });
+    }
+
+    // Define WP validation endpoint URL (should use env var)
+    const WP_VALIDATE_URL = process.env.WP_VALIDATE_SYNC_TOKEN_URL || 'https://asapdigest.local/wp-json/asap/v1/validate-sync-token'; // Fallback to local
+
+    try {
+        log(`Calling WP validation endpoint: ${WP_VALIDATE_URL}`, 'debug');
+        // Server-to-server fetch, no cookies needed here.
+        const wpValidationResponse = await fetch(WP_VALIDATE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tokenToValidate })
+        });
+
+        log(`WP validation response status: ${wpValidationResponse.status}`, 'info');
+        const wpValidationData = await wpValidationResponse.json();
+        log(`WP validation response data: ${JSON.stringify(wpValidationData)}`, 'debug');
+
+        if (!wpValidationResponse.ok || !wpValidationData?.valid || !wpValidationData?.wpUserId) {
+            log('WP token validation failed or missing user ID.', 'warn');
+            return json({ success: false, error: 'WordPress token validation failed.' }, { status: 401, headers });
+        }
+
+        const wpUserId = wpValidationData.wpUserId;
+        log(`WP token validated successfully for wpUserId: ${wpUserId}`, 'info');
+
+        // --- Found valid WP User, proceed with BA sync/login ---
+        let baUser = await findUserByWpId(wpUserId);
+
+        if (!baUser) {
+            log(`No existing BA user for wpUserId ${wpUserId}. Fetching WP details...`, 'info');
+            // Fetch minimal required details (email, display name) from WP
+            // *** Requires implementing fetchWpUserDetails securely ***
+            const wpDetails = await fetchWpUserDetails(wpUserId);
+
+            if (!wpDetails || !wpDetails.email) {
+                log(`Cannot create BA user for wpUserId ${wpUserId}: Failed to fetch required details (email) from WP.`, 'error');
+                return json({ success: false, error: 'User sync failed - missing WP details' }, { status: 500, headers });
+            }
+
+            log(`Creating new BA user with WP details: ${JSON.stringify(wpDetails)}`, 'debug');
+            baUser = await createUserFromWpData(wpUserId, wpDetails.email, wpDetails.displayName);
+        }
+
+        if (!baUser) {
+            log(`Failed to find or create BA user for wpUserId ${wpUserId}`, 'error');
+            return json({ success: false, error: 'User sync failed.' }, { status: 500, headers });
+        }
+
+        // We have a valid BA user (found or created)
+        log(`Proceeding with BA user: ${baUser.id}`, 'info');
+
+        // Create Better Auth session
+        const sessionData = await createDbSession(baUser.id);
+
+        if (!sessionData) {
+            log(`Failed to create Better Auth session for user ${baUser.id}`, 'error');
+            return json({ success: false, error: 'Session creation failed.' }, { status: 500, headers });
+        }
+
+        // --- Session Created Successfully ---
+        const { sessionToken, expiresAt } = sessionData;
+        log(`Created Better Auth session token: ${sessionToken.substring(0, 6)}... for user ${baUser.id}`, 'info');
+
+        // Set session cookie
+        const cookieName = process.env.SESSION_COOKIE_NAME || 'asap_sk_session'; // Use env var or default
+        const cookieOptions = [
+            `Path=/`,
+            `Expires=${expiresAt.toUTCString()}`,
+            `HttpOnly`,
+            `SameSite=Lax`, // Use Lax for standard browser navigation
+            // Secure flag should be added based on environment (e.g., in production)
+            // This might be handled by SvelteKit adapter depending on config.
+            // process.env.NODE_ENV === 'production' ? 'Secure' : ''
+        ].filter(Boolean).join('; ');
+
+        headers.append('Set-Cookie', `${cookieName}=${sessionToken}; ${cookieOptions}`);
+        log(`Session cookie prepared. Cookie options: ${cookieOptions}`, 'debug');
+
+        // Return success, cookie will be set in the browser
+        return json({ success: true }, { headers });
+
+    } catch (error) {
+        log(`Error during token verification process: ${error instanceof Error ? error.message : error}`, 'error');
+        return json({ success: false, error: 'Internal server error during token verification.' }, { status: 500, headers });
+    }
+} 

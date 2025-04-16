@@ -294,8 +294,11 @@ export async function GET({ request, url, locals }) {
                 
                 // Prepare headers for the fetch call, including forwarded cookies
                 const fetchHeaders = new Headers();
+                // Always include the 'Cookie' header, even if empty, 
+                // to potentially signal to WP that this is a browser-like request.
+                fetchHeaders.append('Cookie', incomingCookieHeader);
+
                 if (incomingCookieHeader) {
-                    fetchHeaders.append('Cookie', incomingCookieHeader);
                     log(`Forwarding incoming Cookie header to WP fetch. Header Content: [${incomingCookieHeader}]`, 'debug'); // Log cookie content
                 } else {
                     log('No incoming Cookie header found to forward.', 'debug');
@@ -303,7 +306,11 @@ export async function GET({ request, url, locals }) {
 
                 // Fetch from WP endpoint, explicitly passing headers
                 const wpResponse = await fetch(WP_CHECK_SESSION_URL, { 
-                    credentials: 'include', // Keep this, although manual header might override
+                    // **IMPORTANT**: Do NOT use `credentials: 'include'` here.
+                    // We are manually forwarding the browser's cookies via the 'Cookie' header.
+                    // Using `credentials: 'include'` on a server-side fetch can lead to 
+                    // unexpected behavior or errors as it implies the *server itself* 
+                    // has credentials to include, which is not the case here.
                     headers: fetchHeaders 
                 });
                 

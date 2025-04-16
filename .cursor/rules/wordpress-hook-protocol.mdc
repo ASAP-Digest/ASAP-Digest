@@ -3,109 +3,168 @@ description:
 globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
 alwaysApply: false
 ---
-# WordPress Hook Protocol
+# WordPress Class Organization Protocol v1.2
 
-## 1. Hook Function Naming
-- Use unique, descriptive names that reflect the feature and action
-- Follow the format: `{plugin_prefix}_{feature}_{action}`
-- Example: `asap_better_auth_validate_session`
-- Never duplicate hook function names across plugin files
-- Document any dependencies or required hooks
+*(Self-correction: Added v1.2, added Section 6 for Dependency Loading Order)*
 
-## 2. Hook Function Organization
-- Define hooks in feature-specific files (e.g., auth hooks in better-auth-config.php)
-- Group related hooks together in the same file
-- Document hook priority and accepted arguments in function comments
-- Follow single responsibility principle for hook functions
+Ensures consistent class organization, prevents namespace conflicts, maintains clean file structure, and enforces correct dependency loading order in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, namespace mismatches, and "Class not found" fatal errors.
 
-## 3. Hook Registration
-- Register hooks in an initialization function for each feature
-- Use consistent priority scheme:
-  - Core functionality: 10 (default)
-  - Feature-specific: 20-29
-  - Extensions: 30+
-  - Late modifications: 100+
-- Document priority choices in comments
+**When to Apply:**
+- Creating new classes
+- Moving existing classes
+- Refactoring plugin structure
+- Debugging class loading issues
+- Adding `require_once` or `include_once` for class files
 
-## 4. Error Prevention
-- Never use function_exists() for hook functions
-- Always use unique names to prevent conflicts
-- Document hook dependencies in function comments
-- Verify hook existence before removing with remove_action/remove_filter
+## 1. One Class, One Location
 
-## 5. Hook Documentation
-```php
-/**
- * @description Handle Better Auth session validation
- * @hook add_action('init', 'asap_better_auth_validate_session', 20)
- * @dependencies asap_better_auth_init must run first (priority 10)
- * @param void
- * @return void
- * @since 1.0.0
- */
-function asap_better_auth_validate_session() {
-    // Implementation
+Each class MUST exist in only one file location within the plugin.
+
+````php
+// CORRECT
+// /admin/class-admin-ui.php
+namespace ASAPDigest\Admin;
+class ASAP_Digest_Admin_UI { }
+
+// INCORRECT - Same class defined in two locations
+// /admin/class-admin-ui.php
+// /includes/class-admin-ui.php
+````
+
+## 2. Directory Structure
+
+Follow a logical directory structure reflecting the class's purpose.
+
+````text
+your-plugin/
+├── admin/           # Admin UI classes
+├── includes/        # Core functionality
+│   ├── api/        # API endpoints
+│   └── db/         # Database operations
+└── templates/       # View templates
+````
+
+## 3. File Paths & Requires
+
+Use `plugin_dir_path(__FILE__)` for reliable path generation when requiring files. Ensure the path points to the single correct location defined in Section 1. **See Section 6 for mandatory loading order checks.**
+
+````php
+// CORRECT
+require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
+
+// INCORRECT (Assuming the class is actually in admin/)
+// require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+````
+
+## 4. Namespace Structure
+
+Namespaces MUST align with the directory structure relative to the plugin's root namespace (e.g., `ASAPDigest`).
+
+````php
+// CORRECT - Namespace matches directory
+// In admin/class-admin-ui.php
+namespace ASAPDigest\Admin;
+
+// In includes/api/class-rest-auth.php
+namespace ASAPDigest\API;
+
+// INCORRECT - Namespace doesn't match location
+// In admin/class-admin-ui.php
+// namespace ASAPDigest\Core; // Should be ASAPDigest\Admin
+````
+
+## 5. Class Loading & Instantiation
+
+**A. Within a Namespaced File:** Use `use` statements to import other namespaced classes.
+
+````php
+// CORRECT (Inside a file like 'includes/class-core.php' which has 'namespace ASAPDigest\Core;')
+namespace ASAPDigest\Core;
+
+use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
+use ASAPDigest\API\ASAP_Digest_REST_Auth;
+
+class Core {
+    public function __construct() {
+        $admin_ui = new ASAP_Digest_Admin_UI();
+        $auth = new ASAP_Digest_REST_Auth();
+    }
 }
-```
 
-## 6. Hook Dependencies
-- Document required hooks that must run before/after
-- Use priority to manage execution order
-- Consider plugin load order for cross-plugin hooks
-- Document any WordPress core hook dependencies
+// INCORRECT (Inside a namespaced file)
+// use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace for Admin UI class
+````
 
-## 7. Hook Testing
-- Test hook execution order with different priorities
-- Verify hook removal works correctly
-- Test hook function with all possible argument combinations
-- Document expected behavior in test files
+**B. From the Global Scope (Non-Namespaced Files):** When instantiating a namespaced class from a file that does **not** have its own `namespace` declaration (like the main plugin file `your-plugin.php`), you **MUST** use the fully qualified class name, preceded by a backslash (`\`). `use` statements have no effect in the global scope for instantiation.
 
-## 8. Common Issues to Avoid
-- Duplicate hook function names
-- Undefined dependencies
-- Incorrect priority ordering
-- Missing documentation
-- Improper hook removal
-- Hook functions with side effects
+````php
+// CORRECT (In a file without 'namespace ...;' declaration, e.g., asapdigest-core.php)
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';
 
-## 9. Implementation Example
-```php
-// In better-auth-config.php
-function asap_init_better_auth() {
-    // Register hooks with proper priorities
-    add_action('init', 'asap_better_auth_init', 10);
-    add_action('init', 'asap_better_auth_validate_session', 20);
-    add_action('wp_login', 'asap_better_auth_sync_login', 30);
-}
-add_action('plugins_loaded', 'asap_init_better_auth');
-```
+// Instantiate and assign to variable
+$auth_instance = new \ASAPDigest\API\ASAP_Digest_REST_Auth();
 
-## 10. Hook Removal and Cleanup
-- Document any hooks that need cleanup on deactivation
-- Use proper cleanup function in uninstall.php
-- Remove hooks in reverse order of registration
-- Verify all hooks are properly removed
+// OR if only constructor side-effects are needed:
+new \ASAPDigest\API\ASAP_Digest_REST_Auth();
 
-## 11. Security Considerations
-- Validate and sanitize all hook function inputs
-- Use appropriate capability checks
-- Implement nonce verification for form submissions
-- Follow WordPress security best practices
+// INCORRECT (In a file without 'namespace ...;')
+// use ASAPDigest\API\ASAP_Digest_REST_Auth; // 'use' has no effect here for instantiation
+// $instance = new ASAP_Digest_REST_Auth(); // Leads to "Class not found" or linter error
+````
 
-## 12. Performance Impact
-- Consider hook execution frequency
-- Optimize hook function performance
-- Use transients or caching when appropriate
-- Monitor impact on page load time
+## 6. Dependency Loading Order (`require_once`) (NEW)
 
-## 13. Debugging Hooks
-- Use the 'all' hook for debugging
-- Implement proper error logging
-- Add debug mode for hook execution tracking
-- Document debugging procedures
+When adding a `require_once` or `include_once` statement for a PHP file containing a class definition (`ChildClass.php`):
 
-## 14. Versioning and Updates
-- Document hook changes between versions
-- Maintain backward compatibility when possible
-- Use deprecated notices for removed hooks
-- Update documentation with version changes
+1.  **MUST** inspect the class definition within `ChildClass.php` for an `extends ParentClass` clause. Use tools like `grep` or file reading if necessary.
+2.  If an `extends` clause exists, **MUST** verify that the file defining `ParentClass` (e.g., `includes/class-parent.php`) is already included via `require_once` at an *earlier* point in the current file or execution flow.
+3.  If `ParentClass.php` is not already included earlier, **MUST** add the `require_once plugin_dir_path(__FILE__) . 'includes/class-parent.php';` line *before* the `require_once plugin_dir_path(__FILE__) . 'includes/ChildClass.php';` line.
+
+**Example:**
+
+````php
+// CORRECT ORDER
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class extends base
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php'; // Child class extends base
+
+// INCORRECT ORDER - Would cause Fatal Error
+// require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class
+// require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class needed earlier
+````
+
+**Rationale:** This ensures PHP encounters and processes the parent class definition before it attempts to process a child class that depends on it, preventing "Class not found" fatal errors.
+
+## 7. Moving Classes
+
+When moving a class file:
+1.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
+2.  Update all `require_once` or `include_once` paths pointing to the old location. **Ensure dependency loading order (Section 6) is maintained after moving.**
+3.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
+4.  Update all `use` statements in other files that referenced the class's old namespace.
+5.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
+6.  Document the change in `CHANGELOG.md`.
+
+````markdown
+## [1.0.1] - 2024-03-31
+### Changed
+- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/`.
+- Updated namespace from `ASAPDigest\Core` to `ASAPDigest\Admin`.
+````
+
+## 8. Common Issues This Prevents:
+- Fatal errors from duplicate class definitions.
+- Autoloader failures (if used) from mismatched namespaces.
+- Confusion about class locations.
+- Inconsistent plugin structure.
+- Hard-to-track class dependencies.
+- "Class not found" errors or linter warnings when instantiating from the global scope.
+- **"Class not found" fatal errors due to incorrect `require_once` order for parent/child classes.**
+
+## 9. Verification Steps:
+1. Check for duplicate class files: `find . -name "class-*.php" | sort`.
+2. Manually verify namespaces match directory structure in key classes.
+3. Verify `require_once` paths are correct **and respect dependency order (Section 6)**.
+4. Test plugin activation and key functionality involving the classes.
+5. Check PHP error logs for "Class not found" errors.
+6. Run linters to check for "Undefined type" errors, especially in the main plugin file or other non-namespaced files.

@@ -77,18 +77,19 @@ class ASAP_Digest_REST_Auth extends ASAP_Digest_REST_Base {
      * @return mixed Response object or WP_Error
      */
     public function get_status($request) {
+        // $request parameter is part of the WP REST API callback signature, but not directly used in this specific implementation.
+        $_ = $request; // Explicitly mark $request as used to satisfy linter
         $auth = $this->get_better_auth();
-        $status = $auth->get_auth_status();
+        $validation_result = $auth->validate_session();
 
-        if (is_wp_error($status)) {
-            return $this->prepare_error_response(
-                'status_fetch_failed',
-                __('Failed to fetch auth status.', 'asap-digest'),
-                500
-            );
+        if (is_wp_error($validation_result)) {
+            return $validation_result;
         }
 
-        return $this->prepare_response($status);
+        return $this->prepare_response([
+            'loggedIn' => true,
+            'wpUserId' => $this->get_current_user_id(),
+        ]);
     }
 
     /**

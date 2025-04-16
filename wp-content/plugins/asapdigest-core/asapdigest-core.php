@@ -22,12 +22,24 @@ define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 
 // Include Better Auth configuration
 require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
+// Include the API Base Controller FIRST
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php');
 // Include the new Session Check Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-controller.php');
+// Include the new Sync Token Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php');
+// Include the REST Auth Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
 global $wpdb;
+
+// Register activation hook to create tables
+register_activation_hook(__FILE__, 'asap_ensure_database_tables');
+
+// Register deactivation hook for cleanup
+register_deactivation_hook(__FILE__, 'asap_cleanup_on_deactivation');
 
 // Schedule cleanup of old digests and notifications
 function asap_schedule_cleanup() {
@@ -103,9 +115,20 @@ function asap_init_core() {
         $controller->register_routes();
     }, 10);
     
+    // Register the new sync token validation route (NEW)
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\Sync_Token_Controller();
+        $controller->register_routes();
+    }, 10);
+    
+    // Auth Controller (NEW)
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\ASAP_Digest_REST_Auth();
+        $controller->register_routes();
+    }, 10);
+    
     // Feature-specific hooks (priority 20-29)
     add_action('asap_cleanup_data', 'asap_cleanup_data', 20);
-    add_action('rest_api_init', 'asap_register_better_auth_routes', 20);
     
     // Admin interface hooks (priority 30+)
     add_action('admin_menu', 'asap_add_central_command_menu', 30);
@@ -678,384 +701,6 @@ add_filter('cron_schedules', function($schedules) {
   return $schedules;
 });
 
-// Uninstall handler
-register_uninstall_hook(__FILE__, 'asap_digest_uninstall');
-function asap_digest_uninstall() {
-  global $wpdb;
-  
-  if (!defined('WP_UNINSTALL_PLUGIN')) {
-    return;
-  }
-
-  // Remove tables
-  $tables = [
-    $wpdb->prefix . 'asap_digests',
-    $wpdb->prefix . 'asap_notifications'
-  ];
-  
-  foreach ($tables as $table) {
-    $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %s", $table));
-  }
-  delete_option('sms_digest_time');
-}
-
-/**
- * Generate JWT token for user authentication
- * 
- * @param WP_REST_Request $request REST API request object
- * @return WP_REST_Response|WP_Error Response with token or error
- */
-function asap_generate_jwt_token(WP_REST_Request $request) {
-  $data = $request->get_json_params();
-  $username = sanitize_user($data['username']);
-  $password = $data['password'];
-
-  // Authenticate user
-  $user = wp_authenticate($username, $password);
-  if (is_wp_error($user)) {
-    return new WP_Error('invalid_credentials', 'Invalid credentials', ['status' => 401]);
-  }
-
-  // Generate JWT token
-  $issued_at = time();
-  $expiration = $issued_at + (DAY_IN_SECONDS * 7); // Token valid for 7 days
-  
-  $token = [
-    'iss' => get_site_url(),
-    'iat' => $issued_at,
-    'exp' => $expiration,
-    'data' => [
-      'user' => [
-        'id' => $user->ID,
-      ],
-    ],
-  ];
-  
-  // Use WordPress auth_key as JWT key
-  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
-  
-  // Use JWT library if available, otherwise simple implementation
-  $jwt = jwt_encode($token, $jwt_key);
-  
-  return rest_ensure_response([
-    'token' => $jwt,
-    'user_id' => $user->ID,
-    'user_email' => $user->user_email,
-    'user_display_name' => $user->display_name,
-    'exp' => $expiration,
-  ]);
-}
-
-/**
- * Validate JWT token
- * 
- * @param WP_REST_Request $request REST API request object
- * @return WP_REST_Response|WP_Error Response with validation status or error
- */
-function asap_validate_jwt_token(WP_REST_Request $request) {
-  $data = $request->get_json_params();
-  $token = $data['token'];
-  
-  // Use WordPress auth_key as JWT key
-  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
-  
-  try {
-    $decoded = jwt_decode($token, $jwt_key, true);
-    return rest_ensure_response(['valid' => true, 'data' => $decoded->data]);
-  } catch (Exception $e) {
-    return new WP_Error('invalid_token', 'Invalid or expired token', ['status' => 401]);
-  }
-}
-
-/**
- * Refresh JWT token
- * 
- * @param WP_REST_Request $request REST API request object
- * @return WP_REST_Response|WP_Error Response with new token or error
- */
-function asap_refresh_jwt_token(WP_REST_Request $request) {
-  $data = $request->get_json_params();
-  $token = $data['token'];
-  
-  // Use WordPress auth_key as JWT key
-  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
-  
-  try {
-    $decoded = jwt_decode($token, $jwt_key, true);
-    $user_id = $decoded->data->user->id;
-    
-    // Get user
-    $user = get_user_by('id', $user_id);
-    if (!$user) {
-      return new WP_Error('user_not_found', 'User not found', ['status' => 404]);
-    }
-    
-    // Generate new token
-    $issued_at = time();
-    $expiration = $issued_at + (DAY_IN_SECONDS * 7);
-    
-    $new_token = [
-      'iss' => get_site_url(),
-      'iat' => $issued_at,
-      'exp' => $expiration,
-      'data' => [
-        'user' => [
-          'id' => $user->ID,
-        ],
-      ],
-    ];
-    
-    $jwt = jwt_encode($new_token, $jwt_key);
-    
-    return rest_ensure_response([
-      'token' => $jwt,
-      'user_id' => $user->ID,
-      'exp' => $expiration,
-    ]);
-  } catch (Exception $e) {
-    return new WP_Error('invalid_token', 'Invalid or expired token', ['status' => 401]);
-  }
-}
-
-/**
- * Simple JWT encode function (should be replaced with a proper library)
- * 
- * @param array $payload JWT payload
- * @param string $key Secret key
- * @return string JWT token
- */
-function jwt_encode($payload, $key) {
-  $header = ['alg' => 'HS256', 'typ' => 'JWT'];
-  
-  $header_encoded = rtrim(strtr(base64_encode(json_encode($header)), '+/', '-_'), '=');
-  $payload_encoded = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
-  
-  $signature = hash_hmac('SHA256', "$header_encoded.$payload_encoded", $key, true);
-  $signature_encoded = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
-  
-  return "$header_encoded.$payload_encoded.$signature_encoded";
-}
-
-/**
- * Simple JWT decode function (should be replaced with a proper library)
- * 
- * @param string $jwt JWT token
- * @param string $key Secret key
- * @param bool $verify Whether to verify signature
- * @return object Decoded token
- * @throws Exception If token is invalid or expired
- */
-function jwt_decode($jwt, $key, $verify = true) {
-  $parts = explode('.', $jwt);
-  if (count($parts) !== 3) {
-    throw new Exception('Invalid token format');
-  }
-  
-  [$header_encoded, $payload_encoded, $signature_encoded] = $parts;
-  
-  if ($verify) {
-    $signature = base64_decode(strtr($signature_encoded, '-_', '+/'));
-    $expected_signature = hash_hmac('SHA256', "$header_encoded.$payload_encoded", $key, true);
-    
-    if (!hash_equals($expected_signature, $signature)) {
-      throw new Exception('Invalid signature');
-    }
-  }
-  
-  $payload = json_decode(base64_decode(strtr($payload_encoded, '-_', '+/')));
-  
-  // Check if token is expired
-  if (isset($payload->exp) && $payload->exp < time()) {
-    throw new Exception('Token expired');
-  }
-  
-  return $payload;
-}
-
-/**
- * Register a new user
- * 
- * @param WP_REST_Request $request REST API request object
- * @return WP_REST_Response|WP_Error Response with user data or error
- */
-function asap_register_user(WP_REST_Request $request) {
-  $data = $request->get_json_params();
-  
-  // Validate required fields
-  $required_fields = ['username', 'email', 'password'];
-  foreach ($required_fields as $field) {
-    if (empty($data[$field])) {
-      return new WP_Error(
-        'missing_field',
-        sprintf(__('Missing required field: %s', 'adc'), $field),
-        ['status' => 400]
-      );
-    }
-  }
-  
-  // Sanitize input
-  $username = sanitize_user($data['username']);
-  $email = sanitize_email($data['email']);
-  $password = $data['password'];
-  
-  // Validate email
-  if (!is_email($email)) {
-    return new WP_Error('invalid_email', __('Invalid email address', 'adc'), ['status' => 400]);
-  }
-  
-  // Check if username or email already exists
-  if (username_exists($username)) {
-    return new WP_Error('username_exists', __('Username already exists', 'adc'), ['status' => 400]);
-  }
-  
-  if (email_exists($email)) {
-    return new WP_Error('email_exists', __('Email address already exists', 'adc'), ['status' => 400]);
-  }
-  
-  // Create user
-  $user_id = wp_create_user($username, $password, $email);
-  
-  if (is_wp_error($user_id)) {
-    return new WP_Error(
-      'registration_failed',
-      $user_id->get_error_message(),
-      ['status' => 500]
-    );
-  }
-  
-  // Set user role
-  $user = new WP_User($user_id);
-  $user->set_role('subscriber');
-  
-  // Add additional user meta if provided
-  if (!empty($data['first_name'])) {
-    update_user_meta($user_id, 'first_name', sanitize_text_field($data['first_name']));
-  }
-  
-  if (!empty($data['last_name'])) {
-    update_user_meta($user_id, 'last_name', sanitize_text_field($data['last_name']));
-  }
-  
-  // Generate JWT token for the new user
-  $issued_at = time();
-  $expiration = $issued_at + (DAY_IN_SECONDS * 7);
-  
-  $token = [
-    'iss' => get_site_url(),
-    'iat' => $issued_at,
-    'exp' => $expiration,
-    'data' => [
-      'user' => [
-        'id' => $user_id,
-      ],
-    ],
-  ];
-  
-  $jwt_key = defined('AUTH_KEY') ? AUTH_KEY : 'asapdigest-jwt-secret';
-  $jwt = jwt_encode($token, $jwt_key);
-  
-  // Return user data and token
-  return rest_ensure_response([
-    'user_id' => $user_id,
-    'username' => $username,
-    'email' => $email,
-    'token' => $jwt,
-    'exp' => $expiration,
-  ]);
-}
-
-// Register REST endpoints
-add_action('rest_api_init', 'asap_register_better_auth_endpoints');
-add_action('rest_api_init', 'asap_register_wp_session_check');
-
-/**
- * @description Register Better Auth integration endpoints
- * @return void
- * @example
- * // Called during rest_api_init
- * asap_register_better_auth_routes();
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_register_better_auth_routes() {
-    // ... existing code ...
-}
-
-/**
- * @description Initialize Better Auth admin menu integration
- * @return void
- * @example
- * // Called during plugins_loaded
- * asap_init_better_auth_admin();
- * @created 03.29.25 | 03:45 PM PDT
- */
-function asap_init_better_auth_admin() {
-    // Remove the old settings page if it exists
-    if (has_action('admin_menu', 'asap_add_better_auth_settings_page')) {
-        remove_action('admin_menu', 'asap_add_better_auth_settings_page');
-    }
-}
-
-// Initialize Better Auth admin integration after all plugins are loaded
-add_action('plugins_loaded', 'asap_init_better_auth_admin');
-
-/**
- * @description Register ASAP Digest Central Command menu and submenus
- * @return void
- * @example
- * // Called during admin_menu action
- * asap_add_central_command_menu();
- * @created 03.30.25 | 04:35 PM PDT
- */
-function asap_add_central_command_menu() {
-    // Add the main menu item
-    add_menu_page(
-        '⚡️ Central Command',  // Page title
-        '⚡️ Central Command',  // Menu title
-        'manage_options',       // Capability
-        'asap-central-command', // Menu slug
-        'asap_render_central_command_dashboard', // Callback function
-        'dashicons-superhero',  // Icon
-        3                       // Position after Dashboard and Posts
-    );
-
-    // Add submenus
-    add_submenu_page(
-        'asap-central-command',
-        'Digest Management',
-        'Digests',
-        'manage_options',
-        'asap-digest-management',
-        'asap_render_digest_management'
-    );
-
-    add_submenu_page(
-        'asap-central-command',
-        'User Statistics',
-        'User Stats',
-        'manage_options',
-        'asap-user-stats',
-        'asap_render_user_stats'
-    );
-
-    add_submenu_page(
-        'asap-central-command',
-        'Better Auth Settings',
-        'Auth Settings',
-        'manage_options',
-        'asap-auth-settings',
-        'asap_render_better_auth_settings'
-    );
-
-    add_submenu_page(
-        'asap-central-command',
-        'ASAP Settings',
-        'Settings',
-        'manage_options',
-        'asap-settings',
-        'asap_render_settings'
-    );
-}
-
 /**
  * @description Render the Central Command dashboard
  * @return void
@@ -1067,8 +712,8 @@ function asap_add_central_command_menu() {
 function asap_render_central_command_dashboard() {
     global $wpdb;
 
-    // Create the mapping table if it doesn't exist
-    asap_create_ba_wp_user_map_table();
+    // Ensure required tables exist
+    asap_ensure_database_tables();
     
     ?>
     <div class="wrap asap-central-command">
@@ -1219,20 +864,22 @@ function asap_render_settings() {
 require_once plugin_dir_path(__FILE__) . 'includes/class-user-actions.php';
 
 /**
- * @description Create the Better Auth to WordPress user mapping table
+ * @description Create necessary Better Auth & Sync database tables
  * @return void
  * @example
  * // Called during plugin activation or Central Command initialization
- * asap_create_ba_wp_user_map_table();
+ * asap_ensure_database_tables();
  * @created 04.02.25 | 10:45 PM PDT
+ * @updated 04.16.25 | 12:00 PM PDT // Added sync token table
  */
-function asap_create_ba_wp_user_map_table() {
+function asap_ensure_database_tables() {
     global $wpdb;
     $charset_collate = $wpdb->get_charset_collate();
-    
-    $table_name = $wpdb->prefix . 'ba_wp_user_map';
-    
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php'); // Ensure dbDelta is loaded
+
+    // User Map Table
+    $table_name_map = $wpdb->prefix . 'ba_wp_user_map';
+    $sql_map = "CREATE TABLE IF NOT EXISTS $table_name_map (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         wp_user_id BIGINT(20) UNSIGNED NOT NULL,
         ba_user_id VARCHAR(255) NOT NULL,
@@ -1243,9 +890,24 @@ function asap_create_ba_wp_user_map_table() {
         UNIQUE KEY ba_user_id (ba_user_id),
         KEY created_at (created_at)
     ) $charset_collate;";
-    
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
+    dbDelta($sql_map);
+
+    // Sync Token Table (NEW)
+    $table_name_sync_tokens = $wpdb->prefix . 'ba_sync_tokens'; // New table name
+    $sql_sync_tokens = "CREATE TABLE IF NOT EXISTS $table_name_sync_tokens (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        wp_user_id BIGINT(20) UNSIGNED NOT NULL,
+        token VARCHAR(128) NOT NULL, -- Increased length for secure tokens
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY token (token(64)), -- Index part of the token for performance/lookup
+        KEY wp_user_id (wp_user_id),
+        KEY expires_at (expires_at)
+    ) $charset_collate;";
+    dbDelta($sql_sync_tokens); // Create the new table
+
+    // NOTE: Ensure ba_users and ba_sessions tables are created elsewhere (likely by Better Auth itself or previous setup)
 }
 
 /**
@@ -1439,3 +1101,239 @@ function asap_filter_user_by_origin( $user_id ) {
 }
 // Add the filter with a priority higher than default (10) to run after basic checks.
 add_filter( 'determine_current_user', 'asap_filter_user_by_origin', 20 );
+
+/**
+ * Generates and stores a single-use sync token upon successful WP login.
+ *
+ * @hook add_action('wp_login', 'asap_generate_sync_token_on_login', 10, 2)
+ * @param string $user_login The user's login name.
+ * @param WP_User $user WP_User object of the logged-in user.
+ * @return void
+ * @created 04.16.25 | 12:05 PM PDT
+ */
+function asap_generate_sync_token_on_login($user_login, $user) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'ba_sync_tokens';
+    $wp_user_id = $user->ID;
+
+    // Ensure table exists (belt-and-suspenders, ideally created elsewhere)
+    asap_ensure_database_tables();
+
+    try {
+        // Generate a secure token
+        $token = bin2hex(random_bytes(32)); // 64 characters hex
+
+        // Set expiry (e.g., 2 minutes from now)
+        $expires_at = date('Y-m-d H:i:s', time() + 120); // 120 seconds = 2 minutes
+
+        // Insert the new token
+        $inserted = $wpdb->insert(
+            $table_name,
+            [
+                'wp_user_id' => $wp_user_id,
+                'token'      => $token,
+                'expires_at' => $expires_at,
+            ],
+            [
+                '%d', // wp_user_id
+                '%s', // token
+                '%s', // expires_at
+            ]
+        );
+
+        if ($inserted === false) {
+            error_log("ASAP Digest: Failed to insert sync token for user $wp_user_id. DB Error: " . $wpdb->last_error);
+        } else {
+             error_log("ASAP Digest: Generated sync token for user $wp_user_id."); // Use error_log for debugging server-side
+        }
+
+    } catch (Exception $e) {
+        error_log("ASAP Digest: Exception generating sync token for user $wp_user_id: " . $e->getMessage());
+    }
+}
+add_action('wp_login', 'asap_generate_sync_token_on_login', 10, 2);
+
+/**
+ * Deletes any active sync tokens for a user upon WP logout.
+ *
+ * @hook add_action('wp_logout', 'asap_delete_sync_token_on_logout', 10, 1)
+ * @param int $user_id The ID of the user logging out.
+ * @return void
+ * @created 04.16.25 | 12:10 PM PDT
+ */
+function asap_delete_sync_token_on_logout($user_id) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'ba_sync_tokens';
+
+    if (empty($user_id)) {
+        return; // Should not happen on wp_logout, but check anyway
+    }
+
+    // Delete all tokens for this user ID
+    $deleted = $wpdb->delete(
+        $table_name,
+        ['wp_user_id' => $user_id],
+        ['%d'] // Format for wp_user_id
+    );
+
+    if ($deleted === false) {
+        error_log("ASAP Digest: Failed to delete sync tokens for user $user_id on logout. DB Error: " . $wpdb->last_error);
+    } elseif ($deleted > 0) {
+        error_log("ASAP Digest: Deleted $deleted sync token(s) for user $user_id on logout.");
+    } else {
+        // No tokens found to delete, which is normal
+        error_log("ASAP Digest: No sync tokens found to delete for user $user_id on logout.");
+    }
+}
+add_action('wp_logout', 'asap_delete_sync_token_on_logout', 10, 1);
+
+/**
+ * Injects the SK auth bridge script into the WP footer.
+ * This script runs inside the hidden iframe loaded by the SK app.
+ *
+ * @hook add_action('wp_footer', 'asap_inject_sk_auth_bridge_script')
+ * @since TBD // Add version when stable
+ * @return void
+ * @created 04.16.25 | 12:15 PM PDT
+ */
+function asap_inject_sk_auth_bridge_script() {
+    error_log("ASAP Digest: asap_inject_sk_auth_bridge_script triggered."); // DEBUG Entry
+
+    // Determine target SK origin based on environment
+    $current_site_url = site_url();
+    $sk_origin = '';
+    if (strpos($current_site_url, 'asapdigest.local') !== false) {
+        $sk_origin = 'https://localhost:5173'; // From PE - CTXT
+    } elseif (strpos($current_site_url, 'asapdigest.com') !== false) {
+        $sk_origin = 'https://app.asapdigest.com'; // Production SK App URL
+    } else {
+        error_log("ASAP Digest Bridge: Could not determine target SK origin. Current site: " . $current_site_url);
+        return; 
+    }
+    error_log("ASAP Digest Bridge: Target SK origin: " . $sk_origin); // DEBUG Origin
+
+    // Initialize token variable
+    $sync_token = null;
+    $is_wp_logged_in = is_user_logged_in(); // Check login status once
+    error_log("ASAP Digest Bridge: WP Logged In Status: " . ($is_wp_logged_in ? 'true' : 'false')); // DEBUG Login Status
+
+    // Check if user is logged into WordPress
+    if ( $is_wp_logged_in ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'ba_sync_tokens';
+        $user_id = get_current_user_id();
+        error_log("ASAP Digest Bridge: User ID: " . $user_id); // DEBUG User ID
+
+        // Check if the table exists first to prevent errors
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        error_log("ASAP Digest Bridge: Token table ($table_name) exists: " . ($table_exists ? 'true' : 'false')); // DEBUG Table Check
+
+        if ($table_exists) {
+            $sync_token = $wpdb->get_var( $wpdb->prepare(
+                "SELECT token FROM $table_name WHERE wp_user_id = %d AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1",
+                $user_id
+            ) );
+            error_log("ASAP Digest Bridge: Token query result: " . ($sync_token ? 'Token Found' : 'No Token Found/Expired')); // DEBUG Token Query
+        } else {
+            error_log("ASAP Digest Bridge: Sync token table ($table_name) not found in hook.");
+        }
+    }
+
+    // Output the JavaScript for postMessage communication
+    ?>
+    <script id="sk-auth-bridge-script">
+        (function() {
+            const targetOrigin = '<?php echo esc_js($sk_origin); ?>';
+            const syncToken = <?php echo $sync_token ? "'" . esc_js($sync_token) . "'" : 'null'; ?>;
+            const isLoggedIn = <?php echo $is_wp_logged_in ? 'true' : 'false'; ?>;
+
+            // Minimal logging in production environments
+            <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+            console.log('[WP Bridge Script] Running. Target:', targetOrigin, 'LoggedIn:', isLoggedIn, 'Token Found:', !!syncToken);
+            <?php endif; ?>
+
+            // Only try to postMessage if potentially in an iframe from the correct target
+            if (window.parent && window.parent !== window.self) {
+                if (syncToken) {
+                    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+                    console.log('[WP Bridge Script] Sending wpAuthToken to parent');
+                    <?php endif; ?>
+                    window.parent.postMessage({ type: 'wpAuthToken', token: syncToken }, targetOrigin);
+                } else {
+                    <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+                    console.log('[WP Bridge Script] Sending wpAuthStatus to parent');
+                    <?php endif; ?>
+                    window.parent.postMessage({ type: 'wpAuthStatus', loggedIn: isLoggedIn, tokenFound: false }, targetOrigin);
+                }
+            } else {
+                 <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+                 // console.log('[WP Bridge Script] Not running in a child iframe or parent is inaccessible.');
+                 <?php endif; ?>
+            }
+        })();
+    </script>
+    <?php
+    error_log("ASAP Digest Bridge: Script output finished."); // DEBUG End of Function
+}
+// Add the action hook to run in the footer for both frontend and admin
+add_action('wp_footer', 'asap_inject_sk_auth_bridge_script');
+add_action('admin_footer', 'asap_inject_sk_auth_bridge_script'); // ADDED FOR ADMIN AREA
+
+/**
+ * @description Register ASAP Digest Central Command menu and submenus
+ * @return void
+ * @example
+ * // Called during admin_menu action
+ * asap_add_central_command_menu();
+ * @created 03.30.25 | 04:35 PM PDT
+ */
+function asap_add_central_command_menu() {
+    // Add the main menu item
+    add_menu_page(
+        '⚡️ Central Command',  // Page title
+        '⚡️ Central Command',  // Menu title
+        'manage_options',       // Capability
+        'asap-central-command', // Menu slug
+        'asap_render_central_command_dashboard', // Callback function
+        'dashicons-superhero',  // Icon
+        3                       // Position after Dashboard and Posts
+    );
+
+    // Add submenus
+    add_submenu_page(
+        'asap-central-command',
+        'Digest Management',
+        'Digests',
+        'manage_options',
+        'asap-digest-management',
+        'asap_render_digest_management'
+    );
+
+    add_submenu_page(
+        'asap-central-command',
+        'User Statistics',
+        'User Stats',
+        'manage_options',
+        'asap-user-stats',
+        'asap_render_user_stats'
+    );
+
+    // Re-add Auth Settings submenu if needed, ensure callback asap_render_better_auth_settings exists
+    add_submenu_page(
+        'asap-central-command',
+        'Better Auth Settings',
+        'Auth Settings',
+        'manage_options',
+        'asap-auth-settings',
+        'asap_render_better_auth_settings' // Callback exists in better-auth-config.php
+    );
+
+    add_submenu_page(
+        'asap-central-command',
+        'ASAP Settings',
+        'Settings',
+        'manage_options',
+        'asap-settings',
+        'asap_render_settings'
+    );
+}
