@@ -52,12 +52,7 @@ const WP_CHECK_SESSION_URL = process.env.WP_CHECK_SESSION_URL;
  * @typedef {object} WordPressSessionData - Expected structure from WP session check.
  * @property {boolean} loggedIn
  * @property {boolean} autosyncActive
- * @property {number | null} userId
- * // Add other potential fields if WP endpoint is enhanced later
- * // @property {string} [userEmail]
- * // @property {string} [username]
- * // @property {string} [displayName]
- * // @property {string} [avatarUrl]
+ * @property {{ wpUserId: number, email: string, displayName: string } | null} userData - Nested user details if logged in.
  */
 
 /**
@@ -84,9 +79,9 @@ async function findUserByWpId(wpUserId) {
     let connection;
     try {
         connection = await pool.getConnection();
-        const sql = "SELECT * FROM ba_users WHERE JSON_EXTRACT(metadata, '$.wp_user_id') = ? LIMIT 1";
+        const sql = "SELECT * FROM ba_users WHERE JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.wp_user_id')) = ? LIMIT 1";
         /** @type {[RowDataPacket[], any]} */
-        const [rows] = await connection.execute(sql, [wpUserId]);
+        const [rows] = await connection.execute(sql, [String(wpUserId)]);
         if (Array.isArray(rows) && rows.length > 0) {
             const userRow = rows[0];
             if (userRow && typeof userRow === 'object' && 'id' in userRow) {
@@ -116,21 +111,24 @@ async function findUserByWpId(wpUserId) {
 
 /**
  * Helper to create a user directly using the pool
- * @param {{ wpUserId: number, email?: string, username?: string, name?: string, roles?: string[] }} userData
+ * @param {{ wpUserId: number, email: string, displayName: string }} userData - Expecting actual data now
  * @returns {Promise<User | null>}
  */
 async function createUserFromWpId(userData) {
-    const { wpUserId } = userData;
-    if (!wpUserId) return null;
+    const { wpUserId, email, displayName } = userData; 
+    if (!wpUserId || !email) {
+        log(`Cannot create user: Missing wpUserId or email. Provided: ${JSON.stringify(userData)}`, 'error');
+        return null; // Cannot create user without essential info
+    }
 
     let connection;
     try {
         connection = await pool.getConnection();
-        // Placeholder details - Requires enhancement (e.g., fetch from WP)
-        const finalEmail = userData.email || `wp_user_${wpUserId}@asapdigest.local`;
-        const finalUsername = userData.username || `wp_user_${wpUserId}`;
-        const finalName = userData.name || `WordPress User ${wpUserId}`;
-        const finalRoles = userData.roles || ['subscriber'];
+        
+        const finalEmail = email;
+        const finalName = displayName || `WordPress User ${wpUserId}`; // Use display name, fallback if empty
+        const finalUsername = finalEmail; // Use email as username for simplicity, or derive differently if needed
+        const finalRoles = ['subscriber']; // Default role for new syncs
         const metadata = { wp_user_id: wpUserId, roles: finalRoles };
         const metadataJson = JSON.stringify(metadata);
         const userId = randomUUID(); // Use crypto
@@ -153,9 +151,14 @@ async function createUserFromWpId(userData) {
                 syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'),
                 updatedAt: new Date().toISOString()
             };
+            log(`Created new Better Auth user ${userId} linked to wpUserId ${wpUserId}`, 'info');
             return newUser;
         }
+        log(`Failed to create user for wpUserId ${wpUserId}. DB Result: ${JSON.stringify(result)}`, 'error');
         return null;
+    } catch (dbError) {
+        log(`Database error during user creation for wpUserId ${wpUserId}: ${dbError instanceof Error ? dbError.message : dbError}`, 'error');
+        return null; // Return null on error
     } finally {
         connection?.release();
     }
@@ -280,102 +283,107 @@ export async function GET({ request, url, locals }) {
     // --- Fallback to Cookie-Based Sync Check (AJAX Flow) - REVISED ---
     log('No login token found. Proceeding with AJAX cookie-based sync check.', 'debug');
 
-    if (!WP_CHECK_SESSION_URL) {
-        log('WP_CHECK_SESSION_URL environment variable is not set.', 'error');
-        return json({ valid: false, error: 'Server configuration error [WPURL]' }, { status: 500 });
-    }
+    // Check if SvelteKit session already exists
+    if (!locals.session) { 
+        log('No active SvelteKit session found. Attempting WP sync.', 'debug');
+        // Proceed only if WP_CHECK_SESSION_URL is configured
+        if (WP_CHECK_SESSION_URL) {
+            try {
+                log(`Fetching WP session status from: ${WP_CHECK_SESSION_URL}`, 'debug');
+                // Fetch from WP endpoint
+                const wpResponse = await fetch(WP_CHECK_SESSION_URL, { credentials: 'include' });
+                if (!wpResponse.ok) {
+                    log(`WordPress session check failed with status ${wpResponse.status}`, 'error');
+                    return json({ valid: false, error: 'WordPress session check failed' }, { status: 502 });
+                }
 
-	try { // Outer try for AJAX check
-        log(`Checking WP session at: ${WP_CHECK_SESSION_URL}`);
+                /** @type {WordPressSessionData} */
+                const wpData = await wpResponse.json();
+                log(`Received WP session data: ${JSON.stringify(wpData)}`, 'debug');
 
-        const wpResponse = await fetch(WP_CHECK_SESSION_URL, {
-			method: 'GET',
-            credentials: 'include',
-			headers: {
-				'Content-Type': 'application/json',
-                // Pass necessary cookies from original request
-                'Cookie': request.headers.get('cookie') || '' 
-			},
-		});
+                // --- Process WP Response ---
+                // Use optional chaining and nullish coalescing for safety
+                if (wpData.loggedIn && wpData.userData?.wpUserId) {
+                    const wpUserData = wpData.userData; // wpUserData is guaranteed non-null here
+                    const wpUserId = wpUserData.wpUserId;
+                    
+                    log(`WP user logged in (wpUserId: ${wpUserId}). Checking Better Auth...`, 'info');
 
-        log(`WP Check Response Status: ${wpResponse.status}`);
+                    // Check if Better Auth user exists linked to this WP User ID
+                    let baUser = await findUserByWpId(wpUserId);
 
-		if (!wpResponse.ok) {
-			const errorText = await wpResponse.text();
-            log(`WP session check failed: ${wpResponse.status} ${errorText}`, 'error');
-			return json({ valid: false, error: `WordPress check failed (${wpResponse.status})` }, { status: wpResponse.status });
-		}
+                    if (!baUser) {
+                        log(`No existing Better Auth user found for wpUserId ${wpUserId}. Attempting creation...`, 'info');
+                        
+                        // Ensure we have the necessary email to create a user
+                        if (!wpUserData.email) { // Email is required
+                            log(`Cannot create Better Auth user for wpUserId ${wpUserId}: Missing email address from WP response.`, 'error');
+                            return json({ valid: false, error: 'User sync failed - missing email' }, { status: 500 });
+                        }
 
-		/** @type {WordPressSessionData} */
-		const wpData = await wpResponse.json();
-        log(`WP Check Response Data: ${JSON.stringify(wpData)}`);
-
-        if (wpData && wpData.loggedIn && typeof wpData.userId === 'number') {
-			const wpUserId = wpData.userId;
-            log(`WP user logged in. WP User ID: ${wpUserId}`);
-
-            try { // Inner try for DB lookup/creation/session
-                let baUser = await findUserByWpId(wpUserId);
-                let baUserId = baUser ? baUser.id : null;
-
-                if (!baUser) {
-                    log(`Better Auth user not found for WP ID ${wpUserId}. Attempting creation.`, 'debug');
-                    // Pass minimal data, assumes createUserFromWpId handles defaults
-                    baUser = await createUserFromWpId({ wpUserId: wpUserId });
-
-								if (!baUser) {
-                        log(`Failed to create Better Auth user for WP ID ${wpUserId}.`, 'error');
-                        return json({ valid: false, error: 'Failed to create corresponding user account.' }, { status: 500 });
+                        // Create Better Auth user if not found
+                        baUser = await createUserFromWpId({
+                            wpUserId: wpUserId,
+                            email: wpUserData.email, // Now guaranteed to be a string
+                            displayName: wpUserData.displayName || '' // Pass displayName or empty string if null/undefined
+                        }); 
                     }
-                    baUserId = baUser.id;
-                    log(`Created Better Auth user ${baUserId} for WP ID ${wpUserId}.`, 'debug');
-					} else {
-                    log(`Found existing Better Auth user ${baUserId} for WP ID ${wpUserId}.`, 'debug');
-					}
 
-                if (!baUserId) {
-                    log(`CRITICAL: Could not obtain Better Auth user ID after lookup/creation for WP ID ${wpUserId}.`, 'error');
-                    return json({ valid: false, error: 'User synchronization error.' }, { status: 500 });
-					}
+                    if (baUser) {
+                        log(`Found/Created Better Auth user: ${baUser.id}`, 'info');
+                        // Create Better Auth session
+                        const sessionData = await createDbSession(baUser.id);
 
-                // Create a DB session directly
-                const sessionData = await createDbSession(baUserId);
+                        if (sessionData) {
+                            const { sessionToken, expiresAt } = sessionData;
+                            log(`Created Better Auth session for user ${baUser.id}`, 'info');
+                            // Set session cookie
+                            const cookieName = 'asap_sk_session'; // Ensure matches auth.js config
+                            const cookieOptions = [
+                                `Path=/`,
+                                `Expires=${expiresAt.toUTCString()}`,
+                                `HttpOnly`,
+                                `SameSite=Lax`, // Consider Strict if appropriate
+                                // Secure // Add Secure in production (HTTPS)
+                            ];
+                            headers.append('Set-Cookie', `${cookieName}=${sessionToken}; ${cookieOptions.join('; ')}`);
+                            log(`Session cookie set`, 'debug');
 
-                if (sessionData) {
-                    const { sessionToken, expiresAt } = sessionData;
-                    log(`DB session created successfully for user ${baUserId}.`, 'debug');
+                            // Broadcast update (optional) - Pass a simple string message
+                            broadcastSyncUpdate(`User ${baUser.id} synced successfully.`);
+                            
+                            // Return success
+                            return json({ valid: true, session_created: true }, { headers });
 
-                    const cookieName = 'asap_sk_session'; // Match auth.js config
-                    const cookieOptions = [
-                        `Path=/`,
-                        `Expires=${expiresAt.toUTCString()}`,
-                        `HttpOnly`,
-                        `SameSite=Lax`,
-                        // process.env.NODE_ENV === 'production' ? 'Secure' : '' // Adapter handles this usually
-                    ].filter(Boolean).join('; ');
-                    headers.set('Set-Cookie', `${cookieName}=${sessionToken}; ${cookieOptions}`);
-                    log('Set-Cookie header prepared.', 'debug');
-
-                    // Return success JSON with the cookie header
-                    return json({ valid: true, session_created: true }, { headers });
+                        } else {
+                            log(`Failed to create Better Auth session for user ${baUser.id}`, 'error');
+                            return json({ valid: false, error: 'Session creation failed' }, { status: 500 });
+                        }
+                    } else {
+                        log(`Failed to find or create Better Auth user for wpUserId ${wpUserId}`, 'error');
+                        return json({ valid: false, error: 'User sync failed' }, { status: 500 });
+                    }
 
                 } else {
-                    log(`Failed to create DB session for user ${baUserId}.`, 'error');
-                    return json({ valid: false, error: 'Session creation failed.' }, { status: 500 });
-				}
-
-            } catch (/** @type {any} */ dbError) {
-                log(`Error during DB lookup/creation/session: ${dbError instanceof Error ? dbError.message : String(dbError)}`, 'error');
-                return json({ valid: false, error: 'Server error during user sync.' }, { status: 500 });
-			}
-		} else {
-            log('WP user not logged in or required data missing.');
-            // Optional: Invalidate SK session if WP is logged out?
-            return json({ valid: false });
+                    // WP user not logged in
+                    log('WP user not logged in, no sync performed.', 'info');
+                    return json({ valid: false, error: 'User not logged in on WordPress' }, { status: 401 });
+                }
+            } catch (syncError) {
+                log(`Error during AJAX sync process: ${syncError instanceof Error ? syncError.message : syncError}`, 'error');
+                return json({ valid: false, error: 'Internal server error during sync' }, { status: 500 });
+            } finally {
+                // Release connection if it exists (handled in helpers now)
+                log('AJAX sync attempt finished.', 'debug');
+            }
+        } else {
+             log('WP_CHECK_SESSION_URL not configured.', 'error');
+             return json({ valid: false, error: 'Server configuration error' }, { status: 500 });
         }
-    } catch (/** @type {any} */ fetchError) {
-        log(`Error fetching WP session status: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`, 'error');
-        return json({ valid: false, error: 'Could not contact WordPress for session check.' }, { status: 502 }); // Bad Gateway
+    } else {
+        // Existing SvelteKit session found, no sync needed via this endpoint.
+        log('Existing SvelteKit session found, sync not required via GET.', 'info');
+        return json({ valid: true, session_created: false });
     }
 }
 
@@ -595,3 +603,4 @@ async function postError(error) { // JSDoc added in previous step
 		headers: { 'Content-Type': 'application/json' }
 	});
 }
+

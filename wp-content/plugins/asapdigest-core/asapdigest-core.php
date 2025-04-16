@@ -22,6 +22,8 @@ define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 
 // Include Better Auth configuration
 require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
+// Include the new Session Check Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-controller.php');
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
@@ -87,20 +89,19 @@ add_action('asap_cleanup_data', 'asap_cleanup_data');
  * @created 03.30.25 | 04:25 PM PDT
  */
 function asap_init_core() {
-    // Include and instantiate the core class
-    require_once plugin_dir_path(__FILE__) . 'includes/class-core.php';
-    new \ASAPDigest\Core\ASAP_Digest_Core(); // Instantiate the class to trigger constructor hooks
-    // Let the core class instance handle its hooks
-    // Note: The class constructor should call its hook definition method
-
-    // Core functionality (priority 10) - Some of these might be handled by the class now
+    // Core functionality (priority 10)
     add_action('init', 'create_asap_cpts', 10);
     add_action('wp', 'asap_schedule_cleanup', 10);
-    // add_action('rest_api_init', 'asap_register_rest_routes', 10); // Likely handled by ASAP_Digest_Core now
+    add_action('rest_api_init', 'asap_register_rest_routes', 10);
     add_action('rest_api_init', 'asap_register_digest_retrieval', 10);
     add_action('rest_api_init', 'asap_register_notification_routes', 10);
     add_action('rest_api_init', 'asap_register_podcast_url_update', 10);
     add_action('rest_api_init', 'asap_register_podcast_rss', 10);
+    // Register the new session check route
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\Session_Check_Controller();
+        $controller->register_routes();
+    }, 10);
     
     // Feature-specific hooks (priority 20-29)
     add_action('asap_cleanup_data', 'asap_cleanup_data', 20);

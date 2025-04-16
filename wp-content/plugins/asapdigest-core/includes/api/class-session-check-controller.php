@@ -13,6 +13,7 @@ use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
+use WP_User;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -59,9 +60,25 @@ class Session_Check_Controller extends WP_REST_Controller {
      * @return WP_REST_Response Response object.
      */
     public function check_session_status(WP_REST_Request $request) {
-        // Implementation will go here in the next step
+        // Check if the user is logged into WordPress
         $logged_in = is_user_logged_in();
-        $user_id   = $logged_in ? get_current_user_id() : null;
+        $user_data = null;
+
+        if ($logged_in) {
+            $current_user = wp_get_current_user();
+            if ($current_user instanceof WP_User && $current_user->ID > 0) {
+                $user_data = [
+                    'wpUserId'    => $current_user->ID,
+                    'email'       => $current_user->user_email,
+                    'displayName' => $current_user->display_name,
+                    // Add other relevant user data if needed
+                ];
+            } else {
+                // Edge case: is_user_logged_in() true but wp_get_current_user() failed
+                $logged_in = false;
+                error_log('ASAP Digest: check_session_status - is_user_logged_in true, but wp_get_current_user failed.');
+            }
+        }
 
         // Autosync setting omitted based on earlier analysis - needs implementation if required
         $autosync_active = false; // Defaulting to false
@@ -69,7 +86,7 @@ class Session_Check_Controller extends WP_REST_Controller {
         $response_data = [
             'loggedIn'       => $logged_in,
             'autosyncActive' => $autosync_active,
-            'userId'         => $user_id,
+            'userData'       => $user_data, // Embed user data directly if logged in
         ];
 
         return new WP_REST_Response($response_data, 200);
@@ -98,9 +115,25 @@ class Session_Check_Controller extends WP_REST_Controller {
                     'description' => esc_html__('Whether auto-sync is active for the user (Currently not implemented).', 'asap-digest'),
                     'type'        => 'boolean',
                 ],
-                'userId' => [
-                    'description' => esc_html__('The WordPress user ID if logged in, otherwise null.', 'asap-digest'),
-                    'type'        => ['integer', 'null'],
+                'userData' => [
+                    'description' => esc_html__('User details if logged in, otherwise null.', 'asap-digest'),
+                    'type'        => ['object', 'null'],
+                    'properties'  => [
+                        'wpUserId' => [
+                            'description' => esc_html__('The WordPress user ID.', 'asap-digest'),
+                            'type'        => 'integer',
+                        ],
+                        'email' => [
+                            'description' => esc_html__('The user\'s email address.', 'asap-digest'),
+                            'type'        => 'string',
+                            'format'      => 'email',
+                        ],
+                        'displayName' => [
+                            'description' => esc_html__('The user\'s display name.', 'asap-digest'),
+                            'type'        => 'string',
+                        ],
+                        // Add schema for other user data properties if included
+                    ],
                     'context'     => ['view', 'edit', 'embed'],
                     'readonly'    => true,
                 ],

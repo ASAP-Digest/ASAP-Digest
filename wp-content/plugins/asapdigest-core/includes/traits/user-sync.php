@@ -262,15 +262,26 @@ trait User_Sync {
      * @param mixed $meta_value Meta value
      */
     public function handle_user_meta_sync($meta_id, $user_id, $meta_key, $meta_value) {
-        // Only sync on relevant meta changes
+        // Prevent sync loops: Ignore meta keys updated *by* the sync process itself
+        $internal_meta_keys = [
+            'better_auth_user_id',
+            'better_auth_sync_status',
+            'better_auth_sync_time',
+            'better_auth_sync_error',
+            'better_auth_metadata_snapshot',
+            'better_auth_sync_source' // Add any other keys updated internally by sync
+        ];
+        if (in_array($meta_key, $internal_meta_keys)) {
+            return; // Do nothing if an internal meta key is being updated
+        }
+
+        // Only sync on relevant external meta changes
         $sync_meta_keys = [
             'nickname',
             'first_name',
             'last_name',
             'description',
-            'locale',
-            'better_auth_subscription_status',
-            'better_auth_subscription_plan'
+            'locale'
         ];
 
         if (in_array($meta_key, $sync_meta_keys)) {

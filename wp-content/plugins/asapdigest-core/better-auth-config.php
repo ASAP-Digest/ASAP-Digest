@@ -588,22 +588,50 @@ function asap_check_wp_session($request) {
     error_log('[ASAP Digest Check Session] Auto-Sync Active Status: ' . ($is_autosync_active ? 'true' : 'false') . ' (Based on global setting)');
     // --- End Auto-Sync Check ---
 
-    // Sync user to Better Auth if needed
-    error_log('[ASAP Digest Check Session] Attempting sync for WP User ID: ' . $current_user->ID); // ADDED
-    $sync_result = asap_sync_wp_user_to_better_auth($current_user->ID, 'auto_sync');
-    error_log('[ASAP Digest Check Session] Sync result: ' . print_r($sync_result, true)); // ADDED
-
-    if (is_wp_error($sync_result)) {
-        error_log('[ASAP Digest Check Session] Sync failed: ' . $sync_result->get_error_message()); // ADDED
-        return new WP_REST_Response([
-            'error' => 'Failed to sync user with Better Auth',
-            'details' => $sync_result->get_error_message()
-        ], 500);
+    // ---> MODIFICATION: Only sync periodically <---
+    $last_sync_time = get_user_meta($current_user->ID, 'better_auth_sync_time', true);
+    $needs_sync = true; // Default to needing sync
+    if ($last_sync_time) {
+        $time_since_last_sync = time() - strtotime($last_sync_time);
+        if ($time_since_last_sync < 300) { // 300 seconds = 5 minutes
+            $needs_sync = false;
+            error_log('[ASAP Digest Check Session] Skipping sync for WP User ID: ' . $current_user->ID . ' (Synced ' . $time_since_last_sync . ' seconds ago).');
+        }
     }
 
-    // Ensure we have the Better Auth user ID
+    // Sync user to Better Auth if needed
+    $sync_result = null;
+    if ($needs_sync) {
+        error_log('[ASAP Digest Check Session] Attempting sync for WP User ID: ' . $current_user->ID); // ADDED
+        $sync_result = asap_sync_wp_user_to_better_auth($current_user->ID, 'auto_sync');
+        error_log('[ASAP Digest Check Session] Sync result: ' . print_r($sync_result, true)); // ADDED
+
+        if (is_wp_error($sync_result)) {
+            error_log('[ASAP Digest Check Session] Sync failed: ' . $sync_result->get_error_message()); // ADDED
+            // Return error if sync explicitly fails when attempted
+            return new WP_REST_Response([
+                'error' => 'Failed to sync user with Better Auth',
+                'details' => $sync_result->get_error_message()
+            ], 500);
+        }
+    } else {
+        // If sync was skipped, prepare a placeholder success structure 
+        // We still need the ba_user_id for subsequent DB checks
+        $ba_user_id_meta = get_user_meta($current_user->ID, 'better_auth_user_id', true);
+        if (!$ba_user_id_meta) {
+             error_log('[ASAP Digest Check Session] Error: Cannot proceed without ba_user_id (sync skipped).');
+             return new WP_REST_Response([
+                'error' => 'Cannot retrieve user session details.',
+                'details' => 'Better Auth user ID link missing and sync was skipped.'
+            ], 500);
+        }
+        $sync_result = ['ba_user_id' => $ba_user_id_meta]; // Provide the essential ID
+    }
+    // ---> END MODIFICATION <---
+
+    // Ensure we have the Better Auth user ID (either from sync or meta)
     if (!isset($sync_result['ba_user_id']) || empty($sync_result['ba_user_id'])) {
-         error_log('[ASAP Digest Check Session] Error: ba_user_id missing from sync result.'); // ADDED
+         error_log('[ASAP Digest Check Session] Error: ba_user_id missing from sync result or meta.'); // Updated Log
          return new WP_REST_Response([
             'error' => 'Failed to retrieve Better Auth user ID after sync.',
             'details' => 'Sync result did not contain ba_user_id.'
@@ -645,16 +673,18 @@ function asap_check_wp_session($request) {
 
         // ---> ADDED: Create session if one doesn't exist <---
         if (empty($sessionToken)) {
-            error_log('[ASAP Digest Check Session] No existing session found for BA User ID: ' . $ba_user_id . '. Attempting to create one.');
-            $newSessionToken = asap_create_ba_session($ba_user_id);
-            if ($newSessionToken) {
-                $sessionToken = $newSessionToken;
-                error_log('[ASAP Digest Check Session] Successfully created and assigned new session token.');
-            } else {
-                error_log('[ASAP Digest Check Session] Failed to create new session token.');
-                // Optionally return an error here, or proceed without a token
-                // For now, proceed and let the client handle the lack of token
-            }
+            error_log('[ASAP Digest Check Session] No existing session found for BA User ID: ' . $ba_user_id . '. Attempting to create one. [TEMP DISABLED FOR DEBUG]'); // Modified Log
+            // --- TEMP DISABLED FOR DEBUG VDS-2025-04-16 ---
+            // $newSessionToken = asap_create_ba_session($ba_user_id);
+            // if ($newSessionToken) {
+            //     $sessionToken = $newSessionToken;
+            //     error_log('[ASAP Digest Check Session] Successfully created and assigned new session token.');
+            // } else {
+            //     error_log('[ASAP Digest Check Session] Failed to create new session token.');
+            //     // Optionally return an error here, or proceed without a token
+            //     // For now, proceed and let the client handle the lack of token
+            // }
+            // --- END TEMP DISABLED ---
         }
         // ---> END ADDED SECTION <---
         
@@ -799,6 +829,12 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
         $result_data = json_decode($response_body, true);
         $ba_user_id = $result_data['data']['id'] ?? null;
 
+        // --- BEGIN FIX: Prevent recursion ---
+        // Remove the action hook before updating meta
+        remove_action('profile_update', 'asap_auto_sync_user_data', 10);
+        remove_action('user_register', 'asap_auto_sync_user_data', 10); // Also remove user_register hook temporarily if needed
+        // --- END FIX ---
+
         if ($ba_user_id) {
              update_user_meta($wp_user_id, 'better_auth_user_id', $ba_user_id);
         }
@@ -806,9 +842,16 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
         update_user_meta($wp_user_id, 'better_auth_sync_time', current_time('mysql'));
         delete_user_meta($wp_user_id, 'better_auth_sync_error'); // Clear previous errors
         asap_track_sync_source($wp_user_id, $source);
+
+        // --- BEGIN FIX: Re-add hook ---
+        // Add the action hook back after meta updates are complete
+        add_action('profile_update', 'asap_auto_sync_user_data', 10, 2);
+        add_action('user_register', 'asap_auto_sync_user_data', 10); // Re-add user_register hook
+        // --- END FIX ---
+
         error_log('[ASAP Debug] SYNC FUNC: Sync successful for WP User ID: ' . $wp_user_id . '. BA ID: ' . ($ba_user_id ?? 'N/A')); // DEBUG
         // Include ba_user_id in the return array for successful sync
-        return ['status' => 'synced', 'data' => $result_data, 'ba_user_id' => $ba_user_id]; 
+        return ['status' => 'synced', 'data' => $result_data, 'ba_user_id' => $ba_user_id];
     } else {
         // Failure
         update_user_meta($wp_user_id, 'better_auth_sync_status', 'error');
