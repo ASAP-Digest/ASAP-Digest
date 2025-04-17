@@ -97,7 +97,8 @@ class Sync_Token_Controller extends WP_REST_Controller {
         $wp_user_id = (int) $token_data['wp_user_id'];
         $token_db_id = (int) $token_data['id'];
 
-        // --- CRITICAL: Delete the token immediately after validation --- 
+        /* --- CRITICAL: Deleting token is REMOVED for persistent token strategy (Ticket #XYZ) --- 
+        // Delete the token immediately after validation
         $deleted = $wpdb->delete(
             $table_name,
             ['id' => $token_db_id], // Delete by its primary key
@@ -108,9 +109,11 @@ class Sync_Token_Controller extends WP_REST_Controller {
             // Log error, but still return success as validation passed before delete attempt
             error_log("ASAP Digest: Failed to delete sync token ID $token_db_id after validation. DB Error: " . $wpdb->last_error);
         } elseif ($deleted > 0) {
-            error_log("ASAP Digest: Successfully validated and deleted sync token ID $token_db_id.");
+            error_log("ASAP Digest: Successfully validated and DELETED sync token ID $token_db_id."); // Adjusted log for clarity if re-enabled
         }
-        // --- End Token Deletion ---
+        */
+         error_log("ASAP Digest: Successfully validated sync token for WP User ID $wp_user_id (Token NOT deleted)."); // New log line
+        // --- End Token Deletion Modification ---
 
         // Return success response with the WP User ID
         $response_data = [

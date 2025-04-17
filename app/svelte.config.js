@@ -27,7 +27,8 @@ const config = {
                 'script-src': ['self', 'unsafe-inline'],
                 'style-src': ['self', 'unsafe-inline'],
                 'img-src': ['self', 'data:', 'https:'],
-                'connect-src': ['self', 'https:']
+                'connect-src': ['self', 'https:'],
+                'frame-src': ['self', 'https://asapdigest.local']
             }
         },
 

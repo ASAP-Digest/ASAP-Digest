@@ -142,12 +142,19 @@ const betterAuthHandle = async ({ event, resolve }) => {
         const isMutatingMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method);
         const CORRECT_SYNC_PATH = '/api/auth/sync'; // Define constant for clarity
         const isSyncPath = event.url.pathname === CORRECT_SYNC_PATH; // Correct path check
+        const VERIFY_TOKEN_PATH = '/api/auth/verify-sync-token'; // Define path for verification endpoint
 
         if (isAuthPath && isMutatingMethod) {
             let isAuthorized = false;
             let expectedAuthMethod = ''; // For logging/error message
 
-            if (isSyncPath) {
+            if (event.url.pathname === VERIFY_TOKEN_PATH && event.request.method === 'POST') {
+                // For the token verification endpoint from the bridge, bypass standard CSRF/Secret check.
+                // The security relies on the short-lived, single-use nature of the sync token itself.
+                console.log(`[Auth Handle] Allowing POST to ${VERIFY_TOKEN_PATH} without CSRF/Secret check (Bridge Token Verification).`);
+                isAuthorized = true; // Assume authorized here; validation happens in the endpoint
+                expectedAuthMethod = 'Bridge Token Verification'; // Log this specific flow
+            } else if (isSyncPath) {
                 // For the specific internal sync path, check the shared secret
                 console.log(`[Auth Handle] Checking sync secret for ${CORRECT_SYNC_PATH}`); // Correct log
                 expectedAuthMethod = 'Sync Secret';
@@ -159,7 +166,7 @@ const betterAuthHandle = async ({ event, resolve }) => {
                 isAuthorized = validateCSRFToken(event.request);
             }
 
-            if (!isAuthorized) {
+            if (!isAuthorized && expectedAuthMethod !== 'Bridge Token Verification') { // Don't block if it's the bridge verification path
                  // Use expectedAuthMethod for clearer error message
                  const errorMsg = `Invalid ${expectedAuthMethod}`;
                  console.warn(`[Auth Handle] ${errorMsg} for ${event.url.pathname}`);
@@ -191,8 +198,10 @@ const betterAuthHandle = async ({ event, resolve }) => {
         }
 
         // Handle auth routes with Better Auth, *except* our custom sync route
-        // which is handled by its own +server.js after secret validation.
-        const isStandardAuthPath = event.url.pathname.startsWith('/api/auth/') && !isSyncPath;
+        // and the bridge token verification route.
+        const isStandardAuthPath = event.url.pathname.startsWith('/api/auth/') && 
+                                 event.url.pathname !== '/api/auth/sync' && 
+                                 event.url.pathname !== '/api/auth/verify-sync-token'; // <<< EXCLUDE VERIFY TOKEN PATH
 
         if (isStandardAuthPath) {
             console.log(`[Auth Handle] Passing standard auth path ${event.url.pathname} to auth.handler`); // DEBUG

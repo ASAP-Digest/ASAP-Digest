@@ -3,18 +3,20 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Better Auth Project Implementation
+# Better Auth Project Implementation v1.1
+
+*(Self-correction: Updated version, corrected server config example)*
 
 ## 1. Server-Side Configuration (**Refer to `better-auth-config.mdc` for full details**)
 
-The configuration object passed to `betterAuth` in `src/lib/server/auth.js` MUST follow the structure defined in `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)`. A simplified example reflecting the correct structure is shown below:
+The configuration object passed to `beerver/auth.js` MUST follow the structure defined in `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)`. **Crucially**, for this project, this involves providing *both* the `database` key (with the Kysely dialect) *and* the `adapter` key (with explicit adapter functions) at the top level. A simplified example reflecting this required structure is shown below:
 
 ````javascript
 // src/lib/server/auth.js
 import { betterAuth } from "better-auth";
 import { dialect } from './path/to/dialect'; // Import your configured Kysely dialect
-// ... import adapter functions (getUserByIdFn, etc.) ...
-// ... import hook functions (onUserCreationHook, etc.) ...
+import { adapter } from './path/to/adapter-functions'; // Import your full adapter object
+import { hooks } from './path/to/hooks'; // Import your hooks object
 
 export const auth = betterAuth({
     // --- Top-Level Options ---
@@ -22,51 +24,46 @@ export const auth = betterAuth({
     sessionCookieName: 'better_auth_session', // Optional
     sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional
 
-    // --- Adapter Configuration ---
-    adapter: {
-        dialect: dialect, // REQUIRED: Pass the Kysely dialect instance
-        // REQUIRED: Assign adapter functions
-        getUserByEmail: getUserByEmailFn,
-        getUserById: getUserByIdFn,
-        getSessionByToken: getSessionByTokenFn,
-        createSession: createSessionFn,
-        deleteSession: deleteSessionFn,
-        // ... other adapter functions if needed ...
+    // --- Database Configuration (Kysely Dialect) ---
+    // Required for standard Kysely integration
+    database: {
+        dialect: dialect,   // REQUIRED: Pass the Kysely dialect instance
+        type: "mysql"       // REQUIRED: Explicit type for the dialect
     },
 
+    // --- Custom Adapter Configuration (Overrides) ---
+    // Required in this project to ensure specific functions (e.g., createSessionFn 
+    // with UUID generation) are used, working around observed issues.
+    adapter: adapter, 
+
     // --- Lifecycle Hooks ---
-    after: {
-        // Optional: Assign hook functions
-        onUserCreation: onUserCreationHook,
-        onSessionCreation: onSessionCreationHook,
-    }
+    // Optional: Assign hook functions
+    after: hooks 
 });
 ````
 
-**Key Changes:**
-- Removed outdated `adapter: { type: "mysql", config: ... }` structure.
-- Removed incorrect `baseUrl` and `emailAndPassword` properties.
-- Added `secret` as the top-level key for the secret.
-- Showed correct placement of `dialect` within the `adapter` object.
-- Included the `after` hooks section.
-- Added explicit reference to `better-auth-config.mdc` as the definitive source.
+**Key Structural Points:**
+- Uses top-level `secret` key.
+- Uses top-level `database` key containing `dialect` and `type`.
+- Uses top-level `adapter` key containing the object with explicit function implementations (e.g., `getUserById`, `createSession`).
+- Uses top-level `after` key for hooks.
+- **Refer to `better-auth-config.mdc` for the full rationale and detailed structure.**
 
 ## 2. SvelteKit Integration (**Refer to `better-auth-route-handling.mdc` for full details**)
 
-Integrate Better Auth with SvelteKit hooks and route handlers.
+Integrate Better Auth with SvelteKit hooks and route handlers. (This section remains consistent with previous versions, just reinforcing the reference).
 
 ````javascript
 // src/hooks.server.js
-import { auth } from '$lib/server/auth';
+import { auth } from '$lib/server/auth'; // Ensure 'auth' is the CORRECTLY configured instance
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 
-// Simple hook setup - see better-auth-route-handling.mdc for full context if needed
+// Simple hook setup - see better-auth-route-handling.mdc for full context
 export const handle = svelteKitHandler({ auth }); 
 
 // src/routes/api/auth/[...auth]/+server.js
-import { auth } from '$lib/server/auth';
-// Use svelteKitHandler instead of toSvelteKitHandler
-import { svelteKitHandler } from "better-auth/svelte-kit"; 
+import { auth } from '$lib/server/auth'; // Ensure 'auth' is the CORRECTLY configured instance
+import { svelteKitHandler } from "better-auth/svelte-kit"; // Use correct import
 
 /** @type {import('@sveltejs/kit').RequestHandler} */
 const handler = (event) => {
@@ -89,12 +86,13 @@ export const PATCH = handler;
 export const OPTIONS = handler; 
 ````
 
-**Key Changes:**
-- Updated the `[...auth]/+server.js` example to import and use `svelteKitHandler` instead of `toSvelteKitHandler`.
-- Expanded the `[...auth]/+server.js` example to show the more explicit structure `{ event: { request, url }, resolve, auth }` passed to `svelteKitHandler`, aligning with `better-auth-route-handling.mdc`.
-- Added explicit reference to `better-auth-route-handling.mdc` as the definitive source.
+**Key Reminders:**
+- Use `svelteKitHandler` from `better-auth/svelte-kit`.
+- Pass the fully configured `auth` instance.
+- Structure the arguments passed to `svelteKitHandler` correctly.
+- **Refer to `better-auth-route-handling.mdc` for definitive guidance.**
 
-## 3. Client-Side Configuration
+## 3. Client-Side Configuration (Unchanged)
 
 ````javascript
 // src/lib/auth-client.js
@@ -106,7 +104,7 @@ export const authClient = createAuthClient({
 });
 ````
 
-## 4. Component Usage
+## 4. Component Usage (Unchanged)
 
 ````javascript
 // In Svelte components:
@@ -124,36 +122,29 @@ const signIn = async () => {
 const { data: session } = authClient.useSession();
 ````
 
-## 5. Required Environment Variables
+## 5. Required Environment Variables (Unchanged)
 
 ````plaintext
 BETTER_AUTH_SECRET=your-secret-key
-BETTER_AUTH_URL=https://localhost:5173
-DB_HOST=localhost
-DB_PORT=10018
+BETTER_AUTH_URL=https://localhost:5173 // Base URL for the SvelteKit app
+DB_HOST=localhost // Or IP if needed
+DB_PORT=10018 // Specific LocalWP port
 DB_NAME=local
 DB_USER=root
 DB_PASS=root
+WORDPRESS_API_URL=https://asapdigest.local/wp-json // Needed for hooks potentially
+BETTER_AUTH_SHARED_SECRET=your-secret-key // If different from main secret, for WP<->SK comms
 ````
 
-## 6. Type Safety
+## 6. Type Safety (Unchanged)
 
 ````typescript
-/** @typedef {Object} BetterAuthSession
- * @property {string} id - Session ID
- * @property {string} userId - User ID
- * @property {BetterAuthUser} user - Session user
- */
-
-/** @typedef {Object} BetterAuthUser
- * @property {string} id - User ID
- * @property {string} email - User email
- * @property {string} [username] - Optional username
- * @property {string} [name] - Optional display name
- */
+// Example JSDoc or app.d.ts definitions
+/** @typedef {import('$lib/server/auth').Session} BetterAuthSession */
+/** @typedef {import('$lib/server/auth').User} BetterAuthUser */
 ````
 
-## 7. Error Handling
+## 7. Error Handling (Unchanged)
 
 ````javascript
 try {
@@ -168,7 +159,8 @@ try {
 ````
 
 This rule should be applied when:
-- Setting up authentication in a new SvelteKit project
-- Implementing auth guards
-- Setting up new routes requiring authentication
-- Handling user sessions
+- Reviewing or modifying the core Better Auth setup.
+- Integrating authentication into SvelteKit routes or hooks.
+- Troubleshooting authentication or session issues.
+
+

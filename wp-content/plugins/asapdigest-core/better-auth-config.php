@@ -2405,16 +2405,10 @@ function asap_should_auto_sync_user($user) {
  */
 function asap_handle_login_auto_sync($user_login, $user) {
     error_log('[ASAP Debug] LOGIN HOOK: asap_handle_login_auto_sync triggered for user: ' . $user_login . ' (ID: ' . $user->ID . ')'); // DEBUG
-    // Check if auto-sync is enabled
-    $options = get_option('better_auth_settings', []);
-    if (empty($options['auto_sync_enabled']) || !$options['auto_sync_enabled']) {
-        error_log('[ASAP Debug] LOGIN HOOK: Auto-sync disabled in settings. Skipping.'); // DEBUG
-        return;
-    }
-
-    // Check if user role should be synced
+    
+    // Check if user role should be synced based on the saved list
     if (!asap_should_auto_sync_user($user)) {
-        error_log('[ASAP Debug] LOGIN HOOK: User role should not be synced. Skipping.'); // DEBUG
+        error_log('[ASAP Debug] LOGIN HOOK: User role not in auto-sync list. Skipping.'); // Updated Log
         return;
     }
 

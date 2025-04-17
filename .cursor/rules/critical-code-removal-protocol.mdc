@@ -1,0 +1,121 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# CRITICAL Code Removal Protocol v1.0
+
+## 1. Purpose
+
+**HALT! This protocol MUST be executed BEFORE removing any existing code (functions, classes, variables, files, configuration blocks, etc.) from the codebase.** Its purpose is to prevent regressions, loss of essential functionality, and ensure that any removed logic is either verifiably obsolete OR has its necessary functionality preserved/replaced through a documented, intentional process. This protocol mandates justification, rigorous analysis, explicit documentation (including TODOs), and verification for all code removal actions.
+
+## 2. Protocol Integration Layer
+
+This protocol is a critical safeguard integrated with core development and error resolution processes:
+
+````text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance (Steps 3, 4, 5)
+│ 2. Rule Execution Protocol              │ // Executing steps herein
+│ 3. Universal Error Resolution (UERP)    │ // May trigger need for removal (refactoring)
+│ 4. Task Tracking Protocol               │ // Removal may be part of a task
+│ 5. Server Memory Rules                  │ // Logging removal decisions/tasks
+│ 6. Cross-Protocol Comms & Verification   │ // Verifying post-removal state
+│ 7. Audit Trail System                   │ // Logging removal event
+│ 8. Relevant Feature/Module Protocols    │ // Analysis requires understanding specific code context
+└─────────────────────────────────────────┘
+````
+
+## 3. Activation
+
+- **Trigger:** Explicit intention to remove *any* existing code snippet, function, class, configuration block, file, or directory.
+- **Context:** Must be executed *before* generating the `edit_file` or `delete_file` tool call for the removal.
+
+## 4. MANDATORY Pre-Removal Steps
+
+### Step 1: Precise Identification & Justification
+
+1.  **Identify Code:** MUST precisely identify the exact lines, function(s), class(es), file(s), or block(s) slated for removal. Provide file paths and line numbers where applicable.
+2.  **State Justification:** MUST clearly articulate the reason for removal. Valid justifications include:
+    *   **Obsolete/Dead Code:** Confirm via version control history, usage search (`grep_search`, IDE features), and runtime analysis that the code is genuinely unused and unreachable. Document the verification method.
+    *   **Redundant Code:** Identify the duplicate or alternative implementation that makes this code unnecessary. Document the location of the preferred implementation.
+    *   **Replaced by Standard/Library Feature:** Specify the library/framework feature or standard function that replaces this custom implementation (e.g., "Replacing custom `createSessionFn` with standard Better Auth Kysely dialect logic").
+    *   **Refactoring:** Explain how the functionality is being moved or restructured elsewhere (e.g., "Moving logic from `adapter` config to `after` hooks / WP sync function"). Provide target location(s).
+
+### Step 2: Impact & Dependency Analysis
+
+1.  **Identify Callers/Dependencies:** MUST identify all locations in the codebase that *currently* call or depend on the code being removed. Use `grep_search`, IDE "Find Usages", or codebase analysis tools.
+2.  **Analyze Functionality:** MUST clearly document the *purpose* and *functionality* of the code being removed.
+3.  **Distinguish Logic Type:**
+    *   Is this standard boilerplate interaction with a library/framework (e.g., a basic database query function whose pattern is replicated elsewhere or handled by a library)?
+    *   Or does it contain **custom application/business logic** specific to this project's requirements (e.g., `getUserByWpIdFn`, specific data transformations, unique algorithms)? **This distinction is CRITICAL.**
+4.  **Assess Impact:** Evaluate the potential impact of removal on system behavior, user-facing features, and dependent components identified in Step 2.1.
+
+### Step 3: Replacement & Preservation Plan (CRITICAL)
+
+**Based on the analysis in Step 2:**
+
+1.  **If Functionality is STILL Required:**
+    *   **Define Replacement:** MUST clearly define *how* the functionality will be replaced *before* removal (e.g., "Using Better Auth's internal Kysely session creation", "Refactored logic now exists in `NewClass::newMethod`", "Using `lodash.debounce` instead of custom debounce").
+    *   **Verify Replacement:** Ensure the replacement mechanism is already implemented or plan its implementation *before* or *immediately alongside* the removal.
+2.  **If Code Contains Custom Logic STILL Required:**
+    *   **Preservation Plan:** MUST explicitly document *where* and *how* this specific custom logic will be preserved or reimplemented **BEFORE** removing the original code. This might involve:
+        *   Moving the logic to a different function/class/module (specify target).
+        *   Integrating the logic into a different process (e.g., WP-side sync function, Better Auth hook).
+        *   **(If immediate reimplementation isn't feasible):** Add a detailed `// TODO: [TICKET-ID/Date] Reintegrate custom logic for [Purpose] from removed [Original Code Location]. See [Commit Hash/Docs Link].` comment at the relevant integration point(s) AND document this deferred action clearly in the current step's output.
+3.  **If Functionality is Obsolete/Dead Code:**
+    *   **Confirm:** MUST explicitly state that the functionality is confirmed obsolete based on Step 1.1 and Step 2 analysis.
+    *   **Justify:** Briefly reiterate *why* it's obsolete (e.g., "Feature removed", "Replaced by library X", "Confirmed unreachable via usage search").
+
+### Step 4: Documentation & Tracking (BEFORE Removal)
+
+1.  **Inline Comments:** MUST add comments directly above the code block(s) being removed, explaining the removal justification and referencing the Replacement/Preservation Plan (Step 3) or a relevant Task/Ticket ID. Example:
+    ```javascript
+    // REMOVED: 2025-04-16 - Replaced by standard Better Auth Kysely dialect integration. See #AUTH-123.
+    // async function createSessionFn(...) { ... } // Original code removed below
+    ```
+2.  **TODOs for Deferred Actions:** If custom logic preservation is deferred (Step 3.2), MUST add specific `TODO` comments at the planned reintegration points in the codebase.
+3.  **Version Control:** The commit message for the removal MUST clearly state what was removed, why, and reference any relevant task/issue IDs or replacement implementations.
+4.  **Project Documentation:** Update relevant documentation (e.g., `CHANGELOG.md`, architecture diagrams, module docs) to reflect the removal and any replacements.
+
+## 5. Implementation: Code Removal
+
+1.  **Execute Removal:** Use `edit_file` to remove *only* the precisely identified code blocks/lines/files. Use `delete_file` for entire files.
+2.  **Verify Edit:** Carefully check the diff/output of the `edit_file` or `delete_file` tool to ensure only the intended code was removed and surrounding code remains intact. Use `reapply` if the edit was incorrect.
+
+## 6. Post-Removal Verification (MANDATORY)
+
+1.  **Static Analysis:** Run linters (`eslint`, etc.) and type checkers (`tsc`, `svelte-check`) to catch immediate reference errors or type issues caused by the removal. Fix any resulting errors.
+2.  **Build:** Perform a full project build (`pnpm build`) to ensure no build-time errors were introduced.
+3.  **Testing:**
+    *   Run relevant automated tests (unit, integration, E2E) that cover the affected area and the replacement functionality (if applicable).
+    *   Perform **manual testing** of all user flows and features related to the removed code's functionality or its replacement. Verify expected behavior.
+    *   Specifically test edge cases related to the removed logic.
+4.  **Cross-Protocol Verification:** Perform relevant L1/L2 checks (State, Data Consistency) if the removal impacts state management or data structures.
+5.  **Log Monitoring:** Monitor application logs (Vite, WP Debug, Browser Console) during testing for any new errors or warnings.
+
+## 7. Failure Handling
+
+- If *any* step in the verification process (Step 6) fails, HALT.
+- Revert the removal (e.g., `git checkout <file>`).
+- Trigger the `universal-error-resolution-protocol.mdc` (UERP) to diagnose the verification failure. The removal cannot proceed until the verification passes.
+
+## 8. Verification Checklist (Agent MUST Confirm Before Proceeding After Removal)
+
+- [ ] Was the justification for removal documented (Step 1)?
+- [ ] Was an impact/dependency analysis performed (Step 2)?
+- [ ] Was a clear Replacement/Preservation Plan defined *before* removal (Step 3)?
+- [ ] Was the removal documented inline and in commit messages (Step 4)?
+- [ ] Were `TODO`s added for any deferred custom logic reintegration (Step 4)?
+- [ ] Did the removal edit apply correctly (Step 5)?
+- [ ] Did static analysis (linting/type checking) pass after removal (Step 6.1)?
+- [ ] Did the project build successfully (Step 6.2)?
+- [ ] Did automated and manual tests covering the affected area pass (Step 6.3)?
+- [ ] (If applicable) Did Cross-Protocol Verification checks pass (Step 6.4)?
+- [ ] (If applicable) Were application logs clear during testing (Step 6.5)?
+
+---
+
+

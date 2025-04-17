@@ -39,11 +39,11 @@ export default defineConfig(({ mode }) => {
 			host: env.HOST || 'localhost',
 			port: parseInt(env.PORT || '5173', 10),
 			hmr: {
-				clientPort: process.env.HMR_HOST ? 5173 : null,
+				protocol: env.VITE_HTTPS === 'true' || true ? 'wss' : 'ws',
+				port: parseInt(env.PORT || '5173', 10),
+				host: env.HOST || 'localhost',
 				overlay: true,
-				timeout: 60000,
-				protocol: 'ws',
-				host: env.HOST || 'localhost'
+				timeout: 60000
 			},
 			strictPort: true
 		},

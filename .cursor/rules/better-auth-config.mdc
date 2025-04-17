@@ -3,69 +3,82 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Better Auth Configuration Protocol
+# Better Auth Configuration Protocol v1.1
 
-*(Self-correction: Incremented version based on resolved configuration issue)*
+*(Self-correction: Incremented version, added clarification on adapter usage)*
 
 ## 1. Purpose
 
-This protocol defines the standard structure for the configuration object passed to the `betterAuth()` function, specifically addressing the correct method for integrating with a Kysely dialect (like MySQL) based on official documentation findings for `better-auth@1.2.5`. Adhering to this structure is crucial to avoid type errors, prevent the library from defaulting to the memory adapter, and ensure the library initializes correctly with the intended database.
+This protocol defines the standard structure for the configuration object passed to the `betterAuth()` function. It specifically addresses integrating with a Kysely dialect (like MySQL) and clarifies the necessary configuration based on observed behavior in this project, particularly concerning session ID generation during token synchronization flows. Adhering to this structure is crucial to avoid type errors, prevent defaults to the memory adapter, ensure correct database initialization, and work around potential ID generation issues in specific library flows.
 
 ## 2. Core Principles
 
--   **Correct Key:** Use the top-level `database` key when configuring Better Auth with a Kysely dialect.
--   **Dialect and Type:** The `database` object MUST contain the initialized Kysely `dialect` instance and an explicit `type` string (e.g., `"mysql"`).
--   **Avoid Redundancy:** When providing a Kysely `dialect` under the `database` key, do NOT pass explicit adapter functions (like `getUserByEmail`, `createSession`, etc.) in the configuration; the library uses the dialect's methods.
--   **Valid Top-Level Keys:** Only recognized keys (`secret`, `database`, `sessionCookieName`, `sessionExpiresIn`, `after`, `emailAndPassword`, `socialProviders`, etc.) should be used at the top level.
+-   **Kysely Dialect Integration:** Utilize the `database` key at the top level to provide the Kysely `dialect` instance and explicit `type` (e.g., `"mysql"`). This aligns with standard Better Auth documentation ([better-auth.com/docs/concepts/database](https://www.better-auth.com/docs/concepts/database)).
+-   **Explicit Adapter for Reliability (Project Specific Requirement):** **Crucially**, due to observed issues where Better Auth's internal Kysely session creation logic did *not* generate the required UUID for the `ba_sessions.id` field during the WP sync token flow (leading to "Field 'id' doesn't have a default value" errors), this project **MUST ALSO** provide the full custom `adapter` object at the top level. This ensures our custom `createSessionFn` (which includes `crypto.randomUUID()`) is used, overriding any potentially incomplete internal logic for that specific operation.
+-   **Configuration Precedence:** When both `database: { dialect, type }` and `adapter: { ...customFns }` are provided, Better Auth appears to prioritize the explicitly provided functions in the `adapter` object for operations they cover. The `dialect` likely handles operations *not* explicitly defined in the custom adapter.
+-   **Valid Top-Level Keys:** Only recognized keys (`secret`, `database`, `adapter`, `sessionCookieName`, `sessionExpiresIn`, `after`, `emailAndPassword`, `socialProviders`, etc.) should be used at the top level.
 -   **Secret Key:** Use the `secret` key for the main authentication secret.
 
-## 3. Required Configuration Structure (MySQL + Kysely Example)
+## 3. Required Configuration Structure (MySQL + Kysely + Custom Adapter)
 
-The object passed to `betterAuth()` MUST follow this structure when using a Kysely dialect:
+The object passed to `betterAuth()` MUST follow this structure for this project:
 
 ````javascript
 import { betterAuth } from 'better-auth';
-import { createPool } from 'mysql2/promise'; // Or your pool creation logic
-import { MysqlDialect } from 'kysely';      // Or the appropriate Kysely dialect
+import { createPool } from 'mysql2/promise'; 
+import { MysqlDialect } from 'kysely';      
+import { 
+    // Import your *full* custom adapter functions here
+    getUserByEmailFn, 
+    getUserByIdFn, 
+    getSessionByTokenFn, 
+    createSessionFn, // Especially this one with UUID generation
+    deleteSessionFn,
+    getUserByWpIdFn, 
+    createUserFn 
+} from './path/to/adapter-functions'; 
 import { 
     onUserCreationHook, 
     onSessionCreationHook 
 } from './path/to/hooks'; // Example import for optional hooks
 
 // Assume authSecret and DB connection details are defined elsewhere
-// (e.g., from $env/static/private)
 const authSecret = process.env.BETTER_AUTH_SECRET;
-const dbConfig = {
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '3306'),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    // Other necessary mysql2 pool options...
-};
+const dbConfig = { /* ... your db connection details ... */ };
 
 // Create the Kysely Dialect
 const dialect = new MysqlDialect({
     pool: createPool(dbConfig) 
 });
 
+// Define the adapter object using imported functions
+const adapter = {
+    getUserByEmail: getUserByEmailFn,
+    getUserById: getUserByIdFn,
+    getSessionByToken: getSessionByTokenFn,
+    createSession: createSessionFn, // This uses crypto.randomUUID()
+    deleteSession: deleteSessionFn,
+    getUserByWpId: getUserByWpIdFn,
+    createUser: createUserFn
+};
+
 export const auth = betterAuth({
     // --- Top-Level Options ---
-    secret: authSecret, // REQUIRED: Authentication secret key
-    sessionCookieName: 'better_auth_session', // Optional: Customize cookie name
-    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional: Session duration (ms)
+    secret: authSecret, // REQUIRED
+    sessionCookieName: 'better_auth_session', // Optional
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional
 
     // --- Database Configuration (Using Kysely Dialect) ---
+    // Provide the dialect for potential internal use by Better Auth
     database: {
         dialect: dialect,   // REQUIRED: Kysely dialect instance
         type: "mysql",      // REQUIRED: Explicit type for the dialect
-        // DO NOT add explicit adapter functions (getUserByEmail, etc.) here
-        // when using a Kysely dialect.
     },
 
-    // --- Other Optional Configurations ---
-    // emailAndPassword: { enabled: true }, 
-    // socialProviders: { /* ... */ },
+    // --- Custom Adapter Configuration (OVERRIDES INTERNAL LOGIC) ---
+    // MUST be provided to ensure our custom functions (esp. createSessionFn 
+    // with UUID generation) are used, overriding internal Kysely logic where needed.
+    adapter: adapter, 
 
     // --- Optional Lifecycle Hooks ---
     after: {
@@ -77,23 +90,25 @@ export const auth = betterAuth({
 
 ## 4. Common Pitfalls to Avoid
 
--   **Using `adapter` Key for Kysely:** Do NOT use the `adapter` key when configuring with a Kysely `dialect`. Use the `database` key instead.
--   **Missing `type` Property:** Do NOT omit the `type: "mysql"` (or relevant type) property within the `database` object when providing a `dialect`.
--   **Passing Explicit Adapter Functions with Dialect:** Do NOT provide functions like `getUserByEmail`, `createSession` within the `database` or `adapter` object when using a Kysely `dialect`. The library uses the dialect's methods.
--   **Incorrect Nesting:** Do NOT nest core options like `secret` or session settings inside other objects unless specified by the library documentation for specific features.
+-   **Omitting `database: { dialect, type }`:** Do not omit this, as it's the standard Kysely integration method.
+-   **Omitting `adapter: adapter`:** Do not omit the custom adapter in *this project*, as it's required to work around the session ID generation issue during token sync.
+-   **Nesting Dialect Incorrectly:** Do not nest the `dialect` inside the `adapter` object. Both `database` and `adapter` are top-level keys.
 -   **Incorrect Key Names:** Do NOT use `authKey` instead of `secret`.
 
 ## 5. Verification Checklist
 
-When configuring `betterAuth` with Kysely:
+When configuring `betterAuth` for this project:
 
 -   [ ] Is the `secret` key present at the top level?
 -   [ ] Is the `database` key present at the top level?
 -   [ ] Is the `dialect` instance correctly nested *inside* the `database` object?
 -   [ ] Is the `type` property (e.g., `"mysql"`) present *inside* the `database` object alongside the `dialect`?
--   [ ] Are explicit adapter functions (e.g., `getUserByEmail`) *absent* from the `database` object configuration?
+-   [ ] Is the `adapter` key present at the top level?
+-   [ ] Does the `adapter` object contain all necessary custom adapter functions (including `createSessionFn` with UUID generation)?
 -   [ ] Are `sessionCookieName` and `sessionExpiresIn` at the top level (if used)?
 -   [ ] Is the `after` object present at the top level (if hooks are used)?
 -   [ ] Are there any unexpected keys at the top level?
 -   [ ] Does the configuration pass linter checks without type errors related to `BetterAuthOptions`?
 -   [ ] Does the server start *without* the "No database configuration provided. Using memory adapter..." warning?
+-   [ ] Does the WP sync token -> session creation flow complete *without* the "Field 'id' doesn't have a default value" error?
+

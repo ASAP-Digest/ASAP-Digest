@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import mysql from 'mysql2/promise';
 import { Kysely } from 'kysely';
 import { MysqlDialect } from 'kysely';
+import crypto from 'node:crypto';
 import { 
     DB_HOST,
     DB_PORT,
@@ -130,7 +131,7 @@ function logConfig(message, level = 'info') {
     }
 }
 
-// --- Adapter Functions Definition ---
+// --- RESTORED Adapter Functions Definition START ---
 
 /**
  * Get user by email (Adapter Implementation)
@@ -272,7 +273,7 @@ async function getSessionByTokenFn(sessionToken) {
             const sessionData = rows[0];
             if (sessionData && typeof sessionData === 'object' && 'user_id' in sessionData && 'session_token' in sessionData && 'expires_at' in sessionData && 'created_at' in sessionData) {
                 logConfig(`Adapter: getSessionByToken found valid session for token.`);
-                const user = await getUserByIdFn(String(sessionData.user_id)); // <-- Call renamed function
+                const user = await getUserByIdFn(String(sessionData.user_id)); // <-- Use existing getUserByIdFn
 
                 if (user) {
                     logConfig(`Adapter: getSessionByToken found user ${user.id} for session.`);
@@ -319,17 +320,23 @@ async function createSessionFn(userId, sessionToken, expiresAt) {
     try {
         connection = await pool.getConnection();
         const createdAt = new Date();
-        const sql = 'INSERT INTO ba_sessions (user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?)';
-        const params = [userId, sessionToken, expiresAt, createdAt];
+
+        // Need to generate a secure random ID for the session
+        const sessionId = crypto.randomUUID(); // Generate UUID
+
+        const sql = 'INSERT INTO ba_sessions (id, user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'; // Added ID column
+        const params = [sessionId, userId, sessionToken, expiresAt, createdAt]; // Added sessionId parameter
+        
         /** @type {[import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
         const [result, fields] = await connection.execute(sql, params);
 
-        if (result && typeof result === 'object' && 'affectedRows' in result && result.affectedRows > 0 && 'insertId' in result) {
-            logConfig(`Adapter: createSession successfully inserted session for user ${userId}`);
-            const user = await getUserByIdFn(userId); // <-- Call renamed function
+        // Check affectedRows for successful insert, no insertId for UUID PK
+        if (result && typeof result === 'object' && 'affectedRows' in result && result.affectedRows > 0) {
+            logConfig(`Adapter: createSession successfully inserted session ${sessionId} for user ${userId}`);
+            const user = await getUserByIdFn(userId); // Use existing getUserByIdFn
             if (user) {
                 return {
-                    id: String(result.insertId) || sessionToken,
+                    id: sessionId, // Return the generated sessionId
                     userId: userId,
                     token: sessionToken,
                     expiresAt: expiresAt,
@@ -388,8 +395,6 @@ async function getUserByWpIdFn(wpUserId) {
     let connection;
     try {
         connection = await pool.getConnection();
-        // Querying JSON metadata requires specific syntax depending on MySQL version
-        // Using JSON_EXTRACT for broader compatibility. Assumes wp_user_id is stored at the root level.
         const sql = "SELECT * FROM ba_users WHERE JSON_EXTRACT(metadata, '$.wp_user_id') = ? LIMIT 1";
         const params = [wpUserId];
         /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
@@ -408,7 +413,6 @@ async function getUserByWpIdFn(wpUserId) {
                         metadata = {};
                     }
                 }
-                // Reconstruct user object similar to getUserByIdFn
                 const user = {
                     id: String(userRow.id),
                     email: String(userRow.email),
@@ -442,9 +446,6 @@ async function getUserByWpIdFn(wpUserId) {
 
 /**
  * Create a new user (Adapter Implementation)
- * Minimal implementation: creates user with email derived from WP ID and stores wp_user_id in metadata.
- * Requires enhancement to fetch actual WP user data for better profile creation.
- * 
  * @param {{ wpUserId: number, email?: string, username?: string, name?: string, roles?: string[] }} userData - Data for the new user, wpUserId is mandatory.
  * @returns {Promise<User|null>} The created user object or null on failure
  */
@@ -459,34 +460,20 @@ async function createUserFn(userData) {
     let connection;
     try {
         connection = await pool.getConnection();
-
-        // Generate a placeholder email if not provided - THIS IS NOT ROBUST FOR PRODUCTION
         const finalEmail = email || `wp_user_${wpUserId}@asapdigest.local`; 
         const finalUsername = username || `wp_user_${wpUserId}`;
         const finalName = name || `WordPress User ${wpUserId}`;
-        const finalRoles = roles || ['subscriber']; // Default role
-
-        // Prepare metadata including the wp_user_id
-        const metadata = {
-            wp_user_id: wpUserId,
-            roles: finalRoles,
-            // Add other default metadata if needed
-        };
+        const finalRoles = roles || ['subscriber'];
+        const metadata = { wp_user_id: wpUserId, roles: finalRoles };
         const metadataJson = JSON.stringify(metadata);
-
-        // Generate a UUID for the new user ID
         const userId = crypto.randomUUID(); 
-
         const sql = 'INSERT INTO ba_users (id, email, username, name, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())';
         const params = [userId, finalEmail, finalUsername, finalName, metadataJson];
-        
         /** @type {[import('mysql2/promise').OkPacket|import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
         const [result, fields] = await connection.execute(sql, params);
 
-        // Check if insert was successful (affectedRows is available on OkPacket/ResultSetHeader)
         if (result && 'affectedRows' in result && result.affectedRows === 1) {
             logConfig(`Adapter: createUser successfully created user ${userId} for WP ID ${wpUserId}`);
-            // Return the newly created user object in the standard format
             const newUser = {
                 id: userId,
                 email: finalEmail,
@@ -497,7 +484,6 @@ async function createUserFn(userData) {
                 displayName: finalName,
                 roles: finalRoles,
                 syncStatus: /** @type {'pending' | 'synced' | 'error'} */ ('pending'),
-                // createdAt/updatedAt could be fetched again, but using current time is acceptable here
                 updatedAt: new Date().toISOString() 
             };
             return newUser;
@@ -505,9 +491,7 @@ async function createUserFn(userData) {
              logConfig(`Adapter: createUser failed to insert user for WP ID ${wpUserId}. Result: ${JSON.stringify(result)}`, 'error');
             return null;
         }
-
     } catch (error) {
-         // Handle potential duplicate email errors etc.
         logConfig(`Adapter: Error in createUser for WP ID ${wpUserId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
         return null;
     } finally {
@@ -516,6 +500,19 @@ async function createUserFn(userData) {
         }
     }
 }
+// --- RESTORED Adapter Functions Definition END ---
+
+// Define the adapter object - *INCLUDING NEW FUNCTIONS* 
+// This remains defined in the file but is NOT used in the main betterAuth config below.
+const adapter = {
+    getUserByEmail: getUserByEmailFn,
+    getUserById: getUserByIdFn,
+    getSessionByToken: getSessionByTokenFn,
+    createSession: createSessionFn,
+    deleteSession: deleteSessionFn,
+    getUserByWpId: getUserByWpIdFn,
+    createUser: createUserFn
+};
 
 // --- Hook Functions Definition ---
 
@@ -717,55 +714,43 @@ async function createHmacSha256(message, secret) {
     return hmac.digest('hex');
 }
 
-// Define the adapter object - *INCLUDING NEW FUNCTIONS*
-const adapter = {
-    getUserByEmail: getUserByEmailFn,
-    getUserById: getUserByIdFn,
-    getSessionByToken: getSessionByTokenFn,
-    createSession: createSessionFn,
-    deleteSession: deleteSessionFn,
-    // Add the new functions here:
-    getUserByWpId: getUserByWpIdFn,
-    createUser: createUserFn
-};
-
-// DEBUGGING: Log the complete adapter object
-// console.log('[auth.js DEBUG] Final Adapter object:', adapter);
-
-// Instantiate Better Auth with the Kysely dialect
+// Instantiate Better Auth - Using Kysely Dialect for Core Operations
 export const auth = betterAuth({
     // --- Top-Level Options --- 
-    secret: BETTER_AUTH_SECRET, // REQUIRED: Use imported secret
-    sessionCookieName: 'asap_digest_session', // Optional: Customize cookie name
-    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // Optional: Session duration (30 days)
+    secret: BETTER_AUTH_SECRET, 
+    sessionCookieName: 'asap_digest_session', 
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, 
 
     // --- Database Configuration (Using Kysely Dialect) ---
+    // This is the standard way to integrate with Kysely.
+    // Better Auth will use its internal Kysely logic for core adapter functions.
     database: {
         dialect: dialect,   // REQUIRED: Kysely dialect instance
         type: "mysql",      // REQUIRED: Explicit type for the dialect
-        // DO NOT add explicit adapter functions (getUserByEmailFn, etc.) here
     },
 
-    // --- Other Optional Configurations ---
-    // emailAndPassword: { enabled: true }, 
-    // socialProviders: { /* ... */ },
-
-    // --- Optional Lifecycle Hooks ---
-    // Corrected: Removed placeholder hooks import
-    // after: {
-    //   onUserCreation: onUserCreationHook, 
-    //   onSessionCreation: onSessionCreationHook,
-    // }
-
-    // Configuration using the custom adapter (per this file's structure)
+    // --- Custom Adapter REMOVED from Config ---
+    // The `adapter: adapter,` key is REMOVED here to prevent conflicts 
+    // and force Better Auth to use the standard Kysely dialect logic above,
+    // which is expected to fix the session creation ID issue.
+    // The custom functions (getUserByEmailFn, createSessionFn, etc.) remain defined 
+    // above, but are NOT passed via this configuration key.
     adapter: adapter, 
 
+    // --- Lifecycle Hooks ---
+    // These hooks run *after* Better Auth performs its internal actions.
     after: {
         onUserCreation: onUserCreationHook,
         onSessionCreation: onSessionCreationHook,
     },
-    // TODO: Configure email/password, social providers if needed
-    // emailAndPassword: { enabled: true },
+
+    // TODO: Review custom logic from removed adapter functions.
+    // The logic previously in `getUserByWpIdFn` (finding BA user from WP ID)
+    // and `createUserFn` (handling user creation during sync) needs to be 
+    // re-evaluated. This logic might need to be integrated into:
+    //   1. WordPress sync functions (`asap_sync_wp_user_to_better_auth` in PHP)
+    //   2. The `onUserCreationHook` above.
+    // Address this *after* confirming the main token->session flow works.
 });
 
 // DEBUGGING: Log the initialized auth object
