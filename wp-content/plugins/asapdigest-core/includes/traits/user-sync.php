@@ -98,6 +98,9 @@ trait User_Sync {
                 // $user_data['id'] = $ba_user_id; // REMOVED - ID will be handled by Better Auth/DB?
                 $user_data['created_at'] = current_time('mysql');
                 // $user_data now contains: email, username, name, metadata, created_at
+
+                // ---> ADD generated ID back to the data array <---
+                $user_data['id'] = $ba_user_id; 
                 
                 // ---- START DEBUG LOGGING ----
                 error_log('[ASAP Digest Sync Debug] Attempting insert into ba_users. Data (excluding ID): ' . print_r($user_data, true));
@@ -108,7 +111,8 @@ trait User_Sync {
                     $wpdb->prefix . 'ba_users',
                     $user_data,
                     // Adjusted format specifiers (removed one %s for id)
-                    ['%s', '%s', '%s', '%s', '%s'] 
+                    // ---> Corrected format specifiers to include %s for id <---
+                    ['%s', '%s', '%s', '%s', '%s', '%s'] // id, email, username, name, metadata, created_at
                 );
 
                 if (!$inserted) {

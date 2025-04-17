@@ -1330,6 +1330,18 @@ function asap_render_better_auth_settings() {
                 );
             }
 
+            // ---> ADD: TESTING DELETE BA USER Button <---
+            if ($better_auth_id) { // Only show if user is actually synced
+                $sessions_content .= sprintf(
+                    '<button class="button button-secondary delete-ba-user-test" data-user-id="%d" data-ba-user-id="%s" data-nonce="%s" style="color: #d63638; border-color: #d63638; margin-left: 4px;">%s</button>',
+                    $user->ID,          // WP User ID
+                    esc_attr($better_auth_id), // Better Auth User ID (UUID)
+                    wp_create_nonce('delete_ba_user_test_' . $user->ID),
+                    __('TESTING: DELETE BA USER')
+                );
+            }
+            // ---> END ADD <---
+
             // Add new user management actions
                 $sessions_content .= sprintf(
                 '<button class="button button-secondary ban-user" data-user-id="%d" data-nonce="%s">%s</button>',
@@ -1566,6 +1578,53 @@ function asap_render_better_auth_settings() {
                 }
             });
         });
+
+        // ---> ADD: TESTING DELETE BA USER Action <---
+        $('body').on('click', '.delete-ba-user-test', function(e) { // Use event delegation
+            e.preventDefault();
+            if (!confirm('DANGER! This will delete the Better Auth user record ONLY (not the WP user), requiring re-sync. Proceed?')) {
+                return;
+            }
+            var button = $(this);
+            var wpUserId = button.data('user-id');
+            var baUserId = button.data('ba-user-id'); // Get the BA User ID (UUID)
+            var nonce = button.data('nonce');
+            var statusContainer = button.closest('tr').find('.better-auth-status'); // Target status div in the same row
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'asap_delete_ba_user_test', // New AJAX action
+                    wp_user_id: wpUserId,
+                    ba_user_id: baUserId, // Send the BA User ID (UUID)
+                    nonce: nonce
+                },
+                beforeSend: function() {
+                    button.addClass('asap-loading').prop('disabled', true);
+                    statusContainer.html('Deleting BA User...'); // Update status indicator
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.data.message);
+                        // Optionally refresh just the row or the whole page
+                        location.reload(); 
+                    } else {
+                        alert(response.data.message || 'Error deleting Better Auth user');
+                        button.removeClass('asap-loading').prop('disabled', false); // Re-enable on error
+                         statusContainer.html('Error!'); // Update status
+                    }
+                },
+                error: function(xhr) {
+                    alert('Error communicating with server: ' + xhr.statusText);
+                    button.removeClass('asap-loading').prop('disabled', false);
+                     statusContainer.html('Error!'); // Update status
+                }
+                // No complete handler needed if reloading on success
+            });
+        });
+        // ---> END ADD <---
+
     });
 </script>
 JS;
@@ -2748,7 +2807,6 @@ function asap_create_ba_session($ba_user_id) {
     }
 }
 
-// ... existing code ...
 add_action('wp_ajax_nopriv_asap_unlock_role', 'asap_ajax_unlock_role');
 
 // TEMPORARY DEBUGGING HOOK
@@ -2756,4 +2814,112 @@ function asap_debug_wp_login_hook_test($user_login, $user) {
     error_log('[ASAP TEMP DEBUG] wp_login hook fired successfully for user: ' . $user_login);
 }
 add_action('wp_login', 'asap_debug_wp_login_hook_test', 5, 2); // Use priority 5 to fire early
+
+// ---> ADD: New AJAX handler function for BA user deletion <---
+/**
+ * @description AJAX handler for deleting a Better Auth user record (for testing)
+ */
+function asap_ajax_delete_ba_user_test() {
+    // Verify nonce and permissions
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+        return; // Added return
+    }
+    
+    $wp_user_id = intval($_POST['wp_user_id'] ?? 0);
+    $ba_user_id = sanitize_text_field($_POST['ba_user_id'] ?? ''); // Get the UUID
+    $nonce = sanitize_text_field($_POST['nonce'] ?? '');
+    
+    if (empty($wp_user_id) || empty($ba_user_id) || !wp_verify_nonce($nonce, 'delete_ba_user_test_' . $wp_user_id)) {
+         error_log("[ASAP BA Delete Test] Nonce or ID verification failed. WP ID: {$wp_user_id}, BA ID: {$ba_user_id}, Nonce Valid: " . wp_verify_nonce($nonce, 'delete_ba_user_test_' . $wp_user_id));
+        wp_send_json_error(['message' => 'Invalid request or nonce.']);
+        return; // Added return
+    }
+
+    // Double-check the meta matches the provided ba_user_id
+    $meta_ba_user_id = get_user_meta($wp_user_id, 'better_auth_user_id', true);
+    if ($meta_ba_user_id !== $ba_user_id) {
+        error_log("[ASAP BA Delete Test] Mismatch between provided BA ID ({$ba_user_id}) and stored meta ({$meta_ba_user_id}) for WP User {$wp_user_id}. Aborting.");
+         wp_send_json_error(['message' => 'User ID mismatch. Please refresh the page.']);
+         return; // Added return
+    }
+
+    global $wpdb;
+    $ba_users_table = $wpdb->prefix . 'ba_users';
+    $ba_sessions_table = $wpdb->prefix . 'ba_sessions';
+    $ba_map_table = $wpdb->prefix . 'ba_wp_user_map';
+    $ba_verifications_table = $wpdb->prefix . 'ba_verifications';
+    // Add ba_accounts if it exists and needs cleanup based on userId
+    $ba_accounts_table = $wpdb->prefix . 'ba_accounts'; // Assuming table name
+
+    $wpdb->query('START TRANSACTION');
+    $error = false;
+
+    try {
+        // 1. Delete sessions
+        $wpdb->delete($ba_sessions_table, ['user_id' => $ba_user_id], ['%s']);
+        
+        // 2. Delete verifications (assuming identifier links to user ID)
+        // Use a placeholder value for the verification identifier if it's not the user ID
+        // For now, we assume 'identifier' might store the ba_user_id for certain verification types
+        // This might need refinement based on how ba_verifications is actually used.
+        // A safer approach might be to delete based on email if known, or skip if unsure.
+        // Let's assume for now identifier *could* be the user ID for some cases.
+        // $wpdb->delete($ba_verifications_table, ['identifier' => $ba_user_id], ['%s']); // Commenting out for safety until verified
+        error_log("[ASAP BA Delete Test] Skipping ba_verifications deletion - relationship to user ID unclear.");
+
+
+        // 3. Delete accounts (if table exists and uses user_id FK)
+        // Check if table exists first to avoid errors if not created
+         $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $ba_accounts_table));
+         if ($table_exists) {
+              // IMPORTANT: Verify the foreign key column name in ba_accounts! Assuming 'userId' based on docs.
+              $wpdb->delete($ba_accounts_table, ['userId' => $ba_user_id], ['%s']); 
+         } else {
+              error_log("[ASAP BA Delete Test] Skipping ba_accounts deletion - table does not exist.");
+         }
+
+
+        // 4. Delete mapping
+        $wpdb->delete($ba_map_table, ['ba_user_id' => $ba_user_id], ['%s']);
+
+        // 5. Delete the BA user record itself
+        $deleted = $wpdb->delete($ba_users_table, ['id' => $ba_user_id], ['%s']);
+
+        if ($deleted === false) {
+            throw new \Exception('Failed to delete user from ba_users. DB Error: ' . $wpdb->last_error);
+        }
+        if ($deleted === 0) {
+             error_log("[ASAP BA Delete Test] Warning: Delete from ba_users reported 0 rows affected for ID: {$ba_user_id}. User might have been already deleted.");
+             // Continue anyway to cleanup meta
+        }
+
+
+        // 6. Delete WP user meta linking to the deleted BA user
+        delete_user_meta($wp_user_id, 'better_auth_user_id');
+        delete_user_meta($wp_user_id, 'better_auth_session_token');
+        delete_user_meta($wp_user_id, 'better_auth_last_login');
+        delete_user_meta($wp_user_id, 'better_auth_last_sync');
+        delete_user_meta($wp_user_id, 'better_auth_metadata_snapshot');
+        delete_user_meta($wp_user_id, 'better_auth_sync_status'); // Also clear status meta
+        delete_user_meta($wp_user_id, 'better_auth_sync_error');  // Also clear error meta
+        delete_user_meta($wp_user_id, 'better_auth_sync_source'); // Also clear source meta
+
+
+    } catch (\Exception $e) {
+        $error = true;
+        $wpdb->query('ROLLBACK');
+        error_log('[ASAP BA Delete Test] Error deleting BA user data for WP User ID ' . $wp_user_id . ': ' . $e->getMessage());
+        wp_send_json_error(['message' => 'Database error during deletion: ' . $e->getMessage()]);
+        return; // Added return
+    }
+
+    if (!$error) {
+        $wpdb->query('COMMIT');
+        error_log('[ASAP BA Delete Test] Successfully deleted Better Auth data for WP User ID: ' . $wp_user_id);
+        wp_send_json_success(['message' => 'Better Auth user record deleted successfully.']);
+    }
+}
+add_action('wp_ajax_asap_delete_ba_user_test', 'asap_ajax_delete_ba_user_test');
+// ---> END ADD <---
   

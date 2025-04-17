@@ -321,6 +321,18 @@ async function createSessionFn(userId, sessionToken, expiresAt) {
         connection = await pool.getConnection();
         const createdAt = new Date();
 
+        // ---> ADD: Delete existing sessions for this user first <---
+        try {
+            const deleteSql = 'DELETE FROM ba_sessions WHERE user_id = ?';
+            const deleteParams = [userId];
+            await connection.execute(deleteSql, deleteParams);
+            logConfig(`Adapter: createSession deleted existing sessions for user ${userId}`);
+        } catch (deleteError) {
+            logConfig(`Adapter: Error deleting existing sessions for user ${userId}: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`, 'warn');
+            // Decide whether to proceed or throw. Proceeding might be okay if the goal is just to establish a new session.
+        }
+        // ---> END ADD <---
+
         // Need to generate a secure random ID for the session
         const sessionId = crypto.randomUUID(); // Generate UUID
 

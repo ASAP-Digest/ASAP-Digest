@@ -32,7 +32,7 @@
   import { 
     Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download 
   } from '$lib/utils/lucide-compat.js';
-  import { goto } from '$app/navigation'; // Import goto from correct module
+  import { goto, invalidateAll } from '$app/navigation'; // Import invalidateAll from correct module
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -108,7 +108,7 @@
                   'success'
                 );
                 // Invalidate all data to ensure stores and UI reflect the new session
-                goto(window.location.href, { invalidateAll: true }); 
+                invalidateAll();
               } else {
                 // Log why sync didn't happen, but don't redirect
                 console.log('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '(No specific reason provided)');
@@ -165,8 +165,8 @@
                 
                 // Optionally, still invalidate to refresh other potentially related data, 
                 // but the toast trigger now relies *only* on the direct timestamp comparison above.
-                console.log('[Layout Sync Listener] Calling goto() to refresh potentially related data.');
-                goto(window.location.href, { invalidateAll: true }); // NEW: Use goto to force reload
+                console.log('[Layout Sync Listener] Calling invalidateAll() to refresh potentially related data.');
+                invalidateAll(); // Use invalidateAll() instead of goto()
 
               } else {
                 // Log if timestamp hasn't changed (unlikely but possible)
@@ -549,8 +549,30 @@
             'Your WordPress session was automatically detected.',
             'success'
           );
+
+          // --- Fetch session data explicitly after successful sync ---
+          try {
+            console.log('[Layout Bridge] Fetching session data after successful sync...');
+            const sessionResponse = await fetch('/api/auth/session'); // Assuming this endpoint returns current session
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
+              if (sessionData?.user) {
+                console.log('[Layout Bridge] Successfully fetched session data, updating local state:', sessionData.user);
+                currentUser = sessionData.user; // Update local reactive state
+                // Optionally update a dedicated store if currentUser isn't sufficient
+              } else {
+                 console.warn('[Layout Bridge] Fetched session data, but no user object found.');
+              }
+            } else {
+               console.warn(`[Layout Bridge] Fetch to /api/auth/session failed with status: ${sessionResponse.status}`);
+            }
+          } catch (sessionError) {
+             console.error('[Layout Bridge] Error fetching session data after sync:', sessionError);
+          }
+          // --- End explicit session fetch ---
+
           // Refresh page data to reflect new SK session
-          goto(window.location.href, { invalidateAll: true });
+          invalidateAll();
           // Optionally remove the success indicator after a delay
           setTimeout(() => { if (wpSyncStatus === 'synced') wpSyncStatus = 'idle'; }, 3000);
 
