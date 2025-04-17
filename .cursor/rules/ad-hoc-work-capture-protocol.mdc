@@ -1,0 +1,89 @@
+---
+description: Defines the process for detecting, capturing, and preserving ad hoc work performed outside formal sessions. Integrates with VEMNP for notifications.
+globs: 
+alwaysApply: false
+---
+# Ad Hoc Work Capture Protocol (AWCP) v1.0
+
+## 1. Purpose
+
+This protocol defines the process for **detecting, capturing, and preserving** work performed outside of formally initiated work sessions (managed by `work-session-management-protocol.mdc`). It aims to prevent loss of context or progress during spontaneous investigation, debugging, or minor fixes. It relies on AI assessment for significance and integrates with the **VeriDX Event Monitoring & Notification Protocol (VEMNP)** framework (conceptual) for configurable feedback and logging.
+
+**Note:** This protocol does *not* define how notifications are sent; it *publishes* events (like `AWCP_AutoSavePointCreated` or `AWCP_ConsolidationPromptRequired`) which are then handled by VEMNP based on settings in `.cursor/veridx/veridx-config.json`.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Rule Execution Protocol              │ // Core execution mechanism
+│ 2. Server Memory Rules (v2.1+)          │ // Entity/Relation Management
+│ 3. Task Tracking Protocol               │ // Roadmap Updates (Optional)
+│ 4. Central Config (`veridx-config.json`)│ // Source of AWCP settings
+│ 5. VeriDX Event Monitoring & Notif Proto│ // Target for Published Events
+│ 6. Ad Hoc Work Capture Proto (This)     │ // Self-reference
+│ 7. *Key Transition Protocols*           │ // SC, IAW, RWS, BWS, EWS (Trigger Points)
+│ 8. Audit Trail System                   │
+│ 9. Cross-Protocol Comms & Verification   │
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger Points
+
+-   **Implicit Activation:** This protocol's logic is invoked internally by the VeriDX system at specific trigger points, primarily **key workflow transition commands** (defined in WSAP/other protocols) and **potentially after significant actions** (like `edit_file`, database modification) occur outside a formal `WorkSession`.
+-   **Triggering Protocols (Examples):** `status-check.mdc`, `initiate-agent-workflow.mdc`, `work-session-management-protocol.mdc` (during RWS/BWS/EWS), `update-memory.mdc`, potentially others after specific tool calls.
+
+## 4. Core Logic: Detect, Assess, Capture, Consolidate
+
+*(High-level description - detailed implementation is internal)*
+
+1.  **Detect Context Delta:** At a trigger point, analyze actions (tool calls, commands, conversation context) since the last formal save point (EWS, SWS, previous manual Ad Hoc capture).
+2.  **AI Assess Significance:**
+    *   Read `protocolSettings.AWCP.significanceThreshold` from `.cursor/veridx/veridx-config.json`.
+    *   Evaluate the delta against the threshold. Determine if changes warrant preservation.
+3.  **Quiet Auto-Save (if applicable):**
+    *   Read `protocolSettings.AWCP.autoSaveEnabled` from config.
+    *   If significant AND `autoSaveEnabled` is true:
+        *   Generate `AdHocSavePoint` entity ID.
+        *   Create `AdHocSavePoint` entity in Server Memory (Timestamp, AI Summary, Links).
+        *   **Publish Event:** Send `AWCP_AutoSavePointCreated` event object to VEMNP, including `summary` and `savePointID` in `data`, and `savePointID` as `relevantEntityID`.
+4.  **Consolidation Check (at Transitions):**
+    *   When a key transition command is issued (e.g., `SC`, `IAW`, `RWS`):
+        *   Check Server Memory for any `AdHocSavePoint` entities created since the last formal state change.
+        *   If none found, perform immediate AI assessment (Step 2) on preceding context.
+        *   If relevant context (from save points or immediate assessment) exists:
+            *   **Publish Event:** Send `AWCP_ConsolidationPromptRequired` event to VEMNP, including `count` of points in `data`.
+            *   **Present Prompt (User Interaction):** Display AI summaries and prompt user in the primary interface:
+                *   `Consolidate AdHoc [OptionalID] [Summary]` -> Creates `AdHocSession`, marks points consolidated.
+                *   `Ignore AdHoc Saves` -> Marks points ignored.
+                *   `Merge AdHoc Saves <TaskID> [Summary]` -> Consolidates + updates roadmap (sub-task).
+                *   `NewTask AdHoc Saves <Heading> [Summary]` -> Consolidates + updates roadmap (new parent/sub-task).
+            *   Execute chosen action, updating Server Memory and potentially `docs/ROADMAP_TASKS.md`. Perform State Synchronization Verification if roadmap is touched.
+5.  **Continue Original Flow:** After handling ad hoc capture/consolidation, resume the execution of the original triggering command/protocol.
+
+## 5. Server Memory Entities
+
+-   **`AdHocSavePoint`:** (Created by silent auto-save)
+    *   `name`: String (ID, e.g., `AH_SavePoint_[Timestamp]`)
+    *   `entityType`: `AdHocSavePoint`
+    *   `observations`:
+        *   `creationTime`: Timestamp
+        *   `aiSummary`: String
+        *   `status`: `ACTIVE` | `CONSOLIDATED` | `IGNORED`
+        *   `consolidationSessionID`: String (ID of the `AdHocSession` it was merged into, Optional)
+    *   `relations`: Links to entities created/modified during the captured delta.
+-   **`AdHocSession`:** (Created manually via consolidation prompt)
+    *   `name`: String (ID, user-provided or generated)
+    *   `entityType`: `AdHocSession`
+    *   `observations`:
+        *   `creationTime`: Timestamp (consolidation time)
+        *   `purposeSummary`: String (User-provided or derived from save points)
+        *   `sourceSavePointIDs`: List<String> (IDs of the `AdHocSavePoint`s merged)
+        *   `roadmapActionTaken`: String (e.g., `ignore`, `subtask:T-123`, `newtask:Features`)
+    *   `relations`: Links to entities captured from the source save points.
+
+## 6. Configuration Reference
+
+-   This protocol's operational behavior (auto-save, significance level) is configured within the `protocolSettings.AWCP` section of `.cursor/veridx/veridx-config.json`.
+-   Notification behavior for events published by this protocol (`AWCP_AutoSavePointCreated`, `AWCP_ConsolidationPromptRequired`) is configured within the `eventNotifications` section of `.cursor/veridx/veridx-config.json` and handled by the VEMNP framework.

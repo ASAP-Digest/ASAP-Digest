@@ -1,0 +1,158 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Master Rule Index Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard for creating and maintaining the central index file (`.cursor/rules/index.mdc`) for all active Cursor rules within this repository. The index file serves as a quick reference and table of contents, organized by category, to help both developers and the AI easily find relevant rules.
+
+## 2. Protocol Integration Layer
+
+```text
+┌───────────────────────────────────────────┐
+│         Protocol Integration            │
+├───────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. New Rule Creation Protocol           │ // Process creating rules listed here
+│ 4. Rule Formatting Protocol             │ // Formatting for this protocol file
+│ 5. Server Memory Rules                  │ // Potential source for rule list verification
+│ 6. Cross-Protocol Comms & Verification   │
+│ 7. Audit Trail System                   │ // Logging index updates
+└───────────────────────────────────────────┘
+```
+
+## 3. Index File Requirements (`.cursor/rules/index.mdc`)
+
+1.  **Location:** The index file MUST be named `index.mdc` and reside directly within the `.cursor/rules/` directory.
+2.  **Format:** The file MUST be a Markdown document.
+3.  **Structure:**
+    *   MUST begin with a level 1 heading (e.g., `# ASAP Digest - Master Rule Index`).
+    *   MUST include a brief introductory paragraph explaining its purpose.
+    *   MUST organize rules into logical categories using level 2 headings (e.g., `## Core & General`, `## Frontend & UI`, `## Backend & API`, `## Process & Workflow`, `## WordPress Specific`). Categories should be chosen based on the project's specific needs.
+    *   Within each category, rules MUST be listed in a Markdown table with two columns: `Rule File` and `Description`.
+    *   The `Rule File` column MUST contain a reference to the rule file (e.g., `access-project-db.mdc`). Using `@` mentions (`@access-project-db.mdc`) is preferred if the environment supports them for linking.
+    *   The `Description` column MUST contain a concise summary of the rule's purpose, ideally matching or derived from the `description` field in the rule file's frontmatter.
+
+## 4. Example Index Structure
+
+```markdown
+# ASAP Digest - Master Rule Index v1.0
+
+This document serves as the central index for all active Cursor rules within this repository, organized by category.
+
+## Core & General
+
+Fundamental project structure, setup, and general development guidelines.
+
+| Rule File                         | Description                                         |
+| :-------------------------------- | :-------------------------------------------------- |
+| @asap-digest-stack.mdc            | Core technology stack definition & protocols         |
+| @tooling-setup-guide.mdc          | Setup for ESLint, Prettier, Husky, etc.            |
+| @server-memory-rules.mdc          | Protocol for Server Memory state management        |
+| @rule-formatting-protocol.mdc     | MANDATORY formatting rules for `.mdc` files      |
+| @new-rule-creation-protocol.mdc   | Process for creating new rules                   |
+| @master-rule-index-protocol.mdc   | Defines structure & maintenance of this index       |
+| ...                               | ...                                                 |
+
+## Frontend & UI (SvelteKit)
+
+Guidelines for building user interfaces and handling frontend logic.
+
+| Rule File                          | Description                                                    |
+| :--------------------------------- | :------------------------------------------------------------- |
+| @golden-ratio-design-system-protocol.mdc | Core visual styling standards (Color, Type, Space)           |
+| @sk2-scns5-t4-int.mdc              | SvelteKit/Shadcn/Tailwind Integration Rules                    |
+| @add-shadcn-svelte-component.mdc   | Process for adding Shadcn-Svelte components                  |
+| @icon-management.mdc               | Rules for importing and using Lucide icons via wrapper       |
+| @strict-visual-enforcement-protocol.mdc | Automated checks for the Golden Ratio Design System          |
+| @visual-style-enforcement-protocol.mdc | Verification checks against the visual style guide           |
+| @ui-check.mdc                      | Protocol for visual UI review using screenshots              |
+| @svelte-5-syntax-migration-protocol.mdc | Rules for migrating to Svelte 5 syntax ($props, @render)     |
+| @component-dependency-usage-protocol.mdc | Protocol for resolving component import/usage errors        |
+| ...                                | ...                                                            |
+
+## Backend & API (SvelteKit/Node)
+
+Guidelines for implementing backend logic, APIs, and data persistence.
+
+| Rule File                          | Description                                               |
+| :--------------------------------- | :-------------------------------------------------------- |
+| @better-auth-config.mdc            | Configuration structure for Better Auth library           |
+| @better-auth-route-handling.mdc    | Handling Better Auth routes in SvelteKit                  |
+| @server-route-handling-rule.mdc    | Handling server routes (Dev/Prod parity)                  |
+| @access-project-db.mdc             | Protocol for accessing the project DB via Unix socket    |
+| ...                                | ...                                                       |
+
+## WordPress Specific
+
+Rules pertaining specifically to the WordPress part of the stack.
+
+| Rule File                                    | Description                                         |
+| :------------------------------------------- | :-------------------------------------------------- |
+| @php-file-creation-protocol.mdc              | Standard structure for new PHP files                |
+| @wordpress-class-organization.mdc            | Rules for PHP class organization and namespaces   |
+| @wordpress-admin-style-enqueue-protocol.mdc  | Protocol for enqueuing admin styles correctly       |
+| @wordpress-admin-ui-component-style-protocol.mdc | Styling conventions for custom WP admin components |
+| ...                                          | ...                                                 |
+
+## Process & Workflow
+
+Protocols defining development processes, state management, and error handling.
+
+| Rule File                                 | Description                                                |
+| :---------------------------------------- | :--------------------------------------------------------- |
+| @software_development_meta_protocol.mdc   | Overarching development workflow                           |
+| @rule_execution_protocol.mdc              | Protocol for executing individual rules                    |
+| @universal-error-resolution-protocol.mdc  | Standard process for diagnosing and fixing errors          |
+| @initiate-agent-workflow.mdc              | Protocol for starting agent work sessions (IAW)            |
+| @work-session-activation-protocol.mdc     | Defines commands for session control (BWS, EWS, RWS, ST, EAQ) |
+| @work-session-management-protocol.mdc     | Manages the lifecycle and state of work sessions           |
+| @status-check.mdc                         | Protocol for generating project status reports             |
+| @testing-verification-protocol.mdc        | Process for user testing and task completion approval      |
+| @update-memory.mdc                        | Protocol for updating memory and docs after task work      |
+| @cross-protocol-communication-and-verfication-framework.mdc | Framework for state sync and verification between protocols |
+| @critical-code-removal-protocol.mdc       | MANDATORY protocol before removing any code                |
+| @format-time.mdc                          | Standard for retrieving and formatting timestamps          |
+| ...                                       | ...                                                        |
+
+## Helper & Typing Protocols
+
+Specific protocols for code implementation details like function creation and typing.
+
+| Rule File                                 | Description                                         |
+| :---------------------------------------- | :-------------------------------------------------- |
+| @new-directory-protocol.mdc               | Protocol for creating new directories               |
+| @new-file-protocol.mdc                    | Protocol for creating new files                     |
+| @new-function-protocol.mdc                | Protocol for creating new functions (JS/PHP)        |
+| @jsdoc-complex-parameter-typing-protocol.mdc | JSDoc standards for complex/destructured parameters |
+| @local-variable-type-safety-protocol.mdc  | JSDoc standards for type guards on local variables   |
+| @install-npm-packages.mdc                 | Protocol for installing NPM packages                |
+| ...                                       | ...                                                 |
+
+```
+
+## 5. Maintenance
+
+1.  **Trigger:** This index file MUST be updated whenever a new rule is created, an existing rule is deleted, or a rule's filename or core purpose (description) changes significantly.
+2.  **Responsibility:** The entity (Agent or User) making the rule change is responsible for updating this index file accordingly.
+3.  **Process:**
+    *   Locate the appropriate category section.
+    *   Add, remove, or modify the table row for the affected rule.
+    *   Ensure the description is concise and accurate.
+4.  **Verification:** After updating, review the index file for accuracy and completeness. Ensure table formatting is correct.
+5.  **Audit:** Log `MASTER_INDEX_UPDATED` event in the Audit Trail.
+
+## 6. Verification Checklist
+
+-   [ ] Is the index file named `index.mdc` and located in `.cursor/rules/`?
+-   [ ] Does it start with a level 1 heading and intro paragraph?
+-   [ ] Are rules organized into logical categories (level 2 headings)?
+-   [ ] Is a Markdown table used within each category?
+-   [ ] Does the table have `Rule File` and `Description` columns?
+-   [ ] Are rule filenames correctly listed (with `@` mentions preferred)?
+-   [ ] Are descriptions concise and accurate?
+-   [ ] Is the maintenance process clear?

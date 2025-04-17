@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# New Rule Creation Protocol v1.0
+# New Rule Creation Protocol v1.1
+
+*(Self-correction: Added v1.1 and Master Index update requirement)*
 
 ## 1. Purpose
 
@@ -11,9 +13,7 @@ This protocol defines the systematic process for identifying the need for, draft
 
 ## 2. Protocol Integration Layer
 
-This protocol interfaces with several core system protocols:
-
-````text
+```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
@@ -21,11 +21,12 @@ This protocol interfaces with several core system protocols:
 │ 2. Rule Execution Protocol              │ // Executing steps herein
 │ 3. Universal Error Resolution (UERP)    │ // Error analysis & Enhancement trigger
 │ 4. Rule Formatting Protocol             │ // MANDATORY formatting standard
-│ 5. Server Memory Rules                  │ // Logging/Tracking (Optional)
-│ 6. Cross-Protocol Comms & Verification   │ // Verifying rule integrity
-│ 7. Audit Trail System                   │ // Logging rule creation event
+│ 5. Master Rule Index Protocol           │ // Defines index file to be updated
+│ 6. Server Memory Rules                  │ // Logging/Tracking (Optional)
+│ 7. Cross-Protocol Comms & Verification   │ // Verifying rule integrity
+│ 8. Audit Trail System                   │ // Logging rule creation event
 └─────────────────────────────────────────┘
-````
+```
 
 ## 3. Activation & Trigger Conditions
 
@@ -44,7 +45,7 @@ This protocol is typically initiated when:
 2.  **Error Description (If Applicable):** If triggered by an error (via UERP), accurately and comprehensively describe the error, its symptoms, and its occurrences.
 3.  **Root Cause Analysis (UERP):** Determine the fundamental cause of the error or process gap.
 4.  **Categorization:** Categorize the problem domain (e.g., "UI Consistency", "State Management", "Dependency Handling", "Security", "Formatting").
-5.  **Existing Rule Check:** Verify that no existing rule adequately addresses the identified problem. Search `<available_instructions>` and Server Memory/Docs.
+5.  **Existing Rule Check:** Verify that no existing rule adequately addresses the identified problem. Search `<available_instructions>`, Server Memory/Docs, and `.cursor/rules/index.mdc`.
 
 ### Step 2: Draft Initial Specific Rule
 
@@ -61,15 +62,23 @@ This protocol is typically initiated when:
 4.  **Clarity & Testability:** Ensure the rule's requirements are unambiguous and, where possible, testable (either automatically via linters/checks or manually via checklists).
 5.  **Conflict Check:** Analyze potential conflicts with existing rules. Resolve conflicts or document necessary precedence.
 
-### Step 4: Formatting & Structure (MANDATORY)
+### Step 4: Formatting, Structure & File Standards (MANDATORY)
 
 1.  **Adhere to Formatting Protocol:** The *entire* content of the new rule MUST strictly adhere to all requirements defined in `rule-formatting-protocol.mdc`. This includes:
     *   Single outer ` ```markdown ... ``` ` block for the rule content.
-    *   Quadruple backticks (` ```` ... ```` `) for ALL nested code examples, configurations, or structured text blocks.
+    *   Triple backticks (`` ` ``) for ALL nested code examples, configurations, or structured text blocks.
     *   Appropriate language specifiers.
-    *   Clear structure using headings, lists, and inline formatting.
-2.  **Naming Convention:** Choose a descriptive, hyphenated filename (e.g., `new-component-structure-protocol.mdc`).
-3.  **Versioning:** Include a version number (e.g., `v1.0`) in the main heading.
+2.  **File Location (MUST):** Rule files MUST be placed exclusively within the `PROJECT_ROOT/.cursor/rules/` directory.
+3.  **Naming Convention (MUST):** Rule filenames MUST use `kebab-case` and the `.mdc` extension (e.g., `new-component-structure-protocol.mdc`). Names should be descriptive.
+4.  **Frontmatter (MUST):** Each rule file MUST begin with YAML frontmatter enclosed in `---`. At a minimum, it MUST include:
+    ```yaml
+    ---
+    description: Short description of the rule's purpose (used in the Master Rule Index).
+    globs: Optional array of glob patterns where this rule might be automatically suggested or applied. Use [] if not applicable.
+    alwaysApply: Optional boolean (defaults to false). If true, indicates the rule should generally always be considered/applied.
+    ---
+    ```
+5.  **Versioning (MUST):** Include a version number (e.g., `v1.0`) in the main heading (`# Rule Title vX.Y`).
 
 ### Step 5: Integration Planning
 
@@ -81,11 +90,12 @@ This protocol is typically initiated when:
 
 1.  **Self-Verification:** Review the drafted rule against this protocol's checklist (Section 8). Check for clarity, completeness, formatting adherence, and non-conflict.
 2.  **Documentation Updates:**
+    *   **Update Master Rule Index (MUST):** Add the new rule's filename and description to the central index file (`.cursor/rules/index.mdc`) under the appropriate category, following `master-rule-index-protocol.mdc`.
     *   Add the new rule's name and description to the `<available_instructions>` list (or the system managing it).
     *   Update any protocols identified in Step 5.2.
     *   Add an entry to a relevant `CHANGELOG.md` or project documentation noting the new rule's addition.
     *   Optionally, create/update `Task` or `Documentation` entities in Server Memory.
-3.  **Audit:** Record `RULE_CREATED` event in the Audit Trail.
+3.  **Audit:** Record `RULE_CREATED`, `MASTER_INDEX_UPDATED` events in the Audit Trail.
 
 ### Step 7: Review & Finalization (User Driven)
 
@@ -103,12 +113,17 @@ This protocol is typically initiated when:
 
 ## 6. Verification Checklist (for the New Rule)
 
+*(Self-correction: Added checklist item for index update)*
+
 -   [ ] Does the rule address a clearly defined need/problem?
 -   [ ] Is the core principle clearly stated?
 -   [ ] Are the steps/requirements actionable and unambiguous?
 -   [ ] Is the rule sufficiently generalized?
 -   [ ] Does the formatting strictly adhere to `rule-formatting-protocol.mdc`?
+-   [ ] Does the file location and naming adhere to standards (Step 4)?
+-   [ ] Does the rule include the required frontmatter (Step 4)?
 -   [ ] Are potential conflicts with existing rules addressed?
 -   [ ] Is the verification method defined?
 -   [ ] Are necessary documentation updates identified/planned?
+-   [ ] **Has the rule been added to the Master Rule Index (`.cursor/rules/index.mdc`)?**
 -   [ ] Has the rule been added to `<available_instructions>`?

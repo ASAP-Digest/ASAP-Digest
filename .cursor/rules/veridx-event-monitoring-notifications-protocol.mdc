@@ -1,0 +1,107 @@
+---
+description: Defines the centralized framework for monitoring, logging, and notifying on significant events published by other VeriDX protocols, governed by veridx-config.json.
+globs: 
+alwaysApply: false
+---
+# VeriDX Event Monitoring & Notification Protocol (VEMNP) v1.0
+
+## 1. Purpose
+
+This protocol establishes the **centralized framework** for monitoring significant system events published by other VeriDX protocols (managed by the VPF Engine). It defines how these events are processed based on rules in `.cursor/veridx/veridx-config.json` to trigger actions like OS-level notifications, logging to the **Audit Trail System**, and linking context within the **Memory System (PostgreSQL)**. VEMNP promotes **configurability**, **extensibility**, and **consistent feedback** across the VeriDX ecosystem, aligning with the VeriDX philosophy.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Central Config (`veridx-config.json`)│ // Source of Rules (MUST EXIST)
+│ 2. Rule Execution Protocol              │ // For internal logic (read config, run osascript)
+│ 3. Server Memory Rules (v2.1+)          │ // For linking notifications to entities
+│ 4. Audit Trail System                   │ // For logging events and notification dispatch
+│ 5. *All Other Protocols*                │ // As Publishers of Events via VPF Engine
+│ 6. VEMNP (This Protocol)                │ // Self-reference for framework definition
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Scope
+
+-   **Activation:** This protocol is not typically activated directly by a user command. Its core logic (`Process Event`, Section 4.2) is invoked internally by the **VPF Rules Engine** whenever another VeriDX protocol **publishes** a standardized event object (Section 4.1).
+-   **Scope:** Applies system-wide to any event published according to the specified format.
+
+## 4. Core Logic: Event Publishing & Processing Framework
+
+### 4.1. Event Publishing Standard (Requirement for *Other* Protocols)
+
+Protocols wishing to trigger monitoring or notifications MUST publish events by constructing a standard event object and invoking the VEMNP processing logic (conceptually, via the VPF Engine).
+
+1.  **Identify Significant Trigger Points:** Protocols MUST identify points where a meaningful state change or notable occurrence happens (e.g., task status change, session start/end, error detected, configuration saved, file generated).
+2.  **Construct Standard Event Object:** Create a JSON object adhering to this structure:
+    ```json
+    {
+      "eventType": "UNIQUE_EVENT_NAME_STRING", // e.g., "WSMP_SessionStarted", MUST match a key in veridx-config.json eventNotifications
+      "timestamp": "YYYY-MM-DDTHH:MM:SSZ", // ISO 8601 format (use mcp-datetime tool)
+      "sourceProtocol": "protocol-name.mdc", // The .mdc file publishing the event
+      "data": {
+        // --- Protocol-specific data payload ---
+        // Key-value pairs used for notification templates
+        // e.g., "sessionID": "...", "targetTaskID": "...", "summary": "...", "errorMessage": "..."
+      },
+      "relevantEntityID": "Optional_EntityName_In_MemorySystem" // e.g., Task name, Session name, Error name, SavePoint name
+    }
+    ```
+3.  **Invoke VEMNP Processing:** The protocol signals the VPF Engine to process the constructed event object using the VEMNP framework.
+
+### 4.2. Process Event Logic (VEMNP Implementation via VPF Engine)
+
+This describes the steps the system takes when an event is published:
+
+1.  **Receive Event Object:** Obtain the standardized event object from the publishing protocol.
+2.  **Read Central Configuration:**
+    *   Use `read_file` to load `.cursor/veridx/veridx-config.json`.
+    *   Handle potential file read or JSON parse errors gracefully (log to Audit Trail, may prevent further processing for this event).
+3.  **Lookup Notification Rule:**
+    *   Using the `event.eventType`, find the corresponding rule object within the `eventNotifications` section of the loaded configuration.
+    *   If no rule is found for the `eventType`, log a debug message to the Audit Trail and stop processing for this event (no notification or linking will occur).
+4.  **Process Audit Logging:**
+    *   Check `globalSettings.logAllPublishedEventsToAudit` in the config.
+    *   If `true`, log the entire received `event` object to the **Audit Trail System**.
+5.  **Process Memory System Linking:**
+    *   Check the specific event rule's `linkToMemoryEntity` setting in the config.
+    *   If `true` AND `event.relevantEntityID` is provided and valid:
+        *   Construct an observation string (e.g., `Event Occurred: [event.eventType] at [event.timestamp]`).
+        *   Use `mcp_Server_Memory_add_observations` to add this observation to the specified entity in the **Memory System (PostgreSQL)**. Handle potential errors (e.g., entity not found).
+6.  **Process OS Notification:**
+    *   Check `globalSettings.notificationsEnabled` in the config. If `false`, skip OS notification.
+    *   Check the specific event rule's `enabled` setting. If `false`, skip OS notification.
+    *   **Prepare Content:**
+        *   Retrieve `title`, `subtitle`, `messageTemplate`, `soundName`, `level` from the event rule.
+        *   Determine the final `soundName` (use rule's value, fallback to `globalSettings.defaultNotificationSound`).
+        *   Populate template placeholders (`[placeholder]`) using data from `event.data`. Handle missing data gracefully (e.g., replace with "N/A").
+    *   **Construct `osascript` Command:** Create the command string for `osascript -e 'display notification ...'` using the prepared title, subtitle, message, and sound name.
+    *   **Execute Notification:**
+        *   Use `run_terminal_cmd` to execute the `osascript` command.
+        *   Handle potential execution errors from `run_terminal_cmd`.
+    *   **Log Dispatch:** Log the successful dispatch (or failure) of the OS notification to the **Audit Trail System** (e.g., `Event: NOTIFICATION_SENT | NOTIFICATION_FAILED, Type: [event.eventType], ...`).
+
+## 5. Extensibility: Adding New Event Notifications
+
+This process is fundamental to the VeriDX design, allowing the system's feedback mechanism to evolve.
+
+1.  **Define `eventType`:** Create a unique, descriptive string for the new event (e.g., `RULE_VALIDATION_FAILED`, `MCP_SERVER_RESPONSE_RECEIVED`).
+2.  **Identify Source Protocol & Trigger:** Determine *which* `.mdc` protocol should publish this event and *where* in its logic flow this event occurs.
+3.  **Modify Source Protocol:** Implement the logic within the source protocol to:
+    *   Construct the standardized event object (Section 4.1.2), ensuring all necessary `data` fields for the notification template are included, along with the `relevantEntityID` if linking is desired.
+    *   Trigger the VEMNP processing mechanism (Section 4.1.3) with the event object.
+4.  **Update `veridx-config.json`:**
+    *   Add a new entry under `eventNotifications` using the defined `eventType` as the key.
+    *   Configure the notification behavior (`enabled`, `level`, templates, `soundName`, `linkToMemoryEntity`) for this new event type.
+5.  **Test & Verify:** Execute the source protocol to trigger the new event. Confirm:
+    *   The event appears in the Audit Trail (if configured).
+    *   The OS notification displays correctly (if enabled).
+    *   The observation appears on the correct entity in the Memory System (if configured).
+
+## 6. Configuration Reference
+
+-   All operational aspects of this protocol (which events trigger notifications, the content/sound of notifications, logging behavior, memory linking) are controlled by `.cursor/veridx/veridx-config.json`.
+-   Refer to `veridx-config.json` for the schema and examples of configuring `globalSettings` and `eventNotifications`.
