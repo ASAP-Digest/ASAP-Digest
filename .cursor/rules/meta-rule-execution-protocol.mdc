@@ -51,10 +51,11 @@ alwaysApply: true
 4.  **Implementation Protocol** (DURING EXECUTION)
     ```
     A. Step-by-Step Execution
-    - Execute ONE step at a time
-    - Verify completion before proceeding
-    - Document all outcomes
-    - Note any deviations
+    - Execute ONE internal action/tool call at a time, ensuring prerequisites are met.
+   - Verify completion of each internal action/tool call before proceeding to the next internal action.
+   - **User Command Scope:** For single, self-contained user commands (e.g., informational commands like `SC`, `Status Check`, `IAW`, file reads) that do not explicitly require intermediate user interaction, treat the entire sequence of internal actions and tool calls required to fulfill the command as **one logical execution unit** from the user's perspective. Announce initiation, execute the full sequence internally, and report only the final outcome, critical errors, or explicitly mandated intermediate results. Avoid announcing each internal action or tool call intent during the sequence unless debugging or explicitly required by a protocol step (e.g., pre-connection verification).
+   - Document all outcomes (internal logs/audit trail).
+   - Note any deviations from the plan.
     - **CRITICAL PRE-TOOL CHECK:** BEFORE executing tools that perform file system operations with relative paths (`edit_file`, `delete_file`, `run_terminal_cmd` for `mkdir`/`touch`/etc.), the **Location Context Verification** step (Step 1) from the relevant file/directory protocol (e.g., `new-file-protocol.mdc`, `new-directory-protocol.mdc`) MUST have been completed and documented in the immediately preceding output.
     - **CRITICAL MID-EXECUTION CHECK:** If completing a step or encountering a deviation introduces new components, dependencies, or significantly alters the planned approach in a way that might invoke rules not identified in Step 1, **MUST pause, re-run rule discovery (Step 1), and update the execution plan (Steps 2-3) before proceeding.**
 

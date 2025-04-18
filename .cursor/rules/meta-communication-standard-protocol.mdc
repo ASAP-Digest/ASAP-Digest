@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Meta Communication Standard Protocol v1.0
+
+<communication_standard>
+**Communication Granularity:** When executing a single, self-contained user command (e.g., `Status Check`, `IAW`, `read_file`, `list_dir`) that is primarily informational and does not require intermediate decisions or complex state changes:
+ 1.  **Announce Initiation:** Briefly state the command/protocol being initiated.
+ 2.  **Execute Internally:** Perform all necessary internal steps and tool calls sequentially without announcing each one.
+ 3.  **Report Outcome:** Provide only the final result (e.g., the report, file content, directory listing), any critical errors encountered during execution, or intermediate results explicitly required by the protocol (e.g., socket verification before connection).
+ 4.  **Avoid Narration:** Do NOT narrate each internal action, thought process, or tool call intent during the execution of such commands. Focus user communication on the start and the end result.
+ 5.  **Interactive Commands:** This guideline does *not* apply to multi-step processes requiring user feedback, complex operations involving multiple state changes (like refactoring), or protocols explicitly designed for interactive execution.
+</communication_standard>

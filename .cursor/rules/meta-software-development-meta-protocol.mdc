@@ -67,12 +67,13 @@ alwaysApply: false
 5.  **Implementation Framework**
     ```
     A. Systematic Execution
-    - MUST follow documented plan
-    - MUST validate each step
-    - MUST document progress
-    - MUST verify outcomes
+    - MUST follow documented plan derived from protocols.
+    - MUST internally validate the outcome of each granular step/tool call before proceeding.
+    - MUST document progress comprehensively for internal tracking and auditing. **User-facing communication during execution should be concise**, focusing on initiation, completion, errors, and required interaction points, especially for self-contained commands (See Rule Execution Protocol 4.A).
+    - MUST verify final outcomes against success criteria.
     - **CRITICAL PRE-TOOL CHECK:** BEFORE executing tools that perform file system operations with relative paths (`edit_file`, `delete_file`, `run_terminal_cmd` for `mkdir`/`touch`/etc.), the **Location Context Verification** step (Step 1) from the relevant file/directory protocol (e.g., `new-file-protocol.mdc`, `new-directory-protocol.mdc`) MUST have been completed and documented in the immediately preceding output.
     - **CRITICAL MID-IMPLEMENTATION CHECK:** If execution deviates significantly from the plan, introduces new dependencies/components governed by specific rules (e.g., adding an icon, creating a new file type, using a specific library mentioned in a rule), or refactors code in a way that might invoke different styling/structural rules, **MUST pause and re-evaluate rule relevance by revisiting Step 2 (Rule and Protocol Discovery) before proceeding.**
+     - **CRITICAL STATE TRANSITION CHECK:** Before changing the status of a core entity (like `Task`) to a terminal state (e.g., `COMPLETED`, `FAILED`), MUST verify that all prerequisite conditions, state transitions, and user interactions defined in relevant protocols (e.g., `testing-verification-protocol.mdc` for `COMPLETED`) have been successfully met and documented/logged. Halt and trigger UERP if verification fails.
 
     B. Error Management
     - MUST detect execution failures
@@ -84,10 +85,10 @@ alwaysApply: false
 6. **Documentation Requirements**
    ```
    A. Progress Tracking
-   - MUST document each step
-   - MUST note deviations
-   - MUST track completion status
-   - MUST update relevant documentation
+   - MUST document each internal step/decision/outcome for audit/review purposes.
+   - MUST note deviations from the plan.
+   - MUST track overall completion status.
+   - MUST update relevant persistent documentation (e.g., roadmaps, logs) upon completion or at defined checkpoints. **Avoid verbose real-time narration of internal steps to the user** unless necessary for debugging or interaction.
 
    B. Knowledge Transfer
    - MUST document decisions
