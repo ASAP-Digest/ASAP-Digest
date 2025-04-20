@@ -12,6 +12,7 @@ A. Core Restrictions
 - Must NOT modify any project files (including roadmaps) or database.
 - Must NOT initiate any work or state changes beyond its own logging.
 - Must wait for explicit "IAW" or "BWS" command before any work initiation by the agent.
+- **Execution Adherence:** Status Check execution MUST follow the single-response pattern for informational commands as defined in `<rule_execution_protocol>` Step 4.A.
 
 B. Entity Creation Limits
 - Only allowed to create `StatusCheck` and `StatusReport` entities in Server Memory for logging its own execution.
