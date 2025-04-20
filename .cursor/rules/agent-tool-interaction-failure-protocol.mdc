@@ -1,0 +1,104 @@
+---
+description: Provides a systematic process for diagnosing and resolving failures occurring during agent-tool interactions, considering both tool-side and agent-side factors.
+globs: 
+alwaysApply: false
+---
+# Agent-Tool Interaction Failure Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard procedure for diagnosing and attempting to resolve failures that occur when the AI agent interacts with its available tools (e.g., `mcp_Server_Memory_search_nodes`, `edit_file`, `run_terminal_cmd`). It acknowledges that failures can stem from the tool itself (availability, malfunction), the agent's usage (incorrect parameters, state issues), or the communication layer. This protocol is often invoked by the `Universal Error Resolution Protocol (UERP)` when an error is categorized as an `Agent-Tool Interaction Failure`.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Universal Error Resolution (UERP)    │ // Invokes this protocol
+│ 2. Rule Execution Protocol              │ // Governs execution of these steps
+│ 3. Software Development Meta Protocol   │ // Overall error management context
+│ 4. Relevant Tool Documentation/Rules    │ // Source for verifying usage
+│ 5. Server Memory Rules                  │ // Logging errors/resolutions
+│ 6. Cross-Protocol Comms & Verification   │ // State validation
+│ 7. Audit Trail System                   │ // Logging tool failures/retries
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation
+
+- **Trigger:** Invoked by UERP when an agent tool call fails, or when an agent proactively identifies a potential tool interaction issue.
+- **Context:** Requires the context of the failed tool call, including the tool name, parameters used, and the exact error message received.
+
+## 4. Diagnostic & Resolution Steps
+
+### Step 1: Initial Failure Analysis
+
+1.  **Log Error:** Record the exact timestamp, tool name, parameters attempted, and the full error message received (e.g., `Tool execution failed: No server found...`, `Invalid arguments...`, `Timeout...`).
+2.  **Categorize Error Message:** Analyze the error message itself.
+    *   Does it suggest a connection/availability issue (e.g., "No server found", "Connection refused", "Timeout")? -> Proceed to Step 2.
+    *   Does it suggest an input/parameter issue (e.g., "Invalid arguments", "Missing required field", "Schema validation failed")? -> Proceed to Step 3.
+    *   Does it suggest an internal tool execution error (e.g., "Internal server error", specific runtime errors from the tool)? -> Proceed to Step 2 (treat as potential tool malfunction).
+    *   Is the error message ambiguous or unclear? -> Proceed to Step 2, but also flag for potential Step 3 check.
+
+### Step 2: Assess Tool Availability & Attempt Retry
+
+1.  **Structured Retry:** Attempt the *exact same* tool call again immediately (once).
+    *   **If Success:** The failure was likely transient. Log the successful retry and conclude this protocol, returning control to the calling process (e.g., UERP).
+    *   **If Failure (Same Error):** Proceed to Step 2.2.
+    *   **If Failure (Different Error):** Restart this protocol from Step 1 with the new error message.
+2.  **Check Tool Status (If Feasible):** If mechanisms exist (e.g., a dedicated status check tool, recent successful uses of the *same* tool), attempt to verify the tool's general availability. (Often relies on inference if no direct status check exists).
+3.  **Hypothesize Cause:** Based on error and status check (if possible), form initial hypothesis: Likely Tool-Side Issue (availability, malfunction) or Network Issue.
+4.  **Proceed:** Go to Step 4 (Attempt Alternative Method/Tool).
+
+### Step 3: Verify Agent Usage & Attempt Correction
+
+1.  **Retrieve Documentation:** Fetch relevant rules or documentation pertaining to the failed tool (e.g., from `<available_instructions>`, built-in tool schemas, linked documentation like the Memory Server README).
+2.  **Compare Call vs. Docs:** Meticulously compare the *exact* parameters and structure used in the failed call against the documentation requirements. Check for:
+    *   Correct parameter names and casing.
+    *   Correct data types for each parameter.
+    *   Presence of all *required* parameters.
+    *   Correct formatting of complex parameters (e.g., objects, arrays).
+    *   Any easily overlooked constraints or examples in the documentation.
+3.  **Self-Correction:** If a discrepancy is found:
+    *   Formulate a corrected tool call based on the documentation.
+    *   Log the identified discrepancy and the correction being attempted.
+    *   Attempt the *corrected* tool call.
+    *   **If Success:** Log success, document the specific usage error found, conclude this protocol, returning control.
+    *   **If Failure (Same or Different Error):** Log the failure of the corrected call. Proceed to Step 4 (Attempt Alternative).
+4.  **If No Discrepancy Found:** Assume agent usage was correct according to available documentation. Proceed to Step 4 (Attempt Alternative).
+
+### Step 4: Attempt Alternative Method / Tool
+
+1.  **Identify Goal:** Re-state the original goal the failed tool call was trying to achieve (e.g., "retrieve Task entities matching keywords", "read specific file content", "create a directory").
+2.  **Brainstorm Alternatives:**
+    *   Is there another tool with overlapping or equivalent functionality? (e.g., `mcp_Server_Memory_read_graph` as an alternative to a failed `mcp_Server_Memory_search_nodes`).
+    *   Can the goal be achieved through a different sequence of *other* tool calls? (e.g., using `run_terminal_cmd` with `grep` instead of `grep_search` tool, using `read_file` then parsing instead of a specific data extraction tool).
+    *   Can parameters be simplified or changed while still achieving a useful part of the goal? (e.g., broadening a search query, reading a whole file instead of specific lines if line-reading fails).
+3.  **Select & Attempt Alternative:** Choose the most promising alternative.
+    *   Log the chosen alternative and rationale.
+    *   Execute the alternative tool call(s).
+    *   **If Success:** Log success, document the successful alternative method, conclude this protocol, returning control.
+    *   **If Failure:** Log failure. Proceed to Step 5 (Escalate/Report).
+
+### Step 5: Escalate / Report Failure
+
+1.  **Consolidate Findings:** Summarize the failed tool, the error(s) encountered, the verification steps taken (retries, documentation check, alternative attempts), and the final outcome (unresolved failure).
+2.  **Formulate Report:** Create a clear report for the user or the invoking protocol (UERP) detailing the consolidated findings.
+3.  **Recommend Next Steps:** Suggest potential next actions, such as:
+    *   Requesting user intervention or guidance.
+    *   Skipping the blocked step and attempting to proceed with the overall task if possible.
+    *   Suggesting investigation into the specific tool's health or documentation.
+    *   Halting the current task/workflow.
+4.  **Conclude Protocol:** End this protocol's execution, passing the report and recommendations back to the calling process (UERP or user).
+
+## 5. Verification Checklist (Internal Use)
+
+-   [ ] Was the initial tool failure accurately logged (tool, params, error)?
+-   [ ] Was the error message category assessed?
+-   [ ] Was a structured retry attempted (Step 2.1)?
+-   [ ] (If applicable) Was agent usage verified against documentation (Step 3)?
+-   [ ] (If applicable) Was a self-correction attempt made and logged (Step 3.3)?
+-   [ ] Was an alternative method/tool identified and attempted (Step 4)?
+-   [ ] Was the final outcome (success via retry/correction/alternative, or unresolved failure) clearly logged?
+-   [ ] If unresolved, was a final report generated for escalation (Step 5)?
