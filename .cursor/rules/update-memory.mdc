@@ -3,10 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Update Memory & System State Protocol v2.0
+# Update Memory & System State Protocol v2.1
 
 ## 1. Purpose
-This protocol defines the standard operating procedure for the "Update Memory" (`um`) alias. It serves as a crucial integr task completion or significant state changes ensuring that Server Memory, relevant documentatio, and overall system state remain consistent and synchronized. It integrates workflows from Task Tracking, Work Session Management, and Server Memory rules.
+This protocol defines the standard operating procedure for the "Update Memory" (`um`) alias. It serves as a crucial integration point following task completion or significant state changes, ensuring that Server Memory, relevant documentation, and overall system state remain consistent and synchronized. It integrates workflows from Task Tracking, Work Session Management, and Server Memory rules.
 
 ## 2. Activation
 - **Command:** "Update Memory"
@@ -36,8 +36,8 @@ This protocol orchestrates updates across multiple system components.
 Executing `um` triggers the following sequence:
 
 1.  **Timestamp Acquisition:**
-    -   MUST acquire the current timestamp using the logic defined in `format-time.mdc` (specifically "MM.DD.YY | HH:MM AM/PM `TimeZone`" format for documentation updates).
-    -   Use `mcp-datetime_get_datetime` tool with appropriate format specifiers.
+    -   MUST acquire the current timestamp using the logic defined in `format-time.mdc v1.1+` (fetch ISO, format to "MM.DD.YY | HH:MM AM/PM `TimeZone`" for documentation updates).
+    -   Use `mcp-datetime_get_datetime` tool with appropriate format specifiers for base timestamp.
 
 2.  **Server Memory Update:**
     -   MUST update Server Memory according to `server-memory-rules.mdc`.
@@ -74,10 +74,10 @@ Executing `um` triggers the following sequence:
 # User triggers the update memory alias
 um
 
-# --- (Agent Executes Protocol 'update-memory.mdc v2.0') ---
+# --- (Agent Executes Protocol 'update-memory.mdc v2.1') ---
 
 # 1. Agent gets timestamp -> "07.27.24 | 10:30 AM PDT"
-#    (Using mcp-datetime_get_datetime with 'format-time.mdc' logic)
+#    (Using mcp-datetime_get_datetime with 'iso' format + format-time.mdc v1.1+ string formatting logic)
 
 # 2. Agent updates Server Memory:
 #    - Finds Task entity 'Task_ImplementLoginUI_...'

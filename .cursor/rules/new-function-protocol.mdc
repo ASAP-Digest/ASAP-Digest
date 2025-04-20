@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# New Function Protocol
+# New Function Protocol v1.1
+
+*(Self-correction: v1.1 - Aligned timestamp format with format-time.mdc v1.1+)*
 
 1. **Location Check**
    - Verify current directory matches intended location in project structure
@@ -13,7 +15,7 @@ alwaysApply: true
 2. **Function Documentation**
    - Add JSDoc comment block above function
    - Include description, parameters, return type, and example usage
-   - Add timestamp in format: "MM.DD.YY | HH:MM AM/PM PDT"
+   - Add timestamp: Get timestamp using `format-time.mdc v1.1+` logic (fetch ISO, format to "MM.DD.YY | HH:MM AM/PM PDT").
    - For WordPress functions: Add PHP DocBlock with same information
 
 3. **Function Structure**
@@ -26,7 +28,7 @@ alwaysApply: true
       * @example
       * // Example usage
       * functionName(exampleParam)
-      * @created MM.DD.YY | HH:MM AM/PM PDT
+      * @created MM.DD.YY | HH:MM AM/PM PDT // Formatted timestamp
       */
      function functionName(params) {
          // Implementation
@@ -41,7 +43,7 @@ alwaysApply: true
       * @example
       * // Example usage
       * functionName($exampleParam);
-      * @created MM.DD.YY | HH:MM AM/PM PDT
+      * @created MM.DD.YY | HH:MM AM/PM PDT // Formatted timestamp
       */
      function functionName($params) {
          // Implementation

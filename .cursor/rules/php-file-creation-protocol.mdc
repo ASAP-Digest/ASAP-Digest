@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# PHP File Creation Protocol
+# PHP File Creation Protocol v1.1
 
 1. **File Header Structure**
 ```php
@@ -12,7 +12,7 @@ alwaysApply: true
  * [File Title/Purpose]
  * 
  * @package ASAPDigest_Core
- * @created [MM.DD.YY | HH:MM AM/PM PDT] (Use mcp-datetime)
+ * @created [MM.DD.YY | HH:MM AM/PM PDT] // Use format-time.mdc v1.1+ logic
  * @file-marker [ClassName or Purpose]
  */
 
@@ -27,7 +27,7 @@ if (!defined('ABSPATH')) {
    - Opening `<?php` tag MUST be the first line
    - File docblock MUST follow immediately after
    - Package name MUST be `ASAPDigest_Core`
-   - Creation timestamp MUST use mcp-datetime format
+   - Creation timestamp MUST use the logic from `format-time.mdc v1.1+` (fetch ISO, format to "MM.DD.YY | HH:MM AM/PM PDT").
    - Namespace MUST be `ASAPDigest\Core` (or appropriate sub-namespace)
    - ABSPATH check MUST be included for direct access prevention
 
@@ -74,7 +74,7 @@ class Class_Name {
 7. **Documentation Requirements**
    - File docblock with title and purpose
    - Package name
-   - Creation timestamp
+   - Creation timestamp (formatted as per `format-time.mdc v1.1+`)
    - File marker for LLM processing
    - Class description
    - Property documentation
@@ -103,7 +103,7 @@ use function wp_localize_script;
  * Example Class Implementation
  * 
  * @package ASAPDigest_Core
- * @created 03.31.25 | 03:34 PM PDT
+ * @created 03.31.25 | 03:34 PM PDT // Formatted timestamp
  * @file-marker Example_Class
  */
 

@@ -73,12 +73,13 @@ B. Secondary Triggers
 ````
 
 ## 5. Status Check Implementation (Conceptual Steps)
-````javascript
+```javascript
 async function executeProjectStatusCheck_v2_3() {
     // 1. Initialize timestamp for report and logging
-    const reportTimestamp = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
-    const formattedReportTime = await getFormattedTime(); // Use Format Time protocol/logic
-    const logTimestamp = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
+    const reportTimestamp = await mcp_mcp-datetime_get_datetime({ format: "datetime" }); // Still get a standard format for logging
+    // Use the updated format-time.mdc logic for the *user-facing* report time
+    const formattedReportTime = await getFormattedTime_v1_1(); 
+    const logTimestamp = await mcp_mcp-datetime_get_datetime({ format: "log_compact" });
 
     // 2. Create status check entity in Server Memory
     await mcp_Server_Memory_create_entities({
@@ -165,7 +166,7 @@ async function executeProjectStatusCheck_v2_3() {
     const reportData = parseRoadmapsAndMemoryForReport(roadmapTasksContent, recentCompletions, activeErrors, priorityTask, priorityReason); // Modified Helper
 
     // 6. Generate Structured Report (User Facing)
-    const userReport = formatUserReport_v2_3(reportData, formattedReportTime); // Use formatted time and updated structure
+    const userReport = formatUserReport_v2_3(reportData, formattedReportTime); // Use formatted time
 
     // 7. Create status report entity in Server Memory
     await mcp_Server_Memory_create_entities({
@@ -191,16 +192,21 @@ async function executeProjectStatusCheck_v2_3() {
 // Helper function placeholders (implementation requires specific parsing logic)
 async function readFileContents(filePath) { /* ... use read_file ... */ }
 async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes ... */ }
-async function getFormattedTime() { /* ... use format-time.mdc logic ... */ }
+// Reference the updated formatting logic
+async function getFormattedTime_v1_1() { 
+    // 1. Call mcp_mcp-datetime_get_datetime({ format: "iso" })
+    // 2. Format the returned ISO string to "MM.DD.YY | HH:MM AM/PM PDT"
+    // 3. Return the formatted string
+}
 function findHighestPriorityBlockedTask(activeErrors, roadmapContent) { /* ... logic to link errors to tasks and find highest prio ... */ }
 function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, find highest prio based on order ... */ }
 function findDeepestTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, determine hierarchy, find deepest ... */ }
 function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections ... */ }
 function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflecting updated priority section ... */ }
-````
+```
 
 ## 6. Information Sources Hierarchy
-````text
+```text
 1.  **Primary:** `docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
 2.  **Secondary:**
     -   Server Memory:
@@ -208,14 +214,13 @@ function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatt
         -   Active `Error` entities (for priority determination and details)
         -   Potentially `Task` entities for state entry timestamps if not in roadmap.
     -   `docs/ASAP_DIGEST_ROADMAP_LLM_*.md` (or primary if not split): For overall context and task hierarchy (Major Task Group, Parent Subtask).
-    -   Current Timestamp (`format-time.mdc`): For defining the "recent" window and report time.
-````
+    -   Current Timestamp (`format-time.mdc` v1.1+): For defining the "recent" window and report time.
+```
 
 ## 7. Status Report Structure & Logic
-The user-facing output MUST follow this structure, with the `🎯 Current Priority` section reflecting the logic from Section 5, Step 5:
+The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc v1.1+`:
 
-````markdown
-
+```markdown
 ---
 # **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
 ---
@@ -261,13 +266,3 @@ The user-facing output MUST follow this structure, with the `🎯 Current Priori
   *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`** _(If applicable)_
 
 ---
-
-````
-
-## 8. Error Prevention and Handling
-````text
--   Gracefully handle errors during file reading (`read_file`) or memory searches (`mcp_Server_Memory_search_nodes`).
--   If `ROADMAP_TASKS.md` cannot be read or parsed, the report should indicate this failure clearly.
--   Log any errors encountered during the status check itself into a relevant `Error` entity in Server Memory if possible, or include in the `StatusReport` entity's observations.
--   Ensure helper functions for parsing and priority determination handle edge cases (e.g., no tasks in a given state).
-````

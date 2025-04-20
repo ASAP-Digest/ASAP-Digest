@@ -3,12 +3,23 @@ description:
 globs: 
 alwaysApply: true
 ---
+# Format Time v1.1
 
-# Format Time
+*(Self-correction: Added v1.1, specified valid base format fetch + string formatting)*
 
 - Initiated by Phrase: "Format Time", "Formatted Time" or alias "FT"
-- Use mcp-datetime to retrieve `get_datetime`
-  - If mcp-datetime is unavailable use terminal `date '+%m.%d.%y | %I:%M %p %Z'`
-- `TimeZone` is Always `PDT`
-- Return only the formatted time string
-- Convert `get_datetime` to format: "MM.DD.YY | HH:MM AM/PM `TimeZone`"
+- **Step 1: Fetch Base Timestamp (MUST)**
+  - Use `mcp_mcp-datetime_get_datetime` tool to retrieve the *current* date and time.
+  - MUST use the `iso` format specifier (e.g., `2024-12-10T00:54:01+0900`).
+  - **If `mcp-datetime_get_datetime` tool is unavailable or fails:** Fallback to terminal command: `date '+%Y-%m-%dT%H:%M:%S%z'` (Ensure output matches ISO format closely).
+- **Step 2: Format Output String (MUST)**
+  - Take the ISO timestamp string obtained from Step 1.
+  - Reformat this string into the target format: **"MM.DD.YY | HH:MM AM/PM `TimeZone`"**.
+    - *Note: This step requires string manipulation capabilities. Extract date/time parts from the ISO string and rearrange/reformat them.*
+    - *Example Conversion (Conceptual):*
+      - Input ISO: `2024-07-27T15:30:00-0700`
+      - Extract: Year=2024, Month=07, Day=27, Hour=15, Minute=30, TZ Offset=-0700 (PDT)
+      - Format: `07.27.24 | 03:30 PM PDT`
+    - The `TimeZone` is Always `PDT` (Pacific Daylight Time, UTC-7). Assume this offset unless the fetched ISO string's offset indicates otherwise during conversion logic.
+- **Step 3: Return Value**
+  - Return ONLY the final formatted time string from Step 2.
