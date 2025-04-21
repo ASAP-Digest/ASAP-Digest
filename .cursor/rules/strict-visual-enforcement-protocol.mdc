@@ -3,15 +3,17 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Strict Visual Enforcement Protocol
+# Strict Visual Enforcement Protocol v1.1
+
+*(Self-correction: v1.1 - Clarified purpose)*
 
 ## 1. Purpose
 
-This protocol defines the automated and semi-automated checks to enforce the rules specified in `golden-ratio-design-system-protocol.mdc`. It is designed to be executed primarily by an LLM agent within the IDE, leveraging tools like `grep_search` and integrating with `ui-check.mdc`. The goal is to catch violations of the strict visual system early in the development process.
+This protocol defines the **automatable, syntax-level checks** to enforce specific, objective rules specified in `golden-ratio-design-system-protocol.mdc`. It focuses on rapid detection of violations related to variable usage, syntax, and direct imports. Its goal is to catch these low-level violations early, suitable for integration into automated workflows like pre-commit hooks. It acts as a **prerequisite** for the broader checks defined in `visual-style-enforcement-protocol.mdc`.
 
 ## 2. Activation
 
-Triggered automatically upon modification of `.svelte` files within UI directories (e.g., `app/components/`, `app/src/routes/`) or manually via alias (e.g., `svep`).
+Triggered automatically upon modification of `.svelte` files within UI directories (e.g., `app/components/`, `app/src/routes/`) via hooks, or manually via alias (e.g., `svep-strict`). Also invoked as the first step by `visual-style-enforcement-protocol.mdc`.
 
 ## 3. Core Verification Checklist & Procedures
 
@@ -143,8 +145,7 @@ Triggered automatically upon modification of `.svelte` files within UI directori
 
 ## 4. Violation Handling
 
-*   If any check fails, the protocol MUST halt further automated actions (like commits or deployments).
-*   Report all violations clearly, referencing the specific rule from `golden-ratio-design-system-protocol.mdc` and the file/line number.
-*   Agent MUST attempt to fix violations based on the design system rules.
-*   After fixes, re-run this entire protocol for verification.
+*   If any check fails, the protocol MUST report the violation and fail.
+*   If invoked by `visual-style-enforcement-protocol.mdc`, failure here prevents that protocol from proceeding to its Phase 2 checks.
+*   If run standalone (e.g., pre-commit), failure SHOULD block the commit.
 

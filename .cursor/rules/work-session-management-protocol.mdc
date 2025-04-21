@@ -3,13 +3,13 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Enhanced Work Session Management Protocol (WSMP) v2.11
+# Enhanced Work Session Management Protocol (WSMP) v2.12
 
 *(Self-correction: Updated version to incorporate EAQ integration and fix section numbering)*
 
 ## 1. Protocol Integration Layer
 *(Self-correction: Updated integration points for WSAP v2.8 and TVP v1.4)*
-````text
+```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
@@ -17,24 +17,26 @@ alwaysApply: true
 │ 2. Rule Execution Protocol              │
 │ 3. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
 │ 4. Memory Maintenance Protocol          │ // Includes Server Memory Rules v2.1+
-│ 5. Session Management Protocol (This)   │ // WSMP v2.11 (Self-reference)
+│ 5. Session Management Protocol (This)   │ // WSMP v2.12 (Self-reference)
 │ 6. Status Check Protocol (v2.3+)        │ // Required for BWS context
 │ 7. Cross-Protocol Comms & Verification   │
 │ 8. Universal Error Resolution Protocol  │
 │ 9. Audit Trail System                   │
 │ 10. Testing & Verification Protocol v1.4+│ // Handles task verification flow, triggered by EWS/EAQ
-│ 11. Work Session Activation Proto v2.8+ │ // Defines trigger commands (IAW, ST, EAQ, BWS, EWS, RWS) (Updated)
+│ 11. Work Session Activation Proto v2.9+ │ // Defines trigger commands (IAW, ST, EAQ, BWS, EWS, RWS)
+│ 12. critical-code-removal-protocol.mdc  │ // Governs code deletion
 └─────────────────────────────────────────┘
-````
+```
 
 ## 2. Activation Commands & Flow
 *(Self-correction: Referenced updated WSAP v2.8)*
-````text
+```text
 A. Start New Session (BWS)
 - Command: "Begin Work Session" or alias "BWS"
 - Triggered By: Manual User Command (via WSAP v2.8+) - Requires preceding SC. Can also be triggered internally by RWS fallback.
 - Purpose: Initiates a NEW tracked work session, targeting the highest priority task identified by the preceding Status Check or RWS fallback.
 - Optional Parameters: Session Type (DEBUG, FEATURE, FIX, REFACTOR, TESTING).
+    - **Note on REFACTOR:** If a `REFACTOR` session involves deleting existing code, the steps within `critical-code-removal-protocol.mdc` MUST be followed before executing the removal.
 
 B. Save Session State (SWS)
 - Command: "Save Work Session" or alias "SWS"
@@ -62,7 +64,7 @@ F. Enter Approval Queue (EAQ)
 - Triggered By: Manual User Command (via WSAP v2.8+).
 - Purpose: Directly initiates the evidence gathering and approval request process (TVP v1.4+ Steps 4 & 5) for the `targetTask` of the active session.
 - Prerequisites: Active `WorkSession` exists, `targetTask` state is `TESTING` (`🧪`).
-````
+```
 
 ## 3. Context Establishment & Session Lifecycle Management
 
@@ -85,7 +87,7 @@ F. Enter Approval Queue (EAQ)
 7.  **Task Status Update (if applicable):**
     -   If the `targetTask` status was `PENDING` (`⏳`) or `BLOCKED` (`❌` - only if selected due to linked `Error`), update its status to `ACTIVE` (`🔄`) in Server Memory (`mcp_Server_Memory_add_observations` or similar) and `md-docs/ROADMAP_TASKS.md` (`edit_file` tool call). Add observation noting the reason (e.g., "Targeting blocked task to resolve error").
     -   **If the `targetTask` status is already `TESTING` (`🧪`) (triggered via RWS fallback), DO NOT change its status.** The BWS session will proceed with the task in the `TESTING` state.
-    -   **Execute State Synchronization Verification (BWS - Active/Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`ACTIVE` or `TESTING`) and the `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). This involves reading the file and memory state and comparing them. Trigger UERP on failure.
+    -   **Execute State Synchronization Verification (BWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (`ACTIVE` or `TESTING`) and the `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). This involves reading the file and memory state and comparing them. Trigger UERP on failure.
 8.  **Verification:** Execute L1/L3 Verification Chain checks (internal state consistency checks).
 9.  **Audit:** Record `SESSION_START` event in Audit Trail (conceptual logging).
 10. **Feedback:** Confirm session start with the Session ID, explicitly stating the `targetTask` being worked on and its current status (`🔄` or `🧪`).
@@ -102,7 +104,7 @@ F. Enter Approval Queue (EAQ)
 8.  **Handle Verification Result:** Proceed if successful, abort SWS if failed.
 9.  **Update Active Session:** (Only if verification succeeded) Add observation to active `WorkSession` entity: `Session paused by WSSave_[ID] at [Timestamp]`. Change status to `PAUSED`.
 10. **Task Status Marker (Optional but Recommended):** (Only if verification succeeded) Update the primary active task (🔄 or 🧪) in `md-docs/ROADMAP_TASKS.md` to `⏸️ [Paused: SWS - Timestamp]`.
-11. **Execute State Synchronization Verification (SWS - Paused):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (paused/linked) and the `md-docs/ROADMAP_TASKS.md` `⏸️` marker/timestamp. Trigger UERP on failure.
+11. **Execute State Synchronization Verification (SWS - Paused):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (implicitly paused/linked to WSSave) and the `md-docs/ROADMAP_TASKS.md` `⏸️` marker/timestamp. Trigger UERP on failure.
 12. **Relation Creation:** (Only if verification succeeded) Link `WorkSessionSave` to relevant entities.
 13. **Audit:** Record `SESSION_SAVE` event.
 14. **Feedback:** Provide confirmation with `WorkSessionSave` ID.
@@ -161,7 +163,7 @@ F. Enter Approval Queue (EAQ)
     -   Update `WorkSession` status back to `ACTIVE` in Server Memory. Add observation about resumption referencing the `saveSessionID`.
     -   Restore Context (Informational): Log restored context based on `WorkSessionSave` entity data.
     -   Task Status Marker Update: Update roadmap task marker in `md-docs/ROADMAP_TASKS.md` from `⏸️` back to the task's actual status (likely `🔄` or `🧪`) (`edit_file` tool call).
-    -   **Execute State Synchronization Verification (RWS - Active/Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (retrieved) and the updated `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). Trigger UERP on failure.
+    -   **Execute State Synchronization Verification (RWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (retrieved) and the updated `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). Trigger UERP on failure.
     -   Verification: Execute L1/L3 Verification Chain checks (internal state).
     -   Audit: Record `SESSION_RESUME` event (conceptual log).
     -   Feedback: Confirm session resumption, stating Session ID and priority task.
@@ -242,7 +244,7 @@ F. Enter Approval Queue (EAQ)
 -   [ ] `CWS` logic correctly reports `AWAITING_APPROVAL` status.
 -   [ ] `CWS` logic correctly skips SWS/RWS if `AWAITING_APPROVAL`.
 -   [ ] State Synchronization Verification is executed at all required points.
--   [ ] Protocol integration layer lists correct protocol versions (`SC v2.3+`, `TVP v1.4+`, `WSAP v2.8+`, `Memory v2.1+`, `WSMP v2.11`).
+-   [ ] Protocol integration layer lists correct protocol versions (`SC v2.3+`, `TVP v1.4+`, `WSAP v2.8+`, `Memory v2.1+`, `WSMP v2.12`).
 -   [ ] Formatting adheres to `rule-formatting-protocol.mdc`.
 
 ## 8. Usage Instructions
@@ -256,7 +258,7 @@ F. Enter Approval Queue (EAQ)
 
 ## 9. Implementation Examples (Conceptual)
 *(Self-correction: Corrected section number)*
-````javascript
+```javascript
 // Example 1: Begin Work Session (BWS) - Conceptual JS
 async function handleBWS_Conceptual(sessionType = "FEATURE", targetTaskDetails = null) {
   let scReportData, targetTask;
@@ -265,7 +267,7 @@ async function handleBWS_Conceptual(sessionType = "FEATURE", targetTaskDetails =
     // Triggered manually, run SC
     // 1. Read md-docs/ROADMAP_TASKS.md using read_file tool
     // 2. Search recent Server Memory for TaskCompletion/Error entities using mcp_Server_Memory_search_nodes
-    // 3. Parse roadmap and memory data to determine priority task using WSMP v2.11 logic
+    // 3. Parse roadmap and memory data to determine priority task using WSMP v2.12 logic
     // scReportData = parsed result containing priorityTask
     targetTask = scReportData.priorityTask;
     if (!targetTask) {
@@ -343,8 +345,6 @@ async function handleRWS_Conceptual_Fallback() {
 }
 
 ```
-
-````
 
 ## 10. Performance & Batching Considerations
 *(Self-correction: Restored missing section)*

@@ -17,7 +17,7 @@ This protocol defines the mandatory process for verifying implemented functional
 
 ## 2. Protocol Integration Layer
 *(Self-correction: Updated WSMP and WSAP versions, TVP version)*
-````text
+```
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
@@ -33,7 +33,7 @@ This protocol defines the mandatory process for verifying implemented functional
 │ 10. Work Session Activation Proto v2.8+ │ // Defines ST, EAQ command triggers (Updated)
 │ 11. Testing & Verification Proto (This) │ // TVP v1.4
 └─────────────────────────────────────────┘
-````
+```
 
 ## 3. Activation & Triggers
 
@@ -46,7 +46,7 @@ This protocol defines the mandatory process for verifying implemented functional
 ## 4. Core Actions & Sequence
 
 1.  **Auto-Initiation (Agent Triggered via EWS TESTING):**
-    ````text
+    ```text
     -   (Handled by `WSMP v2.10+`)
     -   Agent identifies the target `Task` entity ID (currently `🔄`).
     -   Acquire current timestamp (`mcp_mcp_datetime_get_datetime`).
@@ -55,13 +55,13 @@ This protocol defines the mandatory process for verifying implemented functional
         -   Update the target `Task` entity status to `PENDING_TESTING` in Server Memory.
         -   Update the corresponding task line in `md-docs/ROADMAP_TASKS.md` to use the `🔬` emoji. Add an observation/note indicating it's ready for user testing.
     -   **Entity Creation (Verification Request):** Create a new entity in Server Memory (`VerificationRequest`) linked to the `Task` entity. Include: Timestamp initiated, Target Task ID, Status: `PENDING_USER_INITIATION`, Observations.
-    -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `md-docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
+    -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `md-docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
     -   **Audit:** Record `TASK_PENDING_TESTING` event.
     -   **Notify User:** Inform the user that "[Task Name] (`[TaskID]`)" is now ready for testing (`🔬`) and awaits the `ST [TaskID]` or `ST` command.
-    ````
+    ```
 
 2.  **Testing Activation (User Triggered - `ST [TaskID]`):**
-    ````text
+    ```text
     -   Verify the specified `TaskID` corresponds to a task currently in `PENDING_TESTING` (`🔬`) or `TESTING` (`🧪`) state.
     -   Acquire current timestamp.
     -   **If task is `PENDING_TESTING` (`🔬`):**
@@ -69,7 +69,7 @@ This protocol defines the mandatory process for verifying implemented functional
         -   Update `VerificationRequest` status to `ACTIVE`. Add observation.
         -   Update `Task` entity status to `TESTING` in Server Memory.
         -   Update roadmap line to `🧪`.
-        -   Execute State Synchronization Verification (`🔬` -> `🧪`).
+        -   Execute State Synchronization Verification (`🔬` -> `🧪`): MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (`TESTING`) and the `md-docs/ROADMAP_TASKS.md` `🧪` marker. Trigger UERP on failure.
         -   Audit: Record `TASK_TESTING_STARTED`.
         -   **Notify User:** "Starting active testing (`🧪`) for task: [Task Name/ID]."
     -   **If task is already `TESTING` (`🧪`):**
@@ -77,10 +77,10 @@ This protocol defines the mandatory process for verifying implemented functional
         -   **Explicitly trigger Step 4 (Evidence Gathering)** for this task.
         -   **Explicitly trigger Step 5 (Request User Approval)** for this task.
         -   Audit: Record `TASK_APPROVAL_PROCESS_INITIATED` (or similar).
-    ````
+    ```
 
 3.  **Testing Activation (User Triggered - `ST` without ID):**
-    ````text
+    ```text
     -   **Verify Precondition:** Check internal flag `agent_workflow_initialized = true`. If false, report error "Must run 'IAW' before using 'ST' without a Task ID." and stop.
     -   Acquire current timestamp.
     -   **Find Highest Priority Task:** Scan `md-docs/ROADMAP_TASKS.md` for all `🔬` and `🧪` tasks. Identify the single highest-priority task (`targetTask`) among them based on roadmap order.
@@ -90,7 +90,7 @@ This protocol defines the mandatory process for verifying implemented functional
         -   Update `VerificationRequest` status to `ACTIVE`.
         -   Update `targetTask` entity status to `TESTING` in Memory.
         -   Update roadmap line to `🧪`.
-        -   Execute State Synchronization Verification (`🔬` -> `🧪`).
+        -   Execute State Synchronization Verification (`🔬` -> `🧪`): MUST execute the sequence from `mandatory-post-update-state-synchronization-protocol.mdc v1.0` comparing the Memory `Task` status (`TESTING`) and the `md-docs/ROADMAP_TASKS.md` `🧪` marker. Trigger UERP on failure.
         -   Audit: Record `TASK_TESTING_STARTED`.
         -   Notify User: "Starting active testing (`🧪`) for task: [Task Name/ID]."
     -   **If `targetTask` is `TESTING` (`🧪`):**
@@ -98,11 +98,11 @@ This protocol defines the mandatory process for verifying implemented functional
         -   **Explicitly trigger Step 4 (Evidence Gathering)** for `targetTask`.
         -   **Explicitly trigger Step 5 (Request User Approval)** for `targetTask`.
         -   Audit: Record `TASK_APPROVAL_PROCESS_INITIATED` (or similar).
-    ````
+    ```
 
 **3.5. Testing Activation (User Triggered - `EAQ [TaskID]`)**
     *(New Step)*
-    ````text
+    ```text
     -   **Verify Context:**
         -   Check if an active `WorkSession` exists. If not, report error: "EAQ command requires an active work session." and stop.
         -   Identify the `targetTask` of the active `WorkSession`.
@@ -114,31 +114,31 @@ This protocol defines the mandatory process for verifying implemented functional
     -   **Explicitly trigger Step 4 (Evidence Gathering)** for the `targetTask`.
     -   **Explicitly trigger Step 5 (Request User Approval)** for the `targetTask`.
     -   Audit: Record `TASK_APPROVAL_PROCESS_INITIATED_VIA_EAQ`.
-    ````
+    ```
 
 4.  **Evidence Gathering & Presentation (Agent Action - Post `ST [TaskID]`/`ST`/`EAQ` targeting `🧪` task):**
-    ````text
+    ```text
     -   Execute automated tests if configured for the specific task. Log results as observations to the `VerificationRequest` entity.
     -   Perform manual checks (e.g., `ui-check.mdc`). Attach results as observations.
     -   Generate a summary report for the *specific task*.
     -   Present the summary, evidence, and task details to the user.
-    ````
+    ```
 
 5.  **Request User Approval (Agent Action - Post Evidence):**
-    ````text
+    ```text
     -   Explicitly ask the user to review the presented evidence and approve (`AC [TaskID]`) or reject (`RC [TaskID] [Reason]`) the completion of the specific task being tested.
     -   **Wait for explicit user input.**
-    ````
+    ```
 
 6.  **Process User Decision (Agent Action - Post Approval/Rejection):**
-    ````text
+    ```text
     -   **On User Approval (`AC [TaskID]`):**
         -   Verify the `TaskID` matches an active verification request (`🧪`).
         -   Acquire timestamp.
         -   **Mandatory Approval Verification (MUST):** Verify the `VerificationRequest` entity status is `APPROVED` before updating the `Task`. Halt/UERP if failed.
         -   **Update Verification Request:** Update status to `APPROVED`. Add observation.
         -   **Update Task Status (Completed):** Update `Task` entity to `COMPLETED` in Memory. Update roadmap to `✅` + timestamp.
-        -   **Execute State Synchronization Verification (AC - Completed):** MUST execute verification comparing Memory (`COMPLETED`) and roadmap (`✅`). Trigger UERP on failure.
+        -   **Execute State Synchronization Verification (AC - Completed):** MUST execute verification using `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing Memory (`COMPLETED`) and roadmap (`✅`). Trigger UERP on failure.
         -   **Verification:** Perform L5 verification check.
         -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED`.
         -   **Session Update (if triggered by EAQ):** Remove `AWAITING_APPROVAL` observation if present.
@@ -148,11 +148,11 @@ This protocol defines the mandatory process for verifying implemented functional
         -   Acquire timestamp.
         -   **Update Verification Request:** Update status to `REJECTED`. Add observation.
         -   **Update Task Status (Active/Rework):** Update `Task` entity back to `ACTIVE` (`🔄`) or `REWORK`. Update roadmap back to `🔄` or `🔧`. Add note.
-        -   **Execute State Synchronization Verification (RC - Rework):** MUST execute verification comparing Memory (`ACTIVE`/`REWORK`) and roadmap (`🔄`/`🔧`). Trigger UERP on failure.
+        -   **Execute State Synchronization Verification (RC - Rework):** MUST execute verification using `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing Memory (`ACTIVE`/`REWORK`) and roadmap (`🔄`/`🔧`). Trigger UERP on failure.
         -   **Feedback:** Acknowledge rejection, log reason.
         -   **Audit:** Record `TASK_VERIFICATION_REJECTED`.
         -   **Session Update (if triggered by EAQ):** Remove `AWAITING_APPROVAL` observation if present. Task remains `ACTIVE` (`🔄`), session likely continues.
-    ````
+    ```
 
 ## 5. State Management
 -   Introduces `🔬` (PENDING_TESTING) state.

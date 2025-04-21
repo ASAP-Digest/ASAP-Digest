@@ -6,79 +6,65 @@ alwaysApply: false
 # Documentation Update Trigger Protocol v1.0
 
 ## 1. Purpose
-This protocol defines a unified command/alias to manually trigger the necessary processes for updating project documentation, specifically focusing on regenerating the OpenAPI specification and potentially highlighting other documentation tasks. It acts as a convenient shortcut to ensure documentation reflects the latest code changes, particularly for the API reference.
+
+This protocol defines the process triggered by the "Update Documentation" (`UD`) command (defined in `work-session-activation-protocol.mdc`). Its primary focus is to automate specific documentation generation tasks, currently centered around the OpenAPI specification, while clarifying its relationship to other documentation update mechanisms within the VeriDX system.
 
 ## 2. Protocol Integration Layer
+
 ```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. OpenAPI Generation Protocol          │ // Defines the script to be run
-│ 2. Tooling Setup Guide (v1.1+)          │ // Defines script location/command
-│ 3. Task Tracking Protocol               │ // Identifies manual doc tasks
-│ 4. Status Check Protocol                │ // Can provide context on pending tasks
-│ 5. Rule Execution Protocol              │ // Rule Application
-│ 6. Documentation Update Trigger (This)  │ // Self-reference
-│ 7. Audit Trail System                   │ // Logs trigger execution
+│ 1. Rule Execution Protocol              │ // How these steps are run
+│ 2. Work Session Activation Proto v2.9+  │ // Defines 'UD' command trigger
+│ 3. Tooling Setup Guide (v1.2+)          │ // Defines generation/linting scripts
+│ 4. Universal Error Resolution (UERP)    │ // Handles script execution failures
+│ 5. Update Memory Protocol (v2.1+)       │ // Handles manual doc updates (Roadmap, Checklist)
+│ 6. New Rule Creation Protocol (v1.1+)   │ // Handles manual doc updates (Rule Index)
+│ 7. Audit Trail System                   │ // Logs execution
+│ 8. Documentation Update Trigger (This)  │ // Self-reference
 └─────────────────────────────────────────┘
 ```
 
-## 3. Activation Command & Alias
+## 3. Activation
+
 - **Command:** "Update Documentation"
-- **Alias:** `ud`
+- **Alias:** `UD`
+- **Context:** Can be run at any time, typically after making changes to API route JSDoc annotations or when needing to ensure the OpenAPI spec is up-to-date.
 
-## 4. Core Actions & Sequence
+## 4. Scope & Relationship to Other Protocols
 
-Executing `ud` triggers the following sequence:
+- **Primary Scope:** This protocol, triggered by `UD`, is responsible for executing **automated documentation generation and validation scripts** defined in the `tooling-setup-guide.mdc`. Currently, this involves:
+    - Running the OpenAPI annotation linter (`scripts/lint-openapi-annotations.js`).
+    - Running the OpenAPI specification generator (`scripts/generate-openapi.js`).
+    - Potentially running a broken link checker for Markdown files (if configured).
+- **Manual Updates (Handled Elsewhere):** This protocol does **NOT** handle manual updates to documentation files like:
+    - `md-docs/ROADMAP_TASKS.md` (updated by `update-memory.mdc`, `WSMP`, `TVP`).
+    - `md-docs/DEPLOYMENT_CHECKLIST.md` (updated by `update-memory.mdc`).
+    - `.cursor/rules/index.mdc` (updated by `new-rule-creation-protocol.mdc`).
+    - `CHANGELOG.md` (updated manually or via specific release protocols).
+- **Intention:** The `UD` command provides a convenient way to manually trigger the *automated parts* of the documentation workflow, ensuring generated artifacts like `openapi.json` are current, without needing a full commit cycle (which also runs these via hooks). It complements, but does not replace, the manual documentation updates performed by other protocols.
 
-1.  **Initiate OpenAPI Generation:**
-    *   MUST execute the OpenAPI generation script defined in `openapi-generation-protocol.mdc` (e.g., `node ./scripts/generate-openapi.js`).
-    *   MUST use the `run_terminal_cmd` tool.
-    *   Check the exit code of the script execution.
-    *   **On Success:** Report "OpenAPI specification (`/docs/api-reference/openapi.json`) regenerated successfully."
-    *   **On Failure:** Report "Error: OpenAPI specification generation failed. Please check script output/logs." Trigger UERP if necessary. Halt further steps in this protocol if generation fails.
+## 5. Execution Steps
 
-1.5. **Verify/Update `docs.json` for Mintlify Integration (New Step):**
-    *   **Precondition:** OpenAPI generation (Step 1) MUST have succeeded.
-    *   **Read `docs.json`:** Read the content of `docs/docs.json`.
-    *   **Parse JSON:** Parse the JSON content.
-    *   **Locate API Reference Target:** Find the designated "API Reference" tab/group within the `navigation` structure. (This might require configuration or assumptions about the structure, e.g., looking for a tab with `tab: "API Reference"` or a specific group).
-    *   **Define Target Configuration:** Define the expected configuration for Mintlify auto-population, e.g.:
-        ```json
-        {
-          "tab": "API Reference", 
-          "openapi": "/api-reference/openapi.json" 
-          // Or nested within a group like:
-          // "group": "Endpoints",
-          // "openapi": "/api-reference/openapi.json"
-        }
-        ```
-        *(Adjust the target path `/api-reference/openapi.json` if the output location in `generate-openapi.js` changes)*
-    *   **Check & Update:** 
-        *   Check if the located tab/group *already* has the correct `openapi` field pointing to the generated spec file.
-        *   If **correct**, report "`docs.json` already configured for Mintlify OpenAPI auto-population." and proceed.
-        *   If **incorrect or missing**, modify the parsed JSON structure to add/correct the `openapi` field in the appropriate location within the API Reference tab/group. Set a flag `docsJsonModified = true`.
-        *   If the structure is unexpected or the target section cannot be found, report an error and skip writing.
-    *   **Write `docs.json` (If Modified):** If `docsJsonModified` is true, write the updated JSON structure back to `docs/docs.json`, preserving formatting (e.g., using `JSON.stringify(data, null, 2)`).
-    *   **Report:** Report success or failure of the `docs.json` check/update.
+1.  **Acknowledge Trigger:** Confirm receipt of the `UD` command.
+2.  **Run Annotation Linter (if configured):**
+    *   Execute the script defined in `tooling-setup-guide.mdc` (e.g., `node ./scripts/lint-openapi-annotations.js`).
+    *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_LINT_FAIL` in Audit Trail, trigger UERP, and HALT.
+3.  **Run OpenAPI Generator (if configured):**
+    *   Execute the script defined in `tooling-setup-guide.mdc` (e.g., `node ./scripts/generate-openapi.js`).
+    *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_GEN_FAIL` in Audit Trail, trigger UERP, and HALT.
+4.  **Run Broken Link Checker (Optional, if configured):**
+    *   Execute the command defined in `tooling-setup-guide.mdc` (e.g., `markdown-link-check ...`).
+    *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_LINK_CHECK_FAIL` in Audit Trail, trigger UERP, and HALT.
+5.  **Report Completion:** Inform the user that the documentation update/generation process completed successfully.
+6.  **Audit:** Record `DOC_UPDATE_COMPLETE` event in Audit Trail.
 
-2.  **Check for Pending Manual Documentation Tasks (Optional but Recommended):**
-    *   Query `md-docs/ROADMAP_TASKS.md` (using `read_file` and parsing) or Server Memory (`mcp_Server_Memory_search_nodes`) for any active (`🔄`), pending (`⏳`), or paused (`⏸️`) tasks specifically related to manual documentation updates (e.g., tasks with names like "Docs: Update Getting Started Guide", "Docs: Explain New Feature X").
-    *   If found, list them for the user: "Reminder: The following manual documentation tasks may need attention: [List Tasks]".
-    *   If none found, report "No pending manual documentation tasks found in roadmap/memory."
+## 6. Verification Checklist (for this protocol)
 
-3.  **Report Completion:**
-    *   Indicate the documentation update trigger process is complete.
-    *   Remind the user to review and commit any changes made to `/docs/api-reference/openapi.json` and **potentially `/docs/docs.json`**.
-
-## 5. Error Handling
-- Handles failures during the OpenAPI generation script execution.
-- Handles potential errors during roadmap/memory scanning (though this is primarily informational).
-
-## 6. Verification Checklist (For this protocol)
-- [ ] Is the activation command/alias clearly defined (`Update Documentation` / `ud`)?
-- [ ] Does Step 1 correctly trigger the OpenAPI generation script via `run_terminal_cmd`?
-- [ ] Does Step 1 handle success and failure reporting for the script execution?
-- [ ] Does Step 2 attempt to identify pending manual documentation tasks?
-- [ ] Does Step 3 provide a clear completion message and reminder to commit?
-- [ ] Does the protocol integrate correctly with other specified protocols?
+- [ ] Does the protocol clearly define the `UD` trigger?
+- [ ] Does Section 4 accurately clarify its scope (automated generation) versus manual updates handled by other protocols?
+- [ ] Does the execution sequence correctly reference running scripts defined in the `tooling-setup-guide.mdc`?
+- [ ] Does each script execution step include appropriate error handling (report, log, UERP trigger, HALT)?
+- [ ] Does the protocol conclude with a completion report and audit log?
+- [ ] Does the formatting adhere to `rule-formatting-protocol.mdc`?

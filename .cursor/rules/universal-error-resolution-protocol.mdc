@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Universal Error Resolution Protocol (UERP) v2.0
+# Universal Error Resolution Protocol (UERP) v2.1
 
 ## 0. Protocol Integration Layer
 ```
@@ -46,8 +46,9 @@ Integration: Component System
 A. Rule Analysis [Rule Execution Protocol 2.A]
    1. Scan <available_instructions>
    2. Use fetch_rules for applicable protocols
-   3. Document protocol dependencies
-   4. Create execution checklist
+   3. Consult @master-rule-index-protocol.mdc (Section 4) for a categorized list of rules.
+   4. Document protocol dependencies
+   5. Create execution checklist
 
 B. Protocol Selection Matrix
 ┌──────────────────┬───────────────────┬──────────────────┐
@@ -99,6 +100,7 @@ A. Solution Framework [Rule Execution Protocol 4.A]
    2. Cross-Protocol Requirements
    3. Integration Points
    4. Verification Requirements
+   5. **Code Removal Check:** If the proposed resolution involves deleting existing code, HALT and execute `critical-code-removal-protocol.mdc` BEFORE proceeding with the removal steps within this protocol.
 
 B. Implementation Matrix
 ┌──────────────┬─────────────────┬────────────────┐
@@ -141,23 +143,25 @@ Icon Addition Verification:
 ## 6. Documentation & Memory Update
 ```
 A. Documentation Requirements [Meta Protocol 6.A]
-   1. Update relevant documentation
-   2. Add prevention notes
-   3. Update protocol documentation
-   4. Cross-reference updates
+   1. Update relevant documentation (e.g., comments in code, task notes).
+   2. Add prevention notes if applicable.
+   3. Update protocol documentation if the error revealed a flaw.
+   4. Cross-reference updates.
 
 B. Server Memory Update [server-memory-rules.mdc]
-   1. Create error resolution entity
-   2. Add observations
-   3. Create relations
-   4. Update task status
-
-Example:
-Memory Update:
-1. Create IconResolutionTask entity
-2. Add resolution steps as observations
-3. Link to related entities
-4. Mark task complete
+   1. **Create Error Entity:**
+      *   MUST create an `Error` entity in Server Memory (`mcp_Server_Memory_create_entities`).
+      *   Include: Error Type (from classification), Timestamp, Detailed Description, Status (`active` initially).
+      *   Optionally include: Impact assessment, potential resolution steps discovered.
+   2. **Link Error to Task (If Applicable):**
+      *   If the error directly impacts or blocks a specific `Task` entity:
+         *   MUST create a `blocks` relationship from the newly created `Error` entity to the `Task` entity (`mcp_Server_Memory_create_relations`).
+         *   Consider updating the `Task` entity status to `BLOCKED` in Memory and `❌` in `md-docs/ROADMAP_TASKS.md` via the Task Tracking Protocol (this might depend on the error's severity and expected resolution time).
+   3. **Document Resolution:**
+      *   Once the error is resolved, update the `Error` entity status to `resolved` (`mcp_Server_Memory_add_observations`).
+      *   Add observations detailing the resolution steps taken.
+      *   If a task was blocked, update its status back to `ACTIVE` (`🔄`) or `PENDING_TESTING` (`🔬`) as appropriate, and remove the `blocks` relationship (`mcp_Server_Memory_delete_relations`).
+   4. **Code Removal Check:** If resolution involved code removal, ensure the `critical-code-removal-protocol.mdc` was followed and document this in the `Error` entity observations.
 ```
 
 ## 7. Protocol Enhancement

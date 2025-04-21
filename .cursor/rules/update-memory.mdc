@@ -53,6 +53,8 @@ Executing `um` triggers the following sequence:
     -   Use the Task Tracking Protocol's logic (implicit) to find the task line and update its status emoji (e.g., ✅) and append the acquired formatted timestamp.
     -   Example format: `- [Task ID] Task Description ✅ MM.DD.YY | HH:MM AM/PM PDT`
 
+3.a. **Execute State Synchronization Verification (MUST):** MUST execute the sequence defined in `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `md-docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
+
 4.  **Main Roadmap Check (`md-docs/ASAP_DIGEST_ROADMAP.md`):**
     -   SHOULD review if the completed functionality was significantly outside the scope defined in the main roadmap.
     -   If necessary, update `md-docs/ASAP_DIGEST_ROADMAP.md` to reflect scope changes or additions.
@@ -61,7 +63,6 @@ Executing `um` triggers the following sequence:
     -   MUST update `md-docs/DEPLOYMENT_CHECKLIST.md` if the completed work affects deployment steps, configuration, or verification procedures. Add new items or check off existing ones as appropriate.
 
 6.  **Verification & Audit:**
-    -   SHOULD perform L1/L2 Verification Chain checks (from Cross-Protocol Comms) to ensure consistency between memory and updated documentation.
     -   MUST ensure relevant events (e.g., `TASK_UPDATE`, `MEMORY_SYNC`) are logged via the Audit Trail System.
 
 ## 5. Example Flow (Conceptual)
@@ -91,13 +92,13 @@ um
 #    - Updates line to: "- [T-123] Implement Login UI ✅ 07.27.24 | 10:30 AM PDT"
 #    (Using edit_file tool)
 
-# 4. Agent reviews md-docs/ASAP_DIGEST_ROADMAP.md (No changes needed)
+# 4.a. **Execute State Synchronization Verification:** MUST execute the full sequence defined in `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `md-docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
+
+# 5. Agent reviews md-docs/ASAP_DIGEST_ROADMAP.md (No changes needed)
 
 # 5. Agent updates md-docs/DEPLOYMENT_CHECKLIST.md:
 #    - Adds item: "- Verify login form styles on staging"
 #    (Using edit_file tool)
-
-# 5.a. **Execute State Synchronization Verification:** MUST execute the full sequence defined in `Mandatory Post-Update State Synchronization Verification Protocol v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `md-docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
 
 # 6. Agent performs verification checks (Pass)
 #    - Logs events to Audit Trail

@@ -1,0 +1,93 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Mandatory Post-Update State Synchronization Verification Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the mandatory, atomic sequence of steps required to verify the consistency between the system's persistent state representations, specifically Server Memory entities (managed by `server-memory-rules.mdc`) and related documentation files (primarily `md-docs/ROADMAP_TASKS.md`). It MUST be executed immediately following any operation that modifies both sources, such as task status updates triggered by `work-session-management-protocol.mdc` (WSMP), `testing-verification-protocol.mdc` (TVP), or `update-memory.mdc`. Failure during this verification indicates a critical inconsistency and MUST trigger the `universal-error-resolution-protocol.mdc` (UERP).
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Rule Execution Protocol              │ // How these steps are run
+│ 2. Server Memory Rules (v2.1+)          │ // Source 1 for state
+│ 3. Task Tracking Protocol               │ // Source 2 for state (Roadmap)
+│ 4. Work Session Mgmt Proto (v2.10+)     │ // Triggering protocol
+│ 5. Testing & Verification Proto (v1.4+) │ // Triggering protocol
+│ 6. Update Memory Protocol (v2.1+)       │ // Triggering protocol
+│ 7. Cross-Protocol Comms & Verify(v2.1+) │ // Framework, esp. L1/L2 checks
+│ 8. Universal Error Resolution (UERP)    │ // Failure handling
+│ 9. Audit Trail System                   │ // Logging verification results
+│ 10. State Sync Verification (This v1.0) │ // Self-reference
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation
+
+- **Trigger:** Explicitly called by other protocols (WSMP, TVP, `update-memory`) immediately after they perform updates to both Server Memory Task entities and the `md-docs/ROADMAP_TASKS.md` file.
+- **Context:** Requires the `TaskID` (or relevant entity identifier) and the expected `status` (e.g., `COMPLETED`, `ACTIVE`, `PENDING_TESTING`, `TESTING`, `PAUSED`) that *should* now be reflected consistently in both locations.
+
+## 4. Verification Steps (MUST be executed atomically)
+
+1.  **Input Acquisition:**
+    *   Receive `targetEntityID` (e.g., `TaskID`).
+    *   Receive `expectedStatus` (e.g., `COMPLETED`).
+    *   Receive `expectedTimestamp` (Optional: The timestamp that should be associated with the status change, if applicable, formatted per `format-time v1.1+`).
+
+2.  **Read Server Memory State:**
+    *   Use `mcp_Server_Memory_open_nodes` or `mcp_Server_Memory_search_nodes` to retrieve the specified `targetEntityID`.
+    *   Extract the current `status` field/observation from the entity data.
+    *   Extract the relevant timestamp observation (e.g., `lastUpdateTs`, `completionTime`) if `expectedTimestamp` was provided.
+    *   **Error Handling:** If the entity cannot be read or status/timestamp is missing, log error, record `STATE_SYNC_VERIFY_FAIL (Memory Read Error)`, trigger UERP, and HALT.
+
+3.  **Read Documentation State (`md-docs/ROADMAP_TASKS.md`):**
+    *   Use `read_file` to get the content of `md-docs/ROADMAP_TASKS.md`.
+    *   Parse the content to find the line corresponding to `targetEntityID`.
+    *   Extract the status emoji (e.g., `✅`, `🔄`, `🔬`, `🧪`, `⏸️`) from the line.
+    *   Extract the timestamp string from the line if `expectedTimestamp` was provided.
+    *   **Error Handling:** If the file cannot be read or the line/status/timestamp cannot be parsed, log error, record `STATE_SYNC_VERIFY_FAIL (Doc Read/Parse Error)`, trigger UERP, and HALT.
+
+4.  **Status Comparison:**
+    *   Map the extracted emoji (from Step 3) to its corresponding Server Memory status string using the mapping defined in `server-memory-rules.mdc v2.1+` (e.g., `✅` maps to `COMPLETED`).
+    *   Compare the mapped status from the documentation with the status extracted from Server Memory (Step 2).
+    *   Compare both with the `expectedStatus` provided in Step 1.
+    *   **Failure Condition:** If the Server Memory status, the mapped documentation status, and the `expectedStatus` do NOT all match, proceed to Step 6 (Handle Failure).
+
+5.  **Timestamp Comparison (Optional but Recommended):**
+    *   If `expectedTimestamp` was provided:
+        *   Compare the timestamp string extracted from Server Memory (Step 2) with the timestamp string extracted from the documentation (Step 3). *Note: Allow for minor formatting differences if the core date/time matches.*
+        *   Compare both with the `expectedTimestamp` (allowing for formatting variations).
+        *   **Failure Condition:** If timestamps were expected and do not sufficiently match, proceed to Step 6 (Handle Failure).
+
+6.  **Handle Verification Result:**
+    *   **If All Comparisons Passed:**
+        *   Log success: "State Synchronization Verification PASSED for [targetEntityID] with status [expectedStatus]."
+        *   Record `STATE_SYNC_VERIFY_PASS` event in Audit Trail.
+        *   Protocol execution completes successfully.
+    *   **If Any Comparison Failed (from Step 4 or 5):**
+        *   Log detailed failure: "State Synchronization Verification FAILED for [targetEntityID]. Expected Status: [expectedStatus]. Memory Status: [Memory Status]. Doc Status: [Mapped Doc Status]. Expected Timestamp: [Expected Ts]. Memory Timestamp: [Memory Ts]. Doc Timestamp: [Doc Ts]."
+        *   Record `STATE_SYNC_VERIFY_FAIL (Mismatch)` event in Audit Trail.
+        *   **Trigger UERP:** Immediately initiate the `universal-error-resolution-protocol.mdc` providing the failure details.
+        *   Protocol execution completes with failure.
+
+## 5. Error Handling Specifics
+- This protocol's primary failure mode is triggering UERP. It does not attempt self-correction.
+- Robust parsing logic is required for Step 3 to handle potential variations in the roadmap file format.
+- Timestamp comparison should be reasonably flexible regarding minor formatting variations if the underlying date and time are identical.
+
+## 6. Verification Checklist (for this protocol)
+- [ ] Does the protocol clearly define its purpose and triggers?
+- [ ] Does it specify required inputs (`targetEntityID`, `expectedStatus`, optional `expectedTimestamp`)?
+- [ ] Does it mandate reading from both Server Memory and the Roadmap file?
+- [ ] Does it include error handling for read/parse failures?
+- [ ] Does it define the comparison logic for status (using mapping from `server-memory-rules`)?
+- [ ] Does it include optional timestamp comparison?
+- [ ] Does it clearly define the success path (logging, audit)?
+- [ ] Does it clearly define the failure path (logging, audit, **triggering UERP**)?
+- [ ] Does the formatting adhere to `rule-formatting-protocol.mdc`?

@@ -90,7 +90,7 @@ This protocol is typically initiated when:
 
 1.  **Self-Verification:** Review the drafted rule against this protocol's checklist (Section 8). Check for clarity, completeness, formatting adherence, and non-conflict.
 2.  **Documentation Updates:**
-    *   **Update Master Rule Index (MUST):** Add the new rule's filename and description to the central index file (`.cursor/rules/index.mdc`) under the appropriate category, following `master-rule-index-protocol.mdc`.
+    *   **Update Master Rule Index (MUST):** Add the new rule's filename and description to the index structure located within `@master-rule-index-protocol.mdc` (Section 4), under the appropriate category, following the guidelines in that protocol.
     *   Add the new rule's name and description to the `<available_instructions>` list (or the system managing it).
     *   Update any protocols identified in Step 5.2.
     *   Add an entry to a relevant `CHANGELOG.md` or project documentation noting the new rule's addition.
@@ -125,5 +125,5 @@ This protocol is typically initiated when:
 -   [ ] Are potential conflicts with existing rules addressed?
 -   [ ] Is the verification method defined?
 -   [ ] Are necessary documentation updates identified/planned?
--   [ ] **Has the rule been added to the Master Rule Index (`.cursor/rules/index.mdc`)?**
+-   [ ] **Has the rule been added to the Master Rule Index (within `@master-rule-index-protocol.mdc` Section 4)?**
 -   [ ] Has the rule been added to `<available_instructions>`?

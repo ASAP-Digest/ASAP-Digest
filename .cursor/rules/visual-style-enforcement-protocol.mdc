@@ -3,28 +3,32 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Visual Style Enforcement Protocol v1.0
+# Visual Style Enforcement Protocol v1.1
+
+*(Self-correction: v1.1 - Integrated strict checks, removed duplication)*
 
 ## 1. Purpose
-This protocol ensures that all UI components and layouts developed or modified within the ASAP Digest project strictly adhere to the specifications defined in the `[VISUAL_IDENTITY_STYLE_GUIDE.md](mdc:md-docs/VISUAL_IDENTITY_STYLE_GUIDE.md)`. It acts as a verification layer applied during component development, modification, and review, integrating with existing protocols like `sk2-scns5-t4-int.mdc`, `icon-management.mdc`, and `ui-check.mdc`.
+This protocol ensures that all UI components and layouts developed or modified within the ASAP Digest project strictly adhere to the specifications defined in the `golden-ratio-design-system-protocol.mdc` (GRDSP). It acts as a **higher-level verification layer** applied during component development, modification, and review. It integrates automated checks from `strict-visual-enforcement-protocol.mdc` and includes checks requiring visual inspection or `ui-check.mdc`.
 
 ## 2. Protocol Integration Layer
-````text
+```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │ // Overall Guidance
 │ 2. Rule Execution Protocol              │ // Rule Application
-│ 3. sk2-scns5-t4-int.mdc                 │ // Base Svelte/Tailwind rules
-│ 4. icon-management.mdc                  │ // Icon specifics
-│ 5. ui-check.mdc                         │ // Visual verification tool
-│ 6. add-shadcn-svelte-component          │ // Component addition workflow
-│ 7. Visual Style Enforcement (This)      │ // Guide-specific checks
-│ 8. Testing & Verification Protocol       │ // Final task review
-│ 9. Cross-Protocol Comms & Verification   │
-│ 10. Audit Trail System                  │
+│ 3. golden-ratio-design-system-protocol  │ // The Style Guide (GRDSP)
+│ 4. strict-visual-enforcement-protocol   │ // Handles Automatable Checks (Prerequisite)
+│ 5. sk2-scns5-t4-int.mdc                 │ // Base Svelte/Tailwind rules
+│ 6. icon-management.mdc                  │ // Icon specifics
+│ 7. ui-check.mdc                         │ // Visual verification tool
+│ 8. add-shadcn-svelte-component          │ // Component addition workflow
+│ 9. Visual Style Enforcement (This v1.1) │ // Guide-specific checks
+│ 10. Testing & Verification Protocol     │ // Final task review
+│ 11. Cross-Protocol Comms & Verification │
+│ 12. Audit Trail System                  │
 └─────────────────────────────────────────┘
-````
+```
 
 ## 3. Activation & Scope
 - **Trigger:** Automatically invoked whenever:
@@ -34,135 +38,120 @@ This protocol ensures that all UI components and layouts developed or modified w
     - The `add-shadcn-svelte-component` rule is completed.
 - **Scope:** Applies to all `.svelte` files contributing to the user interface.
 
-## 4. Core Verification Checklist (Based on `VISUAL_IDENTITY_STYLE_GUIDE.md#llm-enforcement-summary-and-checklist`)
+## 4. Core Verification Checklist
 
-This checklist MUST be applied to the component/changes under review. The agent MUST reference the linked Style Guide section and perform checks using available tools (`grep_search`, code analysis). Report specific violations found.
+This checklist MUST be applied to the component/changes under review. Report specific violations found.
 
-**Checklist Execution:**
+**Phase 1: Automatable Checks (Prerequisite)**
 
-1.  **Color Syntax Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search relevant `.svelte` file(s) for class patterns like `(bg|text|border|ring)-(red|blue|green|pink|cyan|yellow|gray|white|black|purple)-[0-9]+` OR inline `style=".*(color|background):.*(#|rgb|rgba\()"`
-    *   **Rule:** Flag any matches as potential direct color usage violations. Expected syntax: `(bg|text|border|ring)-\[hsl\(var\(--.*\)\)\]`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
+1.  **Execute Strict Enforcement Protocol:**
+    *   **Action:** Run the `strict-visual-enforcement-protocol.mdc` against the target file(s).
+    *   **Requirement:** This protocol MUST pass all its checks (Color Syntax, Spacing Grid (basic regex), Typography Variables, Radius Variables, Icon Imports/Usage (basic), Motion Variables) before proceeding to Phase 2.
+    *   **Status:** [ ] Pass / [ ] Fail (Report failures from strict protocol and HALT)
 
-2.  **Font Family Variable Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search for `font-(sans|body|mono)` without `var(--...` syntax. E.g., `\bfont-(sans|body|mono)\b(?!\s*\[var\()`.
-    *   **Rule:** Flag any matches. Expected syntax: `font-\[var\(--font-(sans|body|mono)\)\]`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
+**Phase 2: Contextual & Visual Verification**
 
-3.  **Font Size Variable Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search for `text-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl)` without `var(--...` syntax. E.g., `\btext-(xs|sm|base|lg|xl|2xl|3xl|4xl|5xl)\b(?!\s*\[var\()`. (Adjust sizes based on guide).
-    *   **Rule:** Flag any matches. Expected syntax: `text-\[var\(--font-size-.*\)]`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
+*Assuming Phase 1 Passed*
 
-4.  **Font Weight Variable Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search for `font-(thin|light|normal|medium|semibold|bold|extrabold)` without `var(--...` syntax. E.g., `\bfont-(thin|light|normal|medium|semibold|bold|extrabold)\b(?!\s*\[var\()`. (Adjust weights based on guide).
-    *   **Rule:** Flag any matches. Expected syntax: `font-\[var\(--font-weight-.*\)]`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
-
-5.  **Border Radius Variable Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search for `rounded-(sm|md|lg|xl|2xl|full)` without `var(--...` syntax. E.g., `\rounded-(sm|md|lg|xl|2xl|full)\b(?!\s*\[var\()`. (Adjust radii based on guide).
-    *   **Rule:** Flag any matches. Expected syntax: `rounded-\[var\(--radius-.*\)]`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
-
-6.  **Icon Import Verification:**
-    *   **Tool:** `grep_search`
-    *   **Query:** Search `<script>` section for `import .* from 'lucide-svelte'`.
-    *   **Rule:** Flag any direct imports from `lucide-svelte`. Expected import path: `$lib/utils/lucide-compat.js` (or configured path).
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
-
-7.  **Icon Component Usage Verification:**
-    *   **Tool:** Code Analysis / `grep_search`
-    *   **Query:** Search template section for Lucide icon component names used directly as tags (e.g., `<AlertCircle`, `<Check`) instead of `<Icon icon={...}>`.
-    *   **Rule:** Flag direct usage. Expected usage: `<Icon icon={IconName} ... />`.
-    *   **Status:** [ ] Pass / [ ] Fail (List violations)
-
-8.  **Spacing Scale Adherence (Code Check - Basic):**
-    *   **Tool:** `grep_search` / Code Analysis
-    *   **Query:** Extract values from arbitrary spacing classes (e.g., `p-\[(.*?)\]`, `m-\[(.*?)\]`, `gap-\[(.*?)\]`).
-    *   **Rule:** Flag values that seem inconsistent with the scale defined in the Style Guide (e.g., odd numbers, values not aligning with the 4px/8px rhythm if applicable). *Note: This requires careful implementation and may produce false positives/negatives.*
-    *   **Status:** [ ] Pass / [ ] Fail / [ ] Partial (List potential violations)
-
-9.  **Component State Implementation (Visual Check):**
+2.  **Component State Implementation (Visual Check):**
     *   **Tool:** `ui-check.mdc` / Manual Review
-    *   **Rule:** Verify required states (Hover, Focus, Active, Disabled, Loading) match the Style Guide visuals.
-    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input)
+    *   **Rule:** Verify required states (Hover, Focus, Active, Disabled, Loading) match the GRDSP visuals (Section 9). Are focus rings using `--ring`? Are disabled states styled correctly?
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
 
-10. **Accessibility - Contrast (Tool/Visual Check):**
+3.  **Accessibility - Contrast (Tool/Visual Check):**
     *   **Tool:** Browser DevTools / Accessibility Scanner / `ui-check.mdc` / Manual Review
-    *   **Rule:** Verify text contrast meets WCAG AA (4.5:1).
+    *   **Rule:** Verify text contrast meets WCAG AA (4.5:1) against its background, using GRDSP palette (Section 5 & 13).
     *   **Status:** [ ] Pass / [ ] Fail (Requires external tool or `ui-check` input)
 
-11. **Accessibility - Focus State (Visual Check):**
+4.  **Accessibility - Focus State Visibility (Visual Check):**
     *   **Tool:** `ui-check.mdc` / Manual Review
-    *   **Rule:** Verify focus states are visible and use the `--focus-ring` style.
-    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input)
+    *   **Rule:** Verify focus states are clearly visible and consistently use the `--ring` variable/style as defined in GRDSP (Section 9 & 13).
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
 
-### 4.1. Color System Verification
-````text
-- [ ] **HSL Variables:** Are ALL colors implemented using `hsl(var(--<color-name>))` syntax (e.g., `bg-[hsl(var(--primary))]`, `text-[hsl(var(--foreground))]`)? (Ref: Style Guide Section: Color System)
-- [ ] **No Direct Colors:** Are there NO direct Tailwind color classes (e.g., `bg-blue-500`) or hex/rgb values used for themeable colors? (Ref: Style Guide Section: Color System Usage)
-- [ ] **Contrast:** Does the text/element color have sufficient contrast (visually assess, aim for >= 4.5:1) against its background according to the guide's palette? (Ref: Style Guide Sections: Color System Usage, Accessibility Standards)
-- [ ] **Neon Usage:** Are neon colors used appropriately as accents/highlights, not for large background areas? (Ref: Style Guide Section: Color System Usage)
-````
+5.  **Layout & Composition (Visual Check):**
+    *   **Tool:** `ui-check.mdc` / Manual Review
+    *   **Rule:** Does the layout adhere to the intended structure, alignment, container usage, and grid patterns? Does it align with Golden Ratio guidelines if applicable? (GRDSP Section 6)
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
 
-### 4.2. Typography Verification
-````text
-- [ ] **Font Families:** Are correct font variables (`--font-sans`, `--font-body`) used via utilities (e.g., `font-[var(--font-sans)]`)? (Ref: Style Guide Section: Typography System)
-- [ ] **Type Scale:** Are text sizes implemented using defined font size variables (e.g., `text-[var(--font-size-base)]`)? (Ref: Style Guide Section: Type Scale)
-- [ ] **Font Weights:** Are correct font weight variables used (e.g., `font-[var(--font-weight-bold)]`)? (Ref: Style Guide Section: Font Weights)
-- [ ] **Line Heights:** Are appropriate line height variables used (e.g., `leading-[var(--line-height-normal)]`)? (Ref: Style Guide Section: Line Heights)
-````
+6.  **Color Balance & Usage (Visual Check):**
+    *   **Tool:** `ui-check.mdc` / Manual Review
+    *   **Rule:** Does the color application *feel* consistent with the 60/30/10 guideline (GRDSP Section 5.6)? Are neon accents used appropriately? Are semantic colors (--surface, --text, --functional) used correctly?
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
 
-### 4.3. Spacing & Radius Verification
-````text
-- [ ] **Spacing Scale:** Is spacing (padding, margin, gap) primarily implemented using standard Tailwind utilities (e.g., `p-4`, `m-2`) reflecting the project scale? (Ref: Style Guide Section: Spacing System)
-- [ ] **Arbitrary Spacing:** Are arbitrary spacing values (e.g., `p-[1.5rem]`) used sparingly? (Ref: Style Guide Section: Standard Spacing Usage)
-- [ ] **Border Radius:** Are border radii implemented using defined radius variables (e.g., `rounded-[var(--radius-md)]`)? (Ref: Style Guide Section: Border Radius)
-````
+7.  **Typography Hierarchy (Visual Check):**
+    *   **Tool:** `ui-check.mdc` / Manual Review
+    *   **Rule:** Is the visual hierarchy clear and consistent with the type scale defined in GRDSP (Section 3)?
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
 
-### 4.4. Animation & Transition Verification
-````text
-- [ ] **CSS Variables:** Are animations/transitions using the defined duration and easing variables (e.g., `duration-[var(--duration-normal)]`, `ease-[var(--ease-out)]`)? (Ref: Style Guide Section: Animation Variables)
-- [ ] **Hover/Focus Effects:** Do interactive elements implement effects consistent with the guide (e.g., subtle transforms, glows using `--glow-sm/md/lg`)? (Ref: Style Guide Section: Common Animation Patterns)
+8.  **Spacing & Rhythm (Visual Check):**
+    *   **Tool:** `ui-check.mdc` / Manual Review
+    *   **Rule:** Does the spacing *look* consistent and follow the intended rhythm (8pt grid)? Are exceptions to the 4pt rule documented where used? (GRDSP Section 4)
+    *   **Status:** [ ] Pass / [ ] Fail (Requires `ui-check` input or manual confirmation)
+
+9.  **Component-Specific Verification (Contextual Code/Visual Check):**
+    *   **Tool:** Code Analysis / `ui-check.mdc` / Manual Review
+    *   **Rule:** Verify component variants/sizes match visual definitions (GRDSP Section 10). Check specific component rules (Links, Icons, etc.) from GRDSP.
+    *   **Status:** [ ] Pass / [ ] Fail (Requires context and potentially `ui-check`)
+
+10. **Responsiveness (Visual Check):**
+    *   **Tool:** Browser DevTools / `ui-check.mdc` (with different viewport screenshots)
+    *   **Rule:** Does the UI adapt correctly at defined breakpoints? Are touch targets adequate? (GRDSP Section 6)
+    *   **Status:** [ ] Pass / [ ] Fail (Requires multiple screenshots or manual testing)
+
+11. **Animation/Transition Feel (Visual Check):**
+    *   **Tool:** `ui-check.mdc` / Manual Interaction
+    *   **Rule:** Do animations *feel* smooth and adhere to GRDSP principles (Section 7)?
+    *   **Status:** [ ] Pass / [ ] Fail (Requires interaction or `ui-check`)
+
+## 5. Integration with `ui-check.mdc`
+- When `ui-check.mdc` is run, the agent MUST first ensure the checks in **Phase 1** (`strict-visual-enforcement-protocol.mdc`) of *this* protocol have passed.
+- The `editRequest` parameter for `reviewEdit` in `ui-check.mdc` MUST mention verification against the Phase 2 guidelines of this protocol (`visual-style-enforcement-protocol.mdc`).
+- If `reviewEdit` returns "no", subsequent edits MUST be re-verified against Phase 1 and Phase 2 of this protocol.
+
+## 6. Enforcement & Remediation
+- If any checks in Phase 1 or Phase 2 fail, the agent MUST:
+    1. Document the violation(s) and relevant GRDSP section(s).
+    2. Propose and implement corrections.
+    3. Re-run the verification checklist (both phases).
+    4. If integrated with `ui-check.mdc`, only proceed to `reviewEdit` *after* all checks pass.
+- If compliance cannot be achieved or conflicts arise, trigger `universal-error-resolution-protocol.mdc`.
+
+## 7. Maintenance
+- This protocol MUST be updated if `golden-ratio-design-system-protocol.mdc` changes significantly.
+- The prerequisite link to `strict-visual-enforcement-protocol.mdc` MUST be maintained.
+
 - [ ] **Performance:** Are animations primarily applied to `transform` and `opacity`? (Ref: Style Guide Section: Animation Guidelines)
-````
 
 ### 4.5. Component-Specific Verification
-````text
+```text
 - [ ] **Icon Usage:** (Integrates `icon-management.mdc`) Are icons used via the `Icon` wrapper and imported from `lucide-compat.js`? Are size/color/accessibility applied correctly? (Ref: Style Guide Sections: Icon System, Accessibility Standards)
 - [ ] **Link Styling:** Do `<a>` tags match defined styles/states? Are variations (`underlined`, `muted`) applied correctly? (Ref: Style Guide Section: Link Styling)
 - [ ] **Component States:** Do interactive components (Buttons, Inputs, etc.) correctly implement required states (Default, Hover, Focus, Active, Disabled, Loading)? (Ref: Style Guide Section: Component States)
 - [ ] **Variants/Sizes:** Do component variants/sizes match the visual definitions? (Ref: Style Guide Section: Standard Component Properties)
 - [ ] **Layout Components:** Are standard layout components (`Container`, Grid utilities) used appropriately? (Ref: Style Guide Section: Layout Components, Grid System)
-````
+```
 
 ### 4.6. Responsive Design Verification
-````text
+```text
 - [ ] **Breakpoints:** Does the component adapt correctly at defined breakpoints? (Ref: Style Guide Section: Breakpoints)
 - [ ] **Mobile-First:** Is base styling mobile-appropriate, enhanced for larger screens? (Ref: Style Guide Section: Responsive Principles)
 - [ ] **Touch Targets:** Are interactive elements sufficiently large (>= 44px) on touch devices? (Ref: Style Guide Section: Responsive Principles)
-````
+```
 
 ### 4.7. Imagery Verification
-````text
+```text
 - [ ] **Alt Text:** Does the image have appropriate `alt` text? (Ref: Style Guide Section: Technical Requirements)
 - [ ] **Lazy Loading:** Is `loading="lazy"` used for non-critical images? (Ref: Style Guide Section: Technical Requirements)
 - [ ] **Component Usage:** Is the standard `Image.svelte` component used where applicable? (Ref: Style Guide Section: Image Component)
-````
+```
 
 ### 4.8. Accessibility Verification
-````text
+```text
 - [ ] **Focus States:** Are focus states visible and consistent, using the defined `--focus-ring`? (Ref: Style Guide Section: Focus States, Accessibility Standards)
 - [ ] **Keyboard Navigation:** Is the component fully keyboard operable? (Ref: Style Guide Section: Accessibility Standards)
 - [ ] **ARIA Attributes:** Are appropriate ARIA roles/states/properties used? (Ref: Style Guide Section: Accessibility Standards)
 - [ ] **Semantic HTML:** Is semantic HTML used correctly? (Ref: Style Guide Section: Accessibility Standards)
-````
+```
 
 ## 5. Integration with `ui-check.mdc`
 - When `ui-check.mdc` is run, the agent MUST perform the checks outlined in Section 4 of *this* protocol *before* calling the `reviewEdit` function.
@@ -179,7 +168,7 @@ This checklist MUST be applied to the component/changes under review. The agent 
 
 ## 7. Maintenance
 - This protocol MUST be updated if `VISUAL_IDENTITY_STYLE_GUIDE.md` changes significantly.
-- Cross-reference links (`mdc:docs/VISUAL_IDENTITY_STYLE_GUIDE.md`) MUST be kept accurate.
+- Cross-reference links (`mdc:md-docs/VISUAL_IDENTITY_STYLE_GUIDE.md`) MUST be kept accurate.
 
 ---
 
