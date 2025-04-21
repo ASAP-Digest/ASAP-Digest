@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Tooling Setup Guide
+# Tooling Setup Guide v1.2 (Proposed Changes)
 
 ## 1. Purpose
 
@@ -19,11 +19,11 @@ This guide details the setup and configuration for essential development tooling
 *   **Husky:** Tool for managing Git hooks (e.g., pre-commit).
 *   **lint-staged:** Run linters on staged files in Git.
 
-## 3. Installation (using pnpm)
+## 3. Installation (using pnpm) - UPDATE
 
 *Run these commands in the SvelteKit root directory (`/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`)*
 
-````bash
+```bash
 # Install Prettier & Tailwind Plugin
 pnpm add -D prettier prettier-plugin-tailwindcss
 
@@ -37,16 +37,22 @@ pnpm add -D eslint-plugin-jsx-a11y
 # Install OpenAPI Generation Dependencies (Example: JSDoc Parser)
 pnpm add -D doctrine # Or your chosen JSDoc parser
 
+# Install OpenAPI Annotation Linter Dependencies (Example: AST Parser)
+pnpm add -D acorn doctrine # Or alternative JSDoc/AST parsers for the linter script
+
+# Install Broken Link Checker (Example - Choose one if needed)
+# pnpm add -D markdown-link-check
+
 # Install Husky & lint-staged
 pnpm add -D husky lint-staged
 npx husky init
-````
+```
 
 ## 4. Configuration
 
 ### 4.1 Prettier (`.prettierrc` or `prettier` key in `package.json`)
 
-````json
+```json
 {
   "plugins": ["prettier-plugin-tailwindcss"],
   "semi": true,
@@ -56,11 +62,11 @@ npx husky init
   "tabWidth": 2,
   "useTabs": false
 }
-````
+```
 
 ### 4.2 ESLint (`.eslintrc.js`)
 
-````javascript
+```javascript
 // .eslintrc.js (Example configuration - adjust as needed)
 module.exports = {
   root: true,
@@ -112,64 +118,117 @@ module.exports = {
   },
   ignorePatterns: ['node_modules/', 'build/', 'dist/', 'static/'],
 };
-````
+```
 *Note: ESLint configuration, especially for Svelte and Accessibility, requires careful setup based on the specific versions of plugins used. Consult `eslint-plugin-svelte` documentation.*
 
-### 4.3 lint-staged (`lint-staged` key in `package.json`)
+### 4.3 lint-staged (`lint-staged` key in `package.json`) - UPDATE
 
-````json
+```json
 {
   "lint-staged": {
-    "*.{js,svelte}": ["eslint --fix", "prettier --write"],
+    "app/src/routes/api/**/*.js": [
+      "node ./scripts/lint-openapi-annotations.js", // Run annotation linter first
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,svelte}": [ // Generic JS/Svelte files (excluding API routes handled above)
+      "eslint --fix",
+      "prettier --write"
+    ],
     "*.{css,md,json}": ["prettier --write"]
   }
 }
-````
+```
+*(Self-Correction: Integrated annotation linter into `lint-staged` for better handling of staged files)*
 
 ### 4.4 Husky (`.husky/pre-commit`) - UPDATE
 
-````bash
+```bash
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-# --- Add OpenAPI Generation Step ---
-# Run the OpenAPI generation script before linting/formatting staged files
+# --- Add OpenAPI Annotation Linting Step ---
+# Run the annotation linter on staged API routes *before* generation
 # Adjust path/command as necessary
+echo "Linting OpenAPI JSDoc annotations..."
+# This assumes lint-staged passes staged *.js files to the script
+# If not, need a way to identify relevant staged files here.
+# Example using a dedicated script that takes staged files:
+# node ./scripts/lint-openapi-annotations.js $(git diff --cached --name-only --diff-filter=ACM | grep 'app/src/routes/api/.*+server\\.js$')
+# OR integrate with lint-staged (See Section 4.3 update)
+
+# --- (If lint-staged handles the linter script, this block might not be needed here) ---
+# Assume the linter script is run via lint-staged for now (See 4.3)
+# --- End OpenAPI Annotation Linting Step ---
+
+# --- OpenAPI Generation Step (Runs *after* linting passes) ---
 echo "Generating OpenAPI specification..."
 node ./scripts/generate-openapi.js # Example script path
-if [ $? -ne 0 ]; then
+GENERATION_EXIT_CODE=$?
+if [ $GENERATION_EXIT_CODE -ne 0 ]; then
   echo "OpenAPI generation failed!"
   exit 1
 fi
-# Add the generated spec file to the commit if it changed
-git add ./docs/openapi.json
 # --- End OpenAPI Generation Step ---
 
+# --- Run lint-staged (Includes Prettier, ESLint, and potentially the Annotation Linter) ---
 npx lint-staged
-````
+LINT_STAGED_EXIT_CODE=$?
 
-## 5. OpenAPI Generation Script
+if [ $LINT_STAGED_EXIT_CODE -ne 0 ]; then
+    echo "lint-staged checks failed!"
+    exit 1
+fi
+# --- End lint-staged ---
 
-- **Location:** A script (e.g., `scripts/generate-openapi.js`) needs to be created according to `openapi-generation-protocol.mdc`.
-- **Purpose:** Parses JSDoc annotations from `app/src/routes/api/**/*.js` and outputs `/docs/openapi.json`.
-- **Execution:** Invoked via the pre-commit hook (see Section 4.4) or manually.
 
+# --- Add Generated Spec & Handle Submodule Commit ---
+# Add the generated spec file to the main repo commit
+git add ./docs/openapi.json
 
-## 6. Workflow Integration
+# Add changes within the docs submodule (if any other manual changes were staged)
+# This assumes 'docs' is the submodule path
+if [ -d "docs" ]; then
+    # Check if there are staged changes within the submodule directory *for the submodule itself*
+    # This is tricky; a simple 'git diff --cached docs' might not be enough.
+    # A safer approach might be to require manual staging within the submodule first,
+    # or have a separate commit step for the submodule.
+    # For now, just adding the openapi.json in the main repo.
+    # Further refinement might be needed based on submodule workflow.
+    echo "Note: Manual changes within the '/docs' submodule must be committed separately within the submodule."
+fi
+# --- End Submodule Handling ---
+
+# Exit 0 if all checks and generation passed
+exit 0
+```
+
+## 5. OpenAPI Annotation Linter Script
+- **Location:** A script (e.g., `scripts/lint-openapi-annotations.js`) needs to be created according to `openapi-annotation-linter-protocol.mdc`.
+- **Purpose:** Parses JSDoc annotations from staged `app/src/routes/api/**/*.js` files and verifies the presence of required minimum tags (`@summary`, `@response`).
+- **Execution:** Invoked via the pre-commit hook through `lint-staged` (see Section 4.3).
+
+## 6. Broken Link Checker (Optional CI Step)
+- **Tool:** Consider using a tool like `markdown-link-check`.
+- **Integration:** Recommended to run as part of the CI/CD pipeline against the `/docs` directory after checkout.
+- **Command (Example):** `markdown-link-check ./docs/**/*.md` (adjust based on tool).
+- **Purpose:** Detects broken internal or external links in Markdown files within the documentation submodule.
+
+## 7. Workflow Integration
 
 1.  **Pre-Commit Hook:** The configured Husky hook will automatically run `lint-staged` before each commit. `lint-staged` will then run Prettier and ESLint on the files staged for commit. Commits will fail if linting errors occur.
 2.  **IDE Integration:** Configure your IDE (e.g., VS Code, Cursor) to use the project's ESLint and Prettier configurations for real-time feedback and formatting on save.
 3.  **CI Pipeline (Recommended):** Add steps to your CI workflow (e.g., GitHub Actions) to run format checks (`prettier --check .`) and lint checks (`eslint .`). Fail the build if checks do not pass.
 
-    ````yaml
+    ```yaml
     # Example GitHub Action step
     # - name: Lint and Format Check
     #   run: |
     #     pnpm run lint # Assuming 'lint' script runs eslint .
     #     pnpm run format:check # Assuming 'format:check' script runs prettier --check .
-    ````
+    ```
 
-## 7. Verification
+## 8. Verification
 
 *   Ensure linters and formatters run without errors.
 *   Confirm the pre-commit hook blocks commits with linting errors or formatting issues.

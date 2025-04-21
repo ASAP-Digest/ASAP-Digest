@@ -1,0 +1,71 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# OpenAPI Annotation Linter Protocol v1.0
+
+## 1. Purpose
+This protocol defines the mandatory JSDoc annotations required for SvelteKit API route handlers (`+server.js` files) to ensure successful and informative OpenAPI specification generation. It also specifies the logic for a linting step (to be integrated into pre-commit hooks) that verifies the presence of these essential annotations before the OpenAPI generation script runs.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. API Integration Protocol (v1.1+)     │ // References required tags
+│ 2. OpenAPI Generation Protocol (v1.0+)  │ // Consumes tags, relies on lint pass
+│ 3. Tooling Setup Guide (v1.2+)          │ // Defines linter script invocation
+│ 4. Rule Execution Protocol              │ // Rule Application
+│ 5. OpenAPI Annotation Linter (This)     │ // Self-reference
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger
+- **Primary Trigger:** Automatically via pre-commit hook, *before* the OpenAPI generation script runs (defined in `tooling-setup-guide.mdc`).
+- **Secondary Trigger:** Manual execution of the linter script.
+- **Scope:** Applies to staged `app/src/routes/api/**/*.js` files containing exported API handlers (GET, POST, PUT, DELETE, PATCH).
+
+## 4. Mandatory JSDoc Annotations for API Handlers
+
+For each exported function corresponding to an HTTP method (GET, POST, PUT, DELETE, PATCH) within a `+server.js` file intended for the API, the associated JSDoc block MUST contain at least the following tags:
+
+1.  **`@summary`:** A brief (one-line) description of the endpoint's purpose.
+    *   Example: `@summary Get user profile`
+2.  **`@response`:** At least one `@response` tag defining a success status code (e.g., 200, 201, 204) and a description or schema reference. Additional `@response` tags for error statuses (e.g., 400, 401, 404, 500) are highly recommended.
+    *   Example (Minimal): `@response {200} {object} User profile data.`
+    *   Example (Better): `@response {200} {object} User profile data. (Example: { success: true, data: {...} })`
+    *   Example (Error): `@response {404} {object} User not found.`
+
+*Note: While other tags like `@description`, `@tags`, `@param`, `@requestBody`, `@security` are crucial for a *good* OpenAPI spec (as defined in `api-integration-protocol.mdc`), this *linter* protocol enforces only the absolute minimum required for basic generation and identification.*
+
+## 5. Linter Script Logic
+
+A script (e.g., `scripts/lint-openapi-annotations.js`) MUST be created to perform the following:
+
+1.  **Input:** Accept a list of staged `+server.js` file paths as input (typically provided by `lint-staged`).
+2.  **File Parsing:** For each input file:
+    *   Read the file content.
+    *   Parse the JavaScript to identify exported functions matching HTTP methods (GET, POST, etc.). Consider using an AST parser (like `acorn`) for robustness over simple regex.
+    *   For each identified API handler function, parse its associated JSDoc block (e.g., using `doctrine`).
+3.  **Verification:** For each parsed JSDoc block associated with an API handler:
+    *   Check for the presence of at least one `@summary` tag.
+    *   Check for the presence of at least one `@response` tag.
+4.  **Reporting:**
+    *   If any API handler in any checked file is missing either the `@summary` or at least one `@response` tag, print a clear error message indicating the file, function name, and the missing required tag(s).
+5.  **Exit Code:**
+    *   Exit with status code `0` if all checked API handlers in all processed files have the required minimum annotations.
+    *   Exit with a non-zero status code (e.g., `1`) if *any* violations are found. This will halt the pre-commit process.
+
+## 6. Error Handling
+- The script should handle file read errors and parsing errors gracefully, reporting them clearly.
+
+## 7. Verification Checklist (For the Linter Script)
+- [ ] Does the script accept file paths as input?
+- [ ] Does it correctly identify exported API handler functions in `+server.js` files?
+- [ ] Does it parse the JSDoc block for each handler?
+- [ ] Does it correctly verify the presence of `@summary`?
+- [ ] Does it correctly verify the presence of at least one `@response`?
+- [ ] Does it report errors clearly, identifying the file, function, and missing tag(s)?
+- [ ] Does it exit with status 0 on success?
+- [ ] Does it exit with a non-zero status on failure?

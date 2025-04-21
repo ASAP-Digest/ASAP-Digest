@@ -1,0 +1,119 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Task Tracking Protocol v1.1
+
+## 1. Purpose
+This protocol defines the standard procedures for creating, tracking, updating, and managing development tasks within the VeriDX system. It standardizes the format used in the primary tracking document (`md-docs/ROADMAP_TASKS.md`), defines the task lifecycle and status transitions, and ensures synchronization with Server Memory `Task` entities and relevant documentation requirements.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance (Task Breakdown 3.A)
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. Server Memory Rules (v2.1+)          │ // Defines Task entities, states, relations
+│ 4. Feature Definition Protocol          │ // Source of feature-related tasks
+│ 5. Work Session Mgmt Proto (v2.11+)     │ // Initiates/ends work on tasks (BWS/EWS)
+│ 6. Testing & Verification Proto (v1.4+) │ // Manages testing/approval states (ST/EAQ/AC/RC)
+│ 7. Universal Error Resolution Proto     │ // Can block tasks via Error entities
+│ 8. Documentation Standards Protocol     │ // Triggered by task completion
+│ 9. Update Memory Protocol               │ // Used for synchronization
+│ 10. Status Check Protocol (v2.3+)       │ // Reads roadmap for status reporting
+│ 11. Task Tracking Protocol (This)       │ // Self-reference
+│ 12. Audit Trail System                  │ // Logs task status changes
+│ 13. Cross-Protocol Comms & Verification │ // Ensures state consistency
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Scope
+- **Trigger:**
+    - Creation of new tasks resulting from feature breakdown (`feature-definition-protocol`) or ad-hoc needs.
+    - Updates to task status via other protocols (WSMP, TVP, UERP, `um`).
+- **Scope:** Governs the structure of `md-docs/ROADMAP_TASKS.md` and the lifecycle of corresponding `Task` entities in Server Memory.
+
+## 4. Task Definition Requirements
+
+Each task MUST have the following attributes, stored both in the roadmap file and the corresponding Server Memory `Task` entity:
+
+1.  **Task ID:** A unique identifier (e.g., `T-001`, potentially derived from feature/epic).
+2.  **Task Name:** A concise description of the work to be done.
+3.  **Status:** The current state of the task, represented by a specific emoji in the roadmap and a corresponding string value in Server Memory (See Section 6).
+4.  **Timestamp:** The timestamp of the last status update (formatted per `format-time.mdc v1.1+` in the roadmap). Stored in `lastUpdateTs` in Server Memory.
+5.  **Hierarchy/Context:** Indentation in the roadmap file indicates parent/child relationships. Server Memory SHOULD use relations (e.g., `hasSubtask`, `partOf`) to represent this.
+6.  **Feature Link (Recommended):** Tasks derived from a feature definition SHOULD link back to the `Feature` ID (e.g., `[FEAT-001]` appended to the name or stored in a relation).
+
+## 5. Roadmap Format (`md-docs/ROADMAP_TASKS.md`)
+
+Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following format:
+
+```markdown
+- [Task ID] Task Name [Optional Feature ID Link] [Status Emoji] [Timestamp: MM.DD.YY | HH:MM AM/PM PDT] [Optional Note]
+  - [Subtask ID] Subtask Name ...
+```
+
+- **Structure:** Use Markdown list items (`-`).
+- **Indentation:** MUST use indentation (e.g., 2 or 4 spaces) to denote hierarchy (subtasks).
+- **Task ID:** Enclosed in square brackets `[]`.
+- **Status Emoji:** A single emoji representing the current state (See Section 6). MUST be placed immediately after the Task Name/Feature ID.
+- **Timestamp:** The timestamp of the *last status change*, formatted according to `format-time.mdc v1.1+`. MUST follow the status emoji.
+- **Optional Note:** Brief context (e.g., `[Paused: SWS - Timestamp]`, `[Blocked by Error-XYZ]`) can be added after the timestamp.
+
+## 6. Status Lifecycle & Transitions
+
+The following statuses are recognized, with defined transitions triggered by specific protocols/commands:
+
+| Status Name       | Roadmap Emoji | Server Memory Status | Allowed Transitions From                | Triggering Protocol/Command                                  | **Documentation Check Required?** |
+| :---------------- | :-----------: | :------------------- | :-------------------------------------- | :----------------------------------------------------------- | :-----------------------------: |
+| **Pending**       | ⏳            | `PENDING`            | (Initial State)                         | Task Creation (e.g., via `feature-definition-protocol`)        | No                              |
+| **Active**        | 🔄            | `ACTIVE`             | `PENDING`, `PAUSED`, `BLOCKED`, `TESTING` (via RC), `ERROR` (via RC) | `BWS` (WSMP), `RWS` (WSMP), `RC` (TVP)                       | No                              |
+| **Paused**        | ⏸️            | `PAUSED`             | `ACTIVE`, `TESTING`                     | `SWS` (WSMP)                                                 | No                              |
+| **Pending Testing** | 🔬            | `PENDING_TESTING`    | `ACTIVE`                                | `EWS TESTING` (WSMP -> TVP)                                  | No                              |
+| **Testing**       | 🧪            | `TESTING`            | `PENDING_TESTING`, `PAUSED`             | `ST [TaskID]` or `ST` (TVP), potentially `RWS` (WSMP)        | No                              |
+| **Blocked**       | ❌            | `BLOCKED`            | `PENDING`, `ACTIVE`, `PAUSED`, `TESTING`| Active linked `Error` entity (UERP + Server Memory Update) | No                              |
+| **Error**         | 💥            | `ERROR`              | `ACTIVE`, `TESTING`                     | Task failed during execution (Manual update or UERP outcome) | No                              |
+| **Completed**     | ✅            | `COMPLETED`          | `TESTING`                               | `AC [TaskID]` (TVP Approval)                                 | **Yes**                         |
+
+*Note: Transitions update both the roadmap emoji/timestamp and the Server Memory entity status/`lastUpdateTs`.*
+
+## 7. Server Memory Synchronization
+
+- **Creation:** When a task is added to the roadmap, a corresponding `Task` entity MUST be created in Server Memory (Ref: `server-memory-rules`).
+- **Updates:** Any change to a task's status, name, or hierarchy in the roadmap MUST be reflected in the corresponding `Task` entity in Server Memory, and vice-versa. The `update-memory` (`um`) protocol assists with this synchronization, but protocols triggering state changes (WSMP, TVP) are primarily responsible for ensuring consistency *at the time of the change*.
+- **Consistency Check:** The `Status Check` (`SC`) protocol reads the roadmap. Cross-protocol verification checks SHOULD be used periodically or after major updates to compare roadmap state against Server Memory state.
+
+## 8. Task Linking
+
+- **Features:** Tasks derived from `feature-definition-protocol` MUST be linked to the parent `Feature` entity in Server Memory (e.g., `implements` relation).
+- **Errors:** If a task is blocked, an `Error` entity MUST be linked to the `Task` entity via a `blocks` relation (Ref: `server-memory-rules`, UERP).
+- **Sessions:** `WorkSession` entities MUST link to their `targetTask` (Ref: WSMP).
+
+## 9. Documentation Requirement upon Completion (REVISED & MANDATORY)
+
+- Upon a task transitioning to `COMPLETED` (`✅`), the agent or process responsible for handling the completion trigger (e.g., processing the `AC` command within TVP) MUST perform a check for required documentation updates BEFORE finalizing the task status.
+- **Verification Steps:**
+    1.  Analyze the completed `Task` entity and its relation to any parent `Feature` entity.
+    2.  Determine if the changes impact:
+        *   User-facing workflows or UI elements (requiring updates to guides/tutorials).
+        *   Internal or External API contracts (already handled by OpenAPI generation, but conceptual docs might need updates).
+        *   Core concepts or architecture (requiring updates to conceptual docs).
+    3.  Check Server Memory or the Roadmap for existing, linked documentation sub-tasks.
+- **Action:**
+    *   If documentation updates *are* required and not already completed/tracked:
+        *   **Option A (Prompt User):** Inform the user that documentation updates are needed and recommend creating a follow-up task.
+        *   **Option B (Create Task - Preferred for Automation):** Automatically create a new `Task` entity (Status: `PENDING` ⏳) for the required documentation update, linking it to the completed task/feature. Example Name: "Docs: Update guide for Feature X".
+        *   The original task *can* still be marked `COMPLETED` (`✅`), but the system now tracks the necessary documentation work separately.
+    *   If documentation updates are *not* required, or already tracked/completed, proceed with finalizing the original task completion.
+- **Protocol Reference:** This check fulfills the requirement mentioned in `documentation-standards-protocol.mdc`.
+
+## 10. Verification Checklist (For Task Management)
+- [ ] Is the task present in `md-docs/ROADMAP_TASKS.md` with the correct format (ID, Name, Emoji, Timestamp)?
+- [ ] Does the task have a corresponding `Task` entity in Server Memory?
+- [ ] Are the roadmap status emoji and Server Memory status consistent?
+- [ ] Is the roadmap timestamp accurate for the last status change?
+- [ ] Is the task correctly linked to parent Features or blocking Errors in Server Memory (if applicable)?
+- [ ] Was the documentation requirement checked upon completion?
+- [ ] Does the roadmap indentation accurately reflect the intended hierarchy?
