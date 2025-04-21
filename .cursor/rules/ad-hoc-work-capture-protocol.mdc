@@ -59,7 +59,7 @@ This protocol defines the process for **detecting, capturing, and preserving** w
                 *   `Ignore AdHoc Saves` -> Marks points ignored.
                 *   `Merge AdHoc Saves <TaskID> [Summary]` -> Consolidates + updates roadmap (sub-task).
                 *   `NewTask AdHoc Saves <Heading> [Summary]` -> Consolidates + updates roadmap (new parent/sub-task).
-            *   Execute chosen action, updating Server Memory and potentially `docs/ROADMAP_TASKS.md`. Perform State Synchronization Verification if roadmap is touched.
+            *   Execute chosen action, updating Server Memory and potentially `md-docs/ROADMAP_TASKS.md`. Perform State Synchronization Verification if roadmap is touched.
 5.  **Continue Original Flow:** After handling ad hoc capture/consolidation, resume the execution of the original triggering command/protocol.
 
 ## 5. Server Memory Entities

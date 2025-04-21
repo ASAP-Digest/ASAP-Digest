@@ -10,7 +10,7 @@
  * - ALWAYS use HSL variables: bg-[hsl(var(--primary))], text-[hsl(var(--foreground))]
  * - For fixed sizes, always use arbitrary values: h-[0.25rem] not h-1
  *
- * @see docs/TAILWIND4_GUIDELINES.md for full documentation
+ * @see md-docs/TAILWIND4_GUIDELINES.md for full documentation
  */
 
 /**

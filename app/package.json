@@ -87,9 +87,9 @@
     "*.{css,md,json}": [
       "prettier --write"
     ],
-    "../docs/ROADMAP_TASKS.md": [
+    "../md-docs/ROADMAP_TASKS.md": [
       "node ../generate-todotxt.js",
-      "git add ../docs/todotasks.txt"
+      "git add ../md-docs/todotasks.txt"
     ]
   }
 }

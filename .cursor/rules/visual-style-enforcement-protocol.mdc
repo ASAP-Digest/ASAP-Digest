@@ -6,7 +6,7 @@ alwaysApply: true
 # Visual Style Enforcement Protocol v1.0
 
 ## 1. Purpose
-This protocol ensures that all UI components and layouts developed or modified within the ASAP Digest project strictly adhere to the specifications defined in the `[VISUAL_IDENTITY_STYLE_GUIDE.md](mdc:docs/VISUAL_IDENTITY_STYLE_GUIDE.md)`. It acts as a verification layer applied during component development, modification, and review, integrating with existing protocols like `sk2-scns5-t4-int.mdc`, `icon-management.mdc`, and `ui-check.mdc`.
+This protocol ensures that all UI components and layouts developed or modified within the ASAP Digest project strictly adhere to the specifications defined in the `[VISUAL_IDENTITY_STYLE_GUIDE.md](mdc:md-docs/VISUAL_IDENTITY_STYLE_GUIDE.md)`. It acts as a verification layer applied during component development, modification, and review, integrating with existing protocols like `sk2-scns5-t4-int.mdc`, `icon-management.mdc`, and `ui-check.mdc`.
 
 ## 2. Protocol Integration Layer
 ````text

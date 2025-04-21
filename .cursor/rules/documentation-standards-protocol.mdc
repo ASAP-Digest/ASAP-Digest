@@ -1,0 +1,105 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Documentation Standards Protocol (Mintlify) v1.0
+
+## 1. Purpose
+This protocol defines the standards for creating, writing, and maintaining project documentation hosted using Mintlify (https://mintlify.com). It ensures consistency, clarity, discoverability, and leverages Mintlify's features effectively. This applies to all user guides, technical references, API documentation, and internal process documents intended for the hosted documentation site.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. New Rule Creation Protocol           │ // Used to create this protocol
+│ 4. Server Memory Rules                  │ // Potential source of info for docs
+│ 5. Task Tracking Protocol               │ // Links tasks to documentation needs
+│ 6. Feature Definition Protocol (Proposed)│ // Input for feature docs
+│ 7. API Integration Protocol (Proposed)   │ // Input for API docs
+│ 8. Audit Trail System                   │ // Logs documentation updates
+│ 9. Documentation Standards (This)       │ // Self-reference
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Principles (Mintlify Philosophy)
+- **Simplicity:** Documentation should be easy to understand and navigate. Use clear language, avoid jargon where possible.
+- **Discoverability:** Structure content logically using Mintlify's navigation features (sidebar, search).
+- **Actionability:** Provide clear instructions, code examples, and API references that users can directly apply.
+- **Consistency:** Maintain a consistent tone, style, and structure across all documentation pages.
+- **Up-to-Date:** Documentation must reflect the current state of the project. Implement processes to keep it synchronized.
+
+## 4. File Structure & Location (Mintlify Standard)
+- **Root Directory:** All documentation source files MUST reside in the designated `docs/` directory (or the root directory configured in `mint.json`).
+- **File Format:** All documentation pages MUST be written in Markdown (`.md` or `.mdx`).
+- **Naming Conventions:**
+    - Use lowercase `kebab-case` for filenames and directories (e.g., `getting-started.md`, `api-reference/`).
+    - Use `index.md` (or `index.mdx`) for the main page within a directory/category.
+- **Configuration:** The core navigation and project settings MUST be managed in the `mint.json` file at the root of the documentation source directory.
+
+## 5. Navigation (`mint.json`)
+- **Logical Grouping:** Structure the `"navigation"` array in `mint.json` logically, reflecting user workflows or conceptual areas (e.g., "Getting Started", "Core Concepts", "API Reference", "Guides", "Protocols").
+- **Clear Titles:** Use concise and descriptive titles for navigation groups and pages.
+- **Ordering:** Arrange groups and pages within groups in a logical order (e.g., introductory topics first).
+- **Versioning (If Applicable):** Use Mintlify's versioning features if documenting multiple versions of the project/API. Configure versions in `mint.json`.
+
+## 6. Content Writing Standards
+
+### 6.1 Tone & Style
+- **Audience:** Write for the target audience (e.g., end-users, developers). Adjust technical depth accordingly.
+- **Voice:** Maintain a helpful, clear, and professional tone. Use active voice.
+- **Conciseness:** Be direct and avoid unnecessary words. Use short sentences and paragraphs.
+
+### 6.2 Formatting & Markdown Usage
+- **Headings:** Use Markdown headings (`#`, `##`, `###`, etc.) to structure content logically within a page. Start with `h1` (implicit via page title) or `h2`.
+- **Lists:** Use numbered lists for sequential steps, bullet points for unordered items.
+- **Inline Formatting:**
+    - Use single backticks (`` ` ``) for inline `code`, `commands`, `filenames`, `parameters`, `JSON keys`, etc.
+    - Use **bold** for emphasis or UI element names (e.g., "**Save** button").
+    - Use *italics* sparingly for emphasis or defining terms.
+- **Code Blocks:**
+    - Use triple backticks (` ``` `) for all code examples.
+    - MUST include a language specifier (e.g., `javascript`, `bash`, `json`, `php`, `svelte`).
+    - Keep examples concise and focused on the point being illustrated.
+    - Provide context for code examples (e.g., "Add the following to your `+server.js` file:").
+- **Links:**
+    - Use descriptive link text (e.g., `[Refer to the Authentication Guide](mdc:authentication-guide.md)` instead of `[Click here]`).
+    - Use relative paths for internal links within the documentation.
+    - Use full URLs for external links.
+
+### 6.3 Mintlify Components & Features
+- **Callouts/Alerts:** Use Mintlify's alert components (`<Note>`, `<Warning>`, `<Info>`, `<Tip>`) appropriately to highlight important information.
+    ```markdown
+    <Note>This feature is currently in beta.</Note>
+    <Warning>Changing this setting can have unintended side effects.</Warning>
+    ```
+- **Code Snippets & Tabs:** Use `<CodeGroup>` or language tabs for showing code examples in multiple languages or variations.
+- **API Reference:** Leverage Mintlify's OpenAPI/Swagger integration for API documentation where applicable. Ensure the spec file is kept up-to-date. If not using OpenAPI, structure API endpoint documentation consistently (e.g., using headings for Method, URL, Parameters, Request Body, Responses, Examples).
+- **Images & Videos:**
+    - Place images in a designated assets folder (e.g., `docs/assets/images/`).
+    - Use relative paths in Markdown image tags (`![Alt text](mdc:assets/images/screenshot.png)`).
+    - MUST provide descriptive `alt` text for all images.
+    - Use Mintlify's `<img/>` component for advanced features like zoom.
+- **Search:** Write clear headings and use relevant keywords to improve Mintlify's search functionality.
+
+## 7. Documentation Maintenance Process
+- **Ownership:** Assign ownership for different documentation sections if applicable.
+- **Review Process:** Documentation changes SHOULD be reviewed as part of the code review process for related features or bug fixes.
+- **Synchronization:**
+    - **Task Trigger:** When a task affecting user-facing functionality, API contracts, or core processes is completed (`✅`), a sub-task or checklist item MUST be included to update relevant documentation.
+    - **Regular Audits:** Periodically review documentation sections for accuracy, completeness, and clarity.
+- **Deprecation:** Clearly mark deprecated features or APIs within the documentation, providing migration paths if available. Update navigation to de-emphasize or remove deprecated sections.
+
+## 8. Verification Checklist (For New/Updated Docs)
+- [ ] Does the content adhere to the defined Tone & Style?
+- [ ] Is the Markdown formatting correct (headings, lists, inline, code blocks with language)?
+- [ ] Are Mintlify components (Alerts, CodeGroups) used effectively?
+- [ ] Are internal/external links working and descriptive?
+- [ ] Are images correctly linked, placed, and include `alt` text?
+- [ ] Is the content technically accurate and up-to-date?
+- [ ] Is the page correctly placed in the navigation structure (`mint.json`)?
+- [ ] (If API Docs) Is the API reference accurate and complete?
+- [ ] Is the information discoverable via navigation and search?

@@ -19,7 +19,7 @@ All components in this directory must use Tailwind 4 syntax:
 - ALWAYS use: bg-[hsl(var(--primary))], border-[hsl(var(--border))]
 - For fixed sizing, use arbitrary values: h-[0.25rem] not h-1
 
-See the full guidelines in `docs/TAILWIND4_GUIDELINES.md`
+See the full guidelines in `md-docs/TAILWIND4_GUIDELINES.md`
 
 ## Components
 
