@@ -3,6 +3,7 @@
 !wp-content/
 !app/
 !md-docs/
+!docs/
 /index.php
 /.vscode/
 
