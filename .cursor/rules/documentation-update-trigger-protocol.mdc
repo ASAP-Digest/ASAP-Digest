@@ -35,8 +35,32 @@ Executing `ud` triggers the following sequence:
     *   MUST execute the OpenAPI generation script defined in `openapi-generation-protocol.mdc` (e.g., `node ./scripts/generate-openapi.js`).
     *   MUST use the `run_terminal_cmd` tool.
     *   Check the exit code of the script execution.
-    *   **On Success:** Report "OpenAPI specification (`/docs/openapi.json`) regenerated successfully."
+    *   **On Success:** Report "OpenAPI specification (`/docs/api-reference/openapi.json`) regenerated successfully."
     *   **On Failure:** Report "Error: OpenAPI specification generation failed. Please check script output/logs." Trigger UERP if necessary. Halt further steps in this protocol if generation fails.
+
+1.5. **Verify/Update `docs.json` for Mintlify Integration (New Step):**
+    *   **Precondition:** OpenAPI generation (Step 1) MUST have succeeded.
+    *   **Read `docs.json`:** Read the content of `docs/docs.json`.
+    *   **Parse JSON:** Parse the JSON content.
+    *   **Locate API Reference Target:** Find the designated "API Reference" tab/group within the `navigation` structure. (This might require configuration or assumptions about the structure, e.g., looking for a tab with `tab: "API Reference"` or a specific group).
+    *   **Define Target Configuration:** Define the expected configuration for Mintlify auto-population, e.g.:
+        ```json
+        {
+          "tab": "API Reference", 
+          "openapi": "/api-reference/openapi.json" 
+          // Or nested within a group like:
+          // "group": "Endpoints",
+          // "openapi": "/api-reference/openapi.json"
+        }
+        ```
+        *(Adjust the target path `/api-reference/openapi.json` if the output location in `generate-openapi.js` changes)*
+    *   **Check & Update:** 
+        *   Check if the located tab/group *already* has the correct `openapi` field pointing to the generated spec file.
+        *   If **correct**, report "`docs.json` already configured for Mintlify OpenAPI auto-population." and proceed.
+        *   If **incorrect or missing**, modify the parsed JSON structure to add/correct the `openapi` field in the appropriate location within the API Reference tab/group. Set a flag `docsJsonModified = true`.
+        *   If the structure is unexpected or the target section cannot be found, report an error and skip writing.
+    *   **Write `docs.json` (If Modified):** If `docsJsonModified` is true, write the updated JSON structure back to `docs/docs.json`, preserving formatting (e.g., using `JSON.stringify(data, null, 2)`).
+    *   **Report:** Report success or failure of the `docs.json` check/update.
 
 2.  **Check for Pending Manual Documentation Tasks (Optional but Recommended):**
     *   Query `md-docs/ROADMAP_TASKS.md` (using `read_file` and parsing) or Server Memory (`mcp_Server_Memory_search_nodes`) for any active (`🔄`), pending (`⏳`), or paused (`⏸️`) tasks specifically related to manual documentation updates (e.g., tasks with names like "Docs: Update Getting Started Guide", "Docs: Explain New Feature X").
@@ -45,7 +69,7 @@ Executing `ud` triggers the following sequence:
 
 3.  **Report Completion:**
     *   Indicate the documentation update trigger process is complete.
-    *   Remind the user to review and commit any changes made to `/docs/openapi.json` and potentially other documentation files within the `/docs` submodule.
+    *   Remind the user to review and commit any changes made to `/docs/api-reference/openapi.json` and **potentially `/docs/docs.json`**.
 
 ## 5. Error Handling
 - Handles failures during the OpenAPI generation script execution.

@@ -78,8 +78,8 @@ This protocol defines the standards for creating, writing, and maintaining proje
     ```
 - **Code Snippets & Tabs:** Use `<CodeGroup>` or language tabs for showing code examples in multiple languages or variations.
 - **API Reference:**
-    *   **Primary Method:** API reference documentation MUST primarily be generated automatically by Mintlify using an OpenAPI specification file (e.g., `/docs/openapi.json`). This spec file should be generated from source code annotations (Ref: `api-integration-protocol.mdc`, `openapi-generation-protocol.mdc`). Configure this in `/docs/mint.json`.
-    *   **Manual Supplementation:** Manual MDX pages can be created to provide *additional* context, guides, or tutorials *related* to specific API endpoints. To embed the auto-generated details for a specific endpoint within a manual page, use the `openapi` frontmatter key:
+    *   **Primary Method (Mandatory):** The primary "API Reference" section/tab defined in the navigation structure (`mint.json` or `docs.json`) MUST use Mintlify's `openapi` field to automatically populate pages from the specification file (e.g., `"openapi": "/api-reference/openapi.json"`). This ensures the core reference is always synchronized with the generated spec.
+    *   **Manual Supplementation:** Manual MDX pages SHOULD only be used to provide *additional* context, guides, or tutorials *related* to specific API endpoints or schemas. To embed auto-generated details within a manual page, use the `openapi` frontmatter key:
         ```md
         ---
         title: "Guide: Using the Digests API"

@@ -32,10 +32,15 @@
     "@tailwindcss/vite": "^4.0.15",
     "@types/mysql": "^2.15.27",
     "@types/node": "^22.14.1",
+    "acorn": "^8.14.1",
     "bits-ui": "^0.22.0",
     "clsx": "^2.1.1",
     "cssnano": "^7.0.6",
+    "doctrine": "^3.0.0",
     "dotenv-cli": "^8.0.0",
+    "eslint": "^9.25.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-svelte": "^3.5.1",
     "esm-env": "^1.2.2",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.1",
@@ -80,6 +85,12 @@
     "workbox-window": "^7.3.0"
   },
   "lint-staged": {
+    "app/src/routes/api/**/*.js": [
+      "node ./scripts/lint-openapi-annotations.js",
+      "eslint --fix",
+      "prettier --write",
+      "node ./scripts/generate-openapi.js"
+    ],
     "*.{js,svelte}": [
       "eslint --fix",
       "prettier --write"

@@ -184,7 +184,7 @@ fi
 
 # --- Add Generated Spec & Handle Submodule Commit ---
 # Add the generated spec file to the main repo commit
-git add ./docs/openapi.json
+git add ./docs/api-reference/openapi.json
 
 # Add changes within the docs submodule (if any other manual changes were staged)
 # This assumes 'docs' is the submodule path
