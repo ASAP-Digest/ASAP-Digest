@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: false
 ---
-# API Integration Protocol v1.0
+# API Integration Protocol v1.1
 
 ## 1. Purpose
 This protocol establishes the standard procedures and best practices for integrating third-party APIs or defining and consuming internal APIs within the project. It ensures consistency in handling requests, responses, authentication, error management, and documentation, reducing integration issues and improving maintainability.
@@ -70,7 +70,29 @@ This protocol establishes the standard procedures and best practices for integra
     }
     ```
 4.  **Error Handling:** Implement `try...catch` blocks. Log errors appropriately (server-side). Return standardized error responses (see above).
-5.  **Documentation:** Document internal APIs according to `documentation-standards-protocol.mdc`. Consider generating OpenAPI specs if complexity warrants it.
+5.  **Documentation & Specification (REVISED):**
+    *   **Primary Documentation Source:** The canonical source for internal API reference documentation MUST be an automatically generated OpenAPI 3.x specification file (e.g., `/docs/openapi.json`). Manual documentation should supplement, not replace, this generated spec for core endpoint details.
+    *   **JSDoc Annotations (MANDATORY):** To enable OpenAPI generation, `+server.js` files containing API handlers (GET, POST, etc.) MUST include specific JSDoc annotations for each exported handler.
+        *   **Required Tags:** `@summary` (Short description), `@description` (Longer description, optional), `@tags` (Grouping tags), `@param` (For path/query parameters), `@requestBody` (Describing the request body schema/example), `@response` (For each HTTP status code, describing the response schema/example), `@security` (Referencing security schemes defined in the base OpenAPI spec).
+        *   **Format:** Follow standard JSDoc syntax. Type information for `@param`, `@requestBody`, `@response` should ideally reference reusable schemas defined perhaps in a base OpenAPI component schema section (managed by the generation script).
+        ```javascript
+        /**
+         * Retrieves a specific digest.
+         * @summary Get Digest by ID
+         * @description Fetches the details of a single digest entry based on its unique ID.
+         * @tags Digests
+         * @param {object} event - SvelteKit event object.
+         * @param {string} event.params.id - The unique ID of the digest to retrieve. (Path Parameter)
+         * @response {200} {object} Digest object successfully retrieved. (Example: { success: true, data: { id: '...', title: '...', ... } })
+         * @response {404} {object} Digest not found. (Example: { success: false, error: { code: 'NOT_FOUND', message: 'Digest not found.' } })
+         * @security { [{ bearerAuth: [] }] } // Example security requirement
+         */
+        export async function GET({ params }) {
+            // ... implementation ...
+        }
+        ```
+    *   **Generation Process:** Refer to `openapi-generation-protocol.mdc` for details on the script that parses these annotations and generates `/docs/openapi.json`.
+    *   **Mintlify Integration:** The `/docs/mint.json` configuration should point to the generated `/docs/openapi.json` to automatically render the API reference pages. (Ref: `documentation-standards-protocol.mdc`).
 
 ## 6. Consuming External APIs
 
@@ -108,12 +130,13 @@ This protocol establishes the standard procedures and best practices for integra
 ## 8. Verification Checklist (For API Integration Code)
 - **Internal API Definition:**
     - [ ] Routes clearly defined and follow conventions?
+    - [ ] JSDoc annotations for OpenAPI generation present and complete (@summary, @param, @response, etc.)?
     - [ ] Input validation implemented?
     - [ ] Auth/Authz checks implemented?
     - [ ] Consistent JSON responses used?
     - [ ] Standard HTTP status codes used correctly?
     - [ ] Errors handled and logged appropriately?
-    - [ ] Documentation exists/planned?
+    - [ ] OpenAPI spec generation includes this endpoint correctly?
 - **External API Consumption:**
     - [ ] API client/SDK used appropriately?
     - [ ] Credentials handled securely (no hardcoding)?
