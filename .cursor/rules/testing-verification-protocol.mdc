@@ -53,9 +53,9 @@ This protocol defines the mandatory process for verifying implemented functional
     -   **Verify Preconditions:** Ensure the task is currently in `ACTIVE` (`🔄`) state.
     -   **Update Task Status (Pending Testing):**
         -   Update the target `Task` entity status to `PENDING_TESTING` in Server Memory.
-        -   Update the corresponding task line in `docs/ROADMAP_TASKS.md` to use the `🔬` emoji. Add an observation/note indicating it's ready for user testing.
+        -   Update the corresponding task line in `md-docs/ROADMAP_TASKS.md` to use the `🔬` emoji. Add an observation/note indicating it's ready for user testing.
     -   **Entity Creation (Verification Request):** Create a new entity in Server Memory (`VerificationRequest`) linked to the `Task` entity. Include: Timestamp initiated, Target Task ID, Status: `PENDING_USER_INITIATION`, Observations.
-    -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
+    -   **Execute State Synchronization Verification (EWS - Testing):** MUST execute the sequence from `Mandatory Post-Update State Synchronization Verification Protocol v1.0` comparing the Memory `Task` status (`PENDING_TESTING`) and the `md-docs/ROADMAP_TASKS.md` `🔬` marker/note. Trigger UERP on failure.
     -   **Audit:** Record `TASK_PENDING_TESTING` event.
     -   **Notify User:** Inform the user that "[Task Name] (`[TaskID]`)" is now ready for testing (`🔬`) and awaits the `ST [TaskID]` or `ST` command.
     ````
@@ -83,7 +83,7 @@ This protocol defines the mandatory process for verifying implemented functional
     ````text
     -   **Verify Precondition:** Check internal flag `agent_workflow_initialized = true`. If false, report error "Must run 'IAW' before using 'ST' without a Task ID." and stop.
     -   Acquire current timestamp.
-    -   **Find Highest Priority Task:** Scan `docs/ROADMAP_TASKS.md` for all `🔬` and `🧪` tasks. Identify the single highest-priority task (`targetTask`) among them based on roadmap order.
+    -   **Find Highest Priority Task:** Scan `md-docs/ROADMAP_TASKS.md` for all `🔬` and `🧪` tasks. Identify the single highest-priority task (`targetTask`) among them based on roadmap order.
     -   **If no `🔬` or `🧪` tasks found:** Report "No tasks are currently pending (`🔬`) or active (`🧪`) for testing." and stop.
     -   **If `targetTask` is `PENDING_TESTING` (`🔬`):**
         -   Verify linked `VerificationRequest` status is `PENDING_USER_INITIATION`.

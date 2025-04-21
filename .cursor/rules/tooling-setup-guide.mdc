@@ -34,6 +34,9 @@ pnpm add -D eslint eslint-plugin-svelte
 # Note: Direct jsx-a11y might need wrappers or alternative Svelte-specific a11y linters
 pnpm add -D eslint-plugin-jsx-a11y
 
+# Install OpenAPI Generation Dependencies (Example: JSDoc Parser)
+pnpm add -D doctrine # Or your chosen JSDoc parser
+
 # Install Husky & lint-staged
 pnpm add -D husky lint-staged
 npx husky init
@@ -123,18 +126,36 @@ module.exports = {
 }
 ````
 
-### 4.4 Husky (`.husky/pre-commit`)
-
-*Ensure this file is executable (`chmod +x .husky/pre-commit`)*
+### 4.4 Husky (`.husky/pre-commit`) - UPDATE
 
 ````bash
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+# --- Add OpenAPI Generation Step ---
+# Run the OpenAPI generation script before linting/formatting staged files
+# Adjust path/command as necessary
+echo "Generating OpenAPI specification..."
+node ./scripts/generate-openapi.js # Example script path
+if [ $? -ne 0 ]; then
+  echo "OpenAPI generation failed!"
+  exit 1
+fi
+# Add the generated spec file to the commit if it changed
+git add ./docs/openapi.json
+# --- End OpenAPI Generation Step ---
+
 npx lint-staged
 ````
 
-## 5. Workflow Integration
+## 5. OpenAPI Generation Script
+
+- **Location:** A script (e.g., `scripts/generate-openapi.js`) needs to be created according to `openapi-generation-protocol.mdc`.
+- **Purpose:** Parses JSDoc annotations from `app/src/routes/api/**/*.js` and outputs `/docs/openapi.json`.
+- **Execution:** Invoked via the pre-commit hook (see Section 4.4) or manually.
+
+
+## 6. Workflow Integration
 
 1.  **Pre-Commit Hook:** The configured Husky hook will automatically run `lint-staged` before each commit. `lint-staged` will then run Prettier and ESLint on the files staged for commit. Commits will fail if linting errors occur.
 2.  **IDE Integration:** Configure your IDE (e.g., VS Code, Cursor) to use the project's ESLint and Prettier configurations for real-time feedback and formatting on save.
@@ -148,7 +169,7 @@ npx lint-staged
     #     pnpm run format:check # Assuming 'format:check' script runs prettier --check .
     ````
 
-## 6. Verification
+## 7. Verification
 
 *   Ensure linters and formatters run without errors.
 *   Confirm the pre-commit hook blocks commits with linting errors or formatting issues.

@@ -42,5 +42,5 @@ find /Volumes/Macintosh\ HD/Users/vsmith/.cursor/uicscreenshots -type f -name "*
 
 - The tool will either return "yes" if your changes are good visually, or "no" with a brief explanation if the changes don't satisfy the edit request or visual guidelines. Keep editing with the same process (including re-running `strict-visual-enforcement-protocol.mdc` checks) until the reviewer returns "yes".
 
-- NOTE: When called with alias "uiceval". Do not make changes but use the Browser Tools MCP `takeScreenshot` function to get a screenshot and provide an evaluation of the current state of the app UI based on the **Visual Verification Focus** points above, referencing `docs/ROADMAP_TASKS.md` & `golden-ratio-design-system-protocol.mdc`. Once you provide the evaluation wait for the next task.
+- NOTE: When called with alias "uiceval". Do not make changes but use the Browser Tools MCP `takeScreenshot` function to get a screenshot and provide an evaluation of the current state of the app UI based on the **Visual Verification Focus** points above, referencing `md-docs/ROADMAP_TASKS.md` & `golden-ratio-design-system-protocol.mdc`. Once you provide the evaluation wait for the next task.
 

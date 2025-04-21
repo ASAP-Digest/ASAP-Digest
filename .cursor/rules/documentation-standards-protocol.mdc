@@ -77,7 +77,24 @@ This protocol defines the standards for creating, writing, and maintaining proje
     <Warning>Changing this setting can have unintended side effects.</Warning>
     ```
 - **Code Snippets & Tabs:** Use `<CodeGroup>` or language tabs for showing code examples in multiple languages or variations.
-- **API Reference:** Leverage Mintlify's OpenAPI/Swagger integration for API documentation where applicable. Ensure the spec file is kept up-to-date. If not using OpenAPI, structure API endpoint documentation consistently (e.g., using headings for Method, URL, Parameters, Request Body, Responses, Examples).
+- **API Reference:**
+    *   **Primary Method:** API reference documentation MUST primarily be generated automatically by Mintlify using an OpenAPI specification file (e.g., `/docs/openapi.json`). This spec file should be generated from source code annotations (Ref: `api-integration-protocol.mdc`, `openapi-generation-protocol.mdc`). Configure this in `/docs/mint.json`.
+    *   **Manual Supplementation:** Manual MDX pages can be created to provide *additional* context, guides, or tutorials *related* to specific API endpoints. To embed the auto-generated details for a specific endpoint within a manual page, use the `openapi` frontmatter key:
+        ```md
+        ---
+        title: "Guide: Using the Digests API"
+        openapi: "GET /api/digests/{id}"
+        ---
+
+        This page provides extra context about retrieving digests...
+
+        {/* Mintlify automatically renders the OpenAPI details for GET /api/digests/{id} here */}
+
+        ### Further Examples
+        {/* Add manual examples or explanations here */}
+        ```
+    *   **Schema Definitions:** OpenAPI schemas defined in the `/components/schemas` section of the spec can be rendered on separate pages using the `openapi-schema` frontmatter key (e.g., `openapi-schema: Digest`).
+    *   **Avoid Duplication:** Do NOT manually duplicate core endpoint details (parameters, request/response schemas) that are covered by the OpenAPI spec generation. Focus manual pages on usage examples, workflows, and conceptual explanations.
 - **Images & Videos:**
     - Place images in a designated assets folder (e.g., `docs/assets/images/`).
     - Use relative paths in Markdown image tags (`![Alt text](mdc:assets/images/screenshot.png)`).
@@ -102,4 +119,6 @@ This protocol defines the standards for creating, writing, and maintaining proje
 - [ ] Is the content technically accurate and up-to-date?
 - [ ] Is the page correctly placed in the navigation structure (`mint.json`)?
 - [ ] (If API Docs) Is the API reference accurate and complete?
+- [ ] (If API Docs) Is the primary reference generated via OpenAPI spec in `mint.json`?
+- [ ] (If API Docs) Are manual MDX pages supplementing, not duplicating, the OpenAPI spec details?
 - [ ] Is the information discoverable via navigation and search?

@@ -1,0 +1,128 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# API Integration Protocol v1.0
+
+## 1. Purpose
+This protocol establishes the standard procedures and best practices for integrating third-party APIs or defining and consuming internal APIs within the project. It ensures consistency in handling requests, responses, authentication, error management, and documentation, reducing integration issues and improving maintainability.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. Server Route Handling Rule           │ // For defining internal API routes
+│ 4. Better Auth Config/Route Handling    │ // Authentication for internal APIs
+│ 5. Security Best Practices (Proposed)   │ // Security considerations
+│ 6. Secrets Management Protocol (Proposed)│ // Handling API keys/secrets
+│ 7. Documentation Standards Protocol     │ // Documenting APIs
+│ 8. Error Handling Protocol (UERP)       │ // Handling API errors
+│ 9. API Integration Protocol (This)      │ // Self-reference
+│ 10. Audit Trail System                  │ // Logging API interactions (optional)
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Scope
+- **Trigger:** Development work involves:
+    - Consuming a new or existing third-party API.
+    - Defining new internal API endpoints (e.g., SvelteKit API routes).
+    - Modifying existing API integrations or endpoints.
+- **Scope:** Applies to all code responsible for making requests to external APIs or handling requests for internal APIs.
+
+## 4. Core Principles
+- **Consistency:** Use standardized methods for requests, authentication, and error handling.
+- **Security:** Protect credentials, validate inputs, and handle data securely. Follow `secrets-management-protocol.mdc` and `security-best-practices-protocol.mdc`.
+- **Reliability:** Implement robust error handling, retries (where appropriate), and timeouts.
+- **Maintainability:** Encapsulate API interaction logic, use clear variable names, and document thoroughly.
+- **Performance:** Consider caching, request batching (if supported), and efficient data handling.
+
+## 5. Defining Internal APIs (e.g., SvelteKit API Routes)
+
+1.  **Routing & Naming:**
+    - Follow SvelteKit conventions (`src/routes/api/...`).
+    - Use clear, resource-oriented naming (e.g., `/api/users`, `/api/digests/[id]`).
+    - Adhere to `server-route-handling-rule.mdc`.
+2.  **Request Handling:**
+    - Use standard HTTP methods appropriately (GET, POST, PUT, DELETE, PATCH).
+    - Validate and sanitize all incoming data (path parameters, query parameters, request body) using defined patterns (Ref: `data-validation-protocol.mdc` - Proposed).
+    - Implement authentication and authorization checks using `better-auth` integration (Ref: `better-auth-*.mdc`).
+3.  **Response Handling:**
+    - Use standard HTTP status codes correctly (200 OK, 201 Created, 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 500 Internal Server Error, etc.).
+    - Return consistent JSON response structures, including clear error messages.
+    ```json
+    // Example Success Response
+    {
+      "success": true,
+      "data": { ... }
+    }
+
+    // Example Error Response
+    {
+      "success": false,
+      "error": {
+        "code": "INVALID_INPUT",
+        "message": "Email address is required."
+      }
+    }
+    ```
+4.  **Error Handling:** Implement `try...catch` blocks. Log errors appropriately (server-side). Return standardized error responses (see above).
+5.  **Documentation:** Document internal APIs according to `documentation-standards-protocol.mdc`. Consider generating OpenAPI specs if complexity warrants it.
+
+## 6. Consuming External APIs
+
+1.  **Client/SDK:**
+    - Prefer using official SDKs/client libraries provided by the API vendor if available and well-maintained.
+    - If no SDK exists, use a standard HTTP client library (e.g., native `fetch` API, `axios`).
+    - Encapsulate API interaction logic within dedicated service modules/functions (e.g., `src/lib/server/api/service-name.js`).
+2.  **Authentication:**
+    - Securely store and retrieve API keys/tokens/credentials using methods defined in `secrets-management-protocol.mdc` (e.g., environment variables, secure configuration). NEVER hardcode credentials.
+    - Implement the required authentication flow (e.g., API Key in header, OAuth2, Basic Auth) consistently for all requests to that API.
+3.  **Request Structure:**
+    - Set appropriate HTTP headers (e.g., `Content-Type: application/json`, `Accept: application/json`, `Authorization`).
+    - Structure request bodies according to the API's documentation.
+    - Encode URL parameters correctly.
+4.  **Response Handling:**
+    - Check the HTTP status code of the response before attempting to parse the body.
+    - Handle expected success responses (e.g., 200, 201, 204).
+    - Handle expected error responses (e.g., 4xx, 5xx) based on the API's documentation. Parse error details if provided.
+    - Implement `try...catch` blocks around response parsing (`response.json()`, `response.text()`).
+5.  **Error Handling & Retries:**
+    - Implement robust error handling for network errors, timeouts, non-2xx status codes, and parsing errors.
+    - Implement retry logic with exponential backoff for transient errors (e.g., 503 Service Unavailable, network timeouts), where appropriate and idempotent. Do NOT retry non-idempotent requests (like creating a resource) without careful checks.
+    - Set reasonable timeouts for API requests.
+    - Log API errors clearly, including request details (URL, method, timestamp) and response details (status code, body if available).
+6.  **Rate Limiting:** Be aware of and respect the API provider's rate limits. Implement client-side throttling or queuing if necessary. Handle 429 (Too Many Requests) status codes gracefully.
+7.  **Data Mapping/Transformation:** Map API response data to internal application models/types cleanly within the service module.
+8.  **Documentation:** Document the purpose of the integration, the specific endpoints used, and any important configuration notes within the codebase or project documentation.
+
+## 7. Security Considerations
+- Validate SSL/TLS certificates for external API endpoints.
+- Avoid logging sensitive request/response data unless absolutely necessary for debugging (and ensure logs are secured).
+- Sanitize any data received from APIs before displaying it or storing it.
+- Follow the principle of least privilege when configuring API keys/permissions.
+
+## 8. Verification Checklist (For API Integration Code)
+- **Internal API Definition:**
+    - [ ] Routes clearly defined and follow conventions?
+    - [ ] Input validation implemented?
+    - [ ] Auth/Authz checks implemented?
+    - [ ] Consistent JSON responses used?
+    - [ ] Standard HTTP status codes used correctly?
+    - [ ] Errors handled and logged appropriately?
+    - [ ] Documentation exists/planned?
+- **External API Consumption:**
+    - [ ] API client/SDK used appropriately?
+    - [ ] Credentials handled securely (no hardcoding)?
+    - [ ] Authentication implemented correctly?
+    - [ ] Necessary HTTP headers set?
+    - [ ] Response status codes checked?
+    - [ ] Robust error handling (network, status, parsing) implemented?
+    - [ ] Retry logic implemented where appropriate?
+    - [ ] Timeouts configured?
+    - [ ] Rate limits considered/handled?
+    - [ ] Data mapped/transformed correctly?
+    - [ ] Sensitive data handling secure?

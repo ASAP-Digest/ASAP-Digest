@@ -38,7 +38,7 @@ B. Secondary Triggers
 1. Status Check ("SC")
    - READ-ONLY operation regarding project files.
    - Creates `StatusCheck` and `StatusReport` entities for logging.
-   - Reads and analyzes roadmap files (`docs/ROADMAP_TASKS.md`, LLM versions) and recent Server Memory using the WSMP priority logic.
+   - Reads and analyzes roadmap files (`md-docs/ROADMAP_TASKS.md`, LLM versions) and recent Server Memory using the WSMP priority logic.
    - Reports structured project status and exits.
    - **ONLY OUTPUT THE FINAL REPORT**
 
@@ -94,9 +94,9 @@ async function executeProjectStatusCheck_v2_3() {
     });
 
     // 3. Read Roadmap Files
-    const roadmapTasksContent = await readFileContents('docs/ROADMAP_TASKS.md');
+    const roadmapTasksContent = await readFileContents('md-docs/ROADMAP_TASKS.md');
     // Potentially read LLM roadmap versions if needed for hierarchy/context
-    // const mainRoadmapContent = await readFileContents('docs/ASAP_DIGEST_ROADMAP_LLM_X.md');
+    // const mainRoadmapContent = await readFileContents('md-docs/ASAP_DIGEST_ROADMAP_LLM_X.md');
 
     // 4. Check Recent Server Memory
     const recentCompletions = await searchRecentMemory('TaskCompletion', 72);
@@ -207,13 +207,13 @@ function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatt
 
 ## 6. Information Sources Hierarchy
 ```text
-1.  **Primary:** `docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
+1.  **Primary:** `md-docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
 2.  **Secondary:**
     -   Server Memory:
         -   `TaskCompletion` entities (last 72h)
         -   Active `Error` entities (for priority determination and details)
         -   Potentially `Task` entities for state entry timestamps if not in roadmap.
-    -   `docs/ASAP_DIGEST_ROADMAP_LLM_*.md` (or primary if not split): For overall context and task hierarchy (Major Task Group, Parent Subtask).
+    -   `md-docs/ASAP_DIGEST_ROADMAP_LLM_*.md` (or primary if not split): For overall context and task hierarchy (Major Task Group, Parent Subtask).
     -   Current Timestamp (`format-time.mdc` v1.1+): For defining the "recent" window and report time.
 ```
 

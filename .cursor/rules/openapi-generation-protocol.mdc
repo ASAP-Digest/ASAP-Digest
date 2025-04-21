@@ -1,0 +1,78 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# OpenAPI Generation Protocol v1.0
+
+## 1. Purpose
+This protocol defines the standards and logic for the automated script responsible for generating the project's OpenAPI 3.x specification file (e.g., `/docs/openapi.json`). This script parses JSDoc annotations within the SvelteKit API route source code (`+server.js` files) to create the specification, serving as the single source of truth for the API reference documentation consumed by Mintlify.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. API Integration Protocol (v1.1+)     │ // Defines required JSDoc tags
+│ 2. Tooling Setup Guide (v1.1+)          │ // Defines script invocation (hook)
+│ 3. Documentation Standards (v1.1+)      │ // Defines Mintlify consumption
+│ 4. Rule Execution Protocol              │ // Rule Application
+│ 5. OpenAPI Generation Protocol (This)   │ // Self-reference
+│ 6. Audit Trail System                   │ // Logs generation events (optional)
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger
+- **Primary Trigger:** Automatically via pre-commit hook (defined in `tooling-setup-guide.mdc`).
+- **Secondary Trigger:** Manual execution of the generation script (e.g., `node ./scripts/generate-openapi.js`).
+- **Context:** The script operates on the SvelteKit source code (`app/src/routes/api/`).
+
+## 4. Script Logic & Requirements
+
+1.  **Location:** The script SHOULD reside in a designated `scripts/` directory (e.g., `scripts/generate-openapi.js`).
+2.  **Dependencies:** MUST utilize a robust JSDoc parser (e.g., `doctrine`) to extract annotations.
+3.  **File Scanning:** MUST recursively scan the `app/src/routes/api/` directory for `+server.js` files.
+4.  **JSDoc Parsing:**
+    *   For each `+server.js` file, identify exported functions corresponding to HTTP methods (GET, POST, PUT, DELETE, PATCH).
+    *   Parse the JSDoc block associated with each handler function.
+    *   Extract information from the specific tags mandated by `api-integration-protocol.mdc` (v1.1+): `@summary`, `@description`, `@tags`, `@param`, `@requestBody`, `@response`, `@security`.
+5.  **OpenAPI Schema Construction:**
+    *   **Base Structure:** Initialize a base OpenAPI 3.x object (including `openapi`, `info`, `servers`, potentially `components/securitySchemes`).
+    *   **Paths Object:** Map SvelteKit route paths (e.g., `/api/users/[id]`) to OpenAPI path format (e.g., `/api/users/{id}`).
+    *   **Operations Object:** For each parsed JSDoc handler, create an OpenAPI Operation Object under the corresponding path and HTTP method. Populate `summary`, `description`, `tags`, `operationId` (e.g., `getUserById`), `parameters`, `requestBody`, `responses`, and `security` based on the extracted JSDoc tags.
+    *   **Parameters:** Parse `@param` tags to create Parameter Objects (defining `name`, `in` (path/query), `required`, `schema`, `description`).
+    *   **Request Bodies:** Parse `@requestBody` tags to create Request Body Objects (defining `description`, `required`, `content` with media types like `application/json` and associated schemas/examples).
+    *   **Responses:** Parse `@response` tags to create Response Objects for each status code (defining `description`, `content` with media types and schemas/examples).
+    *   **(Optional) Reusable Components:** Consider defining reusable schemas (e.g., for standard error responses or common data models) in the `components/schemas` section of the base structure and referencing them (`$ref`) in operations to reduce duplication. The script logic would need to manage these definitions.
+6.  **Output:**
+    *   MUST write the fully constructed OpenAPI JSON object to the canonical path `/docs/openapi.json`.
+    *   Ensure the output is well-formatted JSON.
+7.  **Error Handling:**
+    *   MUST report errors if required JSDoc tags (e.g., `@summary`, `@response`) are missing for a detected API handler.
+    *   MUST handle JSDoc parsing errors gracefully.
+    *   MUST exit with a non-zero status code on failure to signal issues to the pre-commit hook or CI process.
+
+## 5. JSDoc Tag Mapping (Examples - Extend as needed)
+
+*   `@summary Get User Details` -> `summary: "Get User Details"`
+*   `@tags Users Auth` -> `tags: ["Users", "Auth"]`
+*   `@param {string} event.params.userId - The user ID (Path Parameter)` -> Parameter Object (`name: userId`, `in: path`, `required: true`, `schema: { type: string }`, `description: "The user ID"`)
+*   `@requestBody {object} User creation data. (Example: { email: '...', password: '...' })` -> Request Body Object with `application/json` content, description, and potentially an example/schema.
+*   `@response {200} {object} User data.` -> Response Object for `200` status code with description and `application/json` content.
+*   `@security { [{ apiKeyAuth: [] }] }` -> `security: [ { "apiKeyAuth": [] } ]` (assuming `apiKeyAuth` is defined in `components/securitySchemes`).
+
+## 6. Maintenance
+- The script MUST be updated if the required JSDoc tags in `api-integration-protocol.mdc` change.
+- The script MUST be updated if the target OpenAPI specification version changes.
+- Dependencies (like the JSDoc parser) SHOULD be kept up-to-date.
+
+## 7. Verification Checklist (For the Generation Script)
+- [ ] Does the script correctly scan the target API route directory?
+- [ ] Does it use a JSDoc parser effectively?
+- [ ] Does it correctly extract all required tags from annotations?
+- [ ] Does it correctly map JSDoc tags to OpenAPI Path, Operation, Parameter, RequestBody, and Response objects?
+- [ ] Does it handle SvelteKit path parameters correctly (e.g., `[id]` -> `{id}`)?
+- [ ] Does it generate a valid OpenAPI 3.x JSON structure?
+- [ ] Does it write the output to the correct file (`/docs/openapi.json`)?
+- [ ] Does it handle missing required tags gracefully (reports error, exits non-zero)?
+- [ ] Does it handle parsing errors gracefully?

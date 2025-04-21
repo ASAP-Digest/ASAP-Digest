@@ -1,0 +1,60 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Documentation Update Trigger Protocol v1.0
+
+## 1. Purpose
+This protocol defines a unified command/alias to manually trigger the necessary processes for updating project documentation, specifically focusing on regenerating the OpenAPI specification and potentially highlighting other documentation tasks. It acts as a convenient shortcut to ensure documentation reflects the latest code changes, particularly for the API reference.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. OpenAPI Generation Protocol          │ // Defines the script to be run
+│ 2. Tooling Setup Guide (v1.1+)          │ // Defines script location/command
+│ 3. Task Tracking Protocol               │ // Identifies manual doc tasks
+│ 4. Status Check Protocol                │ // Can provide context on pending tasks
+│ 5. Rule Execution Protocol              │ // Rule Application
+│ 6. Documentation Update Trigger (This)  │ // Self-reference
+│ 7. Audit Trail System                   │ // Logs trigger execution
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation Command & Alias
+- **Command:** "Update Documentation"
+- **Alias:** `ud`
+
+## 4. Core Actions & Sequence
+
+Executing `ud` triggers the following sequence:
+
+1.  **Initiate OpenAPI Generation:**
+    *   MUST execute the OpenAPI generation script defined in `openapi-generation-protocol.mdc` (e.g., `node ./scripts/generate-openapi.js`).
+    *   MUST use the `run_terminal_cmd` tool.
+    *   Check the exit code of the script execution.
+    *   **On Success:** Report "OpenAPI specification (`/docs/openapi.json`) regenerated successfully."
+    *   **On Failure:** Report "Error: OpenAPI specification generation failed. Please check script output/logs." Trigger UERP if necessary. Halt further steps in this protocol if generation fails.
+
+2.  **Check for Pending Manual Documentation Tasks (Optional but Recommended):**
+    *   Query `md-docs/ROADMAP_TASKS.md` (using `read_file` and parsing) or Server Memory (`mcp_Server_Memory_search_nodes`) for any active (`🔄`), pending (`⏳`), or paused (`⏸️`) tasks specifically related to manual documentation updates (e.g., tasks with names like "Docs: Update Getting Started Guide", "Docs: Explain New Feature X").
+    *   If found, list them for the user: "Reminder: The following manual documentation tasks may need attention: [List Tasks]".
+    *   If none found, report "No pending manual documentation tasks found in roadmap/memory."
+
+3.  **Report Completion:**
+    *   Indicate the documentation update trigger process is complete.
+    *   Remind the user to review and commit any changes made to `/docs/openapi.json` and potentially other documentation files within the `/docs` submodule.
+
+## 5. Error Handling
+- Handles failures during the OpenAPI generation script execution.
+- Handles potential errors during roadmap/memory scanning (though this is primarily informational).
+
+## 6. Verification Checklist (For this protocol)
+- [ ] Is the activation command/alias clearly defined (`Update Documentation` / `ud`)?
+- [ ] Does Step 1 correctly trigger the OpenAPI generation script via `run_terminal_cmd`?
+- [ ] Does Step 1 handle success and failure reporting for the script execution?
+- [ ] Does Step 2 attempt to identify pending manual documentation tasks?
+- [ ] Does Step 3 provide a clear completion message and reminder to commit?
+- [ ] Does the protocol integrate correctly with other specified protocols?

@@ -1,0 +1,96 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Feature Definition Protocol v1.0
+
+## 1. Purpose
+This protocol defines the standard process for defining new features or significant enhancements within the project. It ensures that features are clearly specified, have defined acceptance criteria, and are linked to overall project goals before implementation begins. This promotes clarity, reduces ambiguity, and facilitates effective task breakdown and verification.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance (Steps 3.A, 4.A)
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. Task Tracking Protocol               │ // Creates/Updates Task entities
+│ 4. Server Memory Rules                  │ // Stores Feature/Requirement entities
+│ 5. Documentation Standards Protocol     │ // Guides user documentation needs
+│ 6. Testing & Verification Protocol       │ // Uses Acceptance Criteria
+│ 7. Feature Definition Protocol (This)   │ // Self-reference
+│ 8. UI Check Protocol                    │ // May verify UI aspects of features
+│ 9. Audit Trail System                   │ // Logs feature definition event
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger
+- **Trigger:** Identification of a need for a new feature or significant enhancement, either through strategic planning, user feedback, or identification of a major gap during development.
+- **Context:** Typically precedes the creation of implementation tasks in `md-docs/ROADMAP_TASKS.md`.
+
+## 4. Core Requirements & Specification Format
+
+Each new feature MUST be documented, ideally as a `Feature` entity in Server Memory or a dedicated section in project planning documents, containing the following information:
+
+1.  **Feature Title:** A concise, descriptive name (e.g., "User Profile Editing", "Digest Email Customization").
+2.  **Feature ID:** A unique identifier (e.g., `FEAT-001`).
+3.  **Source/Motivation:** Briefly explain why this feature is needed (e.g., "User Request #123", "Improve user engagement", "Address technical debt X").
+4.  **Goal(s):** What should this feature achieve? State the primary objectives clearly and measurably if possible (e.g., "Allow users to update their display name and email address", "Increase email open rate by 10%").
+5.  **User Stories (Recommended):** Describe the feature from an end-user perspective using the format: "As a [Type of User], I want to [Perform Action] so that [Benefit]".
+    ```markdown
+    **Example User Stories:**
+    - As a registered user, I want to change my password so that I can maintain account security.
+    - As an administrator, I want to view user activity logs so that I can troubleshoot issues.
+    ```
+6.  **Functional Requirements:** Detail the specific functionalities the feature must provide. Use clear, unambiguous language.
+    ```markdown
+    **Example Functional Requirements:**
+    - The system MUST allow users to enter a new password.
+    - The system MUST validate the new password against complexity rules (Ref: `password-policy.mdc` - *if exists*).
+    - The system MUST confirm the old password before allowing a change.
+    - The system MUST send a confirmation email upon successful password change.
+    ```
+7.  **Non-Functional Requirements (If Applicable):** Specify requirements not directly related to functionality, such as:
+    - **Performance:** (e.g., "Profile page must load in under 2 seconds").
+    - **Security:** (e.g., "All profile update requests must be authenticated and authorized", "Input must be sanitized against XSS"). Reference `security-best-practices-protocol.mdc` (Proposed).
+    - **Usability:** (e.g., "The editing interface must be intuitive for non-technical users").
+    - **Accessibility:** (e.g., "Must comply with WCAG 2.1 AA standards"). Reference `visual-style-enforcement-protocol.mdc`.
+8.  **Acceptance Criteria:** Define specific, testable conditions that MUST be met for the feature to be considered complete and accepted. These directly inform the `Testing & Verification Protocol`. Use a checklist format.
+    ```markdown
+    **Example Acceptance Criteria:**
+    - [ ] User can navigate to the profile editing page.
+    - [ ] User sees current display name and email pre-filled.
+    - [ ] User can successfully update display name.
+    - [ ] User receives visual confirmation of successful update.
+    - [ ] Attempting to save an invalid email format shows a clear error message.
+    - [ ] Updated information is correctly reflected on the profile page and in the database.
+    ```
+9.  **UI/UX Considerations (If Applicable):** Include mockups, wireframes, or descriptions of the user interface and user experience. Reference `golden-ratio-design-system-protocol.mdc`.
+10. **Out of Scope:** Explicitly list related functionalities that are *not* part of this specific feature definition to prevent scope creep.
+
+## 5. Process Flow
+
+1.  **Draft Definition:** Create the initial feature definition document/entity based on Section 4.
+2.  **Review:** Review the definition with relevant stakeholders (e.g., product owner, lead developer, designer).
+3.  **Refine:** Incorporate feedback and finalize the definition.
+4.  **Task Breakdown:** Break down the feature into smaller, actionable implementation tasks. Create corresponding `Task` entities or entries in `md-docs/ROADMAP_TASKS.md`, linking them back to the `Feature` entity/ID.
+5.  **Linkage:** Ensure implementation tasks clearly reference the Feature ID and its Acceptance Criteria.
+6.  **Documentation Planning:** Identify documentation needs based on the feature (Ref: `documentation-standards-protocol.mdc`). Create placeholder tasks if necessary.
+
+## 6. Maintenance
+- Feature definitions SHOULD be revisited if significant changes occur during implementation that deviate from the original specification.
+- Updates MUST be reflected in the definition document/entity and potentially trigger a review of related tasks and acceptance criteria.
+
+## 7. Verification Checklist (For a Feature Definition)
+- [ ] Is there a clear Feature Title and ID?
+- [ ] Is the Source/Motivation documented?
+- [ ] Are the Goals clear and measurable (if possible)?
+- [ ] Are User Stories included (Recommended)?
+- [ ] Are Functional Requirements specific and unambiguous?
+- [ ] Are Non-Functional Requirements considered and documented?
+- [ ] Are Acceptance Criteria specific, testable, and complete?
+- [ ] Are UI/UX considerations addressed (if applicable)?
+- [ ] Is "Out of Scope" clearly defined?
+- [ ] Has the definition been reviewed?
+- [ ] Are implementation tasks linked to this feature definition?

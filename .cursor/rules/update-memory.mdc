@@ -48,17 +48,17 @@ Executing `um` triggers the following sequence:
         -   Creating necessary relations (e.g., `Task` `completedIn` `WorkSession`).
     -   Reference the active `WorkSession` entity (from WSMP context) when creating relations.
 
-3.  **Roadmap Task Update (`docs/ROADMAP_TASKS.md`):**
-    -   MUST update the status and timestamp for the completed task(s) in `docs/ROADMAP_TASKS.md`.
+3.  **Roadmap Task Update (`md-docs/ROADMAP_TASKS.md`):**
+    -   MUST update the status and timestamp for the completed task(s) in `md-docs/ROADMAP_TASKS.md`.
     -   Use the Task Tracking Protocol's logic (implicit) to find the task line and update its status emoji (e.g., ✅) and append the acquired formatted timestamp.
     -   Example format: `- [Task ID] Task Description ✅ MM.DD.YY | HH:MM AM/PM PDT`
 
-4.  **Main Roadmap Check (`docs/ASAP_DIGEST_ROADMAP.md`):**
+4.  **Main Roadmap Check (`md-docs/ASAP_DIGEST_ROADMAP.md`):**
     -   SHOULD review if the completed functionality was significantly outside the scope defined in the main roadmap.
-    -   If necessary, update `docs/ASAP_DIGEST_ROADMAP.md` to reflect scope changes or additions.
+    -   If necessary, update `md-docs/ASAP_DIGEST_ROADMAP.md` to reflect scope changes or additions.
 
-5.  **Deployment Checklist Update (`docs/DEPLOYMENT_CHECKLIST.md`):**
-    -   MUST update `docs/DEPLOYMENT_CHECKLIST.md` if the completed work affects deployment steps, configuration, or verification procedures. Add new items or check off existing ones as appropriate.
+5.  **Deployment Checklist Update (`md-docs/DEPLOYMENT_CHECKLIST.md`):**
+    -   MUST update `md-docs/DEPLOYMENT_CHECKLIST.md` if the completed work affects deployment steps, configuration, or verification procedures. Add new items or check off existing ones as appropriate.
 
 6.  **Verification & Audit:**
     -   SHOULD perform L1/L2 Verification Chain checks (from Cross-Protocol Comms) to ensure consistency between memory and updated documentation.
@@ -86,18 +86,18 @@ um
 #    - Creates relations: Task_ImplementLoginUI completedIn WS_XYZ
 #    (Using mcp_Server_Memory_* tools according to server-memory-rules.mdc)
 
-# 3. Agent updates docs/ROADMAP_TASKS.md:
+# 3. Agent updates md-docs/ROADMAP_TASKS.md:
 #    - Finds line for 'ImplementLoginUI'
 #    - Updates line to: "- [T-123] Implement Login UI ✅ 07.27.24 | 10:30 AM PDT"
 #    (Using edit_file tool)
 
-# 4. Agent reviews docs/ASAP_DIGEST_ROADMAP.md (No changes needed)
+# 4. Agent reviews md-docs/ASAP_DIGEST_ROADMAP.md (No changes needed)
 
-# 5. Agent updates docs/DEPLOYMENT_CHECKLIST.md:
+# 5. Agent updates md-docs/DEPLOYMENT_CHECKLIST.md:
 #    - Adds item: "- Verify login form styles on staging"
 #    (Using edit_file tool)
 
-# 5.a. **Execute State Synchronization Verification:** MUST execute the full sequence defined in `Mandatory Post-Update State Synchronization Verification Protocol v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
+# 5.a. **Execute State Synchronization Verification:** MUST execute the full sequence defined in `Mandatory Post-Update State Synchronization Verification Protocol v1.0` to ensure consistency between the `Task` entity status/timestamp in Server Memory (updated in Step 2) and the status/timestamp in `md-docs/ROADMAP_TASKS.md` (updated in Step 3). Trigger UERP on failure.
 
 # 6. Agent performs verification checks (Pass)
 #    - Logs events to Audit Trail
