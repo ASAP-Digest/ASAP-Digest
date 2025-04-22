@@ -3,10 +3,10 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Status Check Protocol (Project Status Report) v2.3
+# Status Check Protocol (Project Status Report) v2.4
 
 ## 1. Protocol Restrictions
-````markdown
+```markdown
 A. Core Restrictions
 - Status Check is a **READ-ONLY** operation concerning project files and state.
 - Must NOT modify any project files (including roadmaps) or database.
@@ -18,10 +18,10 @@ B. Entity Creation Limits
 - Only allowed to create `StatusCheck` and `StatusReport` entities in Server Memory for logging its own execution.
 - The user-facing report content is derived from analyzing roadmap files and recent memory, not directly from general memory state.
 - No task priority updates or external state modifications allowed.
-````
+```
 
 ## 2. Activation Methods
-````text
+```text
 A. Primary Triggers
 - Command or alias "SC".
 - Integration: Can be called by BWS/EWS protocols as part of their flow.
@@ -31,14 +31,14 @@ B. Secondary Triggers
 - Pre-session validation (if integrated into BWS).
 - Post-session summary (if integrated into EWS).
 - Ad-hoc project status queries.
-````
+```
 
 ## 3. Protocol Chain and Command Flow
-````text
+```text
 1. Status Check ("SC")
    - READ-ONLY operation regarding project files.
    - Creates `StatusCheck` and `StatusReport` entities for logging.
-   - Reads and analyzes roadmap files (`md-docs/ROADMAP_TASKS.md`, LLM versions) and recent Server Memory using the WSMP priority logic.
+   - Reads and analyzes roadmap files (`md-docs/ROADMAP_TASKS.md`, LLM versions) and recent Server Memory using the WSMP rank-aware priority logic.
    - Reports structured project status and exits.
    - **ONLY OUTPUT THE FINAL REPORT**
 
@@ -53,15 +53,15 @@ B. Secondary Triggers
    - Status Check: READ-ONLY (for project files/state).
    - Work Session: Can modify state after explicit command.
    - Task Execution: Can modify state within active work session.
-````
+```
 
 ## 4. Protocol Integration Layer
-````text
+```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
-│ 1. Status Check Protocol (This v2.3)    │
-│ 2. Work Session Management Proto v2.10+ │ // Source of Priority Logic
+│ 1. Status Check Protocol (This v2.4)    │
+│ 2. Work Session Management Proto v2.12+ │ // Source of Rank-Aware Priority Logic
 │ 3. Server Memory Rules (v2.1+)          │
 │ 4. Task Tracking Protocol               │
 │ 5. Software Development Meta Protocol   │
@@ -69,12 +69,13 @@ B. Secondary Triggers
 │ 7. Format Time Protocol                 │ // For timestamp consistency
 │ 8. Cross-Protocol Comms & Verification   │
 │ 9. Audit Trail System                   │
+│ 10. Roadmap Syntax Validation Proto v1.0+ │ // Defines expected roadmap syntax (New)
 └─────────────────────────────────────────┘
-````
+```
 
-## 5. Status Check Implementation (Conceptual Steps)
+## 5. Status Check Implementation (Conceptual Steps - Updated for Rank Awareness)
 ```javascript
-async function executeProjectStatusCheck_v2_3() {
+async function executeProjectStatusCheck_v2_4() {
     // 1. Initialize timestamp for report and logging
     const reportTimestamp = await mcp_mcp-datetime_get_datetime({ format: "datetime" }); // Still get a standard format for logging
     // Use the updated format-time.mdc logic for the *user-facing* report time
@@ -89,6 +90,7 @@ async function executeProjectStatusCheck_v2_3() {
             observations: [
                 `Project status check initiated at ${reportTimestamp}`,
                 "Reading roadmap files and recent memory.",
+                "Applying Rank-Aware Priority Logic (v2.4)."
             ]
         }]
     });
@@ -102,30 +104,29 @@ async function executeProjectStatusCheck_v2_3() {
     const recentCompletions = await searchRecentMemory('TaskCompletion', 72);
     const activeErrors = await searchRecentMemory('Error', 0, ['status=active']);
 
-    // 5. Parse and Analyze Data (WSMP Priority Logic)
-    // Parse roadmapTasksContent to get all tasks with statuses (Emoji & Timestamp).
-    // Identify sections based on parsing results and rules defined in Section 7.
-    // *** BEGIN Priority Logic (Ref: WSMP v2.10, Sec 3.3) ***
+    // 5. Parse and Analyze Data (Rank-Aware WSMP Priority Logic)
+    // Parse roadmapTasksContent to get all tasks with statuses, timestamps, AND ` • [ rnk:X ]` tags.
+    // *** BEGIN Rank-Aware Priority Logic (Ref: WSMP v2.12+, Sec 3.3) ***
     let priorityTask = null;
     let priorityReason = "No actionable tasks found.";
 
     // 5.1: Check Active Blocking Errors
     const blockedTaskInfo = findHighestPriorityBlockedTask(activeErrors, roadmapTasksContent); // Helper needed
     if (blockedTaskInfo) {
-        priorityTask = blockedTaskInfo.task;
+        priorityTask = blockedTaskInfo.task; // Assumes helper returns {task: {...}, errorSummary: "..."}
         priorityReason = `Blocked by Error: ${blockedTaskInfo.errorSummary}`;
     }
 
-    // 5.2: Check Paused Tasks (if no error)
+    // 5.2: Check Paused Tasks (`⏸️`)
     if (!priorityTask) {
         const pausedTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '⏸️'); // Helper needed
         if (pausedTask) {
             priorityTask = pausedTask;
-            priorityReason = "Paused session";
+            priorityReason = "Paused Session";
         }
     }
 
-    // 5.3: Check Testing Tasks (if no error/paused)
+    // 5.3: Check Testing Tasks (`🧪`)
     if (!priorityTask) {
         const testingTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '🧪'); // Helper needed
         if (testingTask) {
@@ -134,39 +135,52 @@ async function executeProjectStatusCheck_v2_3() {
         }
     }
 
-    // 5.4: Check Deepest In Progress (if no error/paused/testing)
+    // 5.4: Check Highest Ranked Task (` • [ rnk:A ]` > ` • [ rnk:B ]` > ...)
     if (!priorityTask) {
-        const inProgressTask = findDeepestTaskByStatus(roadmapTasksContent, '🔄'); // Helper needed
+        // Helper function needs to parse ` • [ rnk:X ]` tags and find the highest ranked non-completed/non-paused/non-testing task
+        const rankedTask = findHighestExplicitlyRankedTask(roadmapTasksContent); // New helper needed
+        if (rankedTask) {
+            priorityTask = rankedTask;
+            priorityReason = `Highest Ranked Task (rnk:${rankedTask.rank})`; // Include rank in reason
+        }
+    }
+
+    // 5.5: Check Deepest In Progress (`🔄`) without rank
+    if (!priorityTask) {
+        // Helper needs modification to *exclude* tasks with a rank tag
+        const inProgressTask = findDeepestTaskByStatus(roadmapTasksContent, '🔄', { excludeRanked: true }); // Modified helper needed
         if (inProgressTask) {
             priorityTask = inProgressTask;
-            priorityReason = "Deepest Active Task";
+            priorityReason = "Deepest Active Task (Unranked)"; // Clarify reason
         }
     }
 
-    // 5.5: Check Pending Testing (if no error/paused/testing/in progress)
+    // 5.6: Check Pending Testing (`🔬`) without rank
     if (!priorityTask) {
-        const pendingTestTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '🔬'); // Helper needed
+        // Helper needs modification to *exclude* tasks with a rank tag
+        const pendingTestTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '🔬', { excludeRanked: true }); // Modified helper needed
         if (pendingTestTask) {
             priorityTask = pendingTestTask;
-            priorityReason = "Pending Testing (Requires ST)"; // Special reason
+            priorityReason = "Pending Testing (Requires ST, Unranked)"; // Clarify reason
         }
     }
 
-    // 5.6: Check Pending Tasks (if none of the above)
+    // 5.7: Check Pending Tasks (`⏳`) without rank
     if (!priorityTask) {
-        const pendingTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '⏳'); // Helper needed
+        // Helper needs modification to *exclude* tasks with a rank tag
+        const pendingTask = findHighestPriorityTaskByStatus(roadmapTasksContent, '⏳', { excludeRanked: true }); // Modified helper needed
         if (pendingTask) {
             priorityTask = pendingTask;
-            priorityReason = "Next Pending Task";
+            priorityReason = "Next Pending Task (Unranked)"; // Clarify reason
         }
     }
-    // *** END Priority Logic ***
+    // *** END Rank-Aware Priority Logic ***
 
     // Extract other report data (completed, testing pipeline, blocked list etc.)
     const reportData = parseRoadmapsAndMemoryForReport(roadmapTasksContent, recentCompletions, activeErrors, priorityTask, priorityReason); // Modified Helper
 
     // 6. Generate Structured Report (User Facing)
-    const userReport = formatUserReport_v2_3(reportData, formattedReportTime); // Use formatted time
+    const userReport = formatUserReport_v2_4(reportData, formattedReportTime); // Use formatted time, updated report format
 
     // 7. Create status report entity in Server Memory
     await mcp_Server_Memory_create_entities({
@@ -176,8 +190,9 @@ async function executeProjectStatusCheck_v2_3() {
             observations: [
                 `Report generated at ${reportTimestamp}`,
                 `Summary: ${reportData.summary}`, // Store a brief summary
-                `PriorityTask: ${reportData.priorityTask?.id || 'None'}`,
-                `PriorityReason: ${reportData.priorityReason || 'N/A'}`,
+                `PriorityTask: ${reportData.priorityTask?.id || 'None'}`, 
+                `PriorityReason: ${reportData.priorityReason || 'N/A'}`, 
+                `DetectedRank: ${reportData.priorityTask?.rank || 'N/A'}`, // Store rank if applicable
                 `BlockedTasksCount: ${reportData.blockedTasks?.length || 0}`,
                 `PendingTestingCount: ${reportData.pendingTestingTasks?.length || 0}`,
                 `ActiveTestingCount: ${reportData.activeTestingTasks?.length || 0}`,
@@ -189,7 +204,7 @@ async function executeProjectStatusCheck_v2_3() {
     return userReport;
 }
 
-// Helper function placeholders (implementation requires specific parsing logic)
+// Helper function placeholders (implementation requires specific parsing logic, now including rank parsing)
 async function readFileContents(filePath) { /* ... use read_file ... */ }
 async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes ... */ }
 // Reference the updated formatting logic
@@ -199,15 +214,16 @@ async function getFormattedTime_v1_1() {
     // 3. Return the formatted string
 }
 function findHighestPriorityBlockedTask(activeErrors, roadmapContent) { /* ... logic to link errors to tasks and find highest prio ... */ }
-function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, find highest prio based on order ... */ }
-function findDeepestTaskByStatus(roadmapContent, statusEmoji) { /* ... parse roadmap, filter by emoji, determine hierarchy, find deepest ... */ }
-function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections ... */ }
-function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflecting updated priority section ... */ }
+function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, find highest prio based on order ... */ }
+function findHighestExplicitlyRankedTask(roadmapContent) { /* ... parse roadmap, extract ` • [ rnk:X ]`, find highest ranked non-complete/paused/testing task ... */ }
+function findDeepestTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, determine hierarchy, find deepest ... */ }
+function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections, now includes rank ... */ }
+function formatUserReport_v2_4(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflect rank-aware priority reason ... */ }
 ```
 
 ## 6. Information Sources Hierarchy
 ```text
-1.  **Primary:** `md-docs/ROADMAP_TASKS.md` (for detailed task status and timestamps).
+1.  **Primary:** `md-docs/ROADMAP_TASKS.md` (for detailed task status, timestamps, and ` • [ rnk:X ]` tags).
 2.  **Secondary:**
     -   Server Memory:
         -   `TaskCompletion` entities (last 72h)
@@ -217,12 +233,12 @@ function formatUserReport_v2_3(reportData, formattedReportTime) { /* ... formatt
     -   Current Timestamp (`format-time.mdc` v1.1+): For defining the "recent" window and report time.
 ```
 
-## 7. Status Report Structure & Logic
-The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc v1.1+`:
+## 7. Status Report Structure & Logic (Updated)
+The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc v1.1+`. The Priority section MUST reflect the rank-aware logic.
 
 ```markdown
 ---
-# **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
+## **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
 ---
 
 ### **`✅ Recently Completed (Last 72h):`**
@@ -233,31 +249,31 @@ The user-facing output MUST follow this structure, with the `📅 Status Check R
 
 ### **`🔬🧪 Testing Pipeline:`**
   *   **`🔬 Pending Initiation:`**
-      *   Priority? [Yes/No] - `[Task Name]` _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
+      *   Priority? [Yes/No] - `[Task Name]` _(Rank: [X|N/A])_ _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
       *   _(If none: 👍 None pending initiation.)_
   *   **`🧪 Actively Testing:`**
-      *   `[Task Name]` _(Started: [MM.DD.YY | HH:MM AM/PM TimeZone])_
+      *   `[Task Name]` _(Rank: [X|N/A])_ _(Started: [MM.DD.YY | HH:MM AM/PM TimeZone])_
       *   _(If none: 👍 None actively testing.)_
 
 ---
 
 ### **`🎯 Current Priority:`**
-  *   **`[Emoji]`** **`[Task Name]`**
-      *   _Reason:_ **`[Determined Reason from WSMP Logic: e.g., "Testing Active", "Paused Session", "Blocked by Error: [Summary]", "Deepest Active Task", "Pending Testing (Requires ST)", "Next Pending Task"]`**
+  *   **`[Emoji]`** **`[Task Name]`** _(Rank: [X|N/A])_
+      *   _Reason:_ **`[Determined Reason from Rank-Aware Logic: e.g., "Highest Ranked Task (rnk:A)", "Testing Active", "Paused Session", "Blocked by Error: [Summary]", "Deepest Active Task (Unranked)", "Pending Testing (Requires ST, Unranked)", "Next Pending Task (Unranked)"]`**
       *   _(If status is 🔬, add: ➡️ Use `ST [TaskID]` or `ST` to initiate testing.)_
 
 ---
 
 ### **`⏳ Upcoming Tasks (Next 3-5 Pending After Priority):`**
-  *   `[Task Name]`
-  *   `[Task Name]`
-  *   `[Task Name]`
+  *   `[Task Name]` _(Rank: [X|N/A])_
+  *   `[Task Name]` _(Rank: [X|N/A])_
+  *   `[Task Name]` _(Rank: [X|N/A])_
   *   _(If none: 👍 No pending tasks after priority.)_
 
 ---
 
 ### **`❌ Blocked Tasks:`**
-  *   `[Task Name]` _(Reason: [If available from Error entity])_
+  *   `[Task Name]` _(Rank: [X|N/A])_ _(Reason: [If available from Error entity])_
   *   _(If none: 👍 No blocked tasks.)_
 
 ---
@@ -266,3 +282,4 @@ The user-facing output MUST follow this structure, with the `📅 Status Check R
   *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`** _(If applicable)_
 
 ---
+```
