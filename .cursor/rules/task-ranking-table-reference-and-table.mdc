@@ -1,0 +1,123 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Task Ranking Table Reference & Protocol v1.0
+
+## 1. Purpose
+
+This protocol provides a standardized reference table for classifying common software development tasks into the 5 **Development Layers** used by the `@task-system-ranking-protocol.mdc`. Its purpose is to guide the LLM agent and user in consistently categorizing tasks *before* the dynamic ranking algorithm (`PRIMARY`, `SECONDARY`, `TERTIARY`) is applied based on the active VeriDX configuration (`veridx-config.json`). This ensures that the dynamic ranking operates on a consistent understanding of task types across the project lifecycle.
+
+**This protocol defines the *input classification*, while `@task-system-ranking-protocol.mdc` defines the *dynamic prioritization logic*.**
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Executing steps herein
+│ 3. Task System Ranking Protocol (v1.5+) │ // Consumes the layer classification
+│ 4. Task Tracking Protocol (v1.2+)       │ // Manages tasks being classified/ranked
+│ 5. Universal Error Resolution Protocol  │ // May trigger re-evaluation of task layer/rank
+│ 6. New Rule Creation Protocol           │ // This rule's creation process
+│ 7. Rule Formatting Protocol             │ // This rule's formatting standard
+│ 8. Task Category Reference (This v1.0)  │ // Self-reference
+└─────────────────────────────────────────┘
+```
+
+## 3. LLM Instructions for Application
+
+1.  **Context:** When evaluating tasks for ranking (typically before applying `@task-system-ranking-protocol.mdc` or when adding new tasks), first consult the **Universal Task Categorization Table** (Section 5) below.
+2.  **Classification:** Based on the task's description and context, determine the most appropriate **Development Layer (1-5)** using the table as a guideline.
+3.  **Document (Optional):** If helpful for clarity during ranking discussions, explicitly state the assigned layer for key tasks being considered.
+4.  **Proceed to Ranking:** Use this layer classification as input for the `@task-system-ranking-protocol.mdc`. The ranking protocol will then apply its logic (based on the active algorithm in `veridx-config.json`) to determine the actual `rnk:X` priority, potentially elevating tasks (like critical bug fixes) regardless of their default layer.
+5.  **Ambiguity:** If a task clearly spans multiple layers or doesn't fit neatly, use best judgment, potentially assigning it to the *most significant* layer involved or the layer representing the *primary goal* of the task. Note the ambiguity if necessary.
+
+## 4. Development Layer Definitions (Reference)
+
+*(Copied from `@task-system-ranking-protocol.mdc` for context)*
+
+*   **Layer 1: App Shell:** Basic structure, navigation, layout, core styling setup.
+*   **Layer 2: Core Functionality:** Essential user accounts, primary data handling, critical APIs, core interaction logic.
+*   **Layer 3: Special Features:** Unique value-adds, specific widgets, AI integrations, complex features beyond core functionality.
+*   **Layer 4: Visual Polish:** UI refinement, micro-interactions, minor design system adherence *after* functionality is stable.
+*   **Layer 5: Miscellaneous:** Non-critical bugs, documentation, maintenance, chores, minor tweaks, refactoring (unless critical).
+
+## 5. Universal Task Categorization Table
+
+| Category          | Subcategory / Example Task                        | Assigned Development Layer | Notes                                                                           |
+| :---------------- | :------------------------------------------------ | :------------------------- | :------------------------------------------------------------------------------ |
+| **Setup & Infra** | Project Initialization                          | Layer 1 (App Shell)        | Initial project setup, basic config.                                          |
+|                   | Build System Config (Vite, Webpack)             | Layer 1 (App Shell)        | Initial setup and configuration.                                              |
+|                   | CI/CD Pipeline Setup                            | Layer 1 (App Shell)        | Initial setup for automated builds/tests/deployments.                         |
+|                   | Linter/Formatter Setup                          | Layer 1 (App Shell)        | Enforcing code style and quality standards.                                     |
+|                   | Environment Variable Management                 | Layer 5 (Miscellaneous)    | Unless required for initial Layer 1/2 setup.                                    |
+|                   | Docker Configuration                            | Layer 5 (Miscellaneous)    | Unless required for initial Layer 1/2 setup.                                    |
+|                   | Dependency Installation/Updates (Routine)         | Layer 5 (Miscellaneous)    | Routine updates. Critical security updates elevate rank via ranking protocol. |
+| **Architecture**  | Database Schema Design                          | Layer 2 (Core Func)        | Designing the core data structure.                                            |
+|                   | API Design (Contracts, OpenAPI)                 | Layer 2 (Core Func)        | Defining how systems communicate.                                             |
+|                   | Core Class/Module Structuring                   | Layer 2 (Core Func)        | Organizing the main application logic.                                        |
+|                   | State Management Strategy/Setup                 | Layer 1 (App Shell)        | Initial choice and setup (e.g., Svelte stores). Feature state is Layer 2/3.   |
+|                   | Routing Strategy/Setup                          | Layer 1 (App Shell)        | Defining base routes. Feature routes are Layer 2/3.                           |
+|                   | Authentication Strategy/Setup                   | Layer 2 (Core Func)        | Planning and initial setup of auth.                                         |
+| **UI Structure**  | Root Layout Component (App Shell)               | Layer 1 (App Shell)        | The main `+layout.svelte` or equivalent.                                    |
+|                   | Navigation Components (Header, Footer, Sidebar) | Layer 1 (App Shell)        | Basic navigation structure.                                                   |
+|                   | Page Skeleton/Template Creation                 | Layer 1 (App Shell)        | Creating basic layout structures for page types.                              |
+|                   | Container/Wrapper Component Creation            | Layer 1 (App Shell)        | Basic layout helper components.                                               |
+|                   | Grid System Implementation                      | Layer 1 (App Shell)        | Setting up or configuring the grid system.                                    |
+| **Core Features** | User Registration / Login / Logout              | Layer 2 (Core Func)        | Essential user account functionality.                                         |
+|                   | Password Reset / Account Management             | Layer 2 (Core Func)        | Core profile and security features.                                           |
+|                   | CRUD Operations (Primary Data Model)            | Layer 2 (Core Func)        | e.g., Creating/Viewing main content like Digests.                           |
+|                   | Core API Endpoint Implementation                | Layer 2 (Core Func)        | Implementing essential backend routes (e.g., `/digest`, `/user`).               |
+|                   | Payment Integration (Setup, Core Tx)            | Layer 2 (Core Func)        | Initial setup and handling of core transactions.                              |
+|                   | Core Business Logic Implementation              | Layer 2 (Core Func)        | Implementing the fundamental algorithms/processes (e.g., digest generation). |
+| **Special Features**| New Widget Development (e.g., Podcast Player) | Layer 3 (Special Features) | Features beyond the core user flow or data model.                           |
+|                   | AI Model Integration                            | Layer 3 (Special Features) | Implementing features using AI/ML.                                            |
+|                   | Reporting / Analytics Feature                   | Layer 3 (Special Features) | Building specific data reporting views.                                       |
+|                   | Advanced Search / Filtering                     | Layer 3 (Special Features) | Functionality beyond basic search.                                            |
+|                   | Third-Party Service Integration (Non-Core)      | Layer 3 (Special Features) | Integrating external services for non-essential features (e.g., social widget).|
+|                   | PWA Features (Push Notifications, Offline)      | Layer 3 (Special Features) | Enhancing the app with PWA capabilities.                                      |
+| **UI Styling**    | UI Library Integration (e.g., Shadcn Setup)     | Layer 1 (App Shell)        | Initial installation and configuration.                                       |
+|                   | Base Styling (Tailwind Config)                  | Layer 1 (App Shell)        | Setting up `tailwind.config.js`, global CSS.                                |
+|                   | Typography System Setup                         | Layer 1 (App Shell)        | Defining fonts, sizes in config/CSS.                                          |
+|                   | Color System Setup                              | Layer 1 (App Shell)        | Defining color variables in config/CSS.                                       |
+|                   | Icon System Setup                               | Layer 1 (App Shell)        | e.g., Setting up `lucide-compat.js`.                                          |
+|                   | Individual Component Styling (Initial)          | Layer 2/3 (Core/Special)   | Styling done *during* initial feature implementation.                         |
+|                   | Component Styling (Refinement/Polish)           | Layer 4 (Visual Polish)    | Adjusting styles *after* functionality is working.                            |
+|                   | Micro-interactions / Animations                 | Layer 4 (Visual Polish)    | Adding subtle animations, transitions for better UX (unless core to func).    |
+| **Testing**       | Unit / Integration Test Setup                   | Layer 2 (Core Func)        | Setting up testing frameworks (Jest, Vitest, etc.).                           |
+|                   | E2E Test Setup                                  | Layer 3 (Special Features) | Setting up end-to-end testing (Playwright, Cypress, etc.).                    |
+|                   | Writing Tests (for Core Func)                   | Layer 2 (Core Func)        | Tests written alongside core feature development.                             |
+|                   | Writing Tests (for Special Features)            | Layer 3 (Special Features) | Tests written alongside special feature development.                          |
+|                   | Writing Tests (for Visual Polish/Refactors)     | Layer 4 (Visual Polish)    | Tests added/updated during UI refinement or refactoring.                      |
+|                   | Manual Testing / QA                             | Layer 5 (Miscellaneous)    | Routine QA process, exploratory testing.                                      |
+| **Bug Fixing**    | Critical Bug Fix (Blocking Core/Deploy)         | Layer 5 -> Elevate Rank    | Default Layer 5, but rank elevated by Ranking Protocol criteria (A/B).        |
+|                   | Major Bug Fix (Impacting Feature UX)            | Layer 5 -> Elevate Rank?   | Default Layer 5, rank potentially elevated based on severity/impact.        |
+|                   | Minor Bug Fix (UI Glitch, Edge Case)            | Layer 5 (Miscellaneous)    | Usually low priority unless causing significant friction.                   |
+| **Documentation** | API Docs (OpenAPI/Swagger Gen/Maint)            | Layer 5 (Miscellaneous)    | Keeping API documentation up-to-date.                                         |
+|                   | Code Comments (JSDoc, PHP DocBlocks)            | Layer 5 (Miscellaneous)    | Ideally done during coding (Layers 1-4), but tracked/updated as Misc.       |
+|                   | User Guides / Tutorials                         | Layer 5 (Miscellaneous)    | Creating or updating end-user documentation.                                  |
+|                   | README / Contribution Guides                    | Layer 5 (Miscellaneous)    | Essential project setup/contribution info (initial might be Layer 1).         |
+|                   | Protocol / Rule Creation & Updates              | Layer 5 (Miscellaneous)    | Maintaining internal development process documentation.                       |
+|                   | Architecture Diagrams                           | Layer 5 (Miscellaneous)    | Documenting system design.                                                    |
+| **Refactoring**   | Major Code Restructuring (Core Impact)          | Layer 5 -> Elevate Rank?   | Default Layer 5, rank elevated if necessary to unblock work or improve stability.|
+|                   | Performance Optimization                        | Layer 5 -> Elevate Rank?   | Default Layer 5, rank elevated based on measured impact/goals.              |
+|                   | Security Hardening (Specific Vulnerability Fix) | Layer 5 -> Elevate Rank    | Default Layer 5, rank elevated based on severity (Rule A/B).                |
+|                   | Dependency Upgrade Refactoring                  | Layer 5 (Miscellaneous)    | Refactoring needed after routine updates. Critical security updates elevate.|
+|                   | Code Cleanup (Minor)                            | Layer 5 (Miscellaneous)    | Small improvements, removing dead code (use removal protocol).            |
+| **Deployment**    | Staging / Production Deployment Config          | Layer 5 (Miscellaneous)    | Initial setup might be Layer 1. Routine updates are Misc.                   |
+|                   | Database Migrations                             | Layer 5 (Miscellaneous)    | Can be critical (elevate rank) if blocking feature deployment.              |
+|                   | Deployment Scripting                            | Layer 5 (Miscellaneous)    | Initial setup might be Layer 1.                                               |
+|                   | Post-Deployment Checks / Rollbacks              | Layer 5 (Miscellaneous)    | Operational tasks.                                                          |
+| **Maintenance**   | Dependency Updates (Routine)                    | Layer 5 (Miscellaneous)    | Keeping libraries up-to-date.                                                 |
+|                   | Log Monitoring / Analysis                       | Layer 5 (Miscellaneous)    | Routine operational checks.                                                   |
+|                   | Server Maintenance                              | Layer 5 (Miscellaneous)    | Infrastructure upkeep.                                                        |
+
+## 6. Usage Notes
+
+-   This table is a **guideline**, not an absolute rule. Context matters. A task might be classified differently based on specific project needs or dependencies.
+-   The primary purpose is to provide a consistent starting point for applying the dynamic ranking logic in `@task-system-ranking-protocol.mdc`.
+-   Tasks categorized in Layer 5 (Miscellaneous) are typically not explicitly ranked unless they become critical blockers (handled by criteria in the ranking protocol).

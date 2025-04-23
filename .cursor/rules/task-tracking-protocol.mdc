@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Task Tracking Protocol v1.1
+# Task Tracking Protocol v1.3
 
 ## 1. Purpose
 This protocol defines the standard procedures for creating, tracking, updating, and managing development tasks within the VeriDX system. It standardizes the format used in the primary tracking document (`md-docs/ROADMAP_TASKS.md`), defines the task lifecycle and status transitions, and ensures synchronization with Server Memory `Task` entities and relevant documentation requirements.
@@ -16,16 +16,17 @@ This protocol defines the standard procedures for creating, tracking, updating, 
 │ 1. Software Development Meta Protocol   │ // Overall Guidance (Task Breakdown 3.A)
 │ 2. Rule Execution Protocol              │ // Rule Application
 │ 3. Server Memory Rules (v2.1+)          │ // Defines Task entities, states, relations
-│ 4. Feature Definition Protocol          │ // Source of feature-related tasks
-│ 5. Work Session Mgmt Proto (v2.11+)     │ // Initiates/ends work on tasks (BWS/EWS)
-│ 6. Testing & Verification Proto (v1.4+) │ // Manages testing/approval states (ST/EAQ/AC/RC)
+│ 4. Feature Definition Protocol           │ // Source of feature-related tasks
+│ 5. Work Session Mgmt Proto (v2.13+)     │ // Initiates/ends work on tasks (BWS/EWS), Reads Rank
+│ 6. Testing & Verification Proto (v1.4+)  │ // Manages testing/approval states (ST/EAQ/AC/RC)
 │ 7. Universal Error Resolution Proto     │ // Can block tasks via Error entities
 │ 8. Documentation Standards Protocol     │ // Triggered by task completion
 │ 9. Update Memory Protocol               │ // Used for synchronization
-│ 10. Status Check Protocol (v2.3+)       │ // Reads roadmap for status reporting
-│ 11. Task Tracking Protocol (This)       │ // Self-reference
+│ 10. Status Check Protocol (v2.4+)       │ // Reads roadmap for status reporting (Incl Rank)
+│ 11. Task Tracking Protocol (This)       │ // Self-reference v1.3
 │ 12. Audit Trail System                  │ // Logs task status changes
-│ 13. Cross-Protocol Comms & Verification │ // Ensures state consistency
+│ 13. Cross-Protocol Comms & Verification  │ // Ensures state consistency
+│ 14. Roadmap Syntax Validation Proto v1.1+│ // Defines roadmap format including rnk:X tag
 └─────────────────────────────────────────┘
 ```
 
@@ -45,13 +46,14 @@ Each task MUST have the following attributes, stored both in the roadmap file an
 4.  **Timestamp:** The timestamp of the last status update (formatted per `format-time.mdc v1.1+` in the roadmap). Stored in `lastUpdateTs` in Server Memory.
 5.  **Hierarchy/Context:** Indentation in the roadmap file indicates parent/child relationships. Server Memory SHOULD use relations (e.g., `hasSubtask`, `partOf`) to represent this.
 6.  **Feature Link (Recommended):** Tasks derived from a feature definition SHOULD link back to the `Feature` ID (e.g., `[FEAT-001]` appended to the name or stored in a relation).
+7.  **Rank (Optional):** An explicit priority rank (`A`-`Z`) assigned using the ` • [ rnk:X ]` tag.
 
 ## 5. Roadmap Format (`md-docs/ROADMAP_TASKS.md`)
 
-Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following format:
+Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following format. Refer to `roadmap-syntax-validation-protocol.mdc v1.1+` for the definitive syntax rules.
 
 ```markdown
-- [Task ID] Task Name [Optional Feature ID Link] [Status Emoji] [Timestamp: MM.DD.YY | HH:MM AM/PM PDT] [Optional Note]
+- [Task ID] Task Name [Optional Feature ID Link] [Status Emoji] [Optional Rank Tag] [Optional Due Date Tag] [Timestamp: MM.DD.YY | HH:MM AM/PM PDT] [Optional Note]
   - [Subtask ID] Subtask Name ...
 ```
 
@@ -59,7 +61,9 @@ Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following form
 - **Indentation:** MUST use indentation (e.g., 2 or 4 spaces) to denote hierarchy (subtasks).
 - **Task ID:** Enclosed in square brackets `[]`.
 - **Status Emoji:** A single emoji representing the current state (See Section 6). MUST be placed immediately after the Task Name/Feature ID.
-- **Timestamp:** The timestamp of the *last status change*, formatted according to `format-time.mdc v1.1+`. MUST follow the status emoji.
+- **Rank Tag (Optional):** ` • [ rnk:X ]` where `X` is a capital letter A-Z. Specifies explicit task priority (A=highest). MUST appear after the status emoji and before any due date tag or timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
+- **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`. MUST appear after the status emoji and rank tag (if present) and before the timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
+- **Timestamp:** The timestamp of the *last status change*, formatted according to `format-time.mdc v1.1+`. MUST follow the status emoji and any optional tags (rank, due date).
 - **Optional Note:** Brief context (e.g., `[Paused: SWS - Timestamp]`, `[Blocked by Error-XYZ]`) can be added after the timestamp.
 
 ## 6. Status Lifecycle & Transitions
@@ -110,7 +114,7 @@ The following statuses are recognized, with defined transitions triggered by spe
 - **Protocol Reference:** This check fulfills the requirement mentioned in `documentation-standards-protocol.mdc`.
 
 ## 10. Verification Checklist (For Task Management)
-- [ ] Is the task present in `md-docs/ROADMAP_TASKS.md` with the correct format (ID, Name, Emoji, Timestamp)?
+- [ ] Is the task present in `md-docs/ROADMAP_TASKS.md` with the correct format (ID, Name, Emoji, Timestamp, Optional Rank/Due)?
 - [ ] Does the task have a corresponding `Task` entity in Server Memory?
 - [ ] Are the roadmap status emoji and Server Memory status consistent?
 - [ ] Is the roadmap timestamp accurate for the last status change?
