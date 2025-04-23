@@ -17,7 +17,7 @@ This protocol defines the standard formatting requirements for creating and main
 ## 3. Formatting Requirements for Rule File Content
 
 ### 3.1. Single Outer Code Block (Rule File Internal Structure - MUST)
-- The *entire content* of a rule file, when presented *as a complete unit* (either in its `.mdc` file or when showing its full content in a response), MUST be enclosed within a single Markdown code block using triple backticks, specifying `markdown` as the language.
+- The *entire content* of a rule file, when presented *as a complete unit* (either in its `.mdc` file or when showing its full content in a response), MUST be enclosed within a single Markdown code block using quadruple backticks, specifying `markdown` as the language.
 - **Scope:** This applies to the internal structure of the rule's content itself. See Section 7 for presenting multiple rules in a single response.
 
   ````markdown
@@ -38,7 +38,7 @@ This protocol defines the standard formatting requirements for creating and main
 *(Note: The example above demonstrates the *concept* of the outer block for a single rule's content. Do not add extra outer blocks within your rule file itself.)*
 
 ### 3.2. Nested Code/Structure Block Escaping (MUST)
-- Any illustrative code snippets (JavaScript, PHP, Shell, CSS, etc.), configuration examples (YAML, JSON), structured text (like ASCII tables or specific output formats), or any other content requiring preservation of formatting *within* the main rule body (as defined in 3.1) MUST be enclosed in **triple backticks** (` ```` `).
+- Any illustrative code snippets (JavaScript, PHP, Shell, CSS, etc.), configuration examples (YAML, JSON), structured text (like ASCII tables or specific output formats), or any other content requiring preservation of formatting *within* the main rule body (as defined in 3.1) MUST be enclosed in **triple backticks** (` ``` `).
 - This prevents the inner block from prematurely closing the outer `markdown` block specified in 3.1.
 - **Example:**
   ````markdown

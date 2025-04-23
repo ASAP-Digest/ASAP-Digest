@@ -1,0 +1,110 @@
+---
+description: 
+globs: "md-docs/ROADMAP_TASKS.md"
+alwaysApply: false
+---
+# Task System Ranking Protocol v1.4
+
+## 1. Purpose & VeriDX Alignment
+
+This protocol establishes the standard criteria and process for assigning explicit priority ranks (` • [ rnk:X ]` where X is A-Z, A=highest) to key tasks listed in `md-docs/ROADMAP_TASKS.md`.
+
+It aligns with the VeriDX philosophy by providing a structured, repeatable logic for prioritization, guiding development according to a **Layered Software Development Strategy (App Shell -> Core Functionality -> Special Features)** and considering critical blockers identified via roadmap notes or (**Future State**) the Memory System. This ranking defines the priority input for the Task Management System's actionable output (`md-docs/todotasks.txt`) and informs WSMP fallback logic.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Executing steps herein
+│ 3. Server Memory Rules (v2.1+)          │ // Defines *future* Task/Error entity state
+│ 4. Status Check Protocol (v2.4+)        │ // Reads & uses ranks for reporting
+│ 5. Work Session Management Proto v2.13+ │ // Uses ranks for RWS fallback logic
+│ 6. Task Tracking Protocol               │ // Manages roadmap file state & *future* DB sync
+│ 7. Roadmap Syntax Validation Proto v1.1+│ // Defines the rnk:X tag format
+│ 8. New Rule Creation Protocol           │ // This rule's creation process
+│ 9. VeriDX High-Level System Docs        │ // Overall architectural alignment
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation
+
+Manually invoked when:
+- Initially applying ranks to `md-docs/ROADMAP_TASKS.md`.
+- Reviewing ranks based on triggers (Section 7).
+- Upon explicit user command `Review Roadmap Ranks`.
+
+## 4. Ranking Scope & Focus
+
+- **Focus:** Apply ranks primarily to tasks crucial for unblocking work or driving progress through the development layers. Aim to rank the **top ~7 actionable (non-`✅`/`🔬`/`🧪`) tasks** plus any critical blockers.
+- **Scale Availability:** A-Z available, concentrate on A-G.
+- **Default:** Most tasks remain unranked.
+
+## 5. Ranking Criteria (v1.4 - Layered Approach)
+
+Evaluate actionable tasks (`⏳`, `🔄`, `❌`, `⏸️`) against these criteria sequentially. Apply the highest applicable rank. **Source of Information:** Primarily roadmap structure/hierarchy (`ASAP_DIGEST_ROADMAP.md`, `ROADMAP_TASKS.md` indentation), task descriptions, status markers, and notes. (*Future State: Direct queries to Memory System for Errors, Paused Sessions, Verification Requests*).
+
+### 5.1. Rank A (Highest Priority - Critical Blockers / Foundational Shell)
+
+- **Criteria:**
+    - [ ] **Blocked by Critical Error:** Marked `❌` and impacts core functionality (per note/user confirmation). *(Future: Linked Error entity)*.
+    - [ ] **Essential App Shell/Navigation:** Task is critical for establishing the basic "walking skeleton" of the application – e.g., setting up root layout, core routing, primary navigation components, essential CSS/Tailwind setup *if* blocking further UI work. (Layer 1 Prerequisite).
+- **Justification:** Resolving critical blockers OR building the absolute necessary foundation for the rest of the app.
+
+### 5.2. Rank B (High Priority - Core Functionality / UX Skeleton)
+
+- **Criteria (Apply if not Rank A):**
+    - [ ] **Core Authentication/User Management:** Implementing or fixing essential login, registration, user profile structures, session handling, or admin basics. (Layer 2).
+    - [ ] **Primary API/Data Integration:** Setting up or fixing the fundamental API connections or data fetching mechanisms required for core application operation. (Layer 2 Prerequisite).
+    - [ ] **Key UI Layout/Consistency:** Implementing major layout structures (e.g., main dashboard grid, standard page templates) or fixing significant UI inconsistencies *after* the basic shell (Rank A) is in place, needed for basic usability/testing. (Layer 1 Completion / Layer 2 Support).
+    - [ ] **Resumption of Paused Core Work:** Task is `PAUSED` (`⏸️`) *and* relates to Rank A/B layer work. *(Future: Verified via WorkSessionSave link)*.
+    - [ ] **Rejected Verification (Core):** Task requires rework on a Rank A/B layer feature due to failed verification. *(Future: Verified via REJECTED VerificationRequest)*.
+- **Justification:** Building or fixing the essential functional core and primary user experience structure.
+
+### 5.3. Rank C (Medium Priority - Special Features / Enhancements)
+
+- **Criteria (Apply if not A or B, within ~Top 7 focus):**
+    - [ ] **Specific Widget/Feature Implementation:** Developing individual widgets (Podcast, Financial, XPost, etc.), AI integrations, TTS, daily podcast generation. (Layer 3).
+    - [ ] **Secondary Screens/Features:** Implementing non-essential screens like detailed settings, secondary admin views, etc.
+    - [ ] **Significant Refactoring/Optimization:** Refactoring or optimizing components/systems *after* core functionality is stable.
+    - [ ] **Important Supporting Task:** Implementing supporting but non-critical features (e.g., advanced PWA features beyond basic setup, detailed analytics).
+- **Justification:** Building out the application's unique features and enhancements once the core is stable.
+
+### 5.4. No Rank (Default)
+
+- **Criteria:**
+    - Tasks not meeting A-C criteria within the focus scope.
+    - Minor enhancements, minor bug fixes, documentation tasks (unless critical), specific content population.
+    - Tasks marked `🔬`, `🧪`, or `✅`.
+- **Justification:** Lower priority or priority sufficiently determined by status/order via WSMP.
+
+## 6. Application Process
+
+1.  **Analyze Roadmap Structure:** Understand hierarchy, dependencies, core features (`ASAP_DIGEST_ROADMAP.md`).
+2.  **Analyze Task List:** Read `md-docs/ROADMAP_TASKS.md` for status, hierarchy, notes.
+3.  **Gather Context:** Check for `❌` or `⏸️` markers and notes. *(Future: Query Memory System)*.
+4.  **Identify Candidates:** List actionable tasks (`⏳`, `🔄`, `❌`, `⏸️`).
+5.  **Apply Ranking Criteria (v1.4):** Evaluate candidates against Section 5 (A -> B -> C). Document justifications referencing criteria and development layer (Shell, Core Func, Feature).
+6.  **Review Proposed Ranks:** Present tasks with proposed ranks and justifications for user review.
+7.  **Update Roadmap File:** Once approved, use `edit_file` to add/update ` • [ rnk:X ]` tags in `md-docs/ROADMAP_TASKS.md`. *(Future: Trigger sync to DB)*.
+
+## 7. Maintenance & Review Triggers (Simple)
+
+Ranks SHOULD be reviewed using this protocol when:
+
+-   **Blocker Resolved:** Issue causing Rank A resolved.
+-   **Layer Complete:** A major layer (App Shell, Core Functionality) is deemed substantially complete (`✅`).
+-   **Explicit User Request:** `Review Roadmap Ranks`.
+-   **(Optional Trigger):** WSMP `RWS` consistently finds no actionable tasks despite pending items.
+
+## 8. Verification
+
+-   **Manual Review:** Verify `md-docs/ROADMAP_TASKS.md` reflects agreed ranks/justifications.
+-   **WSMP Behavior:** Observe if `RWS` fallback prioritizes according to ranks and layers.
+-   **(Future):** Verify `rank` field in Memory System `TASKS` table aligns.
+
+## 9. Future Integration Note
+
+As the VeriDX Memory System becomes operational, context gathering (Step 3) will shift to direct DB queries, providing more reliable data for applying criteria related to errors, paused sessions, and verification status.
