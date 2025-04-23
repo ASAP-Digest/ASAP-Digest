@@ -39,8 +39,15 @@ This protocol defines the commands and procedures for initiating agent workflow 
     1.  MUST execute `Status Check` (`SC` v2.3+) immediately.
     2.  MUST report the output of `SC` to the user.
     3.  MUST set an internal state flag: `agent_workflow_initialized = true`.
-    4.  MUST explicitly state it is awaiting the next command (`ST`, `RWS`, or `BWS`).
-    5.  MUST NOT initiate any work or start a work session (`BWS`) automatically.
+    4.  Check if `IAW` was directly invoked by the user (Assume YES for this modification unless internal call context is established).
+    5.  If direct user invocation of `IAW` is confirmed:
+        -   Execute `lsof -i :5173` to check server status.
+        -   **If server is ON:** Proceed directly to trigger the `RWS` fallback logic (defined in `WSMP v2.13+`), which will automatically determine and initiate the next appropriate work session (`BWS`) based on rank/status/errors. **DO NOT WAIT for further user commands.** Log this automatic RWS trigger.
+        -   **If server is OFF:** Explicitly state the server is off and instruction should be given to use the `prd` command. Then, explicitly state it is awaiting the next command (`prd`, `ST`, `RWS`, or `BWS`).
+    6.  If direct user invocation of `IAW` is NOT confirmed (e.g., called internally):
+        -   MUST explicitly state it is awaiting the next command (`ST`, `RWS`, or `BWS`).
+        -   MUST NOT initiate any work or start a work session (`BWS`) automatically.
+    7.  **(Renumbered original steps 4 & 5 - now redundant if step 5 applies):** If proceeding from step 6 (internal call), explicitly state waiting and do not auto-initiate work.
 ```
 
 ### 3.2. Start Testing (ST)
@@ -100,7 +107,7 @@ This protocol defines the commands and procedures for initiating agent workflow 
 -   WSMP v2.10+ Handling & Parameters: Requires an active `WorkSession`. Accepts optional `Reason`. Integrates with `TVP v1.4+`.
 ```
 
-## 4. Standard Workflow Example (`IAW -> ST/EAQ`)
+## 4. Standard Workflow Example (`BWS -> ST/EAQ`)
 *(Conceptual example adjusted for new flow)*
 ```bash
 # Step 1: Initiate workflow and check status

@@ -240,9 +240,9 @@ F. Enter Approval Queue (EAQ)
 -   [ ] `BWS` correctly updates status for tasks starting from `⏳` or `❌` (due to error).
 -   [ ] `BWS` correctly handles starting a session for a task already in `🧪` state (maintains status).
 -   [ ] `SWS` logic prevents saving if `AWAITING_APPROVAL` observation exists.
--   [ ] **New:** `RWS` fallback logic correctly parses ` • [ rnk:X ]` tags.
--   [ ] **New:** `RWS` fallback logic prioritizes explicitly ranked tasks (` • [ rnk:X ]`) over unranked tasks.
--   [ ] **New:** `RWS` fallback logic correctly applies secondary sorting (status, depth) to unranked tasks only.
+-   [ ] `RWS` fallback logic correctly parses ` • [ rnk:X ]` tags.
+-   [ ] `RWS` fallback logic prioritizes explicitly ranked tasks (` • [ rnk:X ]`) over unranked tasks.
+-   [ ] `RWS` fallback logic correctly applies secondary sorting (status, depth) to unranked tasks only.
 -   [ ] `RWS` logic unchanged for `🔬` tasks (reports and stops).
 -   [ ] `RWS` logic prevents resuming a session saved while `AWAITING_APPROVAL`.
 -   [ ] `EWS` logic prevents ending if `AWAITING_APPROVAL` observation exists.

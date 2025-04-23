@@ -3,29 +3,42 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Initiate Agent Workflow - [Environment Awareness & Task Workflow]
+# Initiate Agent Workflow - Automatic Task Execution Protocol v1.6
 
-0. **Initiate Agent Workflow Key Terms**
-   - This workflow initiated by key terms "Initiate Agent Workflow" or alias "IAW"
-   - "IAW" + P: **issue** . Sets **issue** as top blocking operational priority to solve.
+*(Self-correction: v1.6 - Enforced SK dir CWD before server check, streamlined server-off logic)*
 
-1. **Begin Work Protocol**
-   - Begin by Running "Status Check" or "SC". **ONLY OUPUT THE REPORT**.  (Note: Execution MUST follow the single-response pattern per `<rule_execution_protocol>` Step 4.A).
-   - Review `@PE - CTXT` - to understand project structure & configuration **DO NOT OUTPUT**
-   - Set "## 🛠️ Operational Context" using `pwd` command + `OP` from `SC`
-   - Clock in using format: ### 🕚 "MM.DD.YY | HH:MM AM/PM `TimeZone`"
-   - Check working directory: `pwd`
-     - Sveltekit `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
-     - WordPress `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
-   - Check Server Status: `lsof -i :5173`
-     - If OFF - Start Server with `prd` command
-     - If ON - Begin Agent Work: Write Code or solve problems in immediate `OP` **DO NOT WAIT FOR ME TO TELL YOU TO WORK.**
+## 1. Begin Work Protocol (Agent Actions Upon `IAW`)
 
-2. **End Work Protocol**
-   - Update Server Memory with **completed tasks**, **new entities** & **observations**
-   - Format timestamp for task completion using: __"MM.DD.YY | HH:MM AM/PM TimeZone"__
-   - Update relevant documentation files with completed tasks
+1.  **Run Status Check (`SC`):** The agent's first action upon `IAW` is to run `SC` v2.4+ (as executed *by WSAP v2.9+*) and report the status. **ONLY OUTPUT THE REPORT**.
+2.  **Review Project Environment Context (`@PE - CTXT`):** Internally review `@PE - CTXT`. **DO NOT OUTPUT**.
+3.  **Set Operational Context:** Internally log: `## 🛠️ Operational Context: [CWD] | Priority: [Task Name from SC]`.
+4.  **Clock In (Logging):** Log initiation time: `### 🕚 "MM.DD.YY | HH:MM AM/PM TimeZone"` (via `format-time.mdc v1.1+`).
+5.  **Ensure SK Directory, Check Server Status & Begin Work:** This combined step is handled *by WSAP v2.9+*:
+    *   **A. Ensure SvelteKit Working Directory:**
+        *   Agent MUST execute `pwd` to get the current working directory (CWD).
+        *   Agent MUST verify the CWD is the SvelteKit root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`.
+        *   **If CWD is not the SvelteKit root:** Agent MUST execute `cd "/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app"` *before* proceeding. *(Justification: Ensures server check and potential `prd` command run from the correct context.)*
+        *   If already in the SvelteKit root, proceed.
+    *   **B. Check Server Status (from SK Directory):**
+        *   WSAP runs `lsof -i :5173`. *(Note: Now guaranteed to run from SK root due to Step A)*.
+    *   **C. Begin Work Logic:**
+        *   **If Server is ON:** The agent **MUST immediately begin work**. WSAP triggers the `RWS` fallback logic (`WSMP v2.13+`) to automatically select the highest priority task and initiate a `BWS` session (which may involve a `cd` if the target task requires the *WordPress* directory). **DO NOT WAIT for further commands.**
+        *   **If Server is OFF:**
+            *   *(Directory check already performed in Step 1.5.A, ensuring agent is in SK root)*
+            *   WSAP/Agent MUST state: "Server is offline. Attempting to start using `prd` command from SvelteKit root."
+            *   WSAP/Agent MUST execute the `prd` command via `run_terminal_cmd`.
+            *   **Wait & Re-check:** After the `prd` command execution is approved and reported as finished, WSAP/Agent MUST immediately execute `lsof -i :5173 | cat` again. *(Justification: Automatic server start attempt.)*
+            *   **If Server is NOW ON:** Proceed as if the server was initially ON (trigger `RWS` fallback via WSMP, begin work automatically).
+            *   **If Server is STILL OFF:** Report failure to start the server and stop the automatic workflow. Wait for user instruction. *(Justification: Handles server start failure.)*
 
-3. **End Agent Workflow/Interrupt**
-   - "End Agent Workflow" or alias "EAW" immediately initiates Step 2
-   - Interrupts & Ends Current Workflow
+## 2. End Work Protocol (Triggered by `EWS`)
+
+1.  **Update Server Memory:** MUST update Server Memory with completed tasks, new entities & observations per `server-memory-rules.mdc`.
+2.  **Format Timestamp:** Use `format-time.mdc v1.1+` logic (`"MM.DD.YY | HH:MM AM/PM TimeZone"`) for documenting task completion times.
+3.  **Update Documentation:** MUST update relevant documentation files (`ROADMAP_TASKS.md`, etc.) as required by completed work.
+
+## 3. End Agent Workflow / Interrupt (Triggered by `EAW`)
+
+-   Command "End Agent Workflow" or alias "EAW" signals an immediate need to stop the current workflow.
+-   It **MUST trigger the "End Work Protocol" steps (Section 2)** via the `EWS` command logic defined in `WSMP v2.13+`.
+-   It interrupts and ends the current automatic workflow if one is active.
