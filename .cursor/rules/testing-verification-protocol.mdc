@@ -10,7 +10,7 @@ alwaysApply: true
 ## 1. Purpose
 This protocol defines the mandatory process for verifying implemented functionality. It covers:
 1.  The automatic transition of tasks from `ACTIVE` (`🔄`) to `PENDING_TESTING` (`🔬`) when the agent deems development complete.
-2.  The user-initiated start of active testing for specific tasks (`ST [TaskID]`).
+2.  The user-initiated start of active testing for specific tasks (`ST [ TaskID ]`).
 3.  A user-initiated command (`ST` without ID) to start testing for the highest priority task in `🔬` or `🧪`.
 4.  **A user-initiated command (`EAQ`) from within an active session to submit the current `🧪` task for approval.**
 5.  The user approval/rejection flow (`AC`/`RC`) before a task can be marked as fully completed (`✅`).
@@ -31,16 +31,16 @@ This protocol defines the mandatory process for verifying implemented functional
 │ 8. Status Check Protocol (v2.3+)        │ // Reports tasks in 🔬 & 🧪 states
 │ 9. Audit Trail System                   │ // Records verification steps/results
 │ 10. Work Session Activation Proto v2.8+ │ // Defines ST, EAQ command triggers (Updated)
-│ 11. Testing & Verification Proto (This) │ // TVP v1.4
+│ 11. Testing & Verification Proto (This)  │ // TVP v1.4
 └─────────────────────────────────────────┘
 ```
 
 ## 3. Activation & Triggers
 
 -   **Agent Trigger (Automatic via EWS TESTING):** Initiated by `WSMP v2.10+` when an `EWS` command includes the `TESTING` reason. Marks the associated task as `PENDING_TESTING` (`🔬`).
--   **User Trigger (Start Specific Task Testing):** `Start Testing [TaskID]` or alias `ST [TaskID]`. Issued by the user to begin active testing for a *specific* task currently in `PENDING_TESTING` (`🔬`), or to initiate evidence gathering/approval (Steps 4 & 5) for a task already in `TESTING` (`🧪`).
+-   **User Trigger (Start Specific Task Testing):** `Start Testing [ TaskID ]` or alias `ST [ TaskID ]`. Issued by the user to begin active testing for a *specific* task currently in `PENDING_TESTING` (`🔬`), or to initiate evidence gathering/approval (Steps 4 & 5) for a task already in `TESTING` (`🧪`).
 -   **User Trigger (Start Highest Priority Testing):** `Start Testing` or alias `ST` (issued *without* a `TaskID`). Must follow an `IAW` command. Acts on the single highest-priority task across both `🔬` and `🧪` states. If `🔬`, moves to `🧪`. If `🧪`, initiates evidence gathering/approval (Steps 4 & 5).
--   **User Trigger (Submit Active Task for Approval):** `Enter Approval Queue [TaskID]` or alias `EAQ [TaskID]` (ID optional if context clear). **MUST be issued during an active `WorkSession` where the `targetTask` is in the `TESTING` (`🧪`) state.** Directly initiates evidence gathering/approval (Steps 4 & 5) for that task.
+-   **User Trigger (Submit Active Task for Approval):** `Enter Approval Queue [ TaskID ]` or alias `EAQ [ TaskID ]` (ID optional if context clear). **MUST be issued during an active `WorkSession` where the `targetTask` is in the `TESTING` (`🧪`) state.** Directly initiates evidence gathering/approval (Steps 4 & 5) for that task.
 -   **Context:** Requires an identified target `Task` entity (or operates on highest priority for ID-less `ST`). `EAQ` requires an active work session context.
 
 ## 4. Core Actions & Sequence
@@ -106,7 +106,7 @@ This protocol defines the mandatory process for verifying implemented functional
     -   **Verify Context:**
         -   Check if an active `WorkSession` exists. If not, report error: "EAQ command requires an active work session." and stop.
         -   Identify the `targetTask` of the active `WorkSession`.
-        -   If `[TaskID]` is provided, verify it matches the active `WorkSession`'s `targetTask`. If not, report error.
+        -   If `[ TaskID ]` is provided, verify it matches the active `WorkSession`'s `targetTask`. If not, report error.
         -   Verify the `targetTask` status is `TESTING` (`🧪`). If not, report error: "EAQ requires the active task to be in TESTING (🧪) state." and stop.
         -   Verify the linked `VerificationRequest` status is `ACTIVE`.
     -   Acquire current timestamp.
@@ -116,7 +116,7 @@ This protocol defines the mandatory process for verifying implemented functional
     -   Audit: Record `TASK_APPROVAL_PROCESS_INITIATED_VIA_EAQ`.
     ```
 
-4.  **Evidence Gathering & Presentation (Agent Action - Post `ST [TaskID]`/`ST`/`EAQ` targeting `🧪` task):**
+4.  **Evidence Gathering & Presentation (Agent Action - Post `ST [ TaskID ]`/`ST`/`EAQ` targeting `🧪` task):**
     ```text
     -   Execute automated tests if configured for the specific task. Log results as observations to the `VerificationRequest` entity.
     -   Perform manual checks (e.g., `ui-check.mdc`). Attach results as observations.
@@ -126,13 +126,13 @@ This protocol defines the mandatory process for verifying implemented functional
 
 5.  **Request User Approval (Agent Action - Post Evidence):**
     ```text
-    -   Explicitly ask the user to review the presented evidence and approve (`AC [TaskID]`) or reject (`RC [TaskID] [Reason]`) the completion of the specific task being tested.
+    -   Explicitly ask the user to review the presented evidence and approve (`AC [ TaskID ]`) or reject (`RC [ TaskID ] [Reason]`) the completion of the specific task being tested.
     -   **Wait for explicit user input.**
     ```
 
 6.  **Process User Decision (Agent Action - Post Approval/Rejection):**
     ```text
-    -   **On User Approval (`AC [TaskID]`):**
+    -   **On User Approval (`AC [ TaskID ]`):**
         -   Verify the `TaskID` matches an active verification request (`🧪`).
         -   Acquire timestamp.
         -   **Mandatory Approval Verification (MUST):** Verify the `VerificationRequest` entity status is `APPROVED` before updating the `Task`. Halt/UERP if failed.
@@ -143,7 +143,7 @@ This protocol defines the mandatory process for verifying implemented functional
         -   **Audit:** Record `TASK_VERIFICATION_APPROVED`, `TASK_COMPLETED`.
         -   **Session Update (if triggered by EAQ):** Remove `AWAITING_APPROVAL` observation if present.
         -   **Trigger WSMP Completion Logic (MUST):** Invoke `EWS COMPLETED` logic in `WSMP v2.10+` for session finalization related to this specific task.
-    -   **On User Rejection (`RC [TaskID] [Reason]`):**
+    -   **On User Rejection (`RC [ TaskID ] [Reason]`):**
         -   Verify `TaskID` matches active request (`🧪`).
         -   Acquire timestamp.
         -   **Update Verification Request:** Update status to `REJECTED`. Add observation.
@@ -174,15 +174,15 @@ This protocol defines the mandatory process for verifying implemented functional
 -   [ ] Agent proactively triggers protocol via `EWS TESTING`?
 -   [ ] Task status updated to `🔬` upon agent trigger?
 -   [ ] `VerificationRequest` created with `PENDING_USER_INITIATION`?
--   [ ] `ST [TaskID]` correctly transitions specific task `🔬` -> `🧪`?
--   [ ] **New:** `ST [TaskID]` correctly triggers evidence/approval for `🧪` task?
--   [ ] `VerificationRequest` status updated to `ACTIVE` upon `ST [TaskID]` (`🔬` -> `🧪`)?
--   [ ] **New:** `ST` (no ID) command requires preceding `IAW`?
--   [ ] **New:** `ST` (no ID) finds highest priority `🔬` or `🧪` task?
--   [ ] **New:** `ST` (no ID) transitions highest `🔬` task to `🧪` OR triggers evidence/approval for highest `🧪` task?
--   [ ] **New:** `EAQ` command requires active session and `🧪` target task?
--   [ ] **New:** `EAQ` command triggers evidence/approval process?
--   [ ] **New:** `EAQ` command optionally updates session observation?
+-   [ ] `ST [ TaskID ]` correctly transitions specific task `🔬` -> `🧪`?
+-   [ ] `ST [ TaskID ]` correctly triggers evidence/approval for `🧪` task?
+-   [ ] `VerificationRequest` status updated to `ACTIVE` upon `ST [ TaskID ]` (`🔬` -> `🧪`)?
+-   [ ] `ST` (no ID) command requires preceding `IAW`?
+-   [ ] `ST` (no ID) finds highest priority `🔬` or `🧪` task?
+-   [ ] `ST` (no ID) transitions highest `🔬` task to `🧪` OR triggers evidence/approval for highest `🧪` task?
+-   [ ] `EAQ` command requires active session and `🧪` target task?
+-   [ ] `EAQ` command triggers evidence/approval process?
+-   [ ] `EAQ` command optionally updates session observation?
 -   [ ] Evidence gathered and presented *after* `ST` or `EAQ` triggers approval process?
 -   [ ] Explicit user approval (`AC`/`RC`) requested after evidence for specific task?
 -   [ ] User decision (`AC`/`RC`) correctly processed for specific task?

@@ -45,7 +45,7 @@ Each task MUST have the following attributes, stored both in the roadmap file an
 3.  **Status:** The current state of the task, represented by a specific emoji in the roadmap and a corresponding string value in Server Memory (See Section 6).
 4.  **Timestamp:** The timestamp of the last status update (formatted per `format-time.mdc v1.1+` in the roadmap). Stored in `lastUpdateTs` in Server Memory.
 5.  **Hierarchy/Context:** Indentation in the roadmap file indicates parent/child relationships. Server Memory SHOULD use relations (e.g., `hasSubtask`, `partOf`) to represent this.
-6.  **Feature Link (Recommended):** Tasks derived from a feature definition SHOULD link back to the `Feature` ID (e.g., `[FEAT-001]` appended to the name or stored in a relation).
+6.  **Feature Link (Recommended):** Tasks derived from a feature definition SHOULD link back to the `Feature` ID (e.g., `[ FEAT-001 ]` appended to the name or stored in a relation).
 7.  **Rank (Optional):** An explicit priority rank (`A`-`Z`) assigned using the ` • [ rnk:X ]` tag.
 
 ## 5. Roadmap Format (`md-docs/ROADMAP_TASKS.md`)
@@ -53,8 +53,8 @@ Each task MUST have the following attributes, stored both in the roadmap file an
 Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following format. Refer to `roadmap-syntax-validation-protocol.mdc v1.1+` for the definitive syntax rules.
 
 ```markdown
-- [Task ID] Task Name [Optional Feature ID Link] [Status Emoji] [Optional Rank Tag] [Optional Due Date Tag] [Timestamp: MM.DD.YY | HH:MM AM/PM PDT] [Optional Note]
-  - [Subtask ID] Subtask Name ...
+- [ Task ID ] Task Name [ Optional Feature ID Link ] [ Status Emoji ] [ Optional Rank Tag ] [ Optional Due Date Tag ] [ Timestamp: MM.DD.YY | HH:MM AM/PM PDT ] [ Optional Note ]
+  - [ Subtask ID ] Subtask Name ...
 ```
 
 - **Structure:** Use Markdown list items (`-`).
@@ -64,7 +64,7 @@ Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following form
 - **Rank Tag (Optional):** ` • [ rnk:X ]` where `X` is a capital letter A-Z. Specifies explicit task priority (A=highest). MUST appear after the status emoji and before any due date tag or timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
 - **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`. MUST appear after the status emoji and rank tag (if present) and before the timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
 - **Timestamp:** The timestamp of the *last status change*, formatted according to `format-time.mdc v1.1+`. MUST follow the status emoji and any optional tags (rank, due date).
-- **Optional Note:** Brief context (e.g., `[Paused: SWS - Timestamp]`, `[Blocked by Error-XYZ]`) can be added after the timestamp.
+- **Optional Note:** Brief context (e.g., `[ Paused: SWS - Timestamp ]`, `[ Blocked by Error-XYZ ]`) can be added after the timestamp.
 
 ## 6. Status Lifecycle & Transitions
 
