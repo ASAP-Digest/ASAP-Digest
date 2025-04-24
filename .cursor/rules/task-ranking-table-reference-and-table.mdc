@@ -51,12 +51,12 @@ This protocol provides a standardized reference table for classifying common sof
 | Category          | Subcategory / Example Task                        | Assigned Development Layer | Notes                                                                           |
 | :---------------- | :------------------------------------------------ | :------------------------- | :------------------------------------------------------------------------------ |
 | **Setup & Infra** | Project Initialization                          | Layer 1 (App Shell)        | Initial project setup, basic config.                                          |
-|                   | Build System Config (Vite, Webpack)             | Layer 1 (App Shell)        | Initial setup and configuration.                                              |
+|                   | Build System Config (Vite, Webpack)              | Layer 1 (App Shell)        | Initial setup and configuration.                                              |
 |                   | CI/CD Pipeline Setup                            | Layer 1 (App Shell)        | Initial setup for automated builds/tests/deployments.                         |
 |                   | Linter/Formatter Setup                          | Layer 1 (App Shell)        | Enforcing code style and quality standards.                                     |
 |                   | Environment Variable Management                 | Layer 5 (Miscellaneous)    | Unless required for initial Layer 1/2 setup.                                    |
-|                   | Docker Configuration                            | Layer 5 (Miscellaneous)    | Unless required for initial Layer 1/2 setup.                                    |
-|                   | Dependency Installation/Updates (Routine)         | Layer 5 (Miscellaneous)    | Routine updates. Critical security updates elevate rank via ranking protocol. |
+|                   | Docker Configuration                             | Layer 5 (Miscellaneous)    | Unless required for initial Layer 1/2 setup.                                    |
+|                   | Dependency Installation/Updates (Routine)       | Layer 5 (Miscellaneous)    | Routine updates. Critical security updates elevate rank via ranking protocol. |
 | **Architecture**  | Database Schema Design                          | Layer 2 (Core Func)        | Designing the core data structure.                                            |
 |                   | API Design (Contracts, OpenAPI)                 | Layer 2 (Core Func)        | Defining how systems communicate.                                             |
 |                   | Core Class/Module Structuring                   | Layer 2 (Core Func)        | Organizing the main application logic.                                        |
@@ -79,14 +79,14 @@ This protocol provides a standardized reference table for classifying common sof
 |                   | Reporting / Analytics Feature                   | Layer 3 (Special Features) | Building specific data reporting views.                                       |
 |                   | Advanced Search / Filtering                     | Layer 3 (Special Features) | Functionality beyond basic search.                                            |
 |                   | Third-Party Service Integration (Non-Core)      | Layer 3 (Special Features) | Integrating external services for non-essential features (e.g., social widget).|
-|                   | PWA Features (Push Notifications, Offline)      | Layer 3 (Special Features) | Enhancing the app with PWA capabilities.                                      |
+|                   | PWA Features (Push Notifications, Offline)        | Layer 3 (Special Features) | Enhancing the app with PWA capabilities.                                      |
 | **UI Styling**    | UI Library Integration (e.g., Shadcn Setup)     | Layer 1 (App Shell)        | Initial installation and configuration.                                       |
-|                   | Base Styling (Tailwind Config)                  | Layer 1 (App Shell)        | Setting up `tailwind.config.js`, global CSS.                                |
+|                   | Base Styling (Tailwind Config)                   | Layer 1 (App Shell)        | Setting up `tailwind.config.js`, global CSS.                                |
 |                   | Typography System Setup                         | Layer 1 (App Shell)        | Defining fonts, sizes in config/CSS.                                          |
 |                   | Color System Setup                              | Layer 1 (App Shell)        | Defining color variables in config/CSS.                                       |
 |                   | Icon System Setup                               | Layer 1 (App Shell)        | e.g., Setting up `lucide-compat.js`.                                          |
 |                   | Individual Component Styling (Initial)          | Layer 2/3 (Core/Special)   | Styling done *during* initial feature implementation.                         |
-|                   | Component Styling (Refinement/Polish)           | Layer 4 (Visual Polish)    | Adjusting styles *after* functionality is working.                            |
+|                   | Component Styling (Refinement/Polish)            | Layer 4 (Visual Polish)    | Adjusting styles *after* functionality is working.                            |
 |                   | Micro-interactions / Animations                 | Layer 4 (Visual Polish)    | Adding subtle animations, transitions for better UX (unless core to func).    |
 | **Testing**       | Unit / Integration Test Setup                   | Layer 2 (Core Func)        | Setting up testing frameworks (Jest, Vitest, etc.).                           |
 |                   | E2E Test Setup                                  | Layer 3 (Special Features) | Setting up end-to-end testing (Playwright, Cypress, etc.).                    |
@@ -105,10 +105,10 @@ This protocol provides a standardized reference table for classifying common sof
 |                   | Architecture Diagrams                           | Layer 5 (Miscellaneous)    | Documenting system design.                                                    |
 | **Refactoring**   | Major Code Restructuring (Core Impact)          | Layer 5 -> Elevate Rank?   | Default Layer 5, rank elevated if necessary to unblock work or improve stability.|
 |                   | Performance Optimization                        | Layer 5 -> Elevate Rank?   | Default Layer 5, rank elevated based on measured impact/goals.              |
-|                   | Security Hardening (Specific Vulnerability Fix) | Layer 5 -> Elevate Rank    | Default Layer 5, rank elevated based on severity (Rule A/B).                |
+|                   | Security Hardening (Specific Vulnerability Fix)  | Layer 5 -> Elevate Rank    | Default Layer 5, rank elevated based on severity (Rule A/B).                |
 |                   | Dependency Upgrade Refactoring                  | Layer 5 (Miscellaneous)    | Refactoring needed after routine updates. Critical security updates elevate.|
 |                   | Code Cleanup (Minor)                            | Layer 5 (Miscellaneous)    | Small improvements, removing dead code (use removal protocol).            |
-| **Deployment**    | Staging / Production Deployment Config          | Layer 5 (Miscellaneous)    | Initial setup might be Layer 1. Routine updates are Misc.                   |
+| **Deployment**    | Staging / Production Deployment Config           | Layer 5 (Miscellaneous)    | Initial setup might be Layer 1. Routine updates are Misc.                   |
 |                   | Database Migrations                             | Layer 5 (Miscellaneous)    | Can be critical (elevate rank) if blocking feature deployment.              |
 |                   | Deployment Scripting                            | Layer 5 (Miscellaneous)    | Initial setup might be Layer 1.                                               |
 |                   | Post-Deployment Checks / Rollbacks              | Layer 5 (Miscellaneous)    | Operational tasks.                                                          |

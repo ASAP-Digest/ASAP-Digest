@@ -1,95 +1,118 @@
 ---
 description: 
-globs: 
+globs: **/ROADMAP_TASKS.md
 alwaysApply: false
 ---
-# Roadmap Syntax Validation Protocol v1.1
+# Roadmap Task Syntax & Validation Protocol v1.1
 
 ## 1. Purpose
-This protocol defines the standardized syntax for entries within the `md-docs/ROADMAP_TASKS.md` file. Adhering to this syntax ensures:
-*   Accurate parsing by the `generate-todotxt.js` script.
-*   Consistent reporting by the `Status Check` protocol.
-*   Clear readability for human maintainers.
+This protocol defines the standardized syntax for individual task lines within the `md-docs/ROADMAP_TASKS.md` file. Adherence to this standard ensures consistent parsing, reporting (by `status-check.mdc`), and updating (by `update-memory`, `work-session-management-protocol.mdc`, `testing-verification-protocol.mdc`) across the VeriDX system.
 
-## 2. Protocol Integration Layer
+## 2. Standard Task Line Syntax
+
+Each task MUST be represented on a single line using the following Markdown list item format:
+
+```plaintext
+- <Emoji> [PREFIX-Num] Description [Optional Paused Note] [Optional Tags]
+```
+
+**Components:**
+
+1.  **`-` (Hyphen & Space):** Standard Markdown list item indicator.
+2.  **`<Emoji>` (MUST):** A single status emoji indicating the current state (See Section 3).
+3.  **`[ PREFIX-Num ]` (MUST):** The unique Task Identifier (See Section 4).
+4.  **`Description` (MUST):** A concise, human-readable description of the task.
+5.  **`[ Optional Paused Note ]` (MAY):** If the task status is Paused (`⏸️`), this MAY contain a brief note indicating the reason and timestamp, e.g., `[ Paused: SWS - 07.27.24 | 10:30 AM PDT ]`.
+6.  **`[ Optional Tags ]` (MAY):** Zero or more metadata tags providing additional context (See Section 5).
+
+## 3. Status Emojis (MUST)
+
+The following emojis MUST be used to represent task status:
+
 ```text
-┌─────────────────────────────────────────┐
-│         Protocol Integration            │
-├─────────────────────────────────────────┤
-│ 1. generate-todotxt.js                  │ // Primary consumer of this syntax
-│ 2. Status Check Protocol (v2.4+)        │ // Reads/interprets this syntax for reporting
-│ 3. Task Tracking Protocol               │ // Modifies this syntax (status emojis/timestamps)
-│ 4. Work Session Management Proto (v2.13+)│ // Reads/interprets rank & status for RWS fallback
-│ 5. Roadmap Syntax Validation (This v1.1)│ // Defines the rules
-│ 6. Rule Execution Protocol              │ // Governs application of this protocol
-└─────────────────────────────────────────┘
+┌─────────────┬────────────────────┬────────────────────────────┐
+│ Emoji       │ Status             │ Typical Meaning            │
+├─────────────┼────────────────────┼────────────────────────────┤
+│ ⏳           │ PENDING            │ Not started                │
+│ 🔄           │ ACTIVE             │ In progress                │
+│ ⏸️           │ PAUSED             │ Paused via SWS             │
+│ 🔬           │ PENDING_TESTING    │ Ready for testing (via EWS)│
+│ 🧪           │ TESTING            │ Actively being tested      │
+│ ✅           │ COMPLETED          │ Done and verified (via AC) │
+│ ❌           │ BLOCKED            │ Blocked by an Error entity │
+│ 🔧           │ REWORK             │ Rejected (via RC), needs fix │
+└─────────────┴────────────────────┴────────────────────────────┘
 ```
+*(Note: `REWORK` (`🔧`) is an optional status, often represented as returning to `ACTIVE` (`🔄`).)*
 
-## 3. Mandatory Syntax Rules
+## 4. Task Identifier Syntax (`[ PREFIX-Num ]`) (MUST)
 
-1.  **File Structure:** Tasks MUST be organized under Markdown headings (`##`, `###`, etc.) to indicate hierarchy.
-2.  **Task Line Start:** Each task line MUST start with `- ` (hyphen, space).
-3.  **Status Emoji:** The status emoji (e.g., `⏳`, `🔄`, `✅`, etc.) MUST immediately follow the `- ` and be followed by a single space.
-4.  **Task Description:** The main description of the task follows the status emoji and space.
-5.  **Timestamps:** Completion timestamps (e.g., `✅ MM.DD.YY | HH:MM AM/PM TimeZone`) or other specific timestamps (e.g., `⏸️ [Paused: SWS - Timestamp]`) SHOULD appear at the end of the task description line.
-6.  **Source Tag Generation:** The `generate-todotxt.js` script derives `src:+` tags from the heading hierarchy. Headings SHOULD be concise and descriptive.
-7.  **Explicit Rank Tag (Optional):**
-    *   To explicitly assign a rank (used for priority sorting in RWS mode), the tag ` • [ rnk:X ]` MUST be used, where `X` is a single uppercase letter (A-Z).
-    *   The tag MUST appear at the end of the task description, *before* any completion/paused timestamp.
-    *   There MUST be a single space before the `•`.
-    *   There MUST be a single space between the `•` and the `[`.
-    *   There MAY be optional whitespace around `rnk:X` inside the brackets.
-    *   Only the *first* valid `rnk:X` tag found on a line will be used if multiple exist.
-8.  **Due Date Tag (Optional):**
-    *   To specify an optional due date, the tag ` • [ due:MM.DD.YY ]` MUST be used, where `MM.DD.YY` represents the date.
-    *   The tag MUST appear at the end of the task description, *before* any completion/paused timestamp and potentially before or after a rank tag.
-    *   There MUST be a single space before the `•`.
-    *   There MUST be a single space between the `•` and the `[`.
-    *   There MAY be optional whitespace around `due:MM.DD.YY` inside the brackets.
-    *   The date format MUST be `MM.DD.YY` (two digits for month, day, and year).
-    *   Only the *first* valid `due:MM.DD.YY` tag found on a line will be used if multiple exist.
+Each task MUST have a unique identifier enclosed in square brackets with a space before & after TASK-ID (`[]`).
 
-## 4. Examples
+*   **`PREFIX`:**
+    *   MUST be 3-6 characters long.
+    *   MUST be uppercase alphanumeric (`A-Z`, `0-9`).
+    *   SHOULD indicate the primary category or feature area.
+    *   **Recommended Prefixes:** `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `TEST`, `DB`, `INFRA`, `A11Y`  (prefixes derived from `task-ranking-table-reference-and-table.mdc`).
+*   **`-` (Hyphen):** Separates the prefix and number.
+*   **`Num`:**
+    *   MUST be a sequential integer (`1`, `2`, `3`, ...).
+    *   Numbering is sequential *within* each `PREFIX`.
+    *   Example: `[ UI-1 ]`, `[ UI-2 ]`, `[ CORE-1 ]`, `[ AUTH-1 ]`, `[ AUTH-2 ]`, etc.
+
+## 5. Metadata Tag Syntax (` • [ key:value ]`) (MAY)
+
+Optional metadata can be appended to the task line using one or more tags.
+
+*   **Format:** Each tag MUST follow the format ` • [key:value]`.
+    *   Starts with ` • ` (Space, Bullet, Space).
+    *   Enclosed in square brackets `[]`.
+    *   Contains a `key`, followed by a colon `:`, followed by a `value`.
+    *   No Spaces permitted around the colon.
+    *   Each key:value pair enclosed by brackets must be preceeded & proceeded by a space `[ key:value ]`
+*   **Multiple Tags:** Multiple tags can be added sequentially (e.g., ` • [ key1:value1 ] • [ key2:value2 ]`).
+*   **Allowed Keys & Value Formats:**
+    *   `rnk`: Task rank/priority (e.g., `A`, `B`, `C`). Used by WSMP RWS logic.
+    *   `due`: Due date in `MM.DD.YY` format (e.g., `12.31.24`).
+    *   `done`: **MUST be present for completed (`✅`) tasks.** Value MUST be the completion date in `MM.DD.YY` format (e.g., `07.27.24`). This tag is added by the `update-memory` or equivalent completion logic.
+    *   *(Future)* `effort`: Estimated effort (e.g., `S`, `M`, `L`).
+    *   *(Future)* `assignee`: Assigned user/agent initials (e.g., `VS`, `AI`).
+    *   *(Future)* `epic`: Link to a parent Epic or larger feature ID.
+    *   Other specific keys MAY be introduced via protocol updates.
+*   **Parsing:** Protocols interacting with the roadmap MUST be capable of parsing these tags. Unknown keys SHOULD be ignored gracefully during parsing but MAY trigger warnings.
+
+## 6. Examples
 
 ```markdown
-## Task 1: Major Feature
+# Valid Task Lines:
+- ⏳ [ UI-1 ] Implement login form styling
+- 🔄 [ CORE-5 ] Refactor database connection pooling • [ rnk:A ]
+- ⏸️ [ AUTH-2 ] Integrate multi-factor authentication [ Paused: SWS - 07.26.24 | 04:15 PM PDT ] • [ rnk:B ] • [ due:08.15.24 ]
+- 🔬 [ UI-3 ] Add accessibility features to dropdown component • [ rnk:A ]
+- ✅ [ DOCS-1 ] Update installation guide • [ done:07.25.24 ]
 
-### Subtask 1.1: Core Logic
-- 🔄 Implement main algorithm
-- ⏳ Design database schema • [ rnk:B ]
-- ⏳ Write unit tests • [ due:04.20.25 ]
-- ✅ Initial setup complete ✅ 04.10.25 | 10:00 AM PDT
-
-## Task 2: Bug Fixes
-- ⏳ Fix login redirect issue • [ rnk:A ] • [ due:04.15.25 ]
-- ⏸️ Investigate caching problem [Paused: SWS - 04.12.25_143000]
+# Invalid Task Lines:
+- Missing Emoji [ CORE-1 ] Task description
+- ⏳ Missing ID Task description
+- 🔄 [ UI-4 ] Task description • rnk:C  # Incorrect tag format
+- ✅ [ BUG-2 ] Fix button alignment # Missing required done:MM.DD.YY tag
+- ⏳ [ TEST-5 ] Write unit tests due:09.01.24 # Incorrect tag format
+- ✅ [TEST-7] Run End to End Tests due:07.07.25 # Incorrect ID format, missing preceeding & proceeding space
 ```
 
-**Incorrect Examples:**
+## 7. Validation & Enforcement
 
-```markdown
-- ⏳ Missing space after emojiFix UI bug
-- 🔄 No leading hyphen/space
-- ⏳ Rank tag in wrong place • [ rnk:A ] Fix styling
-- ⏳ Rank tag missing space •[ rnk:B ] Implement feature
-- ⏳ Rank tag malformed • [ rank: C ] Update docs
-- ⏳ Due date tag wrong format • [ due:4.15.2025 ] Fix validation
-- ⏳ Due date tag missing space •[ due:04.16.25 ] Add tests
+-   The `generate-todotxt.js` script SHOULD include validation checks for this syntax and warn about non-compliant lines.
+-   Protocols (`status-check`, `update-memory`, `WSMP`) reading or writing to `ROADMAP_TASKS.md` MUST adhere to this syntax for reliable operation.
+-   Linters or custom scripts MAY be developed for stricter enforcement.
+
+## 8. Related Protocols
+
+-   `generate-todotxt.js`: Consumes this format.
+-   `status-check.mdc`: Parses this format for reporting.
+-   `update-memory`: Writes completion status (`✅`, ` • [ done:MM.DD.YY ]`) in this format.
+-   `work-session-management-protocol.mdc`: Reads status (`⏸️`, `🧪`, `🔄`, `⏳`, `❌`) and rank (`rnk`) in this format.
+-   `testing-verification-protocol.mdc`: Reads/writes status (`🔬`, `🧪`, `✅`, `🔄`) in this format.
+-   `task-ranking-table-reference-and-table.mdc`: standardized task prefixes derived from here. 
 ```
-
-## 5. Validation Checks (To be performed by Agent/Script)
-
-1.  **Heading Structure:** Verify lines starting with `#` are valid Markdown headings.
-2.  **Task Line Format:** Verify lines representing tasks start with `- ` followed by a recognized status emoji (`⏳`, `🔄`, `✅`, `⏸️`, `❌`, `🔬`, `🧪`) and a space.
-3.  **Timestamp Format:** Verify timestamps (if present) generally follow the `MM.DD.YY | HH:MM AM/PM TimeZone` pattern or the `[Paused: SWS - YYYYMMDD_HHMMSS]` pattern.
-4.  **Rank Tag Format:**
-    *   Check for ` • [ rnk:X ]` format (with correct spacing around `•` and `[`).
-    *   Verify `X` is a single uppercase letter.
-    *   Warn if multiple valid rank tags appear on the same line.
-    *   Warn if text resembling `rnk:` appears outside the valid tag structure.
-5.  **Due Date Tag Format:**
-    *   Check for ` • [ due:MM.DD.YY ]` format (with correct spacing around `•` and `[`).
-    *   Verify the date part matches `\d{2}\.\d{2}\.\d{2}`.
-    *   Warn if multiple valid due date tags appear on the same line.
-    *   Warn if text resembling `due:` appears outside the valid tag structure.
 
