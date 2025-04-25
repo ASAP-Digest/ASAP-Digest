@@ -100,7 +100,7 @@ This documentation protocol describes a system that integrates with several oper
 
 A typical line follows this structure, with metadata tags ordered specifically:
 
-`[CompletionMarker|Priority] [@StatusContext] Task Description - [ src:+Source ] - [ due:MM.DD.YY ] - [ done:MM.DD.YY ] - [ ts:Completion_Timestamp ]`
+`[ CompletionMarker|Priority ] [@StatusContext] Task Description - [ src:+Source ] - [ due:MM.DD.YY ] - [ done:MM.DD.YY ] - [ ts:Completion_Timestamp ]`
 
 *   **CompletionMarker:** `x ` (space included) if task is complete.
 *   **Priority:** `(A)` to `(Z)` assigned based on RWS sort logic (rank tag or sequential). Only for non-completed tasks.

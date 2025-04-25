@@ -61,8 +61,8 @@ Tasks MUST be represented in `md-docs/ROADMAP_TASKS.md` using the following form
 - **Indentation:** MUST use indentation (e.g., 2 or 4 spaces) to denote hierarchy (subtasks).
 - **Task ID:** Enclosed in square brackets `[]`.
 - **Status Emoji:** A single emoji representing the current state (See Section 6). MUST be placed immediately after the Task Name/Feature ID.
-- **Rank Tag (Optional):** ` • [ rnk:X ]` where `X` is a capital letter A-Z. Specifies explicit task priority (A=highest). MUST appear after the status emoji and before any due date tag or timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
-- **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`. MUST appear after the status emoji and rank tag (if present) and before the timestamp. Defined in `roadmap-syntax-validation-protocol.mdc v1.1+`.
+- **Rank Tag (Optional):** ` • [ rnk:X ]` where `X` is a capital letter A-Z. Specifies explicit task priority (A=highest). MUST appear after the status emoji and before any due date tag or timestamp. Defined in `roadmap-syntax-validation-protocol.mdc`.
+- **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`. MUST appear after the status emoji and rank tag (if present) and before the timestamp. Defined in `roadmap-syntax-validation-protocol.mdc`.
 - **Timestamp:** The timestamp of the *last status change*, formatted according to `format-time.mdc v1.1+`. MUST follow the status emoji and any optional tags (rank, due date).
 - **Optional Note:** Brief context (e.g., `[ Paused: SWS - Timestamp ]`, `[ Blocked by Error-XYZ ]`) can be added after the timestamp.
 
