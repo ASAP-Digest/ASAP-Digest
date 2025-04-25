@@ -230,11 +230,11 @@ function formatUserReport_v2_4(reportData, formattedReportTime) { /* ... formatt
         -   Active `Error` entities (for priority determination and details)
         -   Potentially `Task` entities for state entry timestamps if not in roadmap.
     -   `md-docs/ASAP_DIGEST_ROADMAP_LLM_*.md` (or primary if not split): For overall context and task hierarchy (Major Task Group, Parent Subtask).
-    -   Current Timestamp (`format-time.mdc` v1.1+): For defining the "recent" window and report time.
+    -   Current Timestamp (`format-time.mdc`): For defining the "recent" window and report time.
 ```
 
 ## 7. Status Report Structure & Logic (Updated)
-The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc v1.1+`. The Priority section MUST reflect the rank-aware logic.
+The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc`. The Priority section MUST reflect the rank-aware logic.
 
 ```markdown
 ---
