@@ -3,7 +3,7 @@ description:
 globs: **/ROADMAP_TASKS.md
 alwaysApply: false
 ---
-# Roadmap Task Syntax & Validation Protocol v1.1
+# Roadmap Task Syntax & Validation Protocol v1.2
 
 ## 1. Purpose
 This protocol defines the standardized syntax for individual task lines within the `md-docs/ROADMAP_TASKS.md` file. Adherence to this standard ensures consistent parsing, reporting (by `status-check.mdc`), and updating (by `update-memory`, `work-session-management-protocol.mdc`, `testing-verification-protocol.mdc`) across the VeriDX system.
@@ -13,14 +13,14 @@ This protocol defines the standardized syntax for individual task lines within t
 Each task MUST be represented on a single line using the following Markdown list item format:
 
 ```plaintext
-- <Emoji> [PREFIX-Num] Description [Optional Paused Note] [Optional Tags]
+- <Emoji> [ PREFIX-Num[.SubNum[.SubSubNum]] ] Description [ Optional Paused Note ] [ Optional Tags ]
 ```
 
 **Components:**
 
 1.  **`-` (Hyphen & Space):** Standard Markdown list item indicator.
 2.  **`<Emoji>` (MUST):** A single status emoji indicating the current state (See Section 3).
-3.  **`[ PREFIX-Num ]` (MUST):** The unique Task Identifier (See Section 4).
+3.  **`[ PREFIX-Num[.SubNum[.SubSubNum]] ]` (MUST):** The unique Task Identifier (See Section 4).
 4.  **`Description` (MUST):** A concise, human-readable description of the task.
 5.  **`[ Optional Paused Note ]` (MAY):** If the task status is Paused (`⏸️`), this MAY contain a brief note indicating the reason and timestamp, e.g., `[ Paused: SWS - 07.27.24 | 10:30 AM PDT ]`.
 6.  **`[ Optional Tags ]` (MAY):** Zero or more metadata tags providing additional context (See Section 5).
@@ -45,26 +45,55 @@ The following emojis MUST be used to represent task status:
 ```
 *(Note: `REWORK` (`🔧`) is an optional status, often represented as returning to `ACTIVE` (`🔄`).)*
 
-## 4. Task Identifier Syntax (`[ PREFIX-Num ]`) (MUST)
+## 4. Task Identifier Syntax (`[ PREFIX-Num[.SubNum[.SubSubNum]] ]`) (MUST)
 
 Each task MUST have a unique identifier enclosed in square brackets with a space before & after TASK-ID (`[]`).
 
-*   **`PREFIX`:**
-    *   MUST be 3-6 characters long.
-    *   MUST be uppercase alphanumeric (`A-Z`, `0-9`).
-    *   SHOULD indicate the primary category or feature area.
-    *   **Recommended Prefixes:** `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `TEST`, `DB`, `INFRA`, `A11Y`  (prefixes derived from `task-ranking-table-reference-and-table.mdc`).
-*   **`-` (Hyphen):** Separates the prefix and number.
-*   **`Num`:**
-    *   MUST be a sequential integer (`1`, `2`, `3`, ...).
-    *   Numbering is sequential *within* each `PREFIX`.
-    *   Example: `[ UI-1 ]`, `[ UI-2 ]`, `[ CORE-1 ]`, `[ AUTH-1 ]`, `[ AUTH-2 ]`, etc.
+- **Hierarchical IDs:** To represent parent/child relationships, use dot notation up to a maximum depth of 3:
+  - `[ PREFIX-Num ]` (parent)
+  - `[ PREFIX-Num.SubNum ]` (child)
+  - `[ PREFIX-Num.SubNum.SubSubNum ]` (grandchild)
+  - **Maximum depth:** 3 (e.g., `[ INFRA-4.1.2 ]` is valid; `[ INFRA-4.1.2.3 ]` is NOT valid)
+- **Num/SubNum/SubSubNum:** Each segment MUST be a sequential integer (e.g., `1`, `2`, `3`, ...).
+- **Prefix:**
+    - MUST be 3-6 characters long.
+    - MUST be uppercase alphanumeric (`A-Z`, `0-9`).
+    - SHOULD indicate the primary category or feature area.
+    - **Recommended Prefixes:** `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `TEST`, `DB`, `INFRA`, `A11Y`  (prefixes derived from `task-ranking-table-reference-and-table.mdc`).
+- **Uniqueness:** The full hierarchical ID (including all segments) MUST be unique within the roadmap.
+- **Spacing:** There MUST be a space before and after the ID inside the brackets: `[ PREFIX-Num ]`, `[ PREFIX-Num.SubNum ]`, etc.
+
+**Valid Examples:**
+```markdown
+- 🔄 [ UI-3 ] Implement user preferences
+- 🔄 [ UI-3.1 ] Add theme toggle
+- 🔄 [ UI-3.2 ] Add notification settings
+- 🔄 [ UI-3.2.1 ] Implement email notification toggle
+- ✅ [ INFRA-4 ] Resolve Vite server issues • [ done:03.29.25 ]
+  - ✅ [ INFRA-4.1 ] Fix dependency conflicts • [ done:04.23.25 ]
+  - ✅ [ INFRA-4.2 ] Update configuration • [ done:04.23.25 ]
+- 🔄 [ AUTH-2.1.1 ] Add multi-factor authentication
+```
+
+**Invalid Examples:**
+```markdown
+- 🔄 [ UI-3.2.1.1 ] Too deep (depth 4, max is 3)
+- 🔄 [ UI-3-2 ] Hyphen used for hierarchy (must use dot)
+- 🔄 [ UI-3.01 ] Leading zero in subtask (must be integer)
+- 🔄 [ UI3.2 ] Missing hyphen after prefix
+- 🔄 [ UI-3.2a ] Non-integer subtask
+```
+
+**Validation Regex (max depth 3):**
+```regex
+\[ [A-Z0-9]{3,6}-\d+(?:\.\d+){0,2} \]
+```
 
 ## 5. Metadata Tag Syntax (` • [ key:value ]`) (MAY)
 
 Optional metadata can be appended to the task line using one or more tags.
 
-*   **Format:** Each tag MUST follow the format ` • [key:value]`.
+*   **Format:** Each tag MUST follow the format ` • [ key:value ]`.
     *   Starts with ` • ` (Space, Bullet, Space).
     *   Enclosed in square brackets `[]`.
     *   Contains a `key`, followed by a colon `:`, followed by a `value`.
@@ -90,6 +119,9 @@ Optional metadata can be appended to the task line using one or more tags.
 - ⏸️ [ AUTH-2 ] Integrate multi-factor authentication [ Paused: SWS - 07.26.24 | 04:15 PM PDT ] • [ rnk:B ] • [ due:08.15.24 ]
 - 🔬 [ UI-3 ] Add accessibility features to dropdown component • [ rnk:A ]
 - ✅ [ DOCS-1 ] Update installation guide • [ done:07.25.24 ]
+- 🔄 [ UI-3.1 ] Add theme toggle
+- 🔄 [ UI-3.2.1 ] Implement email notification toggle
+```
 
 # Invalid Task Lines:
 - Missing Emoji [ CORE-1 ] Task description
@@ -97,7 +129,12 @@ Optional metadata can be appended to the task line using one or more tags.
 - 🔄 [ UI-4 ] Task description • rnk:C  # Incorrect tag format
 - ✅ [ BUG-2 ] Fix button alignment # Missing required done:MM.DD.YY tag
 - ⏳ [ TEST-5 ] Write unit tests due:09.01.24 # Incorrect tag format
-- ✅ [TEST-7] Run End to End Tests due:07.07.25 # Incorrect ID format, missing preceeding & proceeding space
+- ✅ [TEST-7] Run End to End Tests due:07.07.25 # Incorrect ID spacing format, missing (space, id, space)
+- 🔄 [ UI-3.2.1.1 ] Too deep (depth 4, max is 3)
+- 🔄 [ UI-3-2 ] Hyphen used for hierarchy (must use dot)
+- 🔄 [ UI-3.01 ] Leading zero in subtask (must be integer)
+- 🔄 [ UI3.2 ] Missing hyphen after prefix
+- 🔄 [ UI-3.2a ] Non-integer subtask
 ```
 
 ## 7. Validation & Enforcement
@@ -115,4 +152,3 @@ Optional metadata can be appended to the task line using one or more tags.
 -   `testing-verification-protocol.mdc`: Reads/writes status (`🔬`, `🧪`, `✅`, `🔄`) in this format.
 -   `task-ranking-table-reference-and-table.mdc`: standardized task prefixes derived from here. 
 ```
-
