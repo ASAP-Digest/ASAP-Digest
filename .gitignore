@@ -131,6 +131,7 @@ wp-config-local.php
 !CHANGELOG.md
 !composer.json
 !wp-config-sample.php
+!retrofit-roadmap-ids.js
 
 # track favicon files, if they exist
 !android-chrome-*.png
