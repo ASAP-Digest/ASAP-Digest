@@ -72,10 +72,10 @@ F. Enter Approval Queue (EAQ)
 ### 3.1 Session Initiation (BWS)
 *(Self-correction: Explicitly mention SC v2.4+)*
 1.  **Determine Trigger Source:** BWS is triggered manually by the user or via RWS fallback.
-2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.4+) *unless* triggered by RWS fallback which has already determined the target. This involves reading `md-docs/ROADMAP_TASKS.md` and potentially recent memory via tool calls, applying rank-aware logic.
+2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.4+) *unless* triggered by RWS fallback which has already determined the target. This involves reading `md-docs/ROADMAP_TASKS.md` and potentially recent memory via tool calls, applying rank-aware logic that parses [ PREFIX-Num ] IDs, status emojis, descriptions, and all ` • [ key:value ]` tags (e.g., rnk, due, done, src, etc.).
 3.  **Analyze SC Output & Select Target Task:**
-    -   If triggered manually: Identify the `🎯 Current / Operational Priority` task from the *newly run* SC report. This is the `targetTask`.
-    -   If triggered by RWS fallback: Use the `targetTask` determined by the RWS logic (v2.13).
+    -   If triggered manually: Identify the `🎯 Current / Operational Priority` task from the *newly run* SC report. This is the `targetTask` (identified by its [ PREFIX-Num ] ID and tags).
+    -   If triggered by RWS fallback: Use the `targetTask` determined by the RWS logic (v2.13), identified by its [ PREFIX-Num ] ID and tags.
 4.  **Timestamp:** Get current timestamp (`mcp_mcp-datetime_get_datetime` tool call).
 5.  **Generate Session ID:** Create a unique session ID (See Section 6).
 6.  **Entity Creation:** Create `WorkSession` entity in Server Memory (`mcp_Server_Memory_create_entities` tool call) including:
@@ -86,9 +86,9 @@ F. Enter Approval Queue (EAQ)
     - Link to the relevant `StatusCheck` entity (if applicable).
     - Status: `ACTIVE`.
 7.  **Task Status Update (if applicable):**
-    -   If the `targetTask` status was `PENDING` (`⏳`) or `BLOCKED` (`❌` - only if selected due to linked `Error`), update its status to `ACTIVE` (`🔄`) in Server Memory (`mcp_Server_Memory_add_observations` or similar) and `md-docs/ROADMAP_TASKS.md` (`edit_file` tool call). Add observation noting the reason (e.g., "Targeting blocked task to resolve error").
+    -   If the `targetTask` status was `PENDING` (`⏳`) or `BLOCKED` (`❌` - only if selected due to linked `Error`), update its status to `ACTIVE` (`🔄`) in Server Memory (`mcp_Server_Memory_add_observations` or similar) and `md-docs/ROADMAP_TASKS.md` (`edit_file` tool call), targeting the correct line by its [ PREFIX-Num ] ID. Add observation noting the reason (e.g., "Targeting blocked task to resolve error").
     -   **If the `targetTask` status is already `TESTING` (`🧪`) (triggered via RWS fallback), DO NOT change its status.** The BWS session will proceed with the task in the `TESTING` state.
-    -   **Execute State Synchronization Verification (BWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (`ACTIVE` or `TESTING`) and the `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). This involves reading the file and memory state and comparing them. Trigger UERP on failure.
+    -   **Execute State Synchronization Verification (BWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (`ACTIVE` or `TESTING`) and the `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`), matching by [ PREFIX-Num ] ID. This involves reading the file and memory state and comparing them. Trigger UERP on failure.
 8.  **Verification:** Execute L1/L3 Verification Chain checks (internal state consistency checks).
 9.  **Audit:** Record `SESSION_START` event in Audit Trail (conceptual logging).
 10. **Feedback:** Confirm session start with the Session ID, explicitly stating the `targetTask` being worked on and its current status (`🔄` or `🧪`) and rank (`rnk:X` or `Unranked`).
@@ -121,39 +121,39 @@ F. Enter Approval Queue (EAQ)
 
 2.  **Fallback Logic - Priority 1: Check for Active Blocking Errors:**
     -   Query Server Memory (`mcp_Server_Memory_search_nodes`) for `Error` entities with `status=active`.
-    -   Check for explicit `blockedBy` relations linking active errors to non-`✅` `Task` entities.
-    -   If found: Select the highest priority blocked task based on roadmap order or other criteria (`targetTask`). Proceed to Step 7 (Initiate BWS for Fallback).
+    -   Check for explicit `blockedBy` relations linking active errors to non-`✅` `Task` entities (identified by [ PREFIX-Num ] ID).
+    -   If found: Select the highest priority blocked task based on roadmap order or other criteria (`targetTask`, identified by [ PREFIX-Num ] ID and tags). Proceed to Step 7 (Initiate BWS for Fallback).
     -   If not found, proceed to Step 3.
 
 3.  **Fallback Logic - Priority 2: Check for Explicitly Paused (`⏸️`):**
-    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for any task marked `⏸️`. Parse the content to identify these tasks.
-    -   If found: Select the highest priority one based on roadmap order (`targetTask`). Proceed to Step 7 (Initiate BWS for Fallback).
+    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for any task marked `⏸️`. Parse the content to identify these tasks by [ PREFIX-Num ] ID and tags.
+    -   If found: Select the highest priority one based on roadmap order (`targetTask`, identified by [ PREFIX-Num ] ID and tags). Proceed to Step 7 (Initiate BWS for Fallback).
     -   If not found, proceed to Step 4.
 
 4.  **Fallback Logic - Priority 3: Check for Actively Testing (`🧪`):**
-    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for any task marked `🧪`. Parse the content to identify these tasks.
-    -   If found: Select the highest priority one based on roadmap order (`targetTask`). Proceed to Step 7 (Initiate BWS for Fallback).
+    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for any task marked `🧪`. Parse the content to identify these tasks by [ PREFIX-Num ] ID and tags.
+    -   If found: Select the highest priority one based on roadmap order (`targetTask`, identified by [ PREFIX-Num ] ID and tags). Proceed to Step 7 (Initiate BWS for Fallback).
     -   If not found, proceed to Step 5.
 
-5.  **Fallback Logic - Priority 4: Check Highest Ranked Task (` • [ rnk:A ]` > ` • [ rnk:B ]`...):**
-    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for tasks marked with ` • [ rnk:X ]` tags (excluding `✅`, `⏸️`, `🧪`).
-    -   If found: Select the task with the highest rank (A=highest). If multiple tasks share the highest rank, select the one appearing first in the roadmap (`targetTask`).
+5.  **Fallback Logic - Priority 4: Check Highest Ranked Task (` • [ rnk:X ]` > ...):**
+    -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file` tool call) for tasks marked with ` • [ rnk:X ]` tags (excluding `✅`, `⏸️`, `🧪`), identified by [ PREFIX-Num ] ID and tags.
+    -   If found: Select the task with the highest rank (A=highest). If multiple tasks share the highest rank, select the one appearing first in the roadmap (`targetTask`, identified by [ PREFIX-Num ] ID and tags).
     -   Proceed to Step 7 (Initiate BWS for Fallback).
     -   If not found, proceed to Step 6a.
 
 6.  **Fallback Logic - Sub-Priorities for Unranked Tasks:**
     *   **6a. Find Deepest "In Progress" (`🔄`) without rank:**
-        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `🔄` that **do not** have an ` • [ rnk:X ]` tag.
-        -   Select the deepest one in the hierarchy (`targetTask`).
+        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `🔄` that **do not** have an ` • [ rnk:X ]` tag, identified by [ PREFIX-Num ] ID and tags.
+        -   Select the deepest one in the hierarchy (`targetTask`, identified by [ PREFIX-Num ] ID and tags).
         -   If found: Proceed to Step 7 (Initiate BWS for Fallback).
         -   If not found, proceed to Step 6b.
     *   **6b. Check for Pending Testing (`🔬`) without rank:**
-        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `🔬` that **do not** have an ` • [ rnk:X ]` tag.
-        -   If found: Select the highest priority one based on roadmap order. **Report** its status (e.g., "`Task Y` (Unranked) is pending testing (`🔬`). Use `ST [TaskID]` or `ST` to initiate.") and **stop the RWS process.**
+        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `🔬` that **do not** have an ` • [ rnk:X ]` tag, identified by [ PREFIX-Num ] ID and tags.
+        -   If found: Select the highest priority one based on roadmap order. **Report** its status (e.g., "`Task Y` ([ PREFIX-Num ]) (Unranked) is pending testing (`🔬`). Use `ST [TaskID]` or `ST` to initiate.") and **stop the RWS process.**
         -   If not found, proceed to Step 6c.
     *   **6c. Find Highest Priority "Pending" (`⏳`) without rank:**
-        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `⏳` that **do not** have an ` • [ rnk:X ]` tag.
-        -   Select the highest priority one based on roadmap order (`targetTask`).
+        -   Scan `md-docs/ROADMAP_TASKS.md` (`read_file`) for tasks marked `⏳` that **do not** have an ` • [ rnk:X ]` tag, identified by [ PREFIX-Num ] ID and tags.
+        -   Select the highest priority one based on roadmap order (`targetTask`, identified by [ PREFIX-Num ] ID and tags).
         -   If found: Proceed to Step 7 (Initiate BWS for Fallback).
         -   If not found, proceed to Step 6d.
     *   **6d. Handle Blocked/No Tasks (`❌`, None):**
@@ -167,8 +167,8 @@ F. Enter Approval Queue (EAQ)
     -   Timestamp: Get current timestamp (`mcp_mcp-datetime_get_datetime` tool call).
     -   Update `WorkSession` status back to `ACTIVE` in Server Memory. Add observation about resumption referencing the `saveSessionID`.
     -   Restore Context (Informational): Log restored context based on `WorkSessionSave` entity data.
-    -   Task Status Marker Update: Update roadmap task marker in `md-docs/ROADMAP_TASKS.md` from `⏸️` back to the task's actual status (likely `🔄` or `🧪`) (`edit_file` tool call).
-    -   **Execute State Synchronization Verification (RWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (retrieved) and the updated `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`). Trigger UERP on failure.
+    -   Task Status Marker Update: Update roadmap task marker in `md-docs/ROADMAP_TASKS.md` from `⏸️` back to the task's actual status (likely `🔄` or `🧪`) (`edit_file` tool call), targeting the correct line by [ PREFIX-Num ] ID.
+    -   **Execute State Synchronization Verification (RWS - Active/Testing):** MUST execute the sequence from `mandatory-post-update-state-synchronization-verification-protocol.mdc v1.0` comparing the Memory `Task` status (retrieved) and the updated `md-docs/ROADMAP_TASKS.md` marker (`🔄` or `🧪`), matching by [ PREFIX-Num ] ID. Trigger UERP on failure.
     -   Verification: Execute L1/L3 Verification Chain checks (internal state).
     -   Audit: Record `SESSION_RESUME` event (conceptual log).
     -   Feedback: Confirm session resumption, stating Session ID and priority task.

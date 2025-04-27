@@ -73,7 +73,81 @@ B. Secondary Triggers
 └─────────────────────────────────────────┘
 ```
 
-## 5. Status Check Implementation (Conceptual Steps - Updated for Rank Awareness)
+## 5. Status Check Implementation (Conceptual Steps - Updated for Rank Awareness and Result Limiting)
+
+### **Default Result Limiting**
+- By default, the status check report MUST return **at most the top 5 items per status** (e.g., top 5 completed, top 5 in progress, etc.), or the recently completed in the last 72 hours—whichever is more restrictive.
+- The only exception is when a filter is specified (see below).
+- **Never exceed the default limit unless a filter is specified.**
+
+### **Filter Syntax**
+- The status check command MAY accept a filter argument to override the default limit:
+  - `SC=10` → Show the top 10 items per status.
+  - `SC=10hrs` → Show items per status in the last 10 hours.
+  - `SC=all` → Show all items per status (use with caution; not recommended for large projects).
+- The filter is parsed from the command input and applied to all status sections.
+- If both a count and a time window are specified, the more restrictive applies.
+
+### **Implementation Steps (Updated):**
+1. Parse the filter argument from the command (if present).
+2. For each status section (e.g., completed, in progress, pending):
+   - Collect all matching tasks.
+   - If a time window filter is specified (e.g., `10hrs`), filter tasks by completion or update time.
+   - If a count filter is specified (e.g., `10`), limit to that number.
+   - By default, limit to 5 per status (or the time window, whichever is more restrictive).
+3. Format the report, showing only the filtered/limited items per status.
+4. If no tasks match the filter, display a message such as "No tasks found for this status in the specified window."
+
+### **Helper Function Descriptions (Updated):**
+- `getTopNTasksByStatus(tasks, status, n, timeWindow)`: Returns up to `n` tasks for the given status, optionally filtered by a time window.
+- `parseStatusCheckFilter(input)`: Parses the filter argument from the command (e.g., `SC=10`, `SC=10hrs`).
+
+### **Report Example (Default, Top 5 Per Status):**
+```markdown
+---
+## **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
+---
+
+### **`✅ Recently Completed (Last 72h, Top 5):`**
+  *   `[ AUTH-1 ] Create login page • [ done:04.23.25 ]`
+  *   `[ UI-2 ] Update button styles • [ done:04.22.25 ] • [ rnk:B ]`
+  *   ... (up to 5 items)
+  *   _(If none: ✨ No tasks completed recently.)_
+
+---
+
+### **`🔄 In Progress (Top 5):`**
+  *   `[ WIDGET-5 ] Implement audio playback • [ rnk:C ]`
+  *   ... (up to 5 items)
+  *   _(If none: 👍 No tasks in progress.)_
+
+---
+
+### **`⏳ Pending (Top 5):`**
+  *   `[ WIDGET-7 ] Create component skeleton`
+  *   ... (up to 5 items)
+  *   _(If none: 👍 No pending tasks.)_
+
+---
+
+// ... other status sections ...
+```
+
+### **Report Example (With Filter, e.g., SC=10):**
+```markdown
+---
+## **`📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)`**
+---
+
+### **`✅ Recently Completed (Last 72h, Top 10):`**
+  *   ... (up to 10 items)
+```
+
+### **Notes:**
+- Never exceed the default limit unless a filter is specified.
+- If a filter is specified, clearly indicate the filter in the report section headers.
+- If both a count and a time window are specified, apply the more restrictive filter.
+
 ```javascript
 async function executeProjectStatusCheck_v2_4() {
     // 1. Initialize timestamp for report and logging
@@ -105,7 +179,7 @@ async function executeProjectStatusCheck_v2_4() {
     const activeErrors = await searchRecentMemory('Error', 0, ['status=active']);
 
     // 5. Parse and Analyze Data (Rank-Aware WSMP Priority Logic)
-    // Parse roadmapTasksContent to get all tasks with statuses, timestamps, AND ` • [ rnk:X ]` tags.
+    // Parse roadmapTasksContent to get all tasks with statuses, [ PREFIX-Num ] IDs, descriptions, AND all ` • [ key:value ]` tags (e.g., rnk, due, done, src, etc.).
     // *** BEGIN Rank-Aware Priority Logic (Ref: WSMP v2.12+, Sec 3.3) ***
     let priorityTask = null;
     let priorityReason = "No actionable tasks found.";
@@ -204,7 +278,7 @@ async function executeProjectStatusCheck_v2_4() {
     return userReport;
 }
 
-// Helper function placeholders (implementation requires specific parsing logic, now including rank parsing)
+// Helper function placeholders (implementation requires specific parsing logic, now including full tag parsing)
 async function readFileContents(filePath) { /* ... use read_file ... */ }
 async function searchRecentMemory(entityType, hoursAgo, filters = []) { /* ... use mcp_Server_Memory_search_nodes ... */ }
 // Reference the updated formatting logic
@@ -214,11 +288,11 @@ async function getFormattedTime_v1_1() {
     // 3. Return the formatted string
 }
 function findHighestPriorityBlockedTask(activeErrors, roadmapContent) { /* ... logic to link errors to tasks and find highest prio ... */ }
-function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, find highest prio based on order ... */ }
-function findHighestExplicitlyRankedTask(roadmapContent) { /* ... parse roadmap, extract ` • [ rnk:X ]`, find highest ranked non-complete/paused/testing task ... */ }
-function findDeepestTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, determine hierarchy, find deepest ... */ }
-function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections, now includes rank ... */ }
-function formatUserReport_v2_4(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflect rank-aware priority reason ... */ }
+function findHighestPriorityTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, find highest prio based on order, extract [ PREFIX-Num ] and all tags ... */ }
+function findHighestExplicitlyRankedTask(roadmapContent) { /* ... parse roadmap, extract [ PREFIX-Num ] and all ` • [ key:value ]` tags, find highest ranked non-complete/paused/testing task ... */ }
+function findDeepestTaskByStatus(roadmapContent, statusEmoji, options = { excludeRanked: false }) { /* ... parse roadmap, filter by emoji, EXCLUDE ranked if options.excludeRanked, determine hierarchy, extract [ PREFIX-Num ] and all tags ... */ }
+function parseRoadmapsAndMemoryForReport(roadmapContent, recentCompletions, activeErrors, priorityTask, priorityReason) { /* ... parsing logic for report sections, now includes [ PREFIX-Num ] and all tags ... */ }
+function formatUserReport_v2_4(reportData, formattedReportTime) { /* ... formatting logic using Markdown tables etc., reflect [ PREFIX-Num ] and all tags ... */ }
 ```
 
 ## 6. Information Sources Hierarchy
@@ -234,7 +308,7 @@ function formatUserReport_v2_4(reportData, formattedReportTime) { /* ... formatt
 ```
 
 ## 7. Status Report Structure & Logic (Updated)
-The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc`. The Priority section MUST reflect the rank-aware logic.
+The user-facing output MUST follow this structure, with the `📅 Status Check Report (MM.DD.YY | HH:MM AM/PM TimeZone)` heading using the timestamp generated via `format-time.mdc`. The Priority section MUST reflect the rank-aware logic and show the [ PREFIX-Num ] ID and all tags for each task.
 
 ```markdown
 ---
@@ -242,44 +316,19 @@ The user-facing output MUST follow this structure, with the `📅 Status Check R
 ---
 
 ### **`✅ Recently Completed (Last 72h):`**
-  *   `[Task Name]` _(Completed: MM.DD.YY | HH:MM AM/PM TimeZone)_
+  *   `[ AUTH-1 ] Create login page • [ done:04.23.25 ]`
+  *   `[ UI-2 ] Update button styles • [ done:04.22.25 ] • [ rnk:B ]`
   *   _(If none: ✨ No tasks completed recently.)_
 
 ---
 
 ### **`🔬🧪 Testing Pipeline:`**
   *   **`🔬 Pending Initiation:`**
-      *   Priority? [Yes/No] - `[Task Name]` _(Rank: [X|N/A])_ _(Entered Queue: [MM.DD.YY | HH:MM AM/PM TimeZone])_
+      *   Priority? [Yes/No] - `[ CORE-3 ] Refactor API layer • [ due:04.30.25 ] • [ rnk:A ]` _(Entered Queue: [04.21.25])_
       *   _(If none: 👍 None pending initiation.)_
   *   **`🧪 Actively Testing:`**
-      *   `[Task Name]` _(Rank: [X|N/A])_ _(Started: [MM.DD.YY | HH:MM AM/PM TimeZone])_
-      *   _(If none: 👍 None actively testing.)_
+      *   `[ PWA-4 ] Add offline support • [ rnk:A ] • [ due:05.01.25 ]` _(Started: [04.20.25])_
 
 ---
 
-### **`🎯 Current Priority:`**
-  *   **`[Emoji]`** **`[Task Name]`** _(Rank: [X|N/A])_
-      *   _Reason:_ **`[Determined Reason from Rank-Aware Logic: e.g., "Highest Ranked Task (rnk:A)", "Testing Active", "Paused Session", "Blocked by Error: [Summary]", "Deepest Active Task (Unranked)", "Pending Testing (Requires ST, Unranked)", "Next Pending Task (Unranked)"]`**
-      *   _(If status is 🔬, add: ➡️ Use `ST [TaskID]` or `ST` to initiate testing.)_
-
----
-
-### **`⏳ Upcoming Tasks (Next 3-5 Pending After Priority):`**
-  *   `[Task Name]` _(Rank: [X|N/A])_
-  *   `[Task Name]` _(Rank: [X|N/A])_
-  *   `[Task Name]` _(Rank: [X|N/A])_
-  *   _(If none: 👍 No pending tasks after priority.)_
-
----
-
-### **`❌ Blocked Tasks:`**
-  *   `[Task Name]` _(Rank: [X|N/A])_ _(Reason: [If available from Error entity])_
-  *   _(If none: 👍 No blocked tasks.)_
-
----
-
-### **`⚙️ Overall Context:`**
-  *   _Working within:_ `[Parent Subtask Name]` > **`[Priority Task Name]`** _(If applicable)_
-
----
-```
+### **`�� Current Priority:`
