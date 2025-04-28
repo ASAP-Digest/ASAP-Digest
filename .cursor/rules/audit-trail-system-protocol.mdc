@@ -1,0 +1,140 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: Defines the comprehensive system for logging, tracking, and managing audit trails in VeriDX, including event capture, storage options, retention policies, and integration with other protocols for traceability and compliance.
+globs: ["**/*.mdc", "**/tasks/*.md"]  # Suggest this rule for any .mdc files or task-related documents where auditing might be relevant.
+alwaysApply: false  # This rule should be applied where auditing is explicitly needed, not universally.
+---
+
+# Audit Trail System Protocol (ATSP) v1.0
+
+## 1. Purpose
+
+This protocol establishes a robust, centralized system for capturing, storing, and querying audit trails within the VeriDX ecosystem. It addresses the need for traceability in AI-assisted development, protocol executions, and user interactions, ensuring compliance, debugging ease, and historical accountability. The Audit Trail System integrates with event-driven protocols like `@ad-hoc-work-capture-protocol.mdc` and `@veridx-event-monitoring-notifications-protocol.mdc`, logging significant events while respecting configurations in `veridx-config.json`. By providing a structured log of actions, it supports VeriDX's philosophy of "Systematic & Verifiable Development Acceleration," preventing loss of context and enabling post-hoc analysis.
+
+This protocol was created in response to recurring references to an "Audit Trail System" in other protocols (e.g., `@work-session-management-protocol.mdc`), where a formal definition was lacking. It ensures that all logged events are verifiable, secure, and aligned with user-defined settings.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Rule Execution Protocol              │ // For executing audit logging steps
+│ 2. Server Memory Rules                  │ // Entity management for audit logs
+│ 3. Universal Error Resolution Protocol  │ // Error logging and analysis integration
+│ 4. Event Monitoring & Notification Proto│ // Primary source of events to log
+│ 5. Ad Hoc Work Capture Protocol         │ // Captures ad hoc events for auditing
+│ 6. Master Rule Index Protocol           │ // Tracks this protocol's usage
+│ 7. Cross-Protocol Comms & Verification   │ // Ensures logs are shared/verified across protocols
+│ 8. Task System Documentation Protocol   │ // For logging task-related events
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger Conditions
+
+This protocol activates automatically or manually under the following conditions, as derived from `@new-rule-creation-protocol.mdc`:
+
+-   **Event Publication:** Triggered by events from VEMNP (e.g., `AWCP_AutoSavePointCreated`), where an audit log entry is required.
+-   **Protocol Execution:** Invoked during key transitions in other protocols (e.g., `@work-session-management-protocol.mdc` session starts/ends, or errors in `@universal-error-resolution-protocol.mdc`).
+-   **Manual Invocation:** Users can trigger auditing via CLI commands (e.g., `vdx audit log --event <eventID>`), especially for debugging or compliance reviews.
+-   **Configuration-Based:** If `globalSettings.auditTrailLogDestination` in `veridx-config.json` is set to 'file' or 'console', this protocol ensures logs are directed accordingly.
+-   **Edge Cases:** Activation during system errors, unauthorized access attempts, or significant configuration changes to maintain a comprehensive audit history.
+
+## 4. Protocol Steps
+
+Following the structure from `@new-rule-creation-protocol.mdc`, this section outlines the steps for managing the Audit Trail System, making it as extensive as possible with detailed sub-steps, examples, and considerations.
+
+### Step 1: Problem Definition & Analysis
+
+1.  **Identify Need:** Begin by analyzing the context where auditing is required, such as tracing AI-generated changes, protocol failures, or user actions. For instance, if `@ad-hoc-work-capture-protocol.mdc` detects unsaved changes, this protocol logs them for later review.
+2.  **Error and Event Categorization:** Categorize events by type (e.g., "INFO", "WARN", "ERROR") and source (e.g., protocol, user command). Use VEMNP event data to classify logs.
+3.  **Root Cause Integration:** If triggered by an error (e.g., from UERP), link the audit entry to the root cause analysis, including timestamps, user IDs, and affected entities.
+4.  **Existing System Check:** Verify against current VeriDX components (e.g., Server Memory) to ensure no redundant logging systems exist. For example, check if an event like `AWCP_ConsolidationPromptRequired` is already partially logged elsewhere.
+5.  **Scope Definition:** Define the audit trail's scope, including what events to capture (e.g., all protocol executions, file changes, AI interactions) and exclusions based on user config.
+
+### Step 2: Draft Initial Specific Rule Components
+
+1.  **Core Logging Mechanism:** Draft the initial logging function, specifying how events are captured (e.g., via JSON objects) and stored based on the config.
+2.  **Event Structure:** Define a standard event object for logs, including fields like `eventType`, `timestamp`, `userID`, `summary`, and `relatedEntities`.
+3.  **Basic Storage Options:** Outline initial storage based on `veridx-config.json`, such as appending to a file or outputting to console.
+4.  **Examples:** Provide specific examples for common events.
+
+   ```json
+   // Example Audit Log Entry for an Ad Hoc Change
+   {
+     "eventType": "AWCP_AutoSavePointCreated",
+     "timestamp": "2025-04-03T12:34:56Z",
+     "userID": "user123",
+     "summary": "Ad hoc change detected in file 'adHocCapture.js'",
+     "relatedEntities": ["AdHocSavePoint:AHSP-20250403-123456"],
+     "details": "Change was unsaved; logged to console."
+   }
+   ```
+
+### Step 3: Generalization & Refinement
+
+1.  **Broaden Scope:** Refine the protocol to handle not just ad hoc events but all VeriDX interactions, such as task updates, rule executions, and MCP calls. Make it generic enough to apply across protocols.
+2.  **Abstract Data Model:** Generalize the log structure to accommodate various event types, with extensible fields (e.g., using JSON for custom metadata).
+3.  **Edge Cases and Refinements:** Address potential issues like high-volume logging (e.g., rate-limiting), privacy concerns (e.g., anonymizing user data), and integration with external systems (e.g., via MCP).
+4.  **Conflict Resolution:** Ensure logs from conflicting protocols (e.g., if two rules trigger the same event) are merged or prioritized based on a configurable hierarchy.
+5.  **Performance Considerations:** Include guidelines for log retention (e.g., rotate files after a certain size) to prevent bloat.
+
+### Step 4: Formatting, Structure & File Standards
+
+1.  **Adhere to @rule-formatting-protocol.mdc:** This file itself follows the required formatting, with the entire content in a single outer block and nested blocks as needed.
+2.  **File Location and Naming:** As per `@new-rule-creation-protocol.mdc`, this file is placed in `.cursor/rules/` and named `audit-trail-system-protocol.mdc`.
+3.  **Frontmatter and Structure:** Includes all mandatory elements, with headings, lists, and examples for clarity.
+4.  **Extensibility:** Use placeholders for future fields, ensuring the protocol is adaptable.
+
+### Step 5: Integration Planning
+
+1.  **Touchpoints:** Integrate with `@ad-hoc-work-capture-protocol.mdc` for event logging, `@event-monitoring-notifications-protocol.mdc` for event sources, and Server Memory for storage.
+2.  **Configuration Touchpoints:** Reference `auditTrailLogDestination` in `veridx-config.json` for dynamic log handling.
+3.  **Verification Mechanisms:** Define how logs can be queried (e.g., via a CLI command like `vdx audit query --eventType AWCP`), with options for filtering by date, user, or entity.
+4.  **Potential Conflicts:** If an event is logged by multiple protocols, use a unique ID to deduplicate entries.
+
+### Step 6: Verification & Documentation
+
+1.  **Self-Verification Checklist:** As per `@new-rule-creation-protocol.mdc`, include a detailed checklist for this protocol's implementation.
+2.  **Documentation Updates:** Update the Master Rule Index in `@master-rule-index-protocol.mdc`. Add entries to `<available_instructions>` and relevant project docs.
+3.  **Audit Integration:** Ensure this protocol's creation is logged via its own system (self-referential audit).
+4.  **Extensive Examples:** Provide real-world scenarios, such as logging a task update or an error resolution.
+
+   ```javascript
+   // Example JavaScript Function for Logging an Event
+   async function logAuditEvent(event) {
+       const config = await loadConfig();  // Load from veridx-config.json
+       const destination = config.globalSettings.auditTrailLogDestination;
+       if (destination === 'file') {
+           const logPath = path.join(process.env.HOME, '.cursor', 'veridx', 'audit.log');
+           fs.appendFileSync(logPath, JSON.stringify(event) + '\n');
+       } else {
+           console.log('Audit Event:', JSON.stringify(event));
+       }
+   }
+   ```
+
+### Step 7: Review & Finalization
+
+1.  **User-Driven Refinement:** This protocol is ready for your review; provide feedback for iterations.
+2.  **Future Expansion:** Plan for advanced features like automated querying, integration with external tools, and AI-assisted log analysis.
+
+## Verification Checklist
+
+- [ ] Does the protocol address a clearly defined need (e.g., audit trail gaps)?
+- [ ] Is the core principle clearly stated?
+- [ ] Are steps actionable and unambiguous?
+- [ ] Is the rule sufficiently generalized for broad applicability?
+- [ ] Does formatting adhere to `@rule-formatting-protocol.mdc`?
+- [ ] Is the file in the correct location with proper naming?
+- [ ] Does it include required frontmatter?
+- [ ] Are potential conflicts addressed?
+- [ ] Is verification defined?
+- [ ] Have documentation updates been identified?
+- [ ] Has this been added to the Master Rule Index?
+
+This extensive protocol ensures the Audit Trail System is a cornerstone of VeriDX's verifiability.

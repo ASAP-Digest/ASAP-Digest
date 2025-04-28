@@ -3,15 +3,13 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Task System Documentation Protocol v1.1
+# Task System Documentation Protocol v1.2
 
-*(Self-correction: Updated version to v1.1 to add detail on philosophy, configuration, and expand existing sections)*
+*(Self-correction: Updated to v1.2 for finalized roadmap syntax, explicit [ PREFIX-Num ] ID, tag system, and output format. All examples and references now match the canonical standard in roadmap-syntax-validation-protocol.mdc v1.2+.)*
 
 ## 1. Purpose
 
-This protocol provides a comprehensive overview and documentation for the project's task management system (initially developed for ASAP Digest, but designed as a core VeriDX component). This system facilitates **systematic development** by establishing a **single source of truth** for tasks in a human-readable format, enabling automated processing for prioritized, actionable views.
-
-It relies on a Markdown-based roadmap (`md-docs/ROADMAP_TASKS.md`), a Node.js script (`generate-todotxt.js`) for processing, and a `todo.txt`-formatted file (`md-docs/todotasks.txt`) as the primary machine-readable output, supporting CLI-centric workflows and future integrations.
+This protocol provides a comprehensive overview and documentation for the project's task management system (ASAP Digest, core VeriDX component). It establishes a **single source of truth** for tasks in a human-readable format, enabling automated processing for prioritized, actionable views. It relies on a Markdown-based roadmap (`md-docs/ROADMAP_TASKS.md`), a Node.js script (`generate-todotxt.js`) for processing, and a `todo.txt`-formatted file (`md-docs/todotasks.txt`) as the primary machine-readable output, supporting CLI-centric workflows and future integrations. The system is governed by the canonical rules in `roadmap-syntax-validation-protocol.mdc v1.2+`.
 
 ## 2. Design Philosophy & Goals
 
@@ -24,8 +22,6 @@ It relies on a Markdown-based roadmap (`md-docs/ROADMAP_TASKS.md`), a Node.js sc
 
 ## 3. Protocol Integration Layer
 
-This documentation protocol describes a system that integrates with several operational protocols:
-
 ```text
 ┌─────────────────────────────────────────┐
 │         System Integration Points       │
@@ -33,7 +29,7 @@ This documentation protocol describes a system that integrates with several oper
 │ 1. generate-todotxt.js                  │ // Script implementing parsing/formatting
 │ 2. md-docs/ROADMAP_TASKS.md             │ // Source data file (Single Source of Truth)
 │ 3. md-docs/todotasks.txt                │ // Generated output file (Actionable View)
-│ 4. Roadmap Syntax Validation Proto v1.1 │ // Defines roadmap syntax rules
+│ 4. roadmap-syntax-validation-protocol   │ // Canonical roadmap syntax rules (v1.2+)
 │ 5. Status Check Protocol (v2.4+)        │ // Reads roadmap status/timestamps for reporting
 │ 6. Work Session Management Proto v2.13+ │ // Reads roadmap rank/status for RWS fallback logic
 │ 7. Git Hooks (via lint-staged)          │ // Optional trigger for generation script
@@ -47,44 +43,84 @@ This documentation protocol describes a system that integrates with several oper
 
 *   **Format:** Markdown.
 *   **Purpose:** The **canonical source** for all project tasks. Defines their description, completion status, parent-child relationships (via Markdown headings), explicit priority (via rank tags), and optional due dates.
-*   **Syntax:** MUST strictly adhere to `roadmap-syntax-validation-protocol.mdc v1.1`. Incorrect syntax may lead to parsing errors or incorrect output in `todotasks.txt`.
+*   **Syntax:** MUST strictly adhere to `roadmap-syntax-validation-protocol.mdc v1.2+`. Incorrect syntax may lead to parsing errors or incorrect output in `todotasks.txt`.
 *   **Maintenance:** Edited manually by the user or programmatically by protocols like the Task Tracking Protocol (primarily for status/timestamp updates).
 
-### 4.2. Generation Script (`generate-todotxt.js`)
+#### 4.1.1. **Standard Task Line Syntax**
 
-*   **Language:** Node.js.
-*   **Purpose:** Acts as the **processor** that transforms the hierarchical, human-readable roadmap into a flat, prioritized, `todo.txt`-compatible list.
-    *   Parses status emojis, descriptions, rank tags, and due date tags.
-    *   Derives `src:+` tags from Markdown heading hierarchy.
-    *   Applies sorting based on the `CURRENT_SORT_MODE` constant (RWS default).
-    *   Formats output lines according to project conventions (Section 7).
-    *   Includes validation logic to warn about malformed tags.
-*   **Execution Control:** The `LIST_GENERATION` constant within the script determines if it runs when triggered automatically (by Git hooks or file watchers) or only when run manually. See script header comments for details.
+A valid task line MUST follow this format:
 
-### 4.3. Output Task List (`md-docs/todotasks.txt`)
+```markdown
+- <Emoji> [ PREFIX-Num[.SubNum[.SubSubNum]] ] Description [ Optional Paused Note ] [ • [ key:value ] ... ]
+```
 
-*   **Format:** `todo.txt` (with specific project conventions detailed in Section 7).
-*   **Purpose:** Provides a **prioritized, actionable view** of non-completed tasks, suitable for quick reference, CLI tools, or potential future GUI integrations. Completed tasks are included at the end for archival purposes.
-*   **Generation:** This file is **automatically generated** and **overwritten** by `generate-todotxt.js`. **Manual edits will be lost.**
+**Components:**
+- `-` (Hyphen & Space): Markdown list item indicator.
+- `<Emoji>`: Status emoji (see below).
+- `[ PREFIX-Num[.SubNum[.SubSubNum]] ]`: Unique Task Identifier. See Section 4.1.2.
+- `Description`: Human-readable task description.
+- `[ Optional Paused Note ]`: Only for paused tasks.
+- `[ • [ key:value ] ... ]`: Zero or more metadata tags (see Section 4.1.3).
+
+##### 4.1.2. **Task Identifier Syntax**
+- Format: `[ PREFIX-Num ]`, `[ PREFIX-Num.SubNum ]`, `[ PREFIX-Num.SubNum.SubSubNum ]` (max depth 3).
+- `PREFIX`: 3-6 uppercase alphanumeric chars, category-based (e.g., `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `TEST`).
+- `Num`, `SubNum`, `SubSubNum`: Sequential integers (no leading zeros).
+- **Spacing:** There MUST be a space before and after the ID inside the brackets: `[ PREFIX-Num ]`.
+- **Uniqueness:** The full hierarchical ID MUST be unique within the roadmap.
+
+##### 4.1.3. **Status Emojis**
+
+| Emoji | Status           | Meaning                        |
+|-------|------------------|--------------------------------|
+| ⏳    | PENDING          | Not started                    |
+| 🔄    | IN PROGRESS      | Actively being worked on       |
+| ⏸️    | PAUSED           | Paused via SWS                 |
+| 🔬    | PENDING_TESTING  | Ready for testing (via EWS)    |
+| 🧪    | TESTING          | Actively being tested          |
+| ✅    | COMPLETE         | Finished and verified          |
+| ❌    | BLOCKED          | Blocked by an Error entity     |
+| 🔧    | REWORK           | Rejected, needs fix            |
+
+##### 4.1.4. **Metadata Tag Syntax**
+- Format: ` • [ key:value ]` (space, bullet, space, bracketed key:value, no spaces around colon).
+- Allowed keys:
+    - `rnk`: Task rank/priority (A, B, C, ...)
+    - `due`: Due date (`MM.DD.YY`)
+    - `done`: Completion date (`MM.DD.YY`, **required for completed tasks**)
+    - *(Future)* `effort`, `assignee`, `epic`, etc.
+- Multiple tags allowed, each in its own ` • [ key:value ]` block.
+- **Order:** `rnk`, `due`, `done` (if present), others.
+
+##### 4.1.5. **Examples**
+
+```markdown
+- 🔄 [ UI-3 ] Implement user preferences • [ rnk:B ]
+- ✅ [ UI-3 ] Implement user preferences • [ rnk:B ] • [ done:04.28.25 ]
+- ⏳ [ WIDGET-7 ] Create component skeleton
+- 🔄 [ AUTH-4.16.2 ] Pending bi-directional user synchronization testing • [ rnk:B ] • [ due:04.22.25 ]
+- ✅ [ DOCS-1 ] Update installation guide • [ done:07.25.24 ]
+- ⏸️ [ AUTH-2 ] Integrate multi-factor authentication [ Paused: SWS - 07.26.24 | 04:15 PM PDT ] • [ rnk:B ] • [ due:08.15.24 ]
+```
 
 ## 5. Roadmap Syntax Summary (Key Elements)
 
-*(Refer to `roadmap-syntax-validation-protocol.mdc v1.0+` for the full specification and validation rules)*
-
-*   **Task Line:** Starts with `- <emoji> ` (e.g., `- ⏳ `).
-*   **Hierarchy:** Defined by Markdown headings (`##`, `###`, etc.). Used for `src:+` tags.
-*   **Rank Tag (Optional):** ` • [ rnk:X ]` (X=A-Z). Appears before timestamp. Used for RWS sorting.
-*   **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`. Appears before timestamp.
+*   **Task Line:** Starts with `- <emoji> [ PREFIX-Num ] ...` (see above).
+*   **Hierarchy:** Defined by Markdown headings (`##`, `###`, etc.). Used for `src:+` tags in output.
+*   **ID:** `[ PREFIX-Num[.SubNum[.SubSubNum]] ]` (see 4.1.2).
+*   **Rank Tag (Optional):** ` • [ rnk:X ]` (X=A-Z). Used for RWS sorting.
+*   **Due Date Tag (Optional):** ` • [ due:MM.DD.YY ]`.
+*   **Done Tag (Required for completed):** ` • [ done:MM.DD.YY ]`.
 *   **Timestamps:** Status/completion timestamps often appear at the end.
+*   **Canonical Reference:** All syntax rules are governed by `roadmap-syntax-validation-protocol.mdc v1.2+`.
 
 ## 6. Script Logic Summary (`generate-todotxt.js`)
 
 1.  **Read & Parse:** Reads `ROADMAP_TASKS.md`. Iterates line by line.
     *   Identifies headings to track hierarchy for `src:+` tags.
-    *   Identifies task lines based on `- <emoji> ` prefix.
-    *   Extracts status, description.
-    *   Uses regex (`/\s*•\s*\[\s*rnk:([A-Z])\s*\]/g`) to find and extract rank (`X`), removes tag from description.
-    *   Uses regex (`/\s*•\s*\[\s*due:(\d{2}\.\d{2}\.\d{2})\s*\]/g`) to find and extract due date (`MM.DD.YY`), removes tag from description.
+    *   Identifies task lines based on `- <emoji> [ PREFIX-Num ... ]` prefix.
+    *   Extracts status, ID, description, and all ` • [ key:value ]` tags.
+    *   Uses regex to validate ID and tag format (see canonical protocol).
     *   Logs warnings for malformed or multiple tags per line.
 2.  **Sort:** Sorts the parsed task objects based on `CURRENT_SORT_MODE`.
     *   **RWS:** Rank (A-Z) -> Status Group -> Depth (for In Progress) -> Original Order. Completed last.
@@ -100,12 +136,14 @@ This documentation protocol describes a system that integrates with several oper
 
 A typical line follows this structure, with metadata tags ordered specifically:
 
-`[ CompletionMarker|Priority ] [@StatusContext] Task Description - [ src:+Source ] - [ due:MM.DD.YY ] - [ done:MM.DD.YY ] - [ ts:Completion_Timestamp ]`
+```todotxt
+[ CompletionMarker|Priority ] [@StatusContext] Task Description - [ src:+Source ] - [ due:MM.DD.YY ] - [ done:MM.DD.YY ] - [ ts:Completion_Timestamp ]
+```
 
 *   **CompletionMarker:** `x ` (space included) if task is complete.
 *   **Priority:** `(A)` to `(Z)` assigned based on RWS sort logic (rank tag or sequential). Only for non-completed tasks.
 *   **StatusContext:** `@paused`, `@testing`, `@inprogress`, `@pending`, `@blocked`, `@pendingtesting`, `@completed`.
-*   **Task Description:** Cleaned description from roadmap (rank/due tags removed).
+*   **Task Description:** Cleaned description from roadmap (ID and tags removed).
 *   **Metadata Separator:** ` - ` (space, hyphen, space) separates description from the first metadata tag AND subsequent metadata tags.
 *   **Metadata Order (MUST be followed):**
     1.  `src:+Source` (Derived from roadmap heading hierarchy)
@@ -120,6 +158,7 @@ A typical line follows this structure, with metadata tags ordered specifically:
 (B) @pending Fix login redirect issue - src:+Task2:BugFixes - due:04.15.25
 (C) @inprogress Implement main algorithm - src:+Task1:MajorFeature_Subtask1.1:CoreLogic
 x @completed Initial setup complete - src:+Task1:MajorFeature_Subtask1.1:CoreLogic - done:04.10.25 - ts:04.10.25_|_10:00_AM_PDT
+x @completed Implement user preferences - src:+DevelopCoreApplicationScreens_Subtask3.1:CreateHomePage - done:04.28.25
 ```
 
 **Key Format Requirements:**
@@ -127,12 +166,13 @@ x @completed Initial setup complete - src:+Task1:MajorFeature_Subtask1.1:CoreLog
 *   `due:` tag value MUST be in `MM.DD.YY` format.
 *   `done:` tag value MUST be in `MM.DD.YY` format and ONLY present for completed tasks.
 *   The `ts:` tag captures the original timestamp string from the roadmap for reference and MAY have a different format.
+*   All IDs and tags in the output are derived from the canonical roadmap line format.
 
 ## 8. Integrations
 
-*   **Status Check Protocol (`SC`):** Directly reads `ROADMAP_TASKS.md` to report current status, including emoji states and timestamps.
+*   **Status Check Protocol (`SC`):** Directly reads `ROADMAP_TASKS.md` to report current status, including emoji states, IDs, and timestamps.
 *   **Work Session Management Protocol (`WSMP`):** Reads `ROADMAP_TASKS.md` during the `RWS` fallback logic to determine the next task based on rank (` • [ rnk:X ]`) and status emoji priority.
-*   **Task Tracking Protocol:** Responsible for updating the status emojis and timestamps in `ROADMAP_TASKS.md` as tasks progress.
+*   **Task Tracking Protocol:** Responsible for updating the status emojis, IDs, and timestamps in `ROADMAP_TASKS.md` as tasks progress.
 *   **`generate-todotxt.js` Script:** Consumes `ROADMAP_TASKS.md`, produces `todotasks.txt`.
 *   **Automation (Optional):**
     *   **Git Hooks (`lint-staged` in `package.json`):** Can be configured to run `generate-todotxt.js` automatically when `ROADMAP_TASKS.md` is committed, ensuring `todotasks.txt` stays in sync (requires `LIST_GENERATION = GENERATE_LIST.GIT` in script).
@@ -155,4 +195,4 @@ x @completed Initial setup complete - src:+Task1:MajorFeature_Subtask1.1:CoreLog
 *   **ID Synchronization:** Enhance the script and roadmap syntax to robustly handle explicit Task IDs (e.g., `[ T-123 ]`) present in the roadmap, ensuring they are consistently reflected or used for linking within `todotasks.txt` or other system components.
 *   **Error Handling:** Improve script robustness with more specific error messages and potentially options to halt generation on critical syntax errors.
 
-```markdown
+```

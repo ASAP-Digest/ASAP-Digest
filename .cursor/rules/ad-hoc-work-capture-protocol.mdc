@@ -3,7 +3,7 @@ description: Defines the process for detecting, capturing, and preserving ad hoc
 globs: 
 alwaysApply: false
 ---
-# Ad Hoc Work Capture Protocol (AWCP) v1.0
+# Ad Hoc Work Capture Protocol (AWCP) v1.1
 
 ## 1. Purpose
 
@@ -62,7 +62,32 @@ This protocol defines the process for **detecting, capturing, and preserving** w
             *   Execute chosen action, updating Server Memory and potentially `md-docs/ROADMAP_TASKS.md`. Perform State Synchronization Verification if roadmap is touched.
 5.  **Continue Original Flow:** After handling ad hoc capture/consolidation, resume the execution of the original triggering command/protocol.
 
-## 5. Server Memory Entities
+## 5. Local File History & Ignore Pattern Integration (v1.1+)
+
+1. **On each protocol transition** (`UM`, `SC`, `IAW`, `RWS`, etc.):
+    - **Scan local file history** (e.g., VSCode Timeline or local history directory) for changes since the last formal save point.
+    - **For each changed file:**
+        - **Exclude files** matching `.gitignore` or `.cursorignore` patterns.
+        - **If the change is significant** (per `significanceThreshold` in config), create or update an `AdHocSavePoint` entity in Server Memory.
+        - **Attach metadata:** file path, timestamp, change summary, and source (local history).
+2. **On next transition:**
+    - **Prompt the user** to consolidate, merge, or ignore the ad hoc work, as per standard AWCP flow.
+3. **Rationale:**
+    - This ensures that *all* significant work—regardless of how it was performed—is captured and can be consolidated into the formal task system.
+    - Filtering with `.gitignore` and `.cursorignore` prevents noise from irrelevant files.
+4. **References:**
+    - [VSCode Local History & Timeline Feature (Stack Overflow)](mdc:https:/stackoverflow.com/questions/46446901/how-can-i-see-local-history-changes-in-visual-studio-code)
+    - [VSCode Local History Guide (bobbyhadz.com)](mdc:https:/bobbyhadz.com/blog/view-vscode-local-history)
+
+### 5.1 Command-Line Environment Considerations
+
+-   **Primary Implementation:** The preferred implementation relies on editor APIs (e.g., VSCode, Cursor) to access local file history and potentially detect unsaved changes via workspace events.
+-   **Limitation:** In environments **without** access to editor APIs (e.g., pure command-line execution), this protocol **cannot capture unsaved work** residing only in editor memory buffers.
+-   **CLI Workflow:**
+    -   The system will still capture all **saved** changes (staged, unstaged, uncommitted) on disk, respecting ignore patterns.
+    -   **User Action Required (CLI):** In CLI-only environments, users **SHOULD** be prompted to save all open files before executing key protocol transitions (`UM`, `SC`, etc.) to maximize the capture of recent work into the `AdHocSavePoint` system.
+
+## 6. Server Memory Entities
 
 -   **`AdHocSavePoint`:** (Created by silent auto-save)
     *   `name`: String (ID, e.g., `AH_SavePoint_[Timestamp]`)
@@ -83,7 +108,7 @@ This protocol defines the process for **detecting, capturing, and preserving** w
         *   `roadmapActionTaken`: String (e.g., `ignore`, `subtask:T-123`, `newtask:Features`)
     *   `relations`: Links to entities captured from the source save points.
 
-## 6. Configuration Reference
+## 7. Configuration Reference
 
 -   This protocol's operational behavior (auto-save, significance level) is configured within the `protocolSettings.AWCP` section of `.cursor/veridx/veridx-config.json`.
 -   Notification behavior for events published by this protocol (`AWCP_AutoSavePointCreated`, `AWCP_ConsolidationPromptRequired`) is configured within the `eventNotifications` section of `.cursor/veridx/veridx-config.json` and handled by the VEMNP framework.
