@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Universal Error Resolution Protocol (UERP) v2.1
+# Universal Error Resolution Protocol (UERP) v2.2
+
+*(Self-correction: v2.1 - Added Error entity creation/linking; v2.2 - Mandated logging resolution reasoning)*
 
 ## 0. Protocol Integration Layer
 ```
@@ -33,7 +35,12 @@ B. Error Classification Matrix
 │ Route Error      │ server-route   │ Routing System    │
 │ Auth Error       │ better-auth    │ Auth System       │
 │ DB Error         │ wp-class-org   │ Database System   │
+│ Dependency Error │ comp-dep-usage │ Build/Runtime     │
+│ Style Error      │ strict-visual  │ Build/Runtime     │
+│ State Sync Error │ mem-maint/CPCV │ State Management  │
+│ Code Removal Err │ crit-code-remov│ VCS/Edit          │
 └──────────────────┴────────────────┴────────────────────┘
+*(Self-correction: Added more error types)*
 
 Example:
 Error: "Icon not exported from lucide-compat.js"
@@ -58,7 +65,12 @@ B. Protocol Selection Matrix
 │ Components      │ add-shadcn       │ ui-check        │
 │ Routes          │ server-route     │ status-check    │
 │ Database        │ wp-class-org     │ server-memory   │
+│ Authentication  │ better-auth-*    │ server-memory   │
+│ Dependencies    │ comp-dep-usage   │ tooling-setup   │
+│ Visual Style    │ strict-visual    │ visual-style-enf│
+│ State Sync      │ mem-maint/CPCV   │ task-tracking   │
 └──────────────────┴───────────────────┴──────────────────┘
+*(Self-correction: Added more components)*
 
 Example:
 Component: Icon System
@@ -77,67 +89,75 @@ A. Investigation Framework [Meta Protocol 3.A]
    │ codebase   │ Semantic search│ All           │
    │ read_file  │ File content   │ All           │
    │ ui-check   │ Visual verify  │ UI Components │
+   │ run_term   │ Env checks     │ All           │
    └────────────┴────────────────┴───────────────┘
+   *(Self-correction: Added run_terminal_cmd)*
 
 B. Error Tracing Template
-   1. Entry Point Analysis
-   2. Error Point Location
-   3. Root Cause Identification
-   4. Protocol Compliance Check
+   1. Entry Point Analysis (Where did the process start?)
+   2. Error Point Location (Exact file, line, command, tool call where error occurred)
+   3. Root Cause Identification (What specific condition/conflict caused the error?)
+   4. Protocol Compliance Check (Did the preceding steps violate any relevant protocols?)
 
 Example:
 Error: Missing Icon Export
 1. Entry: profile/+page.svelte imports Shield
-2. Error: lucide-compat.js missing export
-3. Root: Icon not added to compatibility layer
-4. Protocol: Follow icon-management.mdc steps
+2. Error: Build fails, referencing Shield import from lucide-compat.js
+3. Root: Shield icon not added to lucide-compat.js export list.
+4. Protocol: Violation of icon-management.mdc Step 2.
 ```
 
 ## 4. Resolution Implementation
 ```
 A. Solution Framework [Rule Execution Protocol 4.A]
-   1. Protocol-Specific Steps
-   2. Cross-Protocol Requirements
-   3. Integration Points
-   4. Verification Requirements
+   1. Protocol-Specific Steps (Identify corrective steps from the relevant protocol identified in Step 2).
+   2. Cross-Protocol Requirements (Consider dependencies, e.g., fixing code might require updating docs).
+   3. Integration Points (Where does the fix need to be applied?).
+   4. Verification Requirements (How will the fix be verified? e.g., rerun build, re-execute command, UI check).
    5. **Code Removal Check:** If the proposed resolution involves deleting existing code, HALT and execute `critical-code-removal-protocol.mdc` BEFORE proceeding with the removal steps within this protocol.
 
 B. Implementation Matrix
 ┌──────────────┬─────────────────┬────────────────┐
 │ Step         │ Protocol        │ Verification   │
 ├──────────────┼─────────────────┼────────────────┤
-│ Add Icon     │ icon-management │ ui-check       │
-│ Update Route │ server-route    │ status-check   │
-│ Fix Auth     │ better-auth     │ server-memory  │
+│ Add Icon     │ icon-management │ ui-check, build│
+│ Update Route │ server-route    │ manual test    │
+│ Fix Auth Cfg │ better-auth-cfg │ server start   │
+│ Fix Code Dep │ comp-dep-usage  │ build, lint    │
+│ Fix Style    │ strict-visual   │ lint, ui-check │
 └──────────────┴─────────────────┴────────────────┘
+*(Self-correction: Expanded examples)*
 
 Example:
 Task: Add Missing Icon
-1. Follow icon-management.mdc steps
-2. Verify with ui-check protocol
-3. Update server-memory
+1. Follow icon-management.mdc Step 2 (add export).
+2. Verify build passes.
+3. Verify with ui-check protocol.
+4. Update server-memory (Error entity to 'resolved').
 ```
 
 ## 5. Verification Process
 ```
 A. Multi-Protocol Verification
-   1. Primary Protocol Checks
-   2. Support Protocol Checks
-   3. Integration Point Verification
-   4. System-Wide Validation
+   1. Primary Protocol Checks (Did the fix adhere to the relevant protocol?)
+   2. Support Protocol Checks (e.g., did UI check pass after fixing visual style?)
+   3. Integration Point Verification (e.g., did server start after fixing auth config?)
+   4. System-Wide Validation (e.g., full build, lint checks, basic functionality test).
 
 B. Verification Checklist
-   □ Primary protocol requirements met
-   □ Support protocol requirements met
+   □ Primary protocol requirements met by the fix
+   □ Support protocol requirements met (if applicable)
    □ UI-check passed (if applicable)
-   □ Server-memory updated
-   □ Status-check completed
+   □ Server-memory updated (Error resolved, Task unblocked if needed)
+   □ Status-check completed (reflects unblocked state if applicable)
+   □ Build/Lint checks pass
 
 Example:
 Icon Addition Verification:
-1. icon-management.mdc requirements ✓
+1. icon-management.mdc requirements met ✓
 2. ui-check visual verification ✓
-3. server-memory update ✓
+3. Server-memory updated (Error resolved) ✓
+4. Build passes ✓
 ```
 
 ## 6. Documentation & Memory Update
@@ -148,18 +168,18 @@ A. Documentation Requirements [Meta Protocol 6.A]
    3. Update protocol documentation if the error revealed a flaw.
    4. Cross-reference updates.
 
-B. Server Memory Update [server-memory-rules.mdc]
+B. Server Memory Update [server-memory-rules.mdc v2.2+]
    1. **Create Error Entity:**
-      *   MUST create an `Error` entity in Server Memory (`mcp_Server_Memory_create_entities`).
+      *   MUST create an `Error` entity in Server Memory (`mcp_Server_Memory_create_entities`) upon initiating UERP if one doesn't already exist for this specific error instance.
       *   Include: Error Type (from classification), Timestamp, Detailed Description, Status (`active` initially).
-      *   Optionally include: Impact assessment, potential resolution steps discovered.
+      *   Optionally include: Impact assessment, potential resolution steps discovered during investigation.
    2. **Link Error to Task (If Applicable):**
       *   If the error directly impacts or blocks a specific `Task` entity:
          *   MUST create a `blocks` relationship from the newly created `Error` entity to the `Task` entity (`mcp_Server_Memory_create_relations`).
          *   Consider updating the `Task` entity status to `BLOCKED` in Memory and `❌` in `md-docs/ROADMAP_TASKS.md` via the Task Tracking Protocol (this might depend on the error's severity and expected resolution time).
    3. **Document Resolution:**
-      *   Once the error is resolved, update the `Error` entity status to `resolved` (`mcp_Server_Memory_add_observations`).
-      *   Add observations detailing the resolution steps taken.
+      *   Once the error is resolved (verified in Step 5), update the `Error` entity status to `resolved` (`mcp_Server_Memory_add_observations`).
+      *   **MUST add observations detailing the resolution steps taken AND the reasoning behind choosing that resolution.** (Ensures "showing work").
       *   If a task was blocked, update its status back to `ACTIVE` (`🔄`) or `PENDING_TESTING` (`🔬`) as appropriate, and remove the `blocks` relationship (`mcp_Server_Memory_delete_relations`).
    4. **Code Removal Check:** If resolution involved code removal, ensure the `critical-code-removal-protocol.mdc` was followed and document this in the `Error` entity observations.
 ```
@@ -167,10 +187,10 @@ B. Server Memory Update [server-memory-rules.mdc]
 ## 7. Protocol Enhancement
 ```
 A. Protocol Improvement Framework
-   1. Identify protocol gaps
-   2. Propose enhancements
-   3. Update integration points
-   4. Document changes
+   1. Identify protocol gaps revealed by the error.
+   2. Propose enhancements to the relevant protocol(s).
+   3. Update integration points if necessary.
+   4. Document changes.
 
 B. Enhancement Matrix
 ┌──────────────┬────────────────┬─────────────┐
@@ -179,35 +199,36 @@ B. Enhancement Matrix
 │ UERP        │ New error type │ Medium      │
 │ icon-mgmt   │ New pattern    │ High        │
 │ ui-check    │ New test case  │ Low         │
+│ crit-code-remov│ Add check     │ Medium      │
 └──────────────┴────────────────┴─────────────┘
+*(Self-correction: Expanded example)*
 
 Example:
 Enhancement: Add new error type to UERP
-1. Document new error pattern
-2. Update protocol integration
-3. Add verification steps
+1. Document new error pattern in UERP classification matrix.
+2. Update relevant protocol selection matrix if needed.
+3. Add specific verification steps if required.
 ```
 
 ## Usage Instructions:
 
 1. **Protocol Selection:**
-   - Start with Software Development Meta Protocol
-   - Identify relevant component protocols
-   - Follow Rule Execution Protocol for implementation
+   - Start with UERP upon error detection.
+   - Identify relevant component protocols using classification/selection matrices.
+   - Follow Rule Execution Protocol for implementing UERP steps.
 
 2. **Integration Points:**
-   - Use ui-check.mdc for visual verification
-   - Use server-memory-rules.mdc for state updates
-   - Use status-check.mdc for system status
+   - Use ui-check.mdc for visual verification.
+   - Use server-memory-rules.mdc for state updates (Error entity, Task blocking/unblocking).
+   - Use status-check.mdc for verifying system status post-resolution.
 
 3. **Documentation Requirements:**
-   - Update all relevant documentation
-   - Maintain cross-references
-   - Keep server memory current
+   - **MUST** create/update `Error` entity in Server Memory, including resolution reasoning.
+   - Update all other relevant documentation (code comments, protocols).
+   - Maintain cross-references.
 
 4. **Verification Requirements:**
-   - Follow all protocol-specific checks
-   - Verify integration points
-   - Update server memory
-   - Complete status checks
-
+   - Follow all protocol-specific checks for the fix.
+   - Verify integration points (build, server start, etc.).
+   - Update server memory (Error status resolved).
+   - Complete status checks post-resolution.

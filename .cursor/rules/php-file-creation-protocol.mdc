@@ -3,14 +3,16 @@ description:
 globs: 
 alwaysApply: true
 ---
-# PHP File Creation Protocol v1.1
+# PHP File Creation Protocol v1.2
+
+*(Self-correction: v1.1 - Adjusted timestamp format; v1.2 - Added pre-check for class name)*
 
 1. **File Header Structure**
 ```php
 <?php
 /**
  * [File Title/Purpose]
- * 
+ *
  * @package ASAPDigest_Core
  * @created [MM.DD.YY | HH:MM AM/PM PDT] // Use format-time.mdc v1.1+ logic
  * @file-marker [ClassName or Purpose]
@@ -53,11 +55,12 @@ class Class_Name {
 
 4. **File Creation Steps**
    - Check current location against `@PE - CTXT`
-   - Verify file doesn't exist using `ls -la`
-   - Create file using `touch [filename]`
-   - Add standard header structure
-   - Add class implementation
-   - Add proper docblocks for all methods
+   - **Pre-Check:** Verify proposed class name doesn't conflict with existing classes using `grep_search`.
+   - Verify file doesn't exist using `ls -la [filename]`.
+   - Create file using `touch [filename]`.
+   - Add standard header structure.
+   - Add class implementation.
+   - Add proper docblocks for all methods.
 
 5. **Namespace Rules**
    - Main plugin classes: `namespace ASAPDigest\Core;`
@@ -91,17 +94,17 @@ use function wp_localize_script;
 ```
 
 9. **Error Prevention**
-   - Check for duplicate class names
-   - Verify namespace matches file location
-   - Ensure all dependencies are properly imported
-   - Validate WordPress coding standards compliance
+   - Check for duplicate class names (See Step 4 Pre-Check).
+   - Verify namespace matches file location.
+   - Ensure all dependencies are properly imported.
+   - Validate WordPress coding standards compliance.
 
 10. **Example Implementation**
 ```php
 <?php
 /**
  * Example Class Implementation
- * 
+ *
  * @package ASAPDigest_Core
  * @created 03.31.25 | 03:34 PM PDT // Formatted timestamp
  * @file-marker Example_Class
@@ -159,3 +162,4 @@ class Example_Class {
    - [ ] WordPress coding standards followed
    - [ ] Security measures implemented
    - [ ] Error handling included
+   - [ ] Class name conflict pre-check performed?

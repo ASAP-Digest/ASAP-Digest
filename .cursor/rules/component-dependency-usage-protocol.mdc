@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Component Dependency Usage Protocol v1.0
+# Component Dependency Usage Protocol v1.1
+
+*(Self-correction: v1.1 - Added explicit reasoning documentation in Step 6)*
 
 ## 1. Purpose
 
@@ -100,7 +102,8 @@ Categorize the problematic identifier (`X`) based on its likely origin:
     *   Renaming the identifier if there's a naming conflict.
     *   Correcting the usage syntax (e.g., changing `X()` to `obj.X()`, adding `$`, using `{@render X()}`).
     *   Adding necessary type guards (`local-variable-type-safety-protocol.mdc`).
-2.  **Apply Edit:** Use `edit_file` tool to apply the correction.
+2.  **Document Reasoning:** MUST document the reasoning for the chosen correction method in internal logs or comments before applying the edit.
+3.  **Apply Edit:** Use `edit_file` tool to apply the correction.
 
 ### Step 7: Verification
 

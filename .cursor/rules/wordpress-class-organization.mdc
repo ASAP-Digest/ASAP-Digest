@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# WordPress Class Organization v1.1
+# WordPress Class Organization v1.2
 
-*(Self-correction: Added v1.1, updated Section 5 with global namespace instantiation rules)*
+*(Self-correction: Added v1.1, updated Section 5 with global namespace instantiation rules; v1.2 Added reasoning logging for moves)*
 
 Ensures consistent class organization, prevents namespace conflicts, and maintains clean file structure in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, and namespace mismatches that can cause fatal errors.
 
@@ -114,17 +114,18 @@ new \ASAPDigest\API\ASAP_Digest_REST_Auth();
 ## 6. Moving Classes
 
 When moving a class file:
-1.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
-2.  Update all `require_once` or `include_once` paths pointing to the old location.
-3.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
-4.  Update all `use` statements in other files that referenced the class's old namespace.
-5.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
-6.  Document the change in `CHANGELOG.md`.
+1.  **Log Reason:** MUST document the reason for moving the class in internal logs or commit message.
+2.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
+3.  Update all `require_once` or `include_once` paths pointing to the old location.
+4.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
+5.  Update all `use` statements in other files that referenced the class's old namespace.
+6.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
+7.  Document the change (including reason) in `CHANGELOG.md`.
 
 ```markdown
 ## [1.0.1] - 2024-03-31
 ### Changed
-- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/`.
+- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/` to better align with responsibility.
 - Updated namespace from `ASAPDigest\Core` to `ASAPDigest\Admin`.
 ```
 

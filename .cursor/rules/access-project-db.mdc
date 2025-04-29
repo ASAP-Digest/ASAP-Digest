@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Access Project DB via Unix Socket (v4 - Enforced Verification & Substitution)
+# Access Project DB via Unix Socket (v4.1 - Explicit Halt on VS Failure)
+
+*(Self-correction: v4.1 - Added explicit HALT on VS failure as an escape hatch)*
 
 **Core Principle:** Database connections via terminal MUST use the Unix socket specified in `@PE - CTXT` for reliability within the Local by Flywheel environment. Avoid using host/port connections.
 
@@ -20,7 +22,7 @@ alwaysApply: true
 **Pre-Connection Verification (MUST BE PERFORMED BEFORE STEP 5/6 ABOVE):**
 1.  **Verify Extracted Path:** After extracting the socket path in Step 2, immediately propose and execute the `VS` command template (`ls -la [EXTRACTED_SOCKET_PATH]`).
 2.  **Report Verification Outcome:** Explicitly state the result of the `ls -la` command in your response. E.g., "Verified extracted socket path '[path]' exists." or "Verification FAILED: Extracted socket path '[path]' does not exist ('No such file or directory')."
-3.  **Halt on Failure:** If the `ls -la` command fails (returns "No such file or directory"), **MUST HALT** the protocol execution. Report the failure and request the user to confirm the correct socket path from the LocalWP UI. Do **NOT** proceed to propose connection commands (`BC`, `DDA`, `EQ`, etc.) with the failed path.
+3.  **Halt on Failure:** If the `ls -la` command fails (returns "No such file or directory"), **MUST HALT** the protocol execution. Report the failure and request the user to confirm the correct socket path from the LocalWP UI. **DO NOT propose connection commands (`BC`, `DDA`, `EQ`, etc.) with the failed path. DO NOT propose alternative connection methods unless explicitly instructed by the user.**
 
 **Command Aliases & Templates (Placeholders MUST be replaced with actual, verified data from `@PE - CTXT` before proposing connection commands):**
 

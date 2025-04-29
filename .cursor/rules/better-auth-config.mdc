@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Better Auth Configuration Protocol v1.1
+# Better Auth Configuration Protocol v1.2
 
-*(Self-correction: Incremented version, added clarification on adapter usage)*
+*(Self-correction: Incremented version, added clarification on adapter usage, added Error Handling section)*
 
 ## 1. Purpose
 
@@ -13,7 +13,7 @@ This protocol defines the standard structure for the configuration object passed
 
 ## 2. Core Principles
 
--   **Kysely Dialect Integration:** Utilize the `database` key at the top level to provide the Kysely `dialect` instance and explicit `type` (e.g., `"mysql"`). This aligns with standard Better Auth documentation ([better-auth.com/docs/concepts/database](https://www.better-auth.com/docs/concepts/database)).
+-   **Kysely Dialect Integration:** Utilize the `database` key at the top level to provide the Kysely `dialect` instance and explicit `type` (e.g., `"mysql"`). This aligns with standauth.com/docs/concepts/database](https://www.better-auth.com/docs/concepts/database)).
 -   **Explicit Adapter for Reliability (Project Specific Requirement):** **Crucially**, due to observed issues where Better Auth's internal Kysely session creation logic did *not* generate the required UUID for the `ba_sessions.id` field during the WP sync token flow (leading to "Field 'id' doesn't have a default value" errors), this project **MUST ALSO** provide the full custom `adapter` object at the top level. This ensures our custom `createSessionFn` (which includes `crypto.randomUUID()`) is used, overriding any potentially incomplete internal logic for that specific operation.
 -   **Configuration Precedence:** When both `database: { dialect, type }` and `adapter: { ...customFns }` are provided, Better Auth appears to prioritize the explicitly provided functions in the `adapter` object for operations they cover. The `dialect` likely handles operations *not* explicitly defined in the custom adapter.
 -   **Valid Top-Level Keys:** Only recognized keys (`secret`, `database`, `adapter`, `sessionCookieName`, `sessionExpiresIn`, `after`, `emailAndPassword`, `socialProviders`, etc.) should be used at the top level.
@@ -25,21 +25,21 @@ The object passed to `betterAuth()` MUST follow this structure for this project:
 
 ````javascript
 import { betterAuth } from 'better-auth';
-import { createPool } from 'mysql2/promise'; 
-import { MysqlDialect } from 'kysely';      
-import { 
+import { createPool } from 'mysql2/promise';
+import { MysqlDialect } from 'kysely';
+import {
     // Import your *full* custom adapter functions here
-    getUserByEmailFn, 
-    getUserByIdFn, 
-    getSessionByTokenFn, 
+    getUserByEmailFn,
+    getUserByIdFn,
+    getSessionByTokenFn,
     createSessionFn, // Especially this one with UUID generation
     deleteSessionFn,
-    getUserByWpIdFn, 
-    createUserFn 
-} from './path/to/adapter-functions'; 
-import { 
-    onUserCreationHook, 
-    onSessionCreationHook 
+    getUserByWpIdFn,
+    createUserFn
+} from './path/to/adapter-functions';
+import {
+    onUserCreationHook,
+    onSessionCreationHook
 } from './path/to/hooks'; // Example import for optional hooks
 
 // Assume authSecret and DB connection details are defined elsewhere
@@ -48,7 +48,7 @@ const dbConfig = { /* ... your db connection details ... */ };
 
 // Create the Kysely Dialect
 const dialect = new MysqlDialect({
-    pool: createPool(dbConfig) 
+    pool: createPool(dbConfig)
 });
 
 // Define the adapter object using imported functions
@@ -76,13 +76,13 @@ export const auth = betterAuth({
     },
 
     // --- Custom Adapter Configuration (OVERRIDES INTERNAL LOGIC) ---
-    // MUST be provided to ensure our custom functions (esp. createSessionFn 
+    // MUST be provided to ensure our custom functions (esp. createSessionFn
     // with UUID generation) are used, overriding internal Kysely logic where needed.
-    adapter: adapter, 
+    adapter: adapter,
 
     // --- Optional Lifecycle Hooks ---
     after: {
-        onUserCreation: onUserCreationHook, 
+        onUserCreation: onUserCreationHook,
         onSessionCreation: onSessionCreationHook,
     }
 });
@@ -111,4 +111,8 @@ When configuring `betterAuth` for this project:
 -   [ ] Does the configuration pass linter checks without type errors related to `BetterAuthOptions`?
 -   [ ] Does the server start *without* the "No database configuration provided. Using memory adapter..." warning?
 -   [ ] Does the WP sync token -> session creation flow complete *without* the "Field 'id' doesn't have a default value" error?
+
+## 6. Error Handling
+-   If server startup fails due to configuration errors related to `betterAuth`, the `universal-error-resolution-protocol.mdc` MUST be triggered.
+-   During UERP execution for `betterAuth` config errors, the **Verification Checklist (Section 5)** MUST be reviewed to identify the specific misconfiguration.
 

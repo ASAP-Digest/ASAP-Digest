@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Server Memory & State Synchronization Protocol v2.1
+# Server Memory & State Synchronization Protocol v2.2
 
-*(Self-correction: Updated version and integration points, added Error/Blocked state relationship)*
+*(Self-correction: Updated version and integration points, added Error/Blocked state relationship, mandated trigger reason in observations)*
 
 ## 1. Purpose
 This protocol defines the rules for maintaining the integrity and consistency of the project's operational state, primarily managed through Server Memory entities. It governs how project events, task statuses, work sessions, and status checks are recorded and synchronized with key documentation like `ROADMAP_TASKS.md`. It ensures a reliable "single source of truth" for ongoing work and project history, including the handling of blocking errors.
@@ -20,15 +20,15 @@ This protocol is tightly integrated with several others, forming the backbone of
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │ // Overall Guidance
 │ 2. Rule Execution Protocol              │ // How rules are applied
-│ 3. Status Check Protocol (v2.1+)        │ // Input source & entity creation
-│ 4. Work Session Activation Proto v2.5+  │ // Defines trigger commands (Updated)
-│ 5. Work Session Management Proto (v2.9+)│ // Manages session entities & state (Updated)
+│ 3. Status Check Protocol (v2.4+)        │ // Input source & entity creation (Updated)
+│ 4. Work Session Activation Proto v2.9+  │ // Defines trigger commands (Updated)
+│ 5. Work Session Management Proto (v2.13+)│ // Manages session entities & state (Updated)
 │ 6. Task Tracking Protocol               │ // Roadmap updates & task lifecycle
-│ 7. Memory Maintenance Protocol (This)   │ // Entity/Relation rules
+│ 7. Memory Maintenance Protocol (This)   │ // Entity/Relation rules (v2.2)
 │ 8. Cross-Protocol Comms & Verification  │ // Ensures consistency
 │ 9. Universal Error Resolution Protocol  │ // Error entity handling
 │ 10. Audit Trail System                  │ // Records state changes
-│ 11. Testing & Verification Protocol v1.3+│ // Handles task verification state
+│ 11. Testing & Verification Protocol v1.4+│ // Handles task verification state (Updated)
 └─────────────────────────────────────────┘
 ````
 
@@ -108,13 +108,13 @@ Server Memory `Task` entity status MUST align with the emojis used in `ROADMAP_T
 *Note: A task might be marked `BLOCKED` (`❌`) in the roadmap while its underlying Memory status is still technically `PENDING` or `ACTIVE`, but prevented from progressing due to the linked `Error`.*
 
 ### 5.2. Update Process (Example: Task Completion via EWS)
-*(No change needed)*
+*(Self-correction: Added trigger reason requirement)*
 1.  **Trigger:** `EWS COMPLETED` command issued (typically after `AC` in TVP).
-2.  **Timestamp:** Get current time (`mcp_mcp_datetime_get_datetime`, format "MM.DD.YY | HH:MM AM/PM TimeZone" for roadmap, `log_compact` for entity names).
+2.  **Timestamp:** Get current time (`mcp_mcp-datetime_get_datetime`, format "MM.DD.YY | HH:MM AM/PM TimeZone" for roadmap, `log_compact` for entity names).
 3.  **Memory Update (Task):**
     -   Find relevant `Task` entity linked to the active `WorkSession`.
     -   Update its status to `COMPLETED`.
-    -   Add observation: `Completed via WorkSession [SessionID] at [Timestamp]`.
+    -   Add observation: **"Status updated to COMPLETED. Trigger: EWS COMPLETED command following AC for VerificationRequest [VR_ID]. Session: [SessionID] at [Timestamp]."** (MUST include trigger reason).
     -   Update `lastUpdateTs` field.
 4.  **Memory Update (WorkSession):**
     -   Find active `WorkSession` entity.
@@ -147,17 +147,36 @@ Maintain explicit relationships between entities in Server Memory for context.
 ````
 
 ## 7. Implementation Examples (Conceptual)
-*(Self-correction: Added Error logging example)*
+*(Self-correction: Added Error logging example and trigger reason in observations)*
 
 ````javascript
-// Example 1: Begin Work Session (BWS) Memory Operations (Unchanged)
-async function handleBWS(triggeringEvent, sessionType, precedingStatusCheckId) {
-  // ... (logic from v2.0) ...
+// Example 1: Begin Work Session (BWS) Memory Operations
+async function handleBWS(triggeringEvent, sessionType, precedingStatusCheckId, targetTask) {
+  const startTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
+  const logTs = await mcp_mcp_datetime_get_datetime({ format: "log_compact" });
+  const sessionId = `WS_${sessionType}_${logTs}`;
+  const triggerReason = triggeringEvent === 'RWS' ? 'RWS Fallback' : 'Manual BWS';
+
+  await mcp_Server_Memory_create_entities({
+    entities: [{
+      name: sessionId,
+      entityType: "WorkSession",
+      observations: [
+        `Session started at ${startTime}`,
+        `Type: ${sessionType}`,
+        `Target Task: ${targetTask.id}`,
+        `Trigger: ${triggerReason}`,
+        `Status: ACTIVE`
+      ]
+    }]
+  });
+  // ... link to StatusCheck if applicable ...
+  // ... update Task status if needed, adding observation with trigger reason ...
 }
 
 // Example 2: Save Work Session (SWS) Memory Operations (Unchanged)
 async function handleSWS(activeSessionId, reason) {
-  // ... (logic from v2.0) ...
+  // ... (logic from v2.1) ...
 }
 
 // Example 3: Logging a Blocking Error
@@ -188,11 +207,27 @@ async function logBlockingError(errorType, description, impactedTaskId) {
   }
   console.log(`Logged blocking error ${errorName}, linked to task ${impactedTaskId}`);
 }
+
+// Example 4: Updating Task Status Observation
+async function updateTaskStatus(taskId, newStatus, triggerReason) {
+    const updateTime = await mcp_mcp_datetime_get_datetime({ format: "datetime" });
+    await mcp_Server_Memory_add_observations({
+        observations: [{
+            entityName: taskId,
+            contents: [
+                `Status updated to ${newStatus} at ${updateTime}. Trigger: ${triggerReason}.` // MUST include trigger reason
+            ]
+        }]
+    });
+    // ... also update the 'status' field if it exists as a direct field ...
+}
 ````
 
 ## 8. Usage Instructions & Verification
+*(Self-correction: Added observation requirement)*
 -   **Consistency:** ALWAYS ensure Server Memory state, `ROADMAP_TASKS.md` emojis/timestamps, and actual work status are aligned.
 -   **Triggers:** Adhere strictly to the mandatory update triggers.
+-   **Observations:** When updating entities or adding new ones, MUST add observations detailing the reason/trigger for the update (e.g., "Trigger: EWS TESTING command", "Trigger: UERP resolution step").
 -   **Relationships:** Create relations between entities (especially `Error blocks Task`) to maintain context and support RWS fallback logic.
 -   **Verification:** Regularly use `Status Check` (SC) and Cross-Protocol Verification tools to validate state consistency.
 -   **Roadmap Parsing:** Ensure any scripts updating `ROADMAP_TASKS.md` use logic consistent with how `Status Check` parses it.

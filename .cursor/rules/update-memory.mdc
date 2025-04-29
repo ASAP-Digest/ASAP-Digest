@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Update Memory & System State Protocol v2.1
+# Update Memory & System State Protocol v2.2
+
+*(Self-correction: v2.1 - Added State Sync Verification; v2.2 - Mandated trigger reason logging)*
 
 ## 1. Purpose
 This protocol defines the standard operating procedure for the "Update Memory" (`um`) alias. It serves as a crucial integration point following task completion or significant state changes, ensuring that Server Memory, relevant documentation, and overall system state remain consistent and synchronized. It integrates workflows from Task Tracking, Work Session Management, and Server Memory rules.
@@ -16,21 +18,24 @@ This protocol defines the standard operating procedure for the "Update Memory" (
 ## 3. Protocol Integration Layer
 This protocol orchestrates updates across multiple system components.
 
-````text
+```text
 ┌─────────────────────────────────────────┐
 │         Protocol Integration            │
 ├─────────────────────────────────────────┤
 │ 1. Software Development Meta Protocol   │ // Overall Guidance
 │ 2. Rule Execution Protocol              │ // Rule Application
-│ 3. Server Memory Rules (v2.0)           │ // Defines Entities/Relations
-│ 4. Work Session Mgmt Proto (v2.0)       │ // Source of Session Context
+│ 3. Server Memory Rules (v2.2+)          │ // Defines Entities/Relations (Updated)
+│ 4. Work Session Mgmt Proto (v2.13+)     │ // Source of Session Context (Updated)
 │ 5. Task Tracking Protocol               │ // Roadmap Update Logic (Implicit)
-│ 6. Status Check Protocol (v2.0)         │ // Provides Context Baseline
+│ 6. Status Check Protocol (v2.4+)        │ // Provides Context Baseline (Updated)
 │ 7. Format Time Protocol                 │ // Timestamp Formatting Standard
 │ 8. Cross-Protocol Comms & Verification   │ // Ensures Consistency
 │ 9. Audit Trail System                   │ // Records State Changes
+│ 10. State Synchronization Proto v1.0+   │ // MANDATORY check (New)
+│ 11. Update Memory Proto (This v2.2)     │ // Self-reference
 └─────────────────────────────────────────┘
-````
+```
+*(Self-correction: Updated integrated protocol versions)*
 
 ## 4. Core Actions & Sequence
 Executing `um` triggers the following sequence:
@@ -43,7 +48,7 @@ Executing `um` triggers the following sequence:
     -   MUST update Server Memory according to `server-memory-rules.mdc`.
     -   This typically involves:
         -   Updating the status of the relevant `Task` entity (e.g., to `COMPLETED` or another appropriate state).
-        -   Adding observations to the `Task` entity detailing the update and timestamp.
+        -   **Adding observations to the `Task` entity detailing the update, timestamp, AND the specific trigger/reason for the update (e.g., "Task status updated to COMPLETED following AC command for VerificationRequest XYZ").** (MANDATORY - Show Work)
         -   Creating/updating `Code`, `Build`, or `Error` entities if relevant to the completed work.
         -   Creating necessary relations (e.g., `Task` `completedIn` `WorkSession`).
     -   Reference the active `WorkSession` entity (from WSMP context) when creating relations.
@@ -68,7 +73,7 @@ Executing `um` triggers the following sequence:
 
 ## 5. Example Flow (Conceptual)
 
-````bash
+```bash
 # --- (Inside an active Work Session managed by WSMP) ---
 
 # User completes coding for Task 'Create login page' (ID: AUTH-1)
@@ -76,7 +81,7 @@ Executing `um` triggers the following sequence:
 # User triggers the update memory alias
 um
 
-# --- (Agent Executes Protocol 'update-memory.mdc v2.1') ---
+# --- (Agent Executes Protocol 'update-memory.mdc v2.2') ---
 
 # 1. Agent gets timestamp -> "04.23.25"
 #    (Using mcp-datetime_get_datetime with 'iso' format + format-time.mdc v1.1+ string formatting logic)
@@ -84,7 +89,7 @@ um
 # 2. Agent updates Server Memory:
 #    - Finds Task entity 'AUTH-1'
 #    - Updates status to 'COMPLETED'
-#    - Adds observation: "Completed by Agent in Session WS_XYZ at 04.23.25"
+#    - Adds observation: "Status updated to COMPLETED at 04.23.25. Trigger: 'um' command after manual completion verification by user."
 #    - Creates relations: AUTH-1 completedIn WS_XYZ
 #    (Using mcp_Server_Memory_* tools according to server-memory-rules.mdc)
 
@@ -108,8 +113,4 @@ um
 # --- (Agent confirms completion of 'um' alias) ---
 
 # User can now optionally end the work session (EWS) or continue
-````
-
-        
-
-
+```
