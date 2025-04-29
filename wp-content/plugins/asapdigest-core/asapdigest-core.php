@@ -30,6 +30,8 @@ require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-contr
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php');
 // Include the REST Auth Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
+// Include the new SK User Sync Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-user-sync.php');
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
@@ -136,6 +138,12 @@ function asap_init_core() {
     
     // CORS and headers (priority 100+)
     add_action('rest_api_init', 'asap_add_cors_headers', 15);
+
+    // Register SK User Sync endpoint
+    add_action('rest_api_init', function() {
+        $sk_user_sync = new \ASAPDigest\Core\API\SK_User_Sync();
+        $sk_user_sync->register_routes();
+    });
 }
 
 // Initialize core functionality early
@@ -1254,6 +1262,11 @@ function asap_inject_sk_auth_bridge_script() {
 
             // Only try to postMessage if potentially in an iframe from the correct target
             if (window.parent && window.parent !== window.self) {
+                 // --- ADDED DEBUG LOG ---
+                 <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
+                 console.log('[WP Bridge Script] Attempting postMessage...');
+                 <?php endif; ?>
+                 // --- END ADDED DEBUG LOG ---
                 if (syncToken) {
                     <?php if (defined('WP_DEBUG') && WP_DEBUG): ?>
                     console.log('[WP Bridge Script] Sending wpAuthToken to parent');

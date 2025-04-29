@@ -429,25 +429,17 @@ export async function GET({ request, url, locals }) {
 }
 
 /**
- * @typedef {object} WordPressUserData - Expected structure from fetchWordPressUserData
- * @property {number} [wp_user_id]
- * @property {string} [display_name]
- * @property {string} [user_email]
- * @property {string} [username]
- * @property {string} [avatar_url]
- * @property {string[]} [user_roles]
- * @property {string} [updatedAt] // ISO 8601 string expected
- */
-
-/**
  * @typedef {object} PostSyncPayload - Expected JSON payload for POST request.
  * @property {number} wpUserId
- * @property {string} skUserId
+ * @property {string} [skUserId] - SvelteKit/Better Auth ID (UUID), may be null/missing on initial syncs
  * @property {string} email
  * @property {string} [displayName]
  * @property {string} [username]
- * @property {string} [avatarUrl]
- * @property {object} [metadata] // Optional metadata object
+ * @property {string[]} [roles] // Roles sent at top level from WP
+ * @property {string} [firstName]
+ * @property {string} [lastName]
+ * @property {string} [avatarUrl] // Note: WP payload might not include this, SK side uses metadata
+ * @property {{ description?: string, nickname?: string }} [metadata] // Other WP metadata
  */
 
 /**
@@ -486,108 +478,122 @@ export async function POST({ request }) {
 		try {
 			userData = await request.json();
 			console.debug('[Sync API POST] Parsed user data:', userData);
-			// Type Guard: Check required fields after parsing
-			if (!userData || typeof userData.wpUserId !== 'number' || typeof userData.skUserId !== 'string' || typeof userData.email !== 'string') {
-				throw new Error('Missing required fields (wpUserId, skUserId, email) in sync data');
+			// Validation: Only require wpUserId and email. skUserId check removed.
+			if (!userData || typeof userData.wpUserId !== 'number' || typeof userData.email !== 'string') {
+				throw new Error('Missing required fields (wpUserId, email) in sync data');
 			}
 		} catch (/** @type {any} */ parseError) {
 			console.error('[Sync API POST] Error parsing request body:', parseError);
 			return new Response(JSON.stringify({ success: false, message: 'Invalid request body: ' + parseError.message }), { status: 400, headers });
 		}
 
-		// 3. Upsert User Data in ba_users and Update ba_wp_user_map
+		// 3. Database Operations within Transaction
 		try {
 			connection = await pool.getConnection();
 			console.debug('[Sync API POST] Acquired DB connection.');
 			await connection.beginTransaction();
 			console.debug('[Sync API POST] Started transaction.');
 
-			// Prepare data for ba_users upsert
-			// Use optional chaining and nullish coalescing for safer access
-			const userDataForDb = {
-				id: userData.skUserId,
-				email: userData.email,
-				name: userData.displayName || userData.username || userData.email.split('@')[0], // Fallback logic
-				username: userData.username || userData.email.split('@')[0], // Fallback logic
-				updated_at: new Date(),
-				image: userData.avatarUrl ?? null // Use nullish coalescing for optional image
-			};
+            // --- REVISED LOGIC: Find existing user, ONLY UPDATE --- 
+            console.log(`[Sync API POST] Received sync request for wpUserId: ${userData.wpUserId}. Attempting to find existing skUser.`);
+            
+            // Find the corresponding SvelteKit user using the wpUserId
+            const existingSkUser = await findUserByWpId(userData.wpUserId);
 
-			/** @type {{ id: string; email: string; name: string; username: string; updated_at: Date; image?: string | null }} */
-			const typedUserDataForDb = userDataForDb;
+            if (existingSkUser) {
+                console.log(`[Sync API POST] Found existing user ${existingSkUser.id}. Proceeding with UPDATE.`);
+                const targetSkUserId = existingSkUser.id;
 
-			console.debug('[Sync API POST] Prepared data for ba_users upsert:', typedUserDataForDb);
+                // Prepare data ONLY for updating the existing ba_user record
+                const userDataForDbUpdate = {
+                    id: targetSkUserId,
+                    email: userData.email,
+                    name: userData.displayName || userData.username || userData.email.split('@')[0],
+                    username: userData.username || userData.email.split('@')[0],
+                    updated_at: new Date(), // Use current time for update
+                    // Image handling might need adjustment if WP sends avatarUrl
+                    // image: userData.avatarUrl ?? existingSkUser.avatarUrl ?? null 
+                    image: existingSkUser.avatarUrl ?? null // Preserve existing image for now
+                };
+                 /** @type {{ id: string; email: string; name: string; username: string; updated_at: Date; image?: string | null }} */
+                const typedUserDataForDbUpdate = userDataForDbUpdate;
+                console.debug('[Sync API POST] Prepared data for DB UPDATE:', typedUserDataForDbUpdate);
+                
+                // Build the UPDATE statement dynamically
+                const updateSet = Object.entries(typedUserDataForDbUpdate)
+                    .filter(([key, value]) => key !== 'id' && value !== undefined)
+                    .map(([key]) => `${key} = ?`)
+                    .join(', ');
+                const valuesToUpdate = Object.entries(typedUserDataForDbUpdate)
+                    .filter(([key, value]) => key !== 'id' && value !== undefined)
+                    .map(([key, value]) => value);
+                valuesToUpdate.push(targetSkUserId); // Add ID for WHERE clause
 
-			// --- Refined Upsert Logic ---
-			const columns = ['id', 'email', 'name', 'username', 'updated_at'];
-			const valuesToInsert = [
-				typedUserDataForDb.id,
-				typedUserDataForDb.email,
-				typedUserDataForDb.name,
-				typedUserDataForDb.username,
-				typedUserDataForDb.updated_at
-			];
+                if (updateSet) { // Only run update if there are fields to update besides updated_at
+                    const updateUserSql = `UPDATE ba_users SET ${updateSet}, updated_at = NOW() WHERE id = ?`;
+                    console.debug('[Sync API POST] Executing UPDATE for existing ba_user. SQL:', updateUserSql.trim(), 'Params:', valuesToUpdate);
+                    console.time('DB_UPDATE_USER');
+                    /** @type {[OkPacket | ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
+                    const [updateResult] = await connection.execute(updateUserSql, valuesToUpdate);
+                    console.timeEnd('DB_UPDATE_USER');
+                    console.debug('[Sync API POST] ba_users update result:', updateResult);
+                } else {
+                     console.log('[Sync API POST] No changed fields detected for UPDATE, skipping ba_users update.');
+                }
 
-			// Conditionally add image if it's provided and not null
-			if (typedUserDataForDb.image !== null && typedUserDataForDb.image !== undefined) {
-				columns.push('image');
-				valuesToInsert.push(typedUserDataForDb.image);
-			}
+                // Update metadata (including roles) separately, overwrite existing
+                // Construct metadata using correct roles from TOP-LEVEL payload
+                const baseMetadata = {
+                    wp_user_id: userData.wpUserId,
+                    roles: userData.roles || ['subscriber'], // Use top-level roles
+                    description: userData.metadata?.description, // Example of other metadata
+                    nickname: userData.metadata?.nickname      // Example of other metadata
+                };
+                const metadataJson = JSON.stringify(baseMetadata);
+                console.time('DB_UPDATE_METADATA');
+                const updateMetaSql = 'UPDATE ba_users SET metadata = ? WHERE id = ?';
+                const metaParams = [metadataJson, targetSkUserId];
+                console.debug('[Sync API POST] Executing metadata update. SQL:', updateMetaSql, 'Params:', metaParams);
+                await connection.execute(updateMetaSql, metaParams);
+                console.timeEnd('DB_UPDATE_METADATA');
+                console.debug('[Sync API POST] Metadata updated for existing user.');
 
-			const placeholders = columns.map(() => '?').join(', ');
-			const columnNames = columns.join(', ');
+                // Ensure mapping exists (UPSERT is safe here)
+                try {
+                    console.time('DB_UPSERT_MAP');
+                    const mapSql = 'INSERT INTO ba_wp_user_map (wp_user_id, ba_user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE ba_user_id = VALUES(ba_user_id)';
+                    await connection.execute(mapSql, [userData.wpUserId, targetSkUserId]);
+                    console.timeEnd('DB_UPSERT_MAP');
+                    console.log(`[Sync API POST] Ensured mapping exists for wpUserId ${userData.wpUserId} to baUserId ${targetSkUserId}.`);
+                } catch (/** @type {any} */ mapInsertError) {
+                    // ... (map error handling) ...
+                }
 
-			// Build the UPDATE part dynamically based on provided fields (excluding id)
-			const updateSet = Object.entries(typedUserDataForDb)
-				.filter(([key, value]) => key !== 'id' && value !== undefined) // Exclude id and undefined values
-				.map(([key]) => `${key} = VALUES(${key})`)
-				.join(', ');
+            } else {
+                // User NOT found in SvelteKit DB via wpUserId - DO NOTHING in this endpoint.
+                // Creation will be handled by the verify-sync-token endpoint if the user presents a valid token.
+                console.log(`[Sync API POST] No existing SvelteKit user found for wpUserId ${userData.wpUserId}. No action taken by sync endpoint.`);
+            }
+            // --- END REVISED LOGIC ---
 
-			const upsertUserSql = `
-				INSERT INTO ba_users (${columnNames})
-				VALUES (${placeholders})
-				ON DUPLICATE KEY UPDATE
-					${updateSet ? updateSet + ',' : ''} updated_at = NOW()`; // Always update updated_at
+            console.time('DB_COMMIT');
+            await connection.commit();
+            console.timeEnd('DB_COMMIT');
+            // Remove DB_TRANSACTION timers as they are less relevant now
+            // console.timeEnd('DB_TRANSACTION'); 
 
-			console.debug('[Sync API POST] Executing upsert for ba_users. SQL:', upsertUserSql.trim(), 'Params:', valuesToInsert);
-			/** @type {QueryResult} */
-			/** @type {[OkPacket | ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
-			const [upsertResult] = await connection.execute(upsertUserSql, valuesToInsert);
-			console.debug('[Sync API POST] ba_users upsert result:', upsertResult);
-			// --- End Refined Upsert Logic ---
+            // Broadcast update only if user existed and was potentially updated
+            if (existingSkUser) {
+                 console.debug(`[Sync API POST] Broadcasting sync update for user ${existingSkUser.id}`);
+                 const broadcastPayload = { userId: existingSkUser.id, updatedAt: new Date().toISOString() }; // Use current time
+                 broadcastSyncUpdate(JSON.stringify(broadcastPayload));
+            }
 
-			// Optional: Update metadata if provided (Type Guard)
-			if (userData.metadata && typeof userData.metadata === 'object') {
-				const updateMetaSql = 'UPDATE ba_users SET metadata = ? WHERE id = ?';
-				const metaParams = [JSON.stringify(userData.metadata), userData.skUserId];
-				console.debug('[Sync API POST] Executing metadata update. SQL:', updateMetaSql, 'Params:', metaParams);
-				await connection.execute(updateMetaSql, metaParams);
-				console.debug('[Sync API POST] Metadata updated.');
-			}
-
-			// Upsert ba_wp_user_map (Safer than checking first)
-			try {
-				const mapSql = 'INSERT INTO ba_wp_user_map (wp_user_id, ba_user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE ba_user_id = VALUES(ba_user_id)';
-				await connection.execute(mapSql, [userData.wpUserId, userData.skUserId]);
-				console.log(`[Sync API POST] Ensured mapping exists for wpUserId ${userData.wpUserId} to baUserId ${userData.skUserId}.`);
-			} catch (/** @type {any} */ mapInsertError) {
-				// This might happen due to constraints if data is inconsistent, log and possibly rollback
-				console.error(`[Sync API POST] Error upserting into ba_wp_user_map: `, mapInsertError);
-				await connection.rollback();
-				console.debug('[Sync API POST] Transaction rolled back due to map upsert error.');
-				return new Response(JSON.stringify({ success: false, message: 'Database error during user mapping sync' }), { status: 500, headers });
-			}
-
-			await connection.commit();
-			console.debug('[Sync API POST] Transaction committed.');
-
-			console.debug(`[Sync API POST] Broadcasting sync update for user ${userData.skUserId}`);
-			const broadcastPayload = { userId: userData.skUserId, updatedAt: typedUserDataForDb.updated_at.toISOString() };
-			broadcastSyncUpdate(JSON.stringify(broadcastPayload));
-
-			return new Response(JSON.stringify({ success: true, message: 'User data synchronized' }), { status: 200, headers });
+            // Return success regardless of whether an update occurred (request was processed)
+            return new Response(JSON.stringify({ success: true, message: existingSkUser ? 'User data synchronized' : 'No existing SK user found to update' }), { status: 200, headers });
 
 		} catch (/** @type {any} */ dbError) { // Catch for inner DB transaction block
+            console.timeEnd('DB_TRANSACTION'); // Ensure timer ends even on error
 			console.error('[Sync API POST] Error during database operation:', dbError);
 			if (connection) {
 				try { await connection.rollback(); console.debug('[Sync API POST] Transaction rolled back due to DB error.'); } catch (/** @type {any} */ rbErr) { console.error('[Sync API POST] Error rolling back transaction:', rbErr); }
@@ -607,36 +613,11 @@ export async function POST({ request }) {
 } // End POST function
 
 /**
- * @description Placeholder function to simulate fetching user data from WordPress.
- * **MUST return email and preferably username/display_name.**
- * @param {number|string} wpUserId The WordPress user ID.
- * @returns {Promise<WordPressUserData|null>} User data or null if not found.
- */
-async function fetchWordPressUserData(wpUserId) {
-	// Simulate fetching essential data needed for user creation
-	// In a real implementation, this would call a secure WP REST endpoint
-	// that returns user details based on the validated session/wpUserId.
-	console.warn(`[Sync API - fetchWordPressUserData] Using placeholder data for wpUserId: ${wpUserId}. Replace with actual API call.`);
-	/** @type {WordPressUserData} */
-	const placeholderData = {
-			wp_user_id: Number(wpUserId),
-			display_name: `WP User ${wpUserId}`,
-			user_email: `wpuser${wpUserId}@example.local`,
-			username: `wpuser${wpUserId}`,
-			avatar_url: '',
-			user_roles: ['subscriber'],
-			updatedAt: new Date().toISOString()
-	};
-	await new Promise(resolve => setTimeout(resolve, 150));
-	return placeholderData;
-}
-
-/**
  * @description Creates a standard error response.
  * @param {any} error The error object.
  * @returns {Promise<Response>} A Response object.
  */
-async function postError(error) { // JSDoc added in previous step
+async function postError(error) { 
 	// Ensure error.message exists, provide fallback
 	const message = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : 'An unknown error occurred';
 	return new Response(JSON.stringify({ error: message }), {

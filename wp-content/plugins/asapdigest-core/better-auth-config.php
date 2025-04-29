@@ -803,7 +803,7 @@ function asap_sync_wp_user_to_better_auth($wp_user_id, $source = 'manual') {
             'X-WP-Sync-Secret' => $shared_secret // Add the shared secret header
         ],
         'body' => json_encode($user_data),
-        'timeout' => 15 // seconds
+        'timeout' => 30 // Increased timeout to 30 seconds
     ];
     error_log('[ASAP Debug] SYNC FUNC: Making request to: ' . $sync_endpoint); // DEBUG
 

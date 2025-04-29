@@ -231,23 +231,8 @@ export async function POST({ request }) {
         let baUser = await findUserByWpId(wpUserId);
 
         if (!baUser) {
-            log(`No existing BA user for wpUserId ${wpUserId}. Fetching WP details...`, 'info');
-            // Fetch minimal required details (email, display name) from WP
-            // *** Requires implementing fetchWpUserDetails securely ***
-            const wpDetails = await fetchWpUserDetails(wpUserId);
-
-            if (!wpDetails || !wpDetails.email) {
-                log(`Cannot create BA user for wpUserId ${wpUserId}: Failed to fetch required details (email) from WP.`, 'error');
-                return json({ success: false, error: 'User sync failed - missing WP details' }, { status: 500, headers });
-            }
-
-            log(`Creating new BA user with WP details: ${JSON.stringify(wpDetails)}`, 'debug');
-            baUser = await createUserFromWpData(wpUserId, wpDetails.email, wpDetails.displayName);
-        }
-
-        if (!baUser) {
-            log(`Failed to find or create BA user for wpUserId ${wpUserId}`, 'error');
-            return json({ success: false, error: 'User sync failed.' }, { status: 500, headers });
+            log(`CRITICAL: BA user not found for validated wpUserId ${wpUserId}. Initial sync likely failed. Aborting session creation.`, 'error');
+            return json({ success: false, error: 'User synchronization inconsistent. Please try logging in again later.' }, { status: 500, headers });
         }
 
         // We have a valid BA user (found or created)
@@ -275,6 +260,7 @@ export async function POST({ request }) {
             // Secure flag should be added based on environment (e.g., in production)
             // This might be handled by SvelteKit adapter depending on config.
             // process.env.NODE_ENV === 'production' ? 'Secure' : ''
+            'Secure' // <-- Always add Secure since we use HTTPS locally
         ].filter(Boolean).join('; ');
 
         headers.append('Set-Cookie', `${cookieName}=${sessionToken}; ${cookieOptions}`);

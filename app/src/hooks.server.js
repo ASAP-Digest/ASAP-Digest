@@ -4,6 +4,7 @@ import { dev } from '$app/environment';
 import { redirect } from '@sveltejs/kit';
 import { BETTER_AUTH_SECRET } from '$env/static/private'; // Import the shared secret
 import { pool } from '$lib/server/auth'; // Import the DB pool
+import { syncUserToWordPress } from '$lib/server/wp-sync';
 
 /**
  * Get WordPress base URL
@@ -318,7 +319,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 if (userData && typeof userData === 'object') {
                     // @ts-ignore - Type assertion for userData
                     locals.user = {
-                        id: locals.user?.id || baUserId, // Keep existing ID if somehow present, otherwise use baUserId
+                        id: locals.user?.id || baUserId,
                         betterAuthId: baUserId,
                         // @ts-ignore
                         displayName: userData.displayName || undefined,
@@ -327,14 +328,48 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                         // @ts-ignore
                         avatarUrl: userData.avatarUrl || undefined,
                         // @ts-ignore
-                        roles: userData.roles ? JSON.parse(userData.roles) : [], // Assuming roles are stored as JSON string
+                        roles: userData.roles ? JSON.parse(userData.roles) : [],
                         // @ts-ignore
                         syncStatus: userData.syncStatus || 'unknown',
                         // @ts-ignore
-                        updatedAt: userData.updatedAt ? new Date(userData.updatedAt).toISOString() : undefined, // Ensure ISO string
-                        sessionToken: sessionToken // Include the session token
+                        updatedAt: userData.updatedAt ? new Date(userData.updatedAt).toISOString() : undefined,
+                        sessionToken: sessionToken
                     };
-                     console.log('[hooks.server.js | SK User] Populated locals.user from SK DB:', locals.user); // DEBUG
+
+                    // Trigger WordPress sync if needed
+                    if (locals.user) {
+                        if (typeof locals.user.id === 'string' && typeof locals.user.email === 'string' && locals.user.email.length > 0) {
+                            try {
+                                /** @type {import('$lib/server/wp-sync').UserData} */
+                                const userDataForSync = {
+                                    id: locals.user.id, // ID is now guaranteed string by guard
+                                    email: locals.user.email, // Email is now guaranteed string by guard
+                                    displayName: locals.user.displayName,
+                                    roles: locals.user.roles,
+                                    // Assign undefined as locals.user type doesn't have metadata
+                                    metadata: undefined,
+                                    updatedAt: locals.user.updatedAt ? new Date(locals.user.updatedAt) : undefined
+                                };
+
+                                // Pass the correctly typed object
+                                const syncResult = await syncUserToWordPress(userDataForSync, {
+                                    throwOnError: false // Don't throw errors, just log them
+                                });
+                                
+                                if (!syncResult.success) {
+                                    console.warn('[hooks.server.js] WordPress sync failed:', syncResult.message);
+                                } else {
+                                    console.debug('[hooks.server.js] WordPress sync successful');
+                                }
+                            } catch (/** @type {any} */ syncError) { // Add type annotation for caught error
+                                console.error('[hooks.server.js] Error during WordPress sync:', syncError instanceof Error ? syncError.message : syncError);
+                            }
+                        } else {
+                             console.warn('[hooks.server.js] Skipping WordPress sync: User ID or email is missing or invalid.');
+                        }
+                    }
+
+                    console.log('[hooks.server.js | SK User] Populated locals.user from SK DB:', locals.user);
                 } else {
                     console.warn(`[hooks.server.js | SK User] User data query for ba_user_id ${baUserId} returned invalid data.`);
                 }
