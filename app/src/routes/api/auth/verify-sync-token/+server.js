@@ -1,6 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { pool } from '$lib/server/auth'; // Assuming pool is exported from auth.js
 import { randomUUID, randomBytes } from 'node:crypto';
+// --- Add missing JSDoc imports for mysql2 types ---
+/** 
+ * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
+ * @typedef {import('mysql2/promise').OkPacket} OkPacket
+ * @typedef {import('mysql2/promise').ResultSetHeader} ResultSetHeader
+ */
+// --- End added imports ---
 
 // Assuming these helper functions are moved to a shared utility or redefined here if needed
 // We need findUserByWpId, createUserFromWpId, createDbSession
@@ -19,9 +26,6 @@ function log(message, level = 'info') {
     console[level] ? console[level](`${prefix} ${message}`) : console.log(`${prefix} ${message}`);
 }
 
-/**
- * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
- */
 /**
  * @typedef {Object} UserMetadata
  * @property {number} wp_user_id
@@ -227,28 +231,83 @@ export async function POST({ request }) {
         const wpUserId = wpValidationData.wpUserId;
         log(`WP token validated successfully for wpUserId: ${wpUserId}`, 'info');
 
-        // --- Found valid WP User, proceed with BA sync/login ---
+        // --- REVISED LOGIC: Find or Create User/Account/Map here ---
         let baUser = await findUserByWpId(wpUserId);
+        let targetSkUserId;
+        let isNewlyCreated = false;
 
         if (!baUser) {
-            log(`CRITICAL: BA user not found for validated wpUserId ${wpUserId}. Initial sync likely failed. Aborting session creation.`, 'error');
-            return json({ success: false, error: 'User synchronization inconsistent. Please try logging in again later.' }, { status: 500, headers });
+            // User NOT found, needs creation
+            log(`No existing BA user for validated wpUserId ${wpUserId}. Attempting creation flow...`, 'info');
+            
+            // 1. Fetch required details from WP (using placeholder for now)
+            console.warn('[Verify Token] Using PLACEHOLDER fetchWpUserDetails - Replace with secure WP endpoint call!');
+            const wpDetails = await fetchWpUserDetails(wpUserId); // Using the placeholder
+
+            if (!wpDetails || !wpDetails.email) {
+                log(`Cannot create BA user for wpUserId ${wpUserId}: Failed to fetch required details (email) from placeholder WP fetch.`, 'error');
+                return json({ success: false, error: 'User creation failed - missing WP details' }, { status: 500, headers });
+            }
+            console.log(`[Verify Token] Placeholder WP details fetched: ${JSON.stringify(wpDetails)}`, 'debug');
+
+            // 2. Create User in ba_users
+            const newUser = await createUserFromWpData(wpUserId, wpDetails.email, wpDetails.displayName);
+            if (!newUser) {
+                 log(`Failed to insert new user into ba_users for wpUserId ${wpUserId}`, 'error');
+                 return json({ success: false, error: 'User creation failed during DB insert.' }, { status: 500, headers });
+            }
+            baUser = newUser; // Use the newly created user object
+            targetSkUserId = newUser.id;
+            isNewlyCreated = true;
+            log(`[Verify Token] Successfully created new ba_user: ${targetSkUserId}`, 'info');
+
+            // 3. Create Account in ba_accounts (Needs DB connection - refactor needed or pass connection)
+            // For now, call a modified helper or inline the logic
+            const accountCreated = await createAccountForUser(targetSkUserId);
+            if (!accountCreated) {
+                 log(`Failed to insert new account into ba_accounts for user ${targetSkUserId}`, 'error');
+                 // Decide if this is critical - maybe proceed without account? For now, let's error.
+                 return json({ success: false, error: 'User account creation failed during DB insert.' }, { status: 500, headers });
+            }
+            log(`[Verify Token] Successfully created ba_account for user: ${targetSkUserId}`, 'info');
+            
+            // 4. Create Map in ba_wp_user_map (Needs DB connection - refactor needed or pass connection)
+            const mapCreated = await createMapForUser(wpUserId, targetSkUserId);
+             if (!mapCreated) {
+                 log(`Failed to insert mapping for wpUserId ${wpUserId} to ${targetSkUserId}`, 'error');
+                 // Decide if this is critical - error for now.
+                 return json({ success: false, error: 'User map creation failed during DB insert.' }, { status: 500, headers });
+            }
+            log(`[Verify Token] Successfully created ba_wp_user_map entry.`, 'info');
+
+        } else {
+            // User WAS found
+            targetSkUserId = baUser.id;
+            isNewlyCreated = false;
+            log(`Existing BA user ${targetSkUserId} found for wpUserId ${wpUserId}.`, 'info');
+        }
+        // --- END REVISED LOGIC ---
+        
+        // Ensure we have a valid targetSkUserId before proceeding
+        if (!targetSkUserId) {
+             log('CRITICAL: targetSkUserId is missing after find/create flow. Aborting session creation.', 'error');
+             return json({ success: false, error: 'Internal error during user processing.' }, { status: 500, headers });
         }
 
         // We have a valid BA user (found or created)
-        log(`Proceeding with BA user: ${baUser.id}`, 'info');
+        log(`Proceeding to create session for user: ${targetSkUserId}`, 'info');
 
         // Create Better Auth session
-        const sessionData = await createDbSession(baUser.id);
+        const sessionData = await createDbSession(targetSkUserId);
 
         if (!sessionData) {
-            log(`Failed to create Better Auth session for user ${baUser.id}`, 'error');
+            log(`Failed to create Better Auth session for user ${targetSkUserId}`, 'error');
             return json({ success: false, error: 'Session creation failed.' }, { status: 500, headers });
         }
 
         // --- Session Created Successfully ---
         const { sessionToken, expiresAt } = sessionData;
-        log(`Created Better Auth session token: ${sessionToken.substring(0, 6)}... for user ${baUser.id}`, 'info');
+        log(`Created Better Auth session token: ${sessionToken.substring(0, 6)}... for user ${targetSkUserId}`, 'info');
 
         // Set session cookie
         const cookieName = process.env.SESSION_COOKIE_NAME || 'asap_sk_session'; // Use env var or default
@@ -273,4 +332,54 @@ export async function POST({ request }) {
         log(`Error during token verification process: ${error instanceof Error ? error.message : error}`, 'error');
         return json({ success: false, error: 'Internal server error during token verification.' }, { status: 500, headers });
     }
-} 
+}
+
+// --- ADD HELPER FUNCTIONS (potentially move later) ---
+
+/**
+ * Helper to create an account entry
+ * @param {string} baUserId 
+ * @returns {Promise<boolean>}
+ */
+async function createAccountForUser(baUserId) {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const accountId = randomUUID();
+        const insertAccountSql = `INSERT INTO ba_accounts (id, user_id, provider, provider_account_id, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())`;
+        const accountParams = [accountId, baUserId, 'wp_sync', baUserId];
+        /** @type {[OkPacket | ResultSetHeader, any]} */
+        const [result] = await connection.execute(insertAccountSql, accountParams);
+        return result?.affectedRows === 1;
+    } catch (dbError) {
+        log(`DB Error creating account for user ${baUserId}: ${dbError instanceof Error ? dbError.message : dbError}`, 'error');
+        return false;
+    } finally {
+        connection?.release();
+    }
+}
+
+/**
+ * Helper to create user mapping
+ * @param {number} wpUserId 
+ * @param {string} baUserId 
+ * @returns {Promise<boolean>}
+ */
+async function createMapForUser(wpUserId, baUserId) {
+     let connection;
+    try {
+        connection = await pool.getConnection();
+        const mapSql = 'INSERT INTO ba_wp_user_map (wp_user_id, ba_user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE ba_user_id = VALUES(ba_user_id)';
+        /** @type {[OkPacket | ResultSetHeader, any]} */
+        const [result] = await connection.execute(mapSql, [wpUserId, baUserId]);
+        // INSERT...ON DUPLICATE KEY UPDATE returns 1 for insert, 2 for update, 0 for no change.
+        // We consider it a success if rows were affected or the mapping already existed.
+        return result?.affectedRows >= 0; 
+    } catch (dbError) {
+        log(`DB Error creating/updating map for wpUserId ${wpUserId} <-> ${baUserId}: ${dbError instanceof Error ? dbError.message : dbError}`, 'error');
+        return false;
+    } finally {
+        connection?.release();
+    }
+}
+// --- END HELPER FUNCTIONS --- 

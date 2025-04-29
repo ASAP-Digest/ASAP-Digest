@@ -86,41 +86,44 @@
     if (browser && !$page.data.user) { // Check if in browser and no user data exists from load
       console.log('[Layout Auto-Login] No user session found. Checking WP session...');
       fetch('/api/auth/sync', { credentials: 'include' })
-        .then(response => {
+        .then(async response => {
           if (!response.ok) {
-            // Log the error status but don't redirect here. 
-            // Let the sync endpoint logic decide if a session can be created.
-            // The catch block will handle generic fetch errors.
-            console.warn(`[Layout Auto-Login] Fetch to /api/auth/sync failed with status: ${response.status}`);
-            // We still need to try and parse the body for potential reasons
-            return response.json().catch(() => ({ ok: false, status: response.status, error: 'Failed to parse error body' })); 
-          }
-          return response.json();
+            const status = response.status;
+            const errorBody = await response.json().catch(() => ({})); // Try to parse error body
+            if (status === 401) {
+              // Don't warn for expected 401
+              console.info(`[Layout Auto-Login] Fetch to /api/auth/sync returned status ${status} (User not logged in on WP).`);
+            } else {
+              console.warn(`[Layout Auto-Login] Fetch to /api/auth/sync failed with status: ${status}`, errorBody);
+            }
+            // Return a structured error object for the next .then()
+            return { ok: false, status: status, error: errorBody.error || 'Unknown error' }; 
+          } 
+          return response.json(); // Return parsed JSON if response was ok
         })
         .then(data => {
-          // Check if the response was actually okay before proceeding
-          if (data && data.ok !== false) { 
-              console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); // DEBUG
-              if (data.valid && data.session_created) {
-                console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
-                toasts.show(
-                  'Your session was automatically synchronized.',
-                  'success'
-                );
-                // Invalidate all data to ensure stores and UI reflect the new session
-                invalidateAll();
-              } else {
-                // Log why sync didn't happen, but don't redirect
-                console.log('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '(No specific reason provided)');
-              }
+          if (data && data.ok !== false) { // Check if it's not the error object we returned
+            console.log('[Layout Auto-Login] Received response from /api/auth/sync:', data); 
+            if (data.valid && data.session_created) {
+              console.log('[Layout Auto-Login] WP session valid and SK session created. Showing toast and invalidating...');
+              toasts.show(
+                'Your session was automatically synchronized.',
+                'success'
+              );
+              // Invalidate all data to ensure stores and UI reflect the new session
+              invalidateAll();
+            } else {
+              console.info('[Layout Auto-Login] Conditions not met or session not created.', data.reason ? `Reason: ${data.reason}` : '(No specific reason provided)');
+            }
           } else if (data && data.ok === false) {
-              // Log the error reason parsed from the non-ok response
-              console.log(`[Layout Auto-Login] Sync check indicated failure. Status: ${data.status}, Reason: ${data.error || 'Unknown'}`);
+            // Log the structured error passed from the previous .then()
+            console.info(`[Layout Auto-Login] Sync check indicated failure. Status: ${data.status}, Reason: ${data.error}`);
           }
         })
         .catch(error => {
-          // Catch network errors or errors thrown from the .then blocks
+          // Network or other fetch errors
           console.error('[Layout Auto-Login] Error fetching /api/auth/sync:', error);
+          // SILENT FAIL: No toast needed for this background check
         });
     } else if (browser && $page.data.user) {
       console.log('[Layout Auto-Login] User session already exists. Skipping WP check.'); // DEBUG
@@ -612,45 +615,119 @@
 
   // Modify onMount
   onMount(() => {
-    let localEventSource = null; // Rename to avoid conflict if eventSource was global before
+    let localEventSource = null; 
+    let shouldInitializeBridge = false; 
+    const MAX_FETCH_RETRIES = 2; // Try original + 2 retries
+    const FETCH_RETRY_DELAY = 500; // 500ms delay
 
-    // --- Sync Check Logic using iFrame ---
-    if (browser && !$page.data.user) {
-        console.log('[Layout Mount] No SK session, initiating WP session check via iframe...');
-        wpSyncStatus = 'checking';
+    // --- Sync Check Logic (REFACTORED with Retry & Logging Refinement) ---
+    (async () => {
+        if (browser && !$page.data.user) { 
+            console.log('[Layout Mount] No SK session, initiating WP session check...');
+            wpSyncStatus = 'checking'; 
 
-        // Setup listener first
-        window.addEventListener('message', handleWpBridgeMessage);
+            const checkTokenUrl = `${WP_ORIGIN}/wp-json/asap/v1/check-sync-token`;
+            let attempt = 0;
+            let fetchSuccess = false;
 
-        // Create and append iframe
-        const iframe = document.createElement('iframe');
-        iframe.id = 'wp-auth-bridge';
-        iframe.style.display = 'none'; // Keep it hidden
-        iframe.src = `${WP_ORIGIN}/`; // Load WP homepage (or any page with wp_footer)
-        document.body.appendChild(iframe);
-        wpAuthBridgeIframe = iframe; // Store reference
+            while (attempt <= MAX_FETCH_RETRIES && !fetchSuccess) {
+                attempt++;
+                console.debug(`[Layout Mount] Attempt ${attempt} to fetch ${checkTokenUrl} ...`);
+                try {
+                    const tokenCheckResponse = await fetch(checkTokenUrl, {
+                        credentials: 'include' // Send WP auth cookies
+                    });
 
-        // Set timeout for response
-        wpSyncTimeout = setTimeout(() => {
-            console.warn('[Layout Bridge] Timeout waiting for message from WP bridge iframe.');
-            if (wpSyncStatus === 'checking') { // Only fail if still checking
-                 wpSyncStatus = 'failed';
-                 toasts.show('Sync Timeout', 'Could not check WP session status.', 'warning');
+                    if (!tokenCheckResponse.ok) {
+                        // Got a response, but it wasn't 2xx
+                        const status = tokenCheckResponse.status;
+                        const errorText = await tokenCheckResponse.text(); 
+                        if (status === 401) {
+                            // Expected if user is not logged into WP
+                            console.info(`[Layout Mount] WP token check returned status ${status} (User likely not logged into WP). Response: ${errorText}`);
+                            wpSyncStatus = 'notLoggedIn';
+                        } else {
+                             // Unexpected error status from WP
+                             console.warn(`[Layout Mount] WP token check failed with status ${status}. Response: ${errorText}`);
+                             wpSyncStatus = 'failedCheck';
+                        }
+                        fetchSuccess = true; // Mark as success *for the fetch attempt*, even if logical failure
+                        break; // Exit retry loop, no need to retry on non-2xx status
+                    }
+
+                    // Response was OK (2xx)
+                    const tokenCheckData = await tokenCheckResponse.json();
+                    console.log('[Layout Mount] WP token check response OK: ', tokenCheckData);
+                    fetchSuccess = true; // Fetch succeeded
+
+                    if (!tokenCheckData?.tokenExists) {
+                        console.info('[Layout Mount] No valid sync token found on WP side (tokenExists: false). Skipping iframe bridge.');
+                        wpSyncStatus = 'noTokenFound';
+                    } else {
+                        console.info('[Layout Mount] Valid sync token detected on WP side. Flagging to proceed with iframe bridge...');
+                        shouldInitializeBridge = true; // Set flag to proceed
+                    }
+                    break; // Exit retry loop on successful fetch and JSON parse
+
+                } catch (fetchError) {
+                    // Network error, CORS issue, SSL issue, etc.
+                    console.error(`[Layout Mount] Attempt ${attempt} failed: Error fetching WP token status:`, fetchError);
+                    wpSyncStatus = 'failedCheck'; // Mark as failed check
+                    if (attempt > MAX_FETCH_RETRIES) {
+                        // console.error('[Layout Mount] Max retries reached. Aborting WP token check.'); // Keep console less noisy
+                         // SILENT FAIL: No toast needed for background check failure
+                    } else {
+                         await new Promise(resolve => setTimeout(resolve, FETCH_RETRY_DELAY)); // Wait before retry
+                    }
+                }
+            } // End while loop
+            // --- END Fetch First Logic ---
+            
+            // --- Initialize Bridge ONLY if fetch succeeded AND token exists --- 
+            if (shouldInitializeBridge) { // This is the DUAL condition check
+                console.log('[Layout Mount] Proceeding with iframe bridge initialization...');
+                // Setup listener first 
+                window.addEventListener('message', handleWpBridgeMessage);
+
+                // Create and append iframe
+                const iframe = document.createElement('iframe');
+                iframe.id = 'wp-auth-bridge';
+                iframe.style.display = 'none'; 
+                iframe.src = `${WP_ORIGIN}/`; 
+                document.body.appendChild(iframe);
+                wpAuthBridgeIframe = iframe; 
+                console.log('[Layout Mount] Iframe bridge created and listener attached.'); 
+
+                // Set timeout for response from the iframe via postMessage
+                wpSyncTimeout = setTimeout(() => {
+                    console.warn('[Layout Bridge] Timeout waiting for postMessage from WP bridge iframe.');
+                    // Only mark as failed if it was still in the initial 'checking' state 
+                    // (i.e., message handler didn't process a token/status)
+                    if (wpSyncStatus === 'checking') { 
+                         wpSyncStatus = 'failed'; // Timeout is a failure
+                         // SILENT FAIL: No toast needed for background timeout
+                    }
+                    cleanupWpAuthBridge(); 
+                }, 15000); 
+            } else {
+                // Log why the bridge wasn't initialized if fetch didn't explicitly fail
+                if (wpSyncStatus !== 'failedCheck') {
+                    console.info('[Layout Mount] Conditions not met to initialize iframe bridge (fetchSuccess: ${fetchSuccess}, tokenExists: ${!shouldInitializeBridge}).');
+                }
             }
-            cleanupWpAuthBridge();
-        }, 15000); // 15 second timeout
+            // --- End Conditional Bridge Initialization ---
 
-    } else if (browser && $page.data.user) {
-        console.log('[Layout Mount] Active SK session detected, skipping WP iframe check.');
-        wpSyncStatus = 'noCheckNeeded'; // Set status if check is skipped
-    }
+        } else if (browser && $page.data.user) {
+             console.log('[Layout Mount] Active SK session detected, skipping WP iframe check.');
+            wpSyncStatus = 'noCheckNeeded'; // Set status if check is skipped
+        }
+    })(); // Immediately invoke the async function
     // --- End Sync Check Logic ---
-
 
     // ... rest of existing onMount logic (EventSource, resize, localStorage, SW, etc.) ...
     // Make sure to use `localEventSource` for the SSE logic if it was defined here
 
-    // Cleanup function
+    // Cleanup function - THIS IS THE CORRECT RETURN FOR onMount
     return () => {
         cleanupWpAuthBridge(); // Ensure cleanup on component destroy
         if (localEventSource) {

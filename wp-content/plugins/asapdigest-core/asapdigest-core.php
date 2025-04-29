@@ -32,6 +32,8 @@ require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controll
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
 // Include the new SK User Sync Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-user-sync.php');
+// Include the new Check Sync Token Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-check-sync-token-controller.php');
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
@@ -144,6 +146,12 @@ function asap_init_core() {
         $sk_user_sync = new \ASAPDigest\Core\API\SK_User_Sync();
         $sk_user_sync->register_routes();
     });
+
+    // Register Check Sync Token endpoint
+    add_action('rest_api_init', function() {
+        $check_token_controller = new \ASAPDigest\Core\API\Check_Sync_Token_Controller();
+        $check_token_controller->register_routes();
+    }, 10); // Use default priority
 }
 
 // Initialize core functionality early
@@ -543,38 +551,33 @@ function asap_add_cors_headers() {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
     $current_site_url = site_url(); // Get the current WP site URL
     $allowed_origin = '';
+    $request_path = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '';
 
     // Determine the allowed cross-origin partner based on the current WP environment
     if (strpos($current_site_url, 'asapdigest.local') !== false) {
-      // Local environment: WP is asapdigest.local, partner is localhost:5173
       $allowed_origin = 'https://localhost:5173';
     } elseif (strpos($current_site_url, 'asapdigest.com') !== false) {
-      // Production environment: WP is asapdigest.com, partner is app.asapdigest.com
       $allowed_origin = 'https://app.asapdigest.com';
     }
-    // Add other environments (e.g., staging) if needed
 
-    // Check if the request origin matches the *single* allowed partner for this environment
+    // Check if the request origin matches the allowed partner
     if ($origin === $allowed_origin) {
-      header("Access-Control-Allow-Origin: " . esc_url_raw($origin)); // Allow the specific partner origin
-      header("Access-Control-Allow-Credentials: true"); 
-      header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"); 
-      header("Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce"); 
+        header("Access-Control-Allow-Origin: " . esc_url_raw($origin));
+        header("Access-Control-Allow-Credentials: true"); 
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"); 
+        // Allow common headers, plus our custom sync secret header
+        header("Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-WP-Sync-Secret, X-CSRF-Token, Cookie"); 
     }
-    // If $origin does not match $allowed_origin, no CORS headers are sent, blocking the request.
 
     // Handle preflight OPTIONS requests specifically for REST API
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-       // Check if the origin is the allowed partner for this environment
+    // Make sure this applies to *all* relevant /asap/v1/ endpoints, not just one
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS' && strpos($request_path, '/wp-json/asap/v1/') === 0) {
        if ($origin === $allowed_origin) {
-            // Send required CORS headers for OPTIONS preflight
-            // Headers already set above if origin matched, just add Max-Age and exit
-            header('Access-Control-Max-Age: 86400'); // Cache preflight response for 24 hours
+            header('Access-Control-Max-Age: 86400');
             status_header(204); // No Content for OPTIONS
-            exit(0); // Exit early for OPTIONS requests
+            exit(0); // Exit early
        } else {
-            // If origin is not the allowed partner for OPTIONS, send 403 Forbidden
-            status_header(403);
+            status_header(403); // Forbidden for OPTIONS from wrong origin
             exit(0);
        }
     }
