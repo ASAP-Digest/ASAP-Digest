@@ -33,6 +33,10 @@
     Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download 
   } from '$lib/utils/lucide-compat.js';
   import { goto, invalidateAll } from '$app/navigation'; // Import invalidateAll from correct module
+  // Import the new GraphQL helper
+  import { fetchGraphQL } from '$lib/utils/fetchGraphQL.js';
+  // Import session store/hook (assuming useSession exists or similar)
+  // import { useSession } from '$lib/stores/session'; // Placeholder - Adjust if store name/structure differs
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -45,6 +49,9 @@
   // Derived values using Svelte 5 runes
   let isAuthRoute = $derived($page.url.pathname.startsWith('/login') || $page.url.pathname.startsWith('/register'));
   let isDesignSystemRoute = $derived($page.url.pathname.startsWith('/design-system'));
+  // Check if there is an active Better Auth session
+  // Assuming $page.data.user existing indicates an active session for now
+  let hasBetterAuthSession = $derived(!!$page.data.user); 
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
@@ -80,6 +87,88 @@
 
   // Initialize on mount
   onMount(() => {
+    // --- ADD Token Check Logic ---
+    if (browser) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const syncToken = urlParams.get('sync_token');
+
+      if (syncToken) {
+        console.log('[Layout Mount] Found sync_token in URL:', syncToken);
+        // Remove the token from the URL without reloading
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+
+        // Call the backend API to verify this token
+        verifyWpSyncToken(syncToken);
+      }
+    }
+    // --- END Token Check Logic ---
+
+    // --- NEW: WP Session Check via GraphQL viewer query (Step E) ---
+    if (browser && !hasBetterAuthSession) { // Only run if in browser AND no BA session exists
+      console.log('[Layout Mount - Step E] No Better Auth session found. Checking WP session via GraphQL viewer query...');
+
+      const viewerQuery = `{ viewer { databaseId email username name } }`; // Added username for sync
+
+      fetchGraphQL(viewerQuery)
+        .then(data => {
+          if (data?.viewer?.databaseId) { // Use optional chaining for safety
+            // WP Session Verified!
+            const wpUser = data.viewer;
+            console.log('[Layout Mount - Step E] GraphQL viewer query successful. WP User:', wpUser.username, 'ID:', wpUser.databaseId);
+
+            // Trigger Step D: Call SK Backend Sync Endpoint
+            return fetch('/api/auth/wp-login-sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                wpUserId: wpUser.databaseId,
+                email: wpUser.email,
+                username: wpUser.username, // Send username
+                displayName: wpUser.name
+              }),
+              // credentials: 'include', // Might not be needed if called right after GraphQL with included credentials
+            });
+          } else {
+            // No WP session found via viewer query
+            console.log('[Layout Mount - Step E] GraphQL viewer query did not find an active WP user. Stopping auto-login check.');
+            return Promise.reject(new Error('No active WP session found via viewer query.')); // Reject to prevent further .then()
+          }
+        })
+        .then(response => {
+          // Handle response from /api/auth/wp-login-sync
+          if (!response) { // Handle cases where fetch itself might fail somehow
+              throw new Error('No response received from sync endpoint.');
+          }
+          if (response.ok) {
+            return response.json(); // Expecting { success: true } or similar
+          } else {
+            // Sync endpoint failed, try to get text body
+            return response.text().then(text => {
+              throw new Error(`SK Backend sync failed with status: ${response.status}. Body: ${text}`);
+            });
+          }
+        })
+        .then(syncResult => {
+          // Handle successful sync result
+          if (syncResult?.success) { // Use optional chaining
+            console.log('[Layout Mount - Step E] SK backend sync successful. Invalidating data...');
+            // Trigger Step F: Invalidate data using correct SvelteKit 5 method
+            goto(window.location.href, { invalidateAll: true }); 
+          } else {
+             // Sync was ok status but reported failure
+             throw new Error(`SK backend sync reported failure. Result: ${JSON.stringify(syncResult)}`);
+          }
+        })
+        .catch(error => {
+          // Catch errors from fetchGraphQL OR the sync endpoint fetch/logic
+          // Log the error but don't show a user-facing toast for this background check
+          console.error('[Layout Mount - Step E] WP Session Check/Sync Error:', error.message); 
+        });
+    } else if (browser) {
+         console.log('[Layout Mount - Step E] Active Better Auth session detected. Skipping WP session check.');
+    }
+    // --- END NEW WP Session Check ---
+
     let localEventSource = null; 
     let shouldInitializeBridge = false; 
     const MAX_FETCH_RETRIES = 2; // Try original + 2 retries
@@ -662,56 +751,68 @@
   /** Performs the check for WP token and sets flag */
   async function checkWpTokenAndMaybeBridge() {
     // Condition checks moved to the calling context (onMount, event listeners)
-    console.log('[Layout Check Function] Initiating WP token check...');
+    console.log('[Layout Check Function] Initiating WP token check via SK proxy...'); // Use proxy message
     wpSyncStatus = 'checking'; 
-    lastCheckTimestamp = Date.now(); // Record time of check attempt
-    shouldInitializeBridge = false; // Reset flag initially
+    lastCheckTimestamp = Date.now(); 
+    shouldInitializeBridge = false; 
 
-    const checkTokenUrl = `${WP_ORIGIN}/wp-json/asap/v1/check-sync-token`;
+    // Use the proxied path
+    const checkTokenUrl = '/wp-api/asap/v1/check-sync-token'; 
     let attempt = 0;
-    const MAX_FETCH_RETRIES = 2; // Try original + 2 retries
-    const FETCH_RETRY_DELAY = 500; // 500ms delay
+    const MAX_FETCH_RETRIES = 2; 
+    const FETCH_RETRY_DELAY = 500; 
     let fetchSuccess = false;
 
     while (attempt <= MAX_FETCH_RETRIES && !fetchSuccess) {
         attempt++;
         console.debug(`[Layout Check Function] Attempt ${attempt} to fetch ${checkTokenUrl}...`);
         try {
+            console.log(`[Layout Check Function] >>> MAKING FETCH CALL to ${checkTokenUrl}`); 
             const tokenCheckResponse = await fetch(checkTokenUrl, {
-                credentials: 'include' // Send WP auth cookies
+                 // credentials: 'include' // REMOVED for proxy
             });
 
             if (!tokenCheckResponse.ok) {
                 const status = tokenCheckResponse.status;
-                const errorText = await tokenCheckResponse.text(); 
-                if (status === 401) {
-                    console.info(`[Layout Check Function] WP token check returned status ${status} (User likely not logged into WP).`);
-                    wpSyncStatus = 'notLoggedIn';
+                const errorData = await tokenCheckResponse.json().catch(() => ({ message: `HTTP status ${status}` })); 
+                const errorMsg = errorData?.message || `Proxy check failed with status ${status}`;
+                
+                // Handle specific statuses if needed (e.g., 401 from WP means not logged in)
+                if (status === 401 || status === 404 || errorMsg.includes('not logged in') || errorMsg.includes('No WP auth cookies provided to proxy')) { 
+                    console.info(`[Layout Check Function] WP token check via proxy indicates user not logged into WP or endpoint issue (Status: ${status}, Msg: ${errorMsg}).`);
+                    wpSyncStatus = 'notLoggedIn'; 
                 } else {
-                     console.warn(`[Layout Check Function] WP token check failed with status ${status}. Response: ${errorText}`);
+                     console.warn(`[Layout Check Function] WP token check via proxy failed. Status: ${status}, Response: ${JSON.stringify(errorData)}`);
                      wpSyncStatus = 'failedCheck';
                 }
                 fetchSuccess = true; 
-                break; // Exit retry loop, non-2xx status received
+                break; 
             }
 
             const tokenCheckData = await tokenCheckResponse.json();
-            console.log('[Layout Check Function] WP token check response OK: ', tokenCheckData);
+            console.log('[Layout Check Function] WP token check via proxy response OK: ', tokenCheckData);
             fetchSuccess = true;
 
-            if (!tokenCheckData?.tokenExists) {
-                console.info('[Layout Check Function] No valid sync token found on WP side (tokenExists: false). Skipping iframe bridge.');
+            // Check the actual boolean value from the response
+            if (!tokenCheckData?.tokenExists) { 
+                console.info(`[Layout Check Function] No valid sync token found on WP side via proxy (tokenExists: false). Skipping iframe bridge.`);
                 wpSyncStatus = 'noTokenFound';
             } else {
-                console.info('[Layout Check Function] Valid sync token detected on WP side. Flagging to proceed with iframe bridge...');
+                console.info('[Layout Check Function] Valid sync token detected on WP side via proxy. Flagging to proceed with iframe bridge...');
                 shouldInitializeBridge = true; // Set flag to trigger bridge init via $effect
             }
             break; // Exit loop on success
 
         } catch (fetchError) {
-            console.error(`[Layout Check Function] Attempt ${attempt} failed: Error fetching WP token status:`, fetchError);
+            console.error(`[Layout Check Function] Attempt ${attempt} failed: Error fetching SK proxy endpoint ${checkTokenUrl}:`, fetchError); 
             if (attempt > MAX_FETCH_RETRIES) {
                  wpSyncStatus = 'failedCheck';
+                 // Display a more generic error as proxy should handle CORS/SSL
+                 toasts.show(
+                     'Connection Error',
+                     'Could not connect to the backend proxy.',
+                     'destructive'
+                 );
             } else {
                  await new Promise(resolve => setTimeout(resolve, FETCH_RETRY_DELAY));
             }
@@ -719,10 +820,10 @@
     } // End while loop
 
     if (!fetchSuccess) {
-         console.error('[Layout Check Function] Max retries reached or other fetch failure. Aborting WP token check.');
+         console.error('[Layout Check Function] Max retries reached or other fetch failure. Aborting check via proxy.');
          wpSyncStatus = 'failedCheck';
     }
-    console.log('[Layout Check Function] Finished check. shouldInitializeBridge = ', shouldInitializeBridge);
+    console.log('[Layout Check Function] Finished check via proxy. shouldInitializeBridge = ', shouldInitializeBridge);
   }
 
   // Effect to actually initialize the bridge if the flag is set
@@ -759,6 +860,45 @@
       shouldInitializeBridge = false; 
     }
   });
+
+  // --- ADD verifyWpSyncToken function ---
+  async function verifyWpSyncToken(token) {
+    try {
+      console.log('[Layout] Verifying WP sync token:', token);
+      // Use the proxied path
+      const verifyUrl = '/wp-api/asap/v1/validate-sync-token'; 
+      const response = await fetch(verifyUrl, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token }),
+        // credentials: 'include' // REMOVED - Proxy handles cookies
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result?.session_created) {
+        console.log('[Layout] WP sync token verified, session created.');
+        toasts.show(
+          'Auto Login Successful',
+          'Logged in automatically via WordPress session.',
+          'success'
+        );
+        // Invalidate data to fetch user info, or redirect/reload
+        invalidateAll();
+        // Consider window.location.reload() if invalidateAll isn't enough
+      } else {
+        throw new Error(result?.error || 'Token verification failed or session not created');
+      }
+    } catch (error) {
+      console.error('[Layout] Error verifying WP sync token:', error);
+      toasts.show(
+        'Auto Login Failed',
+        error.message || 'Could not automatically log in using the provided token.',
+        'destructive'
+      );
+    }
+  }
+  // --- END verifyWpSyncToken function ---
 </script>
 
 <svelte:head>

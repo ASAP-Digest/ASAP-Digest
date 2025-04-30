@@ -48,7 +48,7 @@ class Check_Sync_Token_Controller extends WP_REST_Controller {
                 [
                     'methods'             => WP_REST_Server::READABLE, // GET request
                     'callback'            => [$this, 'check_token_status'],
-                    'permission_callback' => [$this, 'check_permission'],
+                    'permission_callback' => '__return_true', // Allow all requests to reach the handler
                     'args'                => [], // No specific args needed for this GET request
                 ],
                 'schema' => null, // No formal schema needed for this simple endpoint
@@ -60,6 +60,7 @@ class Check_Sync_Token_Controller extends WP_REST_Controller {
      * Checks if the current user has permissions to access this endpoint.
      *
      * Only logged-in WordPress users should be able to check for their own token.
+     * THIS CHECK IS NO LONGER USED DIRECTLY BY THE ROUTE
      *
      * @param WP_REST_Request $request Full details about the request.
      * @return true|WP_Error True if the request has read access, WP_Error object otherwise.

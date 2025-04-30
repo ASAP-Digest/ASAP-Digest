@@ -38,6 +38,14 @@ export default defineConfig(({ mode }) => {
 			https: true,
 			host: env.HOST || 'localhost',
 			port: parseInt(env.PORT || '5173', 10),
+			proxy: {
+				'^/wp-api/': {
+					target: env.WP_API_URL?.replace('/wp-json', '') || 'https://asapdigest.local',
+					changeOrigin: true,
+					secure: false,
+					rewrite: (path) => path.replace(/^\/wp-api/, '/wp-json'),
+				}
+			},
 			hmr: {
 				protocol: env.VITE_HTTPS === 'true' || true ? 'wss' : 'ws',
 				port: parseInt(env.PORT || '5173', 10),

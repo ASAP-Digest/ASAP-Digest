@@ -30,7 +30,7 @@ const STATUS_EMOJIS = ['⏳','🔄','⏸️','🔬','🧪','✅','❌','🔧'];
 // Set of allowed prefixes for task IDs, derived from the protocol.
 // Tasks with prefixes not in this set will be ignored during renumbering.
 const ALLOWED_PREFIXES = new Set([
-  'AUTH', 'UI', 'CORE', 'WIDGET', 'PWA', 'BUG', 'REFACTOR', 'DOCS', 'TEST', 'DB', 'INFRA', 'A11Y'
+  'AUTH', 'UI', 'CORE', 'WIDGET', 'PWA', 'BUG', 'REFACTOR', 'DOCS', 'TEST', 'DB', 'INFRA', 'AUTH-P2', 'AUTH-SYNC', 'AUTH-TEST', 'A11Y'
 ]);
 
 // Maximum number of validation errors to display to avoid flooding the console.
@@ -60,7 +60,7 @@ function extractPrefix(line, fallback) {
    * /        : End of regex pattern.
    */
   // Execute the regex against the input line to find the first match.
-  const match = line.match(/\[\s*([A-Z0-9]{2,8})-/);
+  const match = line.match(/\[\s*([A-Z0-9]{3,6}(?:-[A-Z0-9]+)*)-\d/);
   // If a match is found, extract the captured prefix (group 1), otherwise use the fallback.
   const prefix = match ? match[1] : fallback;
   return prefix;
@@ -176,7 +176,7 @@ function normalizeTaskLine(line) {
    * /          : End of regex pattern.
    * Replacement: '[ $1 ]' - Puts exactly one space before and after the captured ID ($1).
    */
-  line = line.replace(/\[\s*([A-Z0-9]{3,6}-\d+(?:\.\d+){0,2})\s*\]/, '[ $1 ]');
+  line = line.replace(/\[\s*([A-Z0-9]{3,6}(?:-[A-Z0-9]+)*-\d+(?:\.\d+){0,2})\s*\]/, '[ $1 ]');
   // Normalize tags: ` • [key:value]` -> ` • [ key:value ]`.
   /*
    * Regex Breakdown (Tag Normalization):
@@ -621,7 +621,7 @@ async function retrofitRoadmap() {
        * )*        : End group 2, allowing zero or more tag groups.
        * $         : End of the line.
        */
-      const finalCheckRegex = /^\s*-\s+[⏳🔄⏸️🔬🧪✅❌🔧]\s+\[\s*([A-Z0-9]{3,6}-\d+(?:\.\d+){0,2})\s*\]\s+.*?(\s+•\s+\[\s*[^:]+:[^\\\]]+\s*\])*$/;
+      const finalCheckRegex = /^\s*-\s+[⏳🔄⏸️🔬🧪✅❌🔧]\s+\[\s*([A-Z0-9]{3,6}(?:-[A-Z0-9]+)*-\d+(?:\.\d+){0,2})\s*\]\s+.*?(\s+•\s+\[\s*[^:]+:[^\\\]]+\s*\])*$/;
       const m = l.match(finalCheckRegex);
       if (!m) {
         invalids.push(`Line ${i+1}: ${l.trim()}`);

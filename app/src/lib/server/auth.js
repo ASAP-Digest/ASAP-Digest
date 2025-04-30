@@ -800,3 +800,16 @@ async function getNonce() {
 }
 
 export { getNonce };
+
+// --- ADD EXPORTS for direct use ---
+export { 
+    getUserByWpIdFn,
+    createUserFn,
+    createSessionFn,
+    // Export others if needed elsewhere
+    // getUserByEmailFn,
+    // getUserByIdFn,
+    // getSessionByTokenFn,
+    // deleteSessionFn
+};
+// --- END ADD EXPORTS ---

@@ -139,7 +139,7 @@ function asap_init_core() {
     add_action('admin_enqueue_scripts', 'asap_enqueue_admin_styles', 30);
     
     // CORS and headers (priority 100+)
-    add_action('rest_api_init', 'asap_add_cors_headers', 15);
+    // add_action('rest_api_init', 'asap_add_cors_headers', 15); // Temporarily Disabled
 
     // Register SK User Sync endpoint
     add_action('rest_api_init', function() {
@@ -151,6 +151,16 @@ function asap_init_core() {
     add_action('rest_api_init', function() {
         $check_token_controller = new \ASAPDigest\Core\API\Check_Sync_Token_Controller();
         $check_token_controller->register_routes();
+    }, 10); // Use default priority
+
+    // Register User Details endpoint (NEW)
+    add_action('rest_api_init', function() {
+        // Ensure the class file is included first
+        require_once plugin_dir_path(__FILE__) . 'includes/api/class-user-controller.php';
+        // Instantiate the controller
+        $user_details_controller = new \ASAPDigest\Core\API\User_Details_Controller();
+        // Register its routes
+        $user_details_controller->register_routes();
     }, 10); // Use default priority
 }
 
@@ -293,7 +303,8 @@ function asap_register_rest_routes() {
  * @hook add_action('rest_api_init', function() {
  *   register_rest_route('asap/v1', '/nonce', [
  *     'methods' => 'GET',
- *     'callback' => fn($req) => rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'))
+ *     'callback' => fn($req) => rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest')),
+ *     'permission_callback' => '__return_true'
  *   ]);
  * });
  * @since 1.0.0
@@ -303,7 +314,8 @@ function asap_register_rest_routes() {
 add_action('rest_api_init', function() {
   register_rest_route('asap/v1', '/nonce', [
     'methods' => 'GET',
-    'callback' => fn($req) => rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'))
+    'callback' => fn($req) => rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest')),
+    'permission_callback' => '__return_true'
   ]);
 });
 
@@ -536,56 +548,6 @@ function asap_send_notification(WP_REST_Request $request) {
 
   return rest_ensure_response(['success' => true]);
 }
-
-/**
- * @description Add CORS headers for SvelteKit frontend
- * @hook add_action('rest_api_init', 'asap_add_cors_headers', 15)
- * @since 1.0.0
- * @return void
- * @created 03.30.25 | 03:45 PM PDT
- */
-function asap_add_cors_headers() {
-  remove_filter('rest_pre_serve_request', 'rest_send_cors_headers'); // Remove default WP CORS headers
-
-  add_filter('rest_pre_serve_request', function($value) {
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    $current_site_url = site_url(); // Get the current WP site URL
-    $allowed_origin = '';
-    $request_path = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '';
-
-    // Determine the allowed cross-origin partner based on the current WP environment
-    if (strpos($current_site_url, 'asapdigest.local') !== false) {
-      $allowed_origin = 'https://localhost:5173';
-    } elseif (strpos($current_site_url, 'asapdigest.com') !== false) {
-      $allowed_origin = 'https://app.asapdigest.com';
-    }
-
-    // Check if the request origin matches the allowed partner
-    if ($origin === $allowed_origin) {
-        header("Access-Control-Allow-Origin: " . esc_url_raw($origin));
-        header("Access-Control-Allow-Credentials: true"); 
-        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS"); 
-        // Allow common headers, plus our custom sync secret header
-        header("Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-WP-Sync-Secret, X-CSRF-Token, Cookie"); 
-    }
-
-    // Handle preflight OPTIONS requests specifically for REST API
-    // Make sure this applies to *all* relevant /asap/v1/ endpoints, not just one
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS' && strpos($request_path, '/wp-json/asap/v1/') === 0) {
-       if ($origin === $allowed_origin) {
-            header('Access-Control-Max-Age: 86400');
-            status_header(204); // No Content for OPTIONS
-            exit(0); // Exit early
-       } else {
-            status_header(403); // Forbidden for OPTIONS from wrong origin
-            exit(0);
-       }
-    }
-
-    return $value; // Continue with the request processing
-  });
-}
-add_action('rest_api_init', 'asap_add_cors_headers', 15); // Hook into rest_api_init with priority 15
 
 /**
  * @description Register endpoint to update podcast URL
