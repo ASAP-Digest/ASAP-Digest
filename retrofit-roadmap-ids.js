@@ -30,7 +30,7 @@ const STATUS_EMOJIS = ['⏳','🔄','⏸️','🔬','🧪','✅','❌','🔧'];
 // Set of allowed prefixes for task IDs, derived from the protocol.
 // Tasks with prefixes not in this set will be ignored during renumbering.
 const ALLOWED_PREFIXES = new Set([
-  'AUTH', 'UI', 'CORE', 'WIDGET', 'PWA', 'BUG', 'REFACTOR', 'DOCS', 'TEST', 'DB', 'INFRA', 'AUTH-P2', 'AUTH-SYNC', 'AUTH-TEST', 'A11Y'
+  'AUTH', 'UI', 'CORE', 'WIDGET', 'PWA', 'BUG', 'REFACTOR', 'DOCS', 'TEST', 'DB', 'INFRA', 'REFCTR', 'A11Y'
 ]);
 
 // Maximum number of validation errors to display to avoid flooding the console.

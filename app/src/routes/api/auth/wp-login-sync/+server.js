@@ -1,4 +1,3 @@
-// /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/src/routes/api/auth/wp-login-sync/+server.js
 import { json } from '@sveltejs/kit';
 import crypto from 'node:crypto'; // Import crypto for token generation
 // Remove main auth import if only using specific functions, 

@@ -59,7 +59,7 @@ Each task MUST have a unique identifier enclosed in square brackets with a space
     - MUST be 3-6 characters long.
     - MUST be uppercase alphanumeric (`A-Z`, `0-9`).
     - SHOULD indicate the primary category or feature area.
-    - **Recommended Prefixes:** `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `TEST`, `DB`, `INFRA`, `A11Y`  (prefixes derived from `task-ranking-table-reference-and-table.mdc`).
+    - **Recommended Prefixes:** `AUTH`, `UI`, `CORE`, `WIDGET`, `PWA`, `BUG`, `REFACTOR`, `DOCS`, `REFCTR`, `TEST`, `DB`, `INFRA`, `A11Y`  (prefixes derived from `task-ranking-table-reference-and-table.mdc`).
 - **Uniqueness:** The full hierarchical ID (including all segments) MUST be unique within the roadmap.
 - **Spacing:** There MUST be a space before and after the ID inside the brackets: `[ PREFIX-Num ]`, `[ PREFIX-Num.SubNum ]`, etc.
 
