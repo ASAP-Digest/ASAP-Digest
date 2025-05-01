@@ -134,7 +134,10 @@ function logConfig(message, level = 'info') {
     }
 }
 
-// --- RESTORED Adapter Functions Definition START ---
+// --- Adapter Functions Definition START ---
+// These functions provide the low-level database interactions for Better Auth.
+// They are used by both the main 'auth' instance below AND the specific
+// /api/auth/wp-user-sync endpoint.
 
 /**
  * Get user by email (Adapter Implementation)
@@ -517,8 +520,8 @@ async function createUserFn(userData) {
 }
 // --- RESTORED Adapter Functions Definition END ---
 
-// Define the adapter object - *INCLUDING NEW FUNCTIONS* 
-// This remains defined in the file but is NOT used in the main betterAuth config below.
+// Define the adapter object used for initializing the main auth instance.
+// This uses the functions defined above.
 const adapter = {
     getUserByEmail: getUserByEmailFn,
     getUserById: getUserByIdFn,
@@ -530,6 +533,8 @@ const adapter = {
 };
 
 // --- Hook Functions Definition ---
+// These hooks are kept for potential future use but are currently empty
+// as the legacy WP sync logic they contained has been removed.
 
 /**
  * Called after user creation
@@ -621,10 +626,26 @@ async function getNonce() {
     }
 }
 
-// Export the authenticated API functions and utilities
-// This follows the Type Definition Management Protocol by exposing only what's needed
+// --- Better Auth Instance Initialization ---
+// Initialize the main Better Auth instance (`auth`).
+// This instance handles standard authentication flows (email/pass, social, OTP etc.)
+// via the generic [...auth] endpoint and the svelteKitHandler.
+// It uses the Kysely dialect and the custom adapter defined above.
+const auth = betterAuth({
+    secret: BETTER_AUTH_SECRET, 
+    sessionCookieName: 'better_auth_session',
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000,
+    database: { dialect: dialect, type: "mysql" },
+    adapter: adapter,
+    after: { onUserCreation: onUserCreationHook, onSessionCreation: onSessionCreationHook }
+});
+
+// --- Exports ---
+// Export the main 'auth' instance for the standard auth handler ([...auth].js)
+// Export individual adapter functions needed by the custom WP sync endpoint (/wp-user-sync.js)
+// Export pool and utility functions.
 export {
-    // Core adapter functions
+    auth, 
     getUserByEmailFn,
     getUserByIdFn,
     getUserByWpIdFn,
@@ -632,15 +653,9 @@ export {
     createSessionFn,
     getSessionByTokenFn,
     deleteSessionFn,
-    
-    // Utility functions
     updateUserMetadata,
     onUserCreationHook,
     onSessionCreationHook,
-    
-    // Database connection
     pool,
-    
-    // Authentication utilities
     getNonce
 };

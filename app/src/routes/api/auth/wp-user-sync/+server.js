@@ -8,7 +8,8 @@
  */
 
 import { json } from '@sveltejs/kit';
-// Import individual adapter functions instead of the full auth object
+// Import individual adapter functions directly, as this endpoint provides
+// custom logic outside the standard Better Auth flows handled by [...auth].js
 import { 
   getUserByWpIdFn, 
   createUserFn, 

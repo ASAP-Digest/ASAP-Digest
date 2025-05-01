@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# JSDoc Complex Parameter Typing Protocol v1.0
+# JSDoc Complex Parameter Typing Protocol v1.1
+
+*(Self-correction: v1.1 - Added nested parameter example and SvelteKit type guidance)*
 
 ## 1. Purpose
 
@@ -15,13 +17,13 @@ This protocol defines a standard, reliable method for applying JSDoc type checki
 -   **Reliability:** Prioritize typing methods that directly utilize globally accessible type definitions over potentially unreliable framework-generated type aliases or complex relative path imports for core parameter structures.
 -   **Global First:** Leverage globally defined types from project-wide type definition files (e.g., `global.d.ts`, `app.d.ts`, `src/types.d.ts`) whenever possible, especially for shared structures like application state or context interfaces (e.g., `App.Locals`, `AppContext`).
 -   **Explicit Parameters:** Use `@param` tags within the JSDoc block to explicitly type destructured function parameters, referencing their structure or individual properties.
--   **Targeted Imports:** Use standard JSDoc `@type` imports only when necessary for specific, non-global types (e.g., utility types, types from specific modules, or framework primitives like `import('@sveltejs/kit').Params`).
+-   **Targeted Imports:** Use standard JSDoc `@type` imports only when necessary for specific, non-global types (e.g., utility types, types from specific modules). **Avoid framework-specific type imports like `import('@sveltejs/kit').Params`**.
 
 ## 3. Standard JSDoc Format for Functions with Complex Parameters
 
 Functions receiving complex objects, especially via destructuring, SHOULD include a JSDoc block following this structure:
 
-````javascript
+```javascript
 /**
  * [Brief description of the function's purpose].
  * 
@@ -38,38 +40,39 @@ export async function processData({ property1, property2, property3 /*, ...other
     // Function implementation
     // 'property1', 'property2', 'property3' should now be correctly typed via @param.
 }
-````
+```
 
 ## 4. Specific Examples
 
 ### 4.1 Framework Event Handler (e.g., SvelteKit Server Load)
 
-Leverages globally defined `App.Locals`.
+Leverages globally defined `App.Locals` and standard `Request`/`Response` types. Uses `Record<string, string>` for `params`.
 
-````javascript
+```javascript
 /**
  * Handles server-side data loading for a specific route.
  * 
- * @param {object} event The framework's load event object.
+ * @param {object} event The SvelteKit load event object.
  * @param {App.Locals} event.locals Access to globally defined request-scoped data.
- * @param {import('@sveltejs/kit').Params} event.params Route parameters object.
+ * @param {Record<string, string>} event.params Route parameters object.
  * @param {function(RequestInfo | URL, RequestInit?): Promise<Response>} event.fetch Framework-provided fetch function.
+ * @param {Request} event.request The SvelteKit Request object.
  * 
  * @returns {Promise<{ message: string }>} Data for the page/layout.
  */
-export async function load({ locals, params, fetch }) {
+export async function load({ locals, params, fetch, request }) {
   console.log('User from locals:', locals.user?.displayName); // 'locals' is typed via @param
   console.log('Route param:', params.slug); // 'params' is typed via @param
   // ... fetch data ...
   return { message: 'Data loaded on server' };
 }
-````
+```
 
 ### 4.2 Simple Event Callback with Destructuring
 
 Uses basic types and hypothetical global `AppSettings`.
 
-````javascript
+```javascript
 /**
  * Handles a button click event.
  * 
@@ -84,9 +87,41 @@ function handleClick({ id, timestamp, settings }) {
     console.log(`Element ${id} clicked at ${timestamp}.`);
     console.log('Current theme setting:', settings.theme); // 'settings' is typed via @param
 }
-````
+```
 
-## 5. Verification Checklist
+### 4.3 Example: Typing Nested Parameters (e.g., `event.params.auth`)
+
+When documenting nested properties like `event.params.auth`, type the parent property (`event.params`) and then access the nested property safely in the code. Do not add a separate `@param` tag for the nested property itself.
+
+```javascript
+/**
+ * Handle GET requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const GET = async (event) => {
+    // Access params safely using optional chaining or default value
+    const authPath = event.params?.auth ?? 'unknown'; 
+    return json({ 
+        message: 'Authentication fallback endpoints handled...',
+        path: authPath
+    });
+};
+```
+
+## 5. SvelteKit Common Type Guidance
+
+Prefer standard JSDoc types or global types (`app.d.ts`) over framework imports:
+
+-   **`Request`**: Use the global `Request` type (`@param {Request} event.request`).
+-   **`Response`**: Use the global `Response` type (`@returns {Promise<Response>}`).
+-   **`Params`**: Use `@param {Record<string, string>} event.params`.
+-   **`Locals`**: Use `@param {App.Locals} event.locals` (requires `App.Locals` definition in `app.d.ts`).
+-   **`Cookies`**: Use `@param {{ get: function, set: function, delete: function }} event.cookies` or a similar structural definition. Document specific methods used (e.g., `@param {Function} event.cookies.delete`).
+
+## 6. Verification Checklist
 
 When implementing or reviewing functions with complex, potentially destructured parameters:
 
@@ -95,7 +130,9 @@ When implementing or reviewing functions with complex, potentially destructured 
 -   [ ] Is there a top-level `@param {object} descriptiveName` tag for the main complex argument?
 -   [ ] Is there a specific `@param` tag for *every* destructured property used from that complex argument?
 -   [ ] Do the types referenced in `@param` tags prioritize globally defined types (e.g., `App.Locals`, `AppContext`) where applicable?
--   [ ] Are framework-specific type aliases (like `$types`) avoided for typing the core structure of parameters like `locals` or the main event object?
+-   [ ] Are framework-specific type aliases (like `$types`) or type imports (`import('@sveltejs/kit').*`) avoided?
+-   [ ] Is the correct JSDoc syntax used for common SvelteKit types (Request, Params, Locals, Cookies)?
+-   [ ] Is the JSDoc syntax for nested parameters correct (typing the parent object)?
 -   [ ] Are `@type` imports used sparingly and only for necessary, specific types?
 -   [ ] Is there a `@returns` tag describing the output type?
 -   [ ] Are there any unresolved linter errors related to parameter types (especially 'implicitly has an any type')?
