@@ -129,32 +129,32 @@
         // Step E: Trigger Backend Sync
         console.log("[Layout Mount - Step E] Triggering backend sync with verified WP user details...");
         return fetch('/api/auth/wp-user-sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(wpUserDetails)
         });
-      })
-      .then(response => {
+        })
+        .then(response => {
         if (!response) {
           throw new Error('No response received from sync endpoint');
-        }
+          }
         if (!response.ok) {
-          return response.text().then(text => {
+            return response.text().then(text => {
             throw new Error(`Backend sync failed with status ${response.status}. Response: ${text}`);
-          });
-        }
+            });
+          }
         return response.json();
-      })
-      .then(syncResult => {
+        })
+        .then(syncResult => {
         // Step G: Handle Sync Success
         if (syncResult?.success) {
           console.log("[Layout Mount - Step G] Backend sync successful. Invalidating data to refresh session state.");
           
           // Show success toast
-          toasts.show(
+                        toasts.show(
             'Logged in via WordPress',
-            'success'
-          );
+                          'success'
+                        );
           
           // Invalidate SvelteKit data and navigate
           invalidateAll().then(() => {
@@ -165,53 +165,53 @@
               goto(targetPath, { replaceState: true });
             }, 0);
           });
-        } else {
+                    } else {
           throw new Error(`Backend sync reported failure: ${JSON.stringify(syncResult)}`);
-        }
-      })
-      .catch(error => {
+                }
+            })
+            .catch(error => {
         // Handle errors gracefully - don't show error toasts for background auto-login attempts
         console.log(`[Layout Mount] Auto-login process halted: ${error.message}`);
-      });
+            });
     } else if (browser) {
       console.log('[Layout Mount] Active Better Auth session detected. Skipping WP session check.');
-    }
+    } 
     // --- END NEW WP Session Check ---
 
     // --- SSE Listener Setup --- 
     let localEventSource = null;
     if (browser) {
-      console.log('[Layout Sync Listener] Setting up EventSource...');
-      localEventSource = new EventSource('/api/auth/sync-stream');
+        console.log('[Layout Sync Listener] Setting up EventSource...');
+        localEventSource = new EventSource('/api/auth/sync-stream');
 
-      localEventSource.onopen = () => {
-        console.log('[Layout Sync Listener] EventSource connection opened.');
-      };
+        localEventSource.onopen = () => {
+          console.log('[Layout Sync Listener] EventSource connection opened.');
+        };
 
-      localEventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('[Layout Sync Listener] Received message:', data); // DEBUG
+        localEventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('[Layout Sync Listener] Received message:', data); // DEBUG
 
-          if (data.type === 'user-update') {
-            const currentUserId = $page.data.user?.id; 
-            // Enhanced Logging: Include received timestamp
-            console.log(`[Layout Sync Listener] User update received. Target User: ${data.userId}, Current User: ${currentUserId}, Timestamp in message: ${data.updatedAt}`); // DEBUG
-            
-            // Check if userId matches AND the updatedAt timestamp exists in the message
-            if (currentUserId && data.userId === currentUserId && data.updatedAt) { 
+            if (data.type === 'user-update') {
+              const currentUserId = $page.data.user?.id; 
+              // Enhanced Logging: Include received timestamp
+              console.log(`[Layout Sync Listener] User update received. Target User: ${data.userId}, Current User: ${currentUserId}, Timestamp in message: ${data.updatedAt}`); // DEBUG
+              
+              // Check if userId matches AND the updatedAt timestamp exists in the message
+              if (currentUserId && data.userId === currentUserId && data.updatedAt) { 
               console.log('[Layout Sync Listener] Relevant user update event received. Invalidating data...');
               invalidateAll(); // Invalidate data to trigger re-fetch
-            } else {
+                } else {
               console.log('[Layout Sync Listener] Update not applicable to current user or missing timestamp. Skipping.'); // DEBUG
             }
-          }
-        } catch (error) {
+            }
+          } catch (error) {
           console.error('[Layout Sync Listener] Error handling message:', error); // DEBUG
-        }
-      };
+          }
+        };
 
-      localEventSource.onerror = (error) => {
+        localEventSource.onerror = (error) => {
         console.error('[Layout Sync Listener] EventSource error:', error); // DEBUG
         // Handle reconnection logic if needed
       };
@@ -767,6 +767,127 @@
       // to prevent this effect from re-running if other state changes trigger it.
       shouldInitializeBridge = false; 
     }
+  });
+
+  // ---> Placeholder for log, handleSyncSuccess, triggerBackendSync, checkWordPressSession functions <---
+  // ---> (These will be added in the next step) <---
+  function log(message, ...optionalParams) { if (browser) console.log('[Layout Auth Check]', message, ...optionalParams); }
+  async function handleSyncSuccess() {
+    log("Backend sync successful. Invalidating data to refresh session state.");
+    // Ensure toasts store is available and used correctly
+    toasts?.add({ title: 'Success', description: 'Logged in via WordPress.', type: 'success' });
+    await invalidateAll(); // Re-runs load functions using new cookie
+    
+    // Optional: Redirect after invalidation completes and $page store updates
+    await new Promise(resolve => setTimeout(resolve, 50)); // Wait a tick
+    // Check if still on a non-dashboard page after potential load function redirect
+    if ($page.url.pathname !== '/dashboard') { 
+        log("Redirecting to dashboard after successful sync.");
+        goto('/dashboard', { replaceState: true });
+    }
+  }
+  async function triggerBackendSync(wpUserDetails) {
+    log("Triggering backend sync with WP user details:", wpUserDetails);
+    const syncEndpoint = '/api/auth/wp-user-sync';
+    try {
+        const syncResponse = await fetch(syncEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(wpUserDetails)
+        });
+
+        if (!syncResponse.ok) {
+            const errorText = await syncResponse.text();
+            log(`Backend sync request failed with status: ${syncResponse.status}. Response: ${errorText}`);
+            toasts?.add({ title: 'Sync Error', description: `Backend sync failed (Status: ${syncResponse.status})`, type: 'error' });
+            return; // Stop flow here, backend handled error
+        }
+        
+        // Success Case: Backend handled sync, cookie should be set
+        const result = await syncResponse.json();
+        log("Backend sync request successful. Result:", result);
+        handleSyncSuccess(); // Proceed to invalidation/UI update
+
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log(`Network error during backend sync request: ${message}.`);
+        toasts?.add({ title: 'Network Error', description: 'Could not reach sync endpoint.', type: 'error' });
+    }
+  }
+
+  /**
+   * Queries the WordPress GraphQL endpoint to check for an active WP session.
+   * Uses the 'viewer' query and sends credentials.
+   */
+  async function checkWordPressSession() {
+      log("Checking WordPress session via GraphQL viewer query...");
+      const viewerQuery = `query GetViewerDetails { viewer { databaseId email username name } }`;
+      const wpGraphqlUrl = import.meta.env.VITE_PUBLIC_WP_GRAPHQL_URL || 'https://asapdigest.local/graphql';
+
+      if (!wpGraphqlUrl) {
+          log("Error: PUBLIC_WP_GRAPHQL_URL environment variable is not set.");
+          toasts?.add({ title: 'Config Error', description: 'GraphQL endpoint URL missing.', type: 'error' });
+          return;
+      }
+
+      try {
+          const response = await fetch(wpGraphqlUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: viewerQuery }),
+              credentials: 'include' // ESSENTIAL: Sends WP cookies
+          });
+
+          if (!response.ok) {
+              log(`GraphQL query failed with status: ${response.status}. Is CORS configured correctly on WP?`);
+              return; // Stop the flow
+          }
+
+          const { data, errors } = await response.json();
+
+          if (errors || !data?.viewer?.databaseId) {
+              log(`GraphQL query completed but no authenticated viewer found. Errors: ${JSON.stringify(errors)}`);
+              return; // Stop the flow
+          }
+
+          // Success Case: WP Session Validated
+          if (!data.viewer.email) {
+              log("GraphQL viewer query succeeded but email is missing.");
+              toasts?.add({ title: 'Data Error', description: 'WP user email missing.', type: 'error' });
+              return;
+          }
+          
+          /** @type {WpUserSync} */
+          const wpUserDetails = {
+              wpUserId: data.viewer.databaseId,
+              email: data.viewer.email,
+              username: data.viewer.username || data.viewer.email.split('@')[0],
+              name: data.viewer.name || data.viewer.username || 'WP User'
+          };
+          log("WP session verified via GraphQL viewer query. User details:", wpUserDetails);
+          triggerBackendSync(wpUserDetails);
+
+    } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          log(`Network error during GraphQL viewer query: ${message}. Check browser console for SSL/CORS issues.`);
+      }
+  }
+
+  onMount(() => {
+    if (!browser) return;
+    log("Layout mounted. Checking auth state...");
+    const unsubscribe = page.subscribe(currentPage => {
+        if (currentPage.data.user) {
+            log("Active Better Auth session found via $page store. Skipping WP check.", currentPage.data.user);
+        } else {
+            log("No active Better Auth session found via $page store. Initiating WP session check...");
+            checkWordPressSession();
+        }
+    });
+    return () => {
+        log("Layout unmounting. Unsubscribing from page store.");
+        unsubscribe();
+    };
   });
 </script>
 

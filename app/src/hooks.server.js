@@ -237,7 +237,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
 
         // When Better Auth session exists, check if it's valid and set user in locals
         try {
-            skConnection = await pool.getConnection();
+        skConnection = await pool.getConnection();
             const sessionQuery = `
                 SELECT 
                     s.id as session_id, 
@@ -245,7 +245,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                     s.session_token,
                     s.expires_at,
                     u.id,
-                    u.email,
+                    u.email, 
                     u.username,
                     u.name,
                     u.metadata

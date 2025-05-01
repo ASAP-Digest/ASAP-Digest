@@ -58,7 +58,7 @@ import {
 
 /**
  * @typedef {Object} Session
- * @property {string} id - Session ID
+ * @property {string} sessionId - Session ID (Primary Key, usually UUID)
  * @property {string} userId - Better Auth User ID
  * @property {string} token - Session token
  * @property {Date} expiresAt - Session expiry date
@@ -284,7 +284,7 @@ async function getSessionByTokenFn(sessionToken) {
                 if (user) {
                     logConfig(`Adapter: getSessionByToken found user ${user.id} for session.`);
                     return {
-                        id: String(sessionData.id),
+                        sessionId: String(sessionData.id),
                         userId: String(sessionData.user_id),
                         token: String(sessionData.session_token),
                         expiresAt: new Date(sessionData.expires_at),
@@ -327,34 +327,30 @@ async function createSessionFn(userId, sessionToken, expiresAt) {
         connection = await pool.getConnection();
         const createdAt = new Date();
 
-        // ---> ADD: Delete existing sessions for this user first <---
+        // Delete existing sessions for this user first
         try {
             const deleteSql = 'DELETE FROM ba_sessions WHERE user_id = ?';
-            const deleteParams = [userId];
-            await connection.execute(deleteSql, deleteParams);
+            await connection.execute(deleteSql, [userId]);
             logConfig(`Adapter: createSession deleted existing sessions for user ${userId}`);
         } catch (deleteError) {
             logConfig(`Adapter: Error deleting existing sessions for user ${userId}: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`, 'warn');
-            // Decide whether to proceed or throw. Proceeding might be okay if the goal is just to establish a new session.
         }
-        // ---> END ADD <---
+        
+        const sessionId = crypto.randomUUID(); // Generate UUID for the session ID
 
-        // Need to generate a secure random ID for the session
-        const sessionId = crypto.randomUUID(); // Generate UUID
-
-        const sql = 'INSERT INTO ba_sessions (id, user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'; // Added ID column
-        const params = [sessionId, userId, sessionToken, expiresAt, createdAt]; // Added sessionId parameter
+        const sql = 'INSERT INTO ba_sessions (id, user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'; 
+        const params = [sessionId, userId, sessionToken, expiresAt, createdAt];
         
         /** @type {[import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
         const [result, fields] = await connection.execute(sql, params);
 
-        // Check affectedRows for successful insert, no insertId for UUID PK
         if (result && typeof result === 'object' && 'affectedRows' in result && result.affectedRows > 0) {
             logConfig(`Adapter: createSession successfully inserted session ${sessionId} for user ${userId}`);
-            const user = await getUserByIdFn(userId); // Use existing getUserByIdFn
+            const user = await getUserByIdFn(userId);
             if (user) {
+                // Return object matching the updated Session typedef
                 return {
-                    id: sessionId, // Return the generated sessionId
+                    sessionId: sessionId, // Use sessionId field
                     userId: userId,
                     token: sessionToken,
                     expiresAt: expiresAt,
@@ -518,6 +514,53 @@ async function createUserFn(userData) {
         }
     }
 }
+
+/**
+ * Create a linked account record (Adapter Implementation)
+ * Associates a Better Auth user ID with a specific provider and provider ID.
+ * 
+ * @param {{ userId: string, provider: string, providerAccountId: string }} accountData - Account linking data.
+ * @returns {Promise<boolean>} Success status.
+ */
+async function createAccountFn(accountData) {
+    const { userId, provider, providerAccountId } = accountData;
+    logConfig(`Adapter: createAccount called for user ${userId}, provider ${provider}, providerId ${providerAccountId}`);
+    if (!userId || !provider || !providerAccountId) {
+        logConfig(`Adapter: createAccount failed - userId, provider, and providerAccountId are required.`, 'error');
+        return false;
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const sql = 'INSERT INTO ba_accounts (user_id, provider, provider_account_id, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())';
+        const params = [userId, provider, providerAccountId];
+        
+        /** @type {[import('mysql2/promise').OkPacket|import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
+        const [result, fields] = await connection.execute(sql, params);
+
+        if (result && 'affectedRows' in result && result.affectedRows === 1) {
+            logConfig(`Adapter: createAccount successfully linked user ${userId} to ${provider}:${providerAccountId}`);
+            return true;
+        } else {
+             logConfig(`Adapter: createAccount failed to insert link for user ${userId} to ${provider}:${providerAccountId}. Result: ${JSON.stringify(result)}`, 'error');
+            return false;
+        }
+    } catch (error) {
+        // Handle potential duplicate entry errors gracefully if necessary
+        if (error instanceof Error && error.message.includes('Duplicate entry')) {
+             logConfig(`Adapter: createAccount skipped duplicate link for user ${userId} to ${provider}:${providerAccountId}`, 'warn');
+             return true; // Consider it a success if the link already exists
+        }
+        logConfig(`Adapter: Error in createAccount for user ${userId} to ${provider}:${providerAccountId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        return false;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
 // --- RESTORED Adapter Functions Definition END ---
 
 // Define the adapter object used for initializing the main auth instance.
@@ -529,7 +572,8 @@ const adapter = {
     createSession: createSessionFn,
     deleteSession: deleteSessionFn,
     getUserByWpId: getUserByWpIdFn,
-    createUser: createUserFn
+    createUser: createUserFn,
+    createAccount: createAccountFn
 };
 
 // --- Hook Functions Definition ---
@@ -554,7 +598,7 @@ async function onUserCreationHook(user) {
  * @deprecated REMOVED: 2025-05-16 - WordPress session creation now handled via GraphQL viewer query + wp-user-sync endpoint
  */
 async function onSessionCreationHook(session) {
-    logConfig(`Session creation hook triggered for ${session.id}`);
+    logConfig(`Session creation hook triggered for ${session.sessionId}`);
     // Legacy WordPress session creation removed - now handled via GraphQL + wp-user-sync endpoint
 }
 
@@ -650,6 +694,7 @@ export {
     getUserByIdFn,
     getUserByWpIdFn,
     createUserFn,
+    createAccountFn,
     createSessionFn,
     getSessionByTokenFn,
     deleteSessionFn,

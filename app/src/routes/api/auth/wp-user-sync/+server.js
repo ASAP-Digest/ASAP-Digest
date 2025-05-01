@@ -8,11 +8,15 @@
  */
 
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment'; // <-- Import dev
 // Import individual adapter functions directly, as this endpoint provides
 // custom logic outside the standard Better Auth flows handled by [...auth].js
+// Also import the main 'auth' instance for session manager access.
 import { 
+  auth, // <-- Import main auth instance
   getUserByWpIdFn, 
   createUserFn, 
+  createAccountFn, // <-- Import createAccountFn
   createSessionFn 
 } from '$lib/server/auth';
 import crypto from 'node:crypto';
@@ -58,9 +62,12 @@ export async function POST(event) {
             error: 'Invalid request data' 
         }, { status: 400 });
     }
+    // Add inline type annotation after guard
+    /** @type {WpUserSync} */
+    const checkedWpUserDetails = wpUserDetails;
     
     // Extract and validate required fields using type safety protocol
-    const { wpUserId, email, username, name } = wpUserDetails;
+    const { wpUserId, email, username, name } = checkedWpUserDetails;
     
     if (!wpUserId || !email) {
         console.error('[API /wp-user-sync] Missing required fields:', { wpUserId, email });
@@ -85,10 +92,9 @@ export async function POST(event) {
         // Step 1: Find existing user by WordPress ID using getUserByWpIdFn
         console.log(`[API /wp-user-sync] Looking up user by WP ID: ${wpUserIdNum}`);
         
-        /**
-         * @type {User|null} - The Better Auth user or null if not found
-         */
+        /** @type {User|null} - The Better Auth user or null if not found */
         let baUser = await getUserByWpIdFn(wpUserIdNum);
+        let isNewUser = false; // Flag to track if user was just created
         
         // Type guard to ensure baUser is valid when found
         if (baUser && typeof baUser === 'object' && 'id' in baUser) {
@@ -97,6 +103,7 @@ export async function POST(event) {
         } else {
             // User doesn't exist, create a new one using createUserFn
             console.log(`[API /wp-user-sync] No existing user found for WP ID ${wpUserIdNum}. Creating new user...`);
+            isNewUser = true;
             
             // Create the BA user - structure matching createUserFn parameter requirements
             baUser = await createUserFn({
@@ -111,41 +118,69 @@ export async function POST(event) {
             if (!baUser || typeof baUser !== 'object' || !('id' in baUser)) {
                 throw new Error(`Failed to create Better Auth user for WordPress user ${wpUserIdNum}`);
             }
-            
-            console.log(`[API /wp-user-sync] Successfully created user for WP ID ${wpUserIdNum}: ${baUser.id}`);
+            // Add inline type after successful creation
+            /** @type {User} */
+            const createdBaUser = baUser; 
+            console.log(`[API /wp-user-sync] Successfully created user for WP ID ${wpUserIdNum}: ${createdBaUser.id}`);
+
+            // ---> ADD: Link the new BA user to the WP provider account
+            const accountLinked = await createAccountFn({
+                userId: createdBaUser.id, // Use typed variable
+                provider: 'wordpress', // Use consistent provider name
+                providerAccountId: String(wpUserIdNum) // Store WP ID
+            });
+            if (!accountLinked) {
+                console.warn(`[API /wp-user-sync] Failed to create account link in ba_accounts for user ${createdBaUser.id} and WP ID ${wpUserIdNum}. Proceeding with session creation.`);
+            }
+            baUser = createdBaUser; // Ensure baUser holds the typed created user
         }
         
         // Step 2: Create a Better Auth session for the user using createSessionFn
         // Type guard to ensure baUser exists and has id
         if (baUser && typeof baUser === 'object' && 'id' in baUser && baUser.id) {
-            console.log(`[API /wp-user-sync] Creating session for user: ${baUser.id}`);
+             // Add inline type annotation after guard
+            /** @type {User} */
+            const finalBaUser = baUser;
+            console.log(`[API /wp-user-sync] Creating session for user: ${finalBaUser.id}`);
             
-            /**
-             * Generate required arguments for session creation
-             * @type {string} - Random hex token for session
-             */
+            /** @type {string} - Random hex token for session */
             const sessionToken = crypto.randomBytes(32).toString('hex');
             
-            /**
-             * Session expiration date (30 days from now)
-             * @type {Date}
-             */
+            /** @type {Date} */
             const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
             
-            // The createSession method should handle cookie setting via hooks
-            const session = await createSessionFn(String(baUser.id), sessionToken, expiresAt);
+            const session = await createSessionFn(String(finalBaUser.id), sessionToken, expiresAt);
             
             // Type guard to check if session creation succeeded
             if (!session || typeof session !== 'object') {
-                throw new Error(`Failed to create session for user ${baUser.id}`);
+                throw new Error(`Failed to create session for user ${finalBaUser.id}`);
             }
-            
-            console.log(`[API /wp-user-sync] Session created successfully. Session token set in cookie.`);
+            // Add inline type annotation after guard
+            /** @type {Session} */ 
+            const createdSession = session;
+
+            // ---> ADD Type Guard for session token before setting cookie
+            if (!createdSession.token || typeof createdSession.token !== 'string') {
+                throw new Error(`Session created for user ${finalBaUser.id}, but session token is invalid.`);
+            }
+            // ---> END Type Guard
+
+            // Explicitly set the session cookie using SvelteKit's cookies API
+            // as auth.sessionManager might not be available or reliable here.
+            event.cookies.set('better_auth_session', createdSession.token, { // Now guaranteed to be a string
+                path: '/',
+                httpOnly: true,
+                secure: !dev, // Use secure flag in production
+                sameSite: 'strict',
+                expires: createdSession.expiresAt, // Use the expiration date from the session
+                maxAge: 30 * 24 * 60 * 60 // Fallback max age (30 days in seconds)
+            });
+            console.log(`[API /wp-user-sync] Session cookie set explicitly via event.cookies.set.`);
             
             // Return success response
             return json(/** @type {WpUserSyncResponse} */ ({
                 success: true,
-                userId: baUser.id
+                userId: finalBaUser.id
             }));
         } else {
             throw new Error('Failed to obtain valid user after find/create operations');
