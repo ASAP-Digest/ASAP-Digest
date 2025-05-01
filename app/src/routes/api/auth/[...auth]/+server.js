@@ -1,36 +1,102 @@
-import { auth } from '$lib/server/auth';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
+// REMOVED 2025-05-16: Legacy auth import - Better Auth APIs now handled by GraphQL + wp-user-sync
+// import { auth } from '$lib/server/auth';
+// import { toSvelteKitHandler } from 'better-auth/svelte-kit';
 
-/** @type {import('@sveltejs/kit').RequestHandler} */
-const handler = async (event) => {
-    console.log(`[Auth Handler] Received ${event.request.method} request for: ${event.url.pathname}`);
+// Updated to use the new GraphQL-based auth approach
+import { json } from '@sveltejs/kit';
 
-    try {
-        const response = await svelteKitHandler({
-            event: {
-                request: event.request,
-                url: event.url
-            },
-            resolve: () => {},
-            auth
-        });
-
-        console.log(`[Auth Handler] svelteKitHandler successful for ${event.url.pathname}. Status: ${response.status}`);
-
-        return response;
-    } catch (error) {
-        console.error(`[Auth Handler] Error processing ${event.url.pathname}:`, error);
-        
-        return new Response(JSON.stringify({ error: 'Internal Server Error during auth handling' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
+/**
+ * Handle GET requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const GET = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
 };
 
-export const GET = handler;
-export const POST = handler;
-export const PUT = handler;
-export const DELETE = handler;
-export const PATCH = handler;
-export const OPTIONS = handler; 
+/**
+ * Handle POST requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const POST = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
+};
+
+/**
+ * Handle PUT requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const PUT = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
+};
+
+/**
+ * Handle DELETE requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const DELETE = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
+};
+
+/**
+ * Handle PATCH requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const PATCH = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
+};
+
+/**
+ * Handle OPTIONS requests to fallback auth endpoints
+ * 
+ * @param {object} event The request event object
+ * @param {Record<string, string>} event.params Route parameters including auth path
+ * @returns {Promise<Response>} JSON response with message
+ */
+export const OPTIONS = async (event) => {
+    // Access params safely
+    const authPath = event.params?.auth || 'unknown';
+    return json({ 
+        message: 'Authentication fallback endpoints now handled via GraphQL viewer query + wp-user-sync',
+        path: authPath
+    });
+}; 
