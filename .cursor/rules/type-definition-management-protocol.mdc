@@ -3,165 +3,189 @@ description:
 globs: app/src/routes/api/**/*.js, app/src/routes/**/+server.js, app/src/routes/**/+page.server.js, app/src/lib/server/**/*.js, app/src/lib/utils/**/*.js, app/src/lib/types/**/*.js, app/src/lib/api/**/*.js, app/src/hooks.server.js, app/src/hooks.client.js, app/src/lib/components/**/*.js, app/src/lib/stores/**/*.js, app/src/lib/actions/**/*.js, app/src/lib/services/**/*.js, app/src/lib/config/**/*.js, app/src/lib/constants/**/*.js, app/src/lib/validators/**/*.js, app/src/lib/transformers/**/*.js, app/src/lib/middleware/**/*.js, app/src/service-worker.js, app/src/app.d.ts
 alwaysApply: false
 ---
-# Type Definition Management Protocol for JavaScript + JSDoc in SvelteKit v1.1
+# Type Definition Management Protocol v1.1
 
-*(Self-correction: v1.1 - Added Consistency Verification Step)*
+*(Self-correction: v1.1 - Clarified hook parameter typing, added verification checklist)*
 
 ## 1. Purpose
-This protocol defines the standard practices for creating, organizing, and verifying type definitions within the project, which uses JavaScript with JSDoc for type safety, specifically within a SvelteKit context. It ensures consistency between global type definitions (`app.d.ts`) and their usage in local JSDoc annotations.
 
-## 2. Global Type Definition Rules
+This protocol establishes clear rules for defining and managing TypeScript types (`.d.ts` files) and JSDoc type annotations (`@typedef`, `@param`, etc.) within the project. It ensures consistency, prevents type conflicts, distinguishes between global and local types, and provides guidance for common scenarios like SvelteKit event handlers and Better Auth objects.
 
-### 2.1 Location Requirements
-- All global types (interfaces, type aliases relevant across multiple modules/routes) MUST be defined in `app.d.ts`.
-- SvelteKit interface extensions (like `App.Locals`, `App.PageData`) MUST be defined within the `declare global { namespace App { ... } }` block in `app.d.ts`.
-- Type definitions specific to a single module or component SHOULD be defined locally using `@typedef` within that file's JSDoc comments.
-- **NO TypeScript syntax (e.g., `interface X`, `type Y = ...`) is allowed directly within `.js` or `.svelte` files.** Use JSDoc equivalents (`@typedef`).
+## 2. Core Principles
 
-### 2.2 Naming Conventions
-- Interface names (defined in `app.d.ts`) MUST be `PascalCase`.
-- Type aliases (defined in `app.d.ts` or via `@typedef` locally) MUST be `PascalCase`.
-- Generic type parameters (if used in complex `@typedef`) SHOULD be `PascalCase` (e.g., `@typedef {import('svelte').Snippet<ItemType>} RowSnippet`).
+-   **Single Source of Truth:** Define a type in only one place. Global types belong in `app.d.ts` or dedicated `.d.ts` files, while component-specific types use JSDoc `@typedef`.
+-   **Clarity:** Types should be clearly named and documented.
+-   **Consistency:** Follow consistent naming conventions (PascalCase for interfaces/types).
+-   **JSDoc > TypeScript:** For `.js` and `.svelte` files, use JSDoc annotations for type checking. **NEVER use `<script lang="ts">`.**
+-   **Global Scope:** Use `declare global` block in `app.d.ts` for types accessible everywhere (e.g., `App.Locals`).
+-   **Minimal Imports:** Avoid unnecessary `@type` imports in JSDoc if a global type exists or if the type is simple enough for an inline definition.
 
-## 3. Type Definition Hierarchy
+## 3. Type Definition Locations
 
-### 3.1 Global Types (`app.d.ts`)
-- Project-wide interfaces (e.g., `User`, `Session`).
-- SvelteKit `App` namespace extensions.
-- Shared utility types used across multiple modules.
-- Augmentations for third-party library types if necessary.
+### 3.1 Global Types (`app.d.ts` or `src/types.d.ts`)
 
-### 3.2 Local Types (JSDoc `@typedef` in `.js`/`.svelte` files)
-- Function-specific parameter or return type structures.
-- Component-specific prop types (`@typedef {Object} ComponentProps ...`).
-- Implementation-specific internal data structures.
-- Temporary or one-off complex types not needed globally.
-
-## 4. Type Definition Verification Process
-
-### 4.1 Pre-Implementation Checks
-- Search `app.d.ts` for existing global types that might fit the requirement.
-- Check SvelteKit documentation for relevant built-in types or expected structures (e.g., `Request`, `Response`). Use global JS types for these where possible.
-- Review types defined in related components/modules.
-
-### 4.2 Implementation Steps
-1.  **Determine Scope:** Decide if the type is needed globally (across modules) or only locally (within one file).
-2.  **Define Type:**
-    *   If global: Add the `interface` or `type` definition to `app.d.ts` within the appropriate scope (`declare global` or `declare global { namespace App { ... } }`).
-    *   If local: Define the type using `@typedef` within the JSDoc block of the relevant file.
-3.  **Use Type:** Reference the type in JSDoc annotations (`@type`, `@param`, `@returns`) using its name (e.g., `User`, `ComponentProps`) or via `@type {import(...)}` for specific module types if necessary (use sparingly).
-4.  **Document Type:** Add `@description` and `@since` tags to global types in `app.d.ts`. Add clear descriptions within `@typedef` for local types.
-5.  **Verify Usage:** Ensure the type is used correctly and consistently where applied.
-
-### 4.3 Code Review Requirements
-- Verify the chosen type location (global vs. local) is appropriate.
-- Check for any TypeScript syntax mistakenly used in `.js` or `.svelte` files.
-- Validate JSDoc syntax (`@typedef`, `@type`, `@param`, `@returns`).
-- Confirm type documentation is clear and present.
-- Ensure consistency between type definitions and their usage.
-
-### 4.4 Consistency Verification Step (MANDATORY)
--   **Requirement:** When creating or modifying an object literal that is intended to conform to a specific global type (e.g., `User` from `app.d.ts`), the developer or agent **MUST explicitly verify** that the properties of the object literal **exactly match** the properties defined in the global interface in `app.d.ts`.
--   **Checklist:**
-    -   [ ] Are all **required** properties from the global interface present in the object literal?
-    -   [ ] Are there any properties in the object literal that **do not exist** in the global interface? (These should typically be removed unless the type definition is being updated simultaneously).
-    -   [ ] Do the types of the values in the object literal match the types specified in the global interface?
-    -   [ ] Is the optionality of properties consistent (i.e., not providing a required property, or providing an optional one where appropriate)?
--   **Timing:** This check MUST be performed *before* finalizing the code edit that creates/modifies the object literal.
--   **Failure:** If the check fails, the object literal MUST be corrected to match the global type definition, or the global type definition MUST be updated (following this protocol) before proceeding.
-
-## 5. Documentation Requirements
-
-### 5.1 Global Type Documentation (`app.d.ts`)
+-   **Use Case:** Types shared across multiple routes, layouts, hooks, or endpoints. Examples: User session data, application-wide settings, core API response structures.
+-   **Implementation:** Use standard TypeScript `interface` or `type` definitions. Wrap in `declare global { namespace App { ... } }` for SvelteKit-specific augmentations like `Locals` or `PageData`.
 
 ```typescript
-// In app.d.ts
-/**
- * @description Core user data structure used throughout the application.
- * @property {string} id - Unique identifier (UUID).
- * @property {string} betterAuthId - Matches 'id'.
- * @property {string} email - User's email address.
- * @property {string} [displayName] - Optional display name.
- * @property {string[]} [roles] - User roles.
- * @property {object} [metadata] - Optional additional metadata.
- * @since 1.0.0
- */
-interface User {
-    id: string;
-    betterAuthId: string;
-    email: string;
-    displayName?: string;
-    roles?: string[];
-    metadata?: {
-        wp_user_id?: number;
-        [key: string]: any;
-    };
-    // Add other relevant fields defined in app.d.ts
-}
-```
-
-### 5.2 Local Type Documentation (`@typedef` in `.js`/`.svelte`)
-
-```javascript
-/**
- * Defines the properties for the CustomButton component.
- * @typedef {Object} CustomButtonProps
- * @property {'primary' | 'secondary' | 'ghost'} variant - The button style variant.
- * @property {string} [size='default'] - Optional button size ('sm', 'default', 'lg').
- * @property {() => void} onClick - Function to call when clicked.
- * @property {boolean} [disabled=false] - Whether the button is disabled.
- */
-```
-
-## 6. Implementation Examples
-
-### 6.1 Correct Global Type Extension (`app.d.ts`)
-
-```typescript
-// In app.d.ts
+// Example: app.d.ts
 declare global {
-  namespace App {
-    interface Locals {
-      user?: User; // References the globally defined User interface
-      session?: Session; // References the globally defined Session interface
-    }
-  }
+	namespace App {
+		interface Error {
+			message: string;
+			code?: string;
+		}
+		interface Locals {
+			user?: import('$lib/types').User | null; // Example import from another d.ts
+			sessionId?: string | null;
+		}
+		interface PageData {
+			session?: import('better-auth').Session | null;
+			flash?: { type: 'success' | 'error'; message: string };
+		}
+		// interface Platform {}
+	}
+
+	// Example of non-App global type
+	interface WpUser {
+		id: string;
+		databaseId: number;
+		username: string;
+		email: string;
+		firstName?: string;
+		lastName?: string;
+	}
+
+	interface WpUserSync {
+		wpUserId: number;
+		wpUsername: string;
+		wpEmail: string;
+	}
+	
+	interface WpUserSyncResponse {
+		success: boolean;
+		message: string;
+		betterAuthUserId?: string;
+	}
+
 }
 
-export {}; // Required for module augmentation
+export {}; // Ensures file is treated as a module
 ```
 
-### 6.2 Correct Local Type Usage (`.js`/`.svelte`)
+### 3.2 Local Types (JSDoc in `.js` or `.svelte` files)
+
+-   **Use Case:** Types specific to a single component or module. Complex prop types, internal state shapes.
+-   **Implementation:** Use `@typedef` within a JSDoc block. Can import types using `import('path').TypeName` if needed.
 
 ```javascript
-/** 
- * @param {App.Locals} locals - SvelteKit locals object.
- * @returns {User|null} The authenticated user or null.
+/**
+ * @typedef {import('$lib/types').ComplexSharedType} ComplexSharedType
+ * @typedef {import('@prisma/client').PrismaClient} PrismaClient // Example DB client type
  */
-function getCurrentUser(locals) {
-  // Type safety check
-  if (locals && locals.user) {
-    /** @type {User} */ // Cast is safe after check
-    const currentUser = locals.user; 
-    return currentUser;
-  }
-  return null;
-}
+
+/**
+ * @typedef {Object} ComponentState
+ * @property {boolean} isLoading
+ * @property {string | null} errorMessage
+ * @property {ComplexSharedType[]} data
+ */
+
+/** @type {ComponentState} */
+let state = $state({ isLoading: false, errorMessage: null, data: [] });
+
+/**
+ * @typedef {Object} ComponentProps
+ * @property {string} title
+ * @property {() => void} onSubmit
+ * @property {import('svelte').Snippet} [children] Optional content snippet
+ */
+
+/** @type {ComponentProps} */
+const { title, onSubmit, children } = $props();
 ```
 
-## 7. Enforcement
+## 4. Specific Type Guidance
 
-### 7.1 Code Review Checklist
-- [ ] Global types are correctly placed and defined in `app.d.ts`.
-- [ ] SvelteKit `App` namespace is used correctly for extensions.
-- [ ] Local types use `@typedef` in JSDoc, not TypeScript syntax.
-- [ ] No TypeScript syntax used directly in `.js` or `.svelte` files.
-- [ ] Proper JSDoc annotations (`@type`, `@param`, `@returns`, `@typedef`) are present and syntactically correct.
-- [ ] Type documentation (descriptions, `@since`) is adequate.
-- [ ] Type hierarchy (global vs. local) is respected.
-- [ ] **Consistency Verification Step (Section 4.4) was performed where applicable.**
+### 4.1 SvelteKit Event/Hook Parameters
 
-### 7.2 CI/CD Integration (Recommended)
-- Include a step to run `svelte-check` or a similar tool to validate types based on `app.d.ts` and JSDoc annotations.
-- Consider adding automated JSDoc syntax validation.
-- Potentially script checks to enforce type location rules (e.g., disallow `interface`/`type` keywords in `.js` files).
+-   **`hooks.server.js` (`handle`):**
+    -   Use JSDoc `@param` for `event` and `resolve`.
+    -   Type `event.locals` using the globally defined `App.Locals`.
+    -   Use `Request` and `Response` standard types.
+    ```javascript
+    /**
+     * Handles server requests, adding user data to locals.
+     * @param {object} params - The hook parameters.
+     * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event The SvelteKit request event, augmented with App.Locals.
+     * @param {(event: import('@sveltejs/kit').RequestEvent, opts?: { transformPageChunk?: (input: { html: string; done: boolean }) => string | Promise<string>, filterSerializedResponseHeaders?: (name: string, value: string) => boolean }) => Promise<Response>} params.resolve The resolve function.
+     * @returns {Promise<Response>} The response.
+     */
+    export async function handle({ event, resolve }) {
+    	// event.locals is now typed as App.Locals
+    	event.locals.user = await getUserFromSession(event.cookies.get('session'));
+    	return resolve(event);
+    }
+    ```
+-   **Route `load` functions:**
+    -   Use JSDoc `@param` for the event object.
+    -   Type `event.locals` as `App.Locals`.
+    -   Type `event.params` as `Record<string, string>`.
+    -   Type `event.fetch` structurally or import `Fetch` type if necessary.
+    -   Type `event.request` as `Request`.
+    -   (Reference: `jsdoc-complex-parameter-typing-protocol.mdc`)
+-   **Route `actions`:**
+    -   Use JSDoc `@param` for the event object.
+    -   Type `event.locals` as `App.Locals`.
+    -   Type `event.request` as `Request`.
+    -   Use `FormData` type for form data.
+-   **`+server.js` handlers:**
+    -   Use JSDoc `@param` for the event object.
+    -   Type `event.locals` as `App.Locals`.
+    -   Type `event.params` as `Record<string, string>`.
+    -   Type `event.request` as `Request`.
+    -   Type return as `Promise<Response>`.
+
+### 4.2 Better Auth Types
+
+-   **Configuration (`betterAuth()`):** The `BetterAuthOptions` type is complex. Refer to `better-auth-config.mdc` for the required structure. Define adapter functions separately and import them. Use `@type {import('better-auth').BetterAuthOptions}` cautiously, ensuring your structure matches, or type the config object structurally with JSDoc.
+-   **`Session` Object:** Can be imported: `@type {import('better-auth').Session}`. Add to `App.PageData` if needed globally.
+-   **`User` Object:** Define your application's `User` interface (e.g., in `src/lib/types/index.d.ts` or `app.d.ts`) including any custom fields. Add this `User` type to `App.Locals`. Ensure it aligns with fields returned by your custom Better Auth adapter functions.
+
+```typescript
+// Example User type (e.g., in src/lib/types/index.d.ts)
+export interface User {
+	id: string;
+	wpId?: number | null; // Link to WordPress ID
+	email: string;
+	displayName?: string | null;
+	// Add other fields returned by your adapter's getUserById/getUserByEmail fns
+	metadata?: {
+		createdAt?: Date | string; // Allow string for potential serialization
+		lastLogin?: Date | string;
+	} | null;
+	sessionToken?: string; // Only if explicitly added/needed
+}
+
+// Example app.d.ts referencing it
+// ... inside declare global { namespace App { ... } }
+// locals: { user?: import('$lib/types').User | null; ... }
+```
+
+## 5. Verification Checklist
+
+When adding or modifying type definitions:
+
+-   [ ] **Scope:** Is the type truly global (used across many unrelated modules) or local (specific to one component/module)?
+-   [ ] **Location:** Is the type defined in the correct location (`app.d.ts` vs. JSDoc `@typedef`) based on its scope?
+-   [ ] **Single Definition:** Does this type already exist elsewhere? If so, reuse the existing definition.
+-   [ ] **Naming:** Does the type name use PascalCase? Is it clear and descriptive?
+-   [ ] **JSDoc vs. TS:** If in a `.js`/`.svelte` file, are JSDoc annotations used? Is `<script lang="ts">` absent?
+-   [ ] **Global Namespace:** If in `app.d.ts`, are `App` augmentations correctly placed within `declare global { namespace App { ... } }`?
+-   [ ] **Exports:** If defined in a separate `.d.ts` file (not `app.d.ts`), does the file include `export {};`? Are types intended for import correctly exported (`export interface/type`)?
+-   [ ] **Documentation:** Is the type definition accompanied by a clear JSDoc comment explaining its purpose and properties?
+-   [ ] **Usage:** Are the types being correctly applied using `@type`, `@param`, `@returns`, etc.?
+-   [ ] **Imports:** Are `@type {import(...)}` statements used correctly and only when necessary?
+-   [ ] **Conflicts:** Does the new type conflict with existing types (name collisions)?
+-   [ ] **Framework Types:** Are SvelteKit/Better Auth types handled according to Section 4 guidelines?
+-   [ ] **Linter/Checker:** Does `pnpm check` (or equivalent) pass without errors related to the new/modified types?

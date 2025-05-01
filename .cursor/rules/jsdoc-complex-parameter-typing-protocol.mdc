@@ -26,14 +26,14 @@ Functions receiving complex objects, especially via destructuring, SHOULD includ
 ```javascript
 /**
  * [Brief description of the function's purpose].
- * 
+ *
  * @param {object} complexArg The primary complex argument object (e.g., event, context, config).
- * // --- Add specific @param tags for EACH destructured property below --- 
+ * // --- Add specific @param tags for EACH destructured property below ---
  * @param {GlobalType1} complexArg.property1 Description of property1, referencing a global type.
  * @param {string} complexArg.property2 Description of property2, using a primitive type.
  * @param {import('module').SpecificType} complexArg.property3 Description, using an imported type.
- * // --- Add other relevant destructured params as needed ---\
- * 
+ * // --- Add other relevant destructured params as needed ---
+ *
  * @returns {Promise<ReturnType>|ReturnType} The data or result returned by the function.
  */
 export async function processData({ property1, property2, property3 /*, ...other props */ }) {
@@ -51,13 +51,13 @@ Leverages globally defined `App.Locals` and standard `Request`/`Response` types.
 ```javascript
 /**
  * Handles server-side data loading for a specific route.
- * 
+ *
  * @param {object} event The SvelteKit load event object.
  * @param {App.Locals} event.locals Access to globally defined request-scoped data.
  * @param {Record<string, string>} event.params Route parameters object.
  * @param {function(RequestInfo | URL, RequestInit?): Promise<Response>} event.fetch Framework-provided fetch function.
  * @param {Request} event.request The SvelteKit Request object.
- * 
+ *
  * @returns {Promise<{ message: string }>} Data for the page/layout.
  */
 export async function load({ locals, params, fetch, request }) {
@@ -75,12 +75,12 @@ Uses basic types and hypothetical global `AppSettings`.
 ```javascript
 /**
  * Handles a button click event.
- * 
+ *
  * @param {object} config Configuration object for the handler.
  * @param {string} config.id The ID of the element clicked.
  * @param {number} config.timestamp The time of the click event.
  * @param {AppSettings} config.settings Global application settings.
- * 
+ *
  * @returns {void}
  */
 function handleClick({ id, timestamp, settings }) {
@@ -96,15 +96,15 @@ When documenting nested properties like `event.params.auth`, type the parent pro
 ```javascript
 /**
  * Handle GET requests to fallback auth endpoints
- * 
+ *
  * @param {object} event The request event object
  * @param {Record<string, string>} event.params Route parameters including auth path
  * @returns {Promise<Response>} JSON response with message
  */
 export const GET = async (event) => {
     // Access params safely using optional chaining or default value
-    const authPath = event.params?.auth ?? 'unknown'; 
-    return json({ 
+    const authPath = event.params?.auth ?? 'unknown';
+    return json({
         message: 'Authentication fallback endpoints handled...',
         path: authPath
     });
