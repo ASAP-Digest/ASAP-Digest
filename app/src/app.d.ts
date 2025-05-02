@@ -62,13 +62,31 @@ declare global {
 		// Add other public env vars here
 	}
 
+	/**
+	 * @description Defines the shape of expected private environment variables
+	 * Accessed via import { VARIABLE } from '$env/dynamic/private';
+	 */
+	interface PrivateEnv {
+		ASAP_SK_SYNC_SECRET: string;
+		// Add other private env vars here (e.g., DB connection, Better Auth secret)
+		BETTER_AUTH_SECRET: string;
+		MYSQL_HOST: string;
+		MYSQL_USER: string;
+		MYSQL_PASSWORD: string;
+		MYSQL_DATABASE: string;
+	}
+
 	namespace App {
 		// interface Error {}
 		interface Locals {
 			user?: User;
 			session?: Session;
 		}
-		// interface PageData {}
+		interface PageData {
+			// Ensure session and user are optional here as they depend on load function context
+			session?: Session | null;
+			user?: User | null;
+		}
 		// interface PageState {}
 		// interface Platform {}
 	}

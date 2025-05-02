@@ -8,9 +8,13 @@ import {
     createUserFn, 
     createAccountFn,
     createSessionFn 
-} from '$lib/server/auth.js'; // Import necessary adapter functions
+} from '$lib/server/adapter-functions.js'; // Import adapter functions directly
 import crypto from 'node:crypto';
 import { Kysely } from 'kysely'; // Add Kysely import for JSDoc
+// Remove direct import of auth instance as adapter functions are used directly
+// import { auth } from '$lib/server/auth.js'; 
+import { error } from '@sveltejs/kit'; // For potential error responses
+import { log as appLog } from '$lib/utils/log.js'; // Rename imported log
 
 /**
  * Logs messages with a specific prefix for auth utils.
@@ -29,11 +33,11 @@ function log(message, level = 'info') {
 }
 
 /**
- * @typedef {import('$lib/server/auth').User} User - Assuming User type is defined and exported correctly in auth.js or globally
+ * @typedef {import('$lib/server/auth').User} User 
  */
 
 /**
- * @typedef {object} CreateUserInput - Defines the expected input structure for createUserFn
+ * @typedef {object} CreateUserInput 
  * @property {number} wpUserId
  * @property {string} [email]
  * @property {string} [username]
@@ -41,125 +45,112 @@ function log(message, level = 'info') {
  * @property {string[]} [roles]
  */
 
-/**
- * @typedef {object} Session - Defines the structure returned by our custom createSessionFn
- * @property {string} sessionId - Session ID (Primary Key, usually UUID)
- * @property {string} userId - Better Auth User ID
- * @property {string} token - Session token
- * @property {Date} expiresAt - Session expiry date
- * @property {Date} createdAt - Session creation date
- * @property {User} user - Session user object
- */
+// Removed local Session typedef
 
 /**
- * Synchronizes WordPress user details with the Better Auth system.
- * Finds an existing BA user based on WP ID, or creates a new BA user and account link.
- * Then creates and returns a new Better Auth session for the user.
- * Does NOT handle cookie setting.
- * 
- * This is the core logic for the V4 Server-to-Server auto-login flow (Step 7).
- * It should be called by the SvelteKit backend endpoint that verifies the WP-generated token.
- * Also relevant for Roadmap Task 4 (Authentication Features).
- * 
- * @param {WpUserSync} wpUserDetails - Details of the WordPress user from validation.
- * @returns {Promise<Session | null>} The created Session object, or null if synchronization or session creation fails.
- * @created 05.01.25 | 09:45 PM PDT // Placeholder timestamp
+ * Synchronizes WordPress user data with Better Auth user/account records
+ * and creates a Better Auth session.
+ * This function encapsulates the logic previously used in the V3 /wp-user-sync endpoint.
+ *
+ * @param {object} wpUserDetails - Object containing WP user details.
+ * @param {number|string} wpUserDetails.wpUserId - The WordPress user ID.
+ * @param {string} wpUserDetails.email - The user's email.
+ * @param {string} [wpUserDetails.username] - The WordPress username (optional).
+ * @param {string} [wpUserDetails.name] - The user's display name (optional).
+ * @returns {Promise<import('better-auth').Session | null>} The created Better Auth session object on success, or null on failure.
+ * @created 07.27.24 | 03:40 PM PDT
+ * @file-marker syncWordPressUserAndCreateSession
  */
 export async function syncWordPressUserAndCreateSession(wpUserDetails) {
-    log(`syncWordPressUserAndCreateSession called for WP User: ${wpUserDetails?.wpUserId}`);
+	try {
+		const { wpUserId, email, username, name } = wpUserDetails;
 
-    // Validate input
-    if (!wpUserDetails || typeof wpUserDetails !== 'object' || !wpUserDetails.wpUserId || !wpUserDetails.email) {
-        log(`Invalid wpUserDetails received: ${JSON.stringify(wpUserDetails)}`, 'error');
-        return null;
-    }
-    
-    /** @type {User | null} */
-    let baUser = null;
-    const wpUserIdNum = Number(wpUserDetails.wpUserId); // Ensure number type
-    
-    if (isNaN(wpUserIdNum)) {
-         log(`Invalid wpUserId provided: ${wpUserDetails.wpUserId}`, 'error');
-         return null;
-    }
+		if (!wpUserId) {
+			log('Error: Missing wpUserId in syncWordPressUserAndCreateSession', 'error');
+			return null;
+		}
+		const wpUserIdNum = Number(wpUserId);
+		if (isNaN(wpUserIdNum)) {
+			log(`Invalid wpUserId provided: ${wpUserId}`, 'error');
+			return null;
+		}
 
-    try {
-        // 1. Look up user by WP ID
-        log(`Attempting to find existing BA user for WP ID: ${wpUserIdNum}`);
-        baUser = await getUserByWpIdFn(wpUserIdNum); 
+		log(`Syncing WP User ID: ${wpUserIdNum}`);
 
-        if (baUser && typeof baUser === 'object' && baUser.id) {
-            log(`Existing BA user found: ${baUser.id}`);
-             /** @type {User} */ // Type assertion after check
-             const existingUser = baUser; 
-             baUser = existingUser; // Use typed variable
-        } else {
-            // 2. Create new user if not found
-            log(`No existing BA user found for WP ID: ${wpUserIdNum}. Creating user...`);
-            
-             /** @type {CreateUserInput} */ // Use the specific input type
-            const newUserInput = {
-                wpUserId: wpUserIdNum,
-                email: wpUserDetails.email,
-                username: wpUserDetails.username || wpUserDetails.email.split('@')[0],
-                name: wpUserDetails.name || wpUserDetails.username || `WP User ${wpUserIdNum}`,
-                // roles: wpUserDetails.roles || ['subscriber'] // Roles might come later or via WP profile sync
-            };
-            
-            baUser = await createUserFn(newUserInput);
+		// F.2 - BA User Lookup
+		log(`Attempting to find existing BA user for WP User ID: ${wpUserIdNum}`);
+		let baUser = await getUserByWpIdFn(wpUserIdNum); // Use imported function
 
-            if (!baUser || typeof baUser !== 'object' || !baUser.id) {
-                log(`Failed to create BA user for WP ID ${wpUserIdNum}. Result from createUserFn: ${JSON.stringify(baUser)}`, 'error');
-                throw new Error(`Failed to create Better Auth user for WordPress user ${wpUserIdNum}`);
-            }
-             /** @type {User} */ // Type assertion after check
-             const createdUser = baUser;
-             baUser = createdUser; // Use typed variable
-             log(`BA user created successfully: ${createdUser.id}`);
+		if (baUser && typeof baUser === 'object' && baUser.id) {
+			// F.3 - Handle Existing User
+			log(`Existing BA user found: ${baUser.id}`);
+			/** @type {User} */ 
+			const existingUser = baUser;
+			baUser = existingUser; 
+		} else {
+			// F.4 - Handle New User
+			log(`No existing BA user found for WP User ID: ${wpUserIdNum}. Initiating creation.`);
+			try {
+				// F.4.a - BA User Creation
+				log(`Attempting to create BA user record (ba_users) for email: ${email}`);
+				/** @type {CreateUserInput} */
+				const newUserInput = {
+					wpUserId: wpUserIdNum,
+					email: email,
+					username: username || email.split('@')[0], 
+					name: name || username || `WP User ${wpUserIdNum}`, 
+				};
+				const newUser = await createUserFn(newUserInput); // Use imported function
+				if (!newUser?.id) {
+					log(`User creation failed or did not return ID. Input: ${JSON.stringify(newUserInput)}`, 'error');
+					throw new Error('User creation failed or did not return ID.');
+				}
+				log(`BA user created successfully: ${newUser.id}`);
 
-            // 3. Link Account
-            log(`Attempting account link for BA User ${createdUser.id} / WP ID ${wpUserIdNum}`);
-            const accountLinked = await createAccountFn({
-                userId: createdUser.id, 
-                provider: 'wordpress', // Consistent provider name
-                providerAccountId: String(wpUserIdNum) // Ensure string
-            });
+				// F.4.b - BA Account Creation (Crucial!)
+				log(`Attempting to create BA account record (ba_accounts) linking ${newUser.id} to provider 'wordpress' with ID ${wpUserIdNum}`);
+				await createAccountFn({ // Use imported function
+					userId: newUser.id,
+					provider: 'wordpress', 
+					providerAccountId: String(wpUserIdNum) 
+				});
+				log(`BA account record created successfully.`);
+				/** @type {User} */ 
+				const createdUser = newUser;
+				baUser = createdUser; 
 
-            if (!accountLinked) {
-                // Log warning but don't fail the whole process
-                log(`Failed to create account link in ba_accounts for user ${createdUser.id} and WP ID ${wpUserIdNum}. Proceeding...`, 'warn');
-            } else {
-                log(`Account link created successfully.`);
-            }
-        }
+			} catch (creationError) {
+				const message = creationError instanceof Error ? creationError.message : String(creationError);
+				log(`Error during BA user/account creation: ${message}`, 'error');
+				return null; // Indicate failure
+			}
+		}
 
-        // 4. Create Session
-        if (!baUser || !baUser.id) {
-             log(`Cannot create session, invalid baUser object after lookup/create.`, 'error');
-             throw new Error('Invalid user object state before session creation.');
-        }
-        
-        log(`Attempting to create BA session for BA User ID: ${baUser.id}`);
-        const sessionToken = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+		// F.5 - BA Session Creation
+		if (!baUser || !baUser.id) {
+			log('Cannot create session, invalid baUser object after lookup/create.', 'error');
+			return null;
+		}
+		log(`Attempting to create BA session (ba_sessions) for BA User ID: ${baUser.id}`);
+		// Use imported createSessionFn
+		// Pass the required userId argument
+		const session = await createSessionFn({ userId: String(baUser.id) }); 
 
-        const session = await createSessionFn(String(baUser.id), sessionToken, expiresAt);
+		if (!session || typeof session !== 'object' || !session.token) {
+			 log(`Session creation failed or did not return valid session object. Result: ${JSON.stringify(session)}`, 'error');
+			 return null; // Indicate failure
+		}
+		/** @type {import('better-auth').Session} */ // Use imported Session type
+		const createdSession = session;
+		log(`BA session created successfully. Session ID: ${createdSession.id}`);
 
-        if (!session || typeof session !== 'object' || !session.token) {
-            log(`Session creation failed or did not return valid session object for user ${baUser.id}. Result: ${JSON.stringify(session)}`, 'error');
-            throw new Error(`Failed to create session for user ${baUser.id}`);
-        }
-         /** @type {Session} */ // Use local Session typedef
-         const createdSession = session;
-         log(`BA session created successfully. Session ID: ${createdSession.sessionId}`); // Now matches Session typedef
-        
-        return createdSession; // Return the created session object
+		return createdSession; // Return the created session object
 
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        log(`Error in syncWordPressUserAndCreateSession for WP ID ${wpUserIdNum}: ${message}`, 'error');
-        return null; // Return null on any failure
-    }
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		log(`Error in syncWordPressUserAndCreateSession: ${message}`, 'error');
+		return null; // Indicate failure
+	}
 }
 
 /**
@@ -186,35 +177,33 @@ export async function updateUserMetadata(db, userId, metadata) {
         return false;
     }
 
-    if (!db || typeof db.updateTable !== 'function') { // Basic check for db instance
+    if (!db || typeof db.updateTable !== 'function') {
         log(`Failed to update user metadata: Invalid Kysely instance provided`, 'error');
         return false;
     }
     
     try {
-        // Safely stringify metadata with error handling
         let metadataString;
         try {
             metadataString = JSON.stringify(metadata);
         } catch (stringifyError) {
-            log(`Failed to stringify metadata: ${stringifyError instanceof Error ? stringifyError.message : String(stringifyError)}`, 'error');
+            const message = stringifyError instanceof Error ? stringifyError.message : String(stringifyError);
+            log(`Failed to stringify metadata: ${message}`, 'error');
             return false;
         }
         
-        // Use the passed Kysely instance
         const result = await db
             .updateTable('ba_users')
-            .set({ metadata: metadataString, updated_at: new Date() }) // Also update updated_at
+            .set({ metadata: metadataString, updated_at: new Date() })
             .where('id', '=', userId)
-            .executeTakeFirst(); // Use executeTakeFirst for updates if expecting one result
+            .executeTakeFirst();
             
         log(`Update result for user ${userId}: ${JSON.stringify(result)}`);
-        // Kysely's executeTakeFirst for update typically returns UpdateResult containing numUpdatedRows
-        // Checking if numUpdatedRows exists and is > 0 might be more robust
         return result && typeof result === 'object' && BigInt(result.numUpdatedRows || 0) > 0n;
         
     } catch (error) {
-        log(`Failed to update user metadata for ${userId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
+        const message = error instanceof Error ? error.message : String(error);
+        log(`Failed to update user metadata for ${userId}: ${message}`, 'error');
         return false;
     }
 } 

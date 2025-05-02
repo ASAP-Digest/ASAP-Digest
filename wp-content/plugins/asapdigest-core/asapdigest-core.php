@@ -26,13 +26,15 @@ require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php');
 // Include the new Session Check Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-controller.php');
-// Include the new Sync Token Controller
+// Include the (Obsolete V3) Sync Token Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php');
+// Include the NEW V4 SvelteKit Token Controller
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-token-controller.php');
 // Include the REST Auth Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
-// Include the new SK User Sync Controller
+// Include the (Obsolete V3) SK User Sync Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-user-sync.php');
-// Include the new Check Sync Token Controller
+// Include the (Obsolete V3) Check Sync Token Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-check-sync-token-controller.php');
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
@@ -119,9 +121,15 @@ function asap_init_core() {
         $controller->register_routes();
     }, 10);
     
-    // Register the new sync token validation route (NEW)
+    // Register the (Obsolete V3) sync token validation route
     add_action('rest_api_init', function() {
         $controller = new \ASAPDigest\Core\API\Sync_Token_Controller();
+        $controller->register_routes();
+    }, 10);
+    
+    // Register the NEW V4 SK token generation/validation routes
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\SK_Token_Controller();
         $controller->register_routes();
     }, 10);
     
@@ -141,13 +149,13 @@ function asap_init_core() {
     // CORS and headers (priority 100+)
     // add_action('rest_api_init', 'asap_add_cors_headers', 15); // Temporarily Disabled
 
-    // Register SK User Sync endpoint
+    // Register (Obsolete V3) SK User Sync endpoint
     add_action('rest_api_init', function() {
         $sk_user_sync = new \ASAPDigest\Core\API\SK_User_Sync();
         $sk_user_sync->register_routes();
     });
 
-    // Register Check Sync Token endpoint
+    // Register (Obsolete V3) Check Sync Token endpoint
     add_action('rest_api_init', function() {
         $check_token_controller = new \ASAPDigest\Core\API\Check_Sync_Token_Controller();
         $check_token_controller->register_routes();
