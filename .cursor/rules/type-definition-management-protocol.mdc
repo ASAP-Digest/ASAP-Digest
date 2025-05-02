@@ -3,9 +3,9 @@ description:
 globs: app/src/routes/api/**/*.js, app/src/routes/**/+server.js, app/src/routes/**/+page.server.js, app/src/lib/server/**/*.js, app/src/lib/utils/**/*.js, app/src/lib/types/**/*.js, app/src/lib/api/**/*.js, app/src/hooks.server.js, app/src/hooks.client.js, app/src/lib/components/**/*.js, app/src/lib/stores/**/*.js, app/src/lib/actions/**/*.js, app/src/lib/services/**/*.js, app/src/lib/config/**/*.js, app/src/lib/constants/**/*.js, app/src/lib/validators/**/*.js, app/src/lib/transformers/**/*.js, app/src/lib/middleware/**/*.js, app/src/service-worker.js, app/src/app.d.ts
 alwaysApply: false
 ---
-# Type Definition Management Protocol v1.1
+# Type Definition Management Protocol v1.2
 
-*(Self-correction: v1.1 - Clarified hook parameter typing, added verification checklist)*
+*(Self-correction: v1.1 - Clarified hook parameter typing, added verification checklist; v1.2 - Added structural type completeness check and fallback for type inference failures)*
 
 ## 1. Purpose
 
@@ -19,6 +19,7 @@ This protocol establishes clear rules for defining and managing TypeScript types
 -   **JSDoc > TypeScript:** For `.js` and `.svelte` files, use JSDoc annotations for type checking. **NEVER use `<script lang="ts">`.**
 -   **Global Scope:** Use `declare global` block in `app.d.ts` for types accessible everywhere (e.g., `App.Locals`).
 -   **Minimal Imports:** Avoid unnecessary `@type` imports in JSDoc if a global type exists or if the type is simple enough for an inline definition.
+-   **Structural Type Completeness (MUST):** When defining a structural JSDoc type (`@typedef`) for an object originating from a library or framework (like SvelteKit's `event.cookies`), **MUST** verify the structure's completeness by consulting official documentation or using runtime inspection (e.g., `console.log(Object.keys(variable))`) to identify all necessary properties and methods required by the context where the type is used. *(New in v1.2)*
 
 ## 3. Type Definition Locations
 
@@ -27,83 +28,86 @@ This protocol establishes clear rules for defining and managing TypeScript types
 -   **Use Case:** Types shared across multiple routes, layouts, hooks, or endpoints. Examples: User session data, application-wide settings, core API response structures.
 -   **Implementation:** Use standard TypeScript `interface` or `type` definitions. Wrap in `declare global { namespace App { ... } }` for SvelteKit-specific augmentations like `Locals` or `PageData`.
 
-```typescript
-// Example: app.d.ts
-declare global {
-	namespace App {
-		interface Error {
-			message: string;
-			code?: string;
-		}
-		interface Locals {
-			user?: import('$lib/types').User | null; // Example import from another d.ts
-			sessionId?: string | null;
-		}
-		interface PageData {
-			session?: import('better-auth').Session | null;
-			flash?: { type: 'success' | 'error'; message: string };
-		}
-		// interface Platform {}
-	}
+    ```typescript
+    // Example: app.d.ts
+    declare global {
+    	namespace App {
+    		interface Error {
+    			message: string;
+    			code?: string;
+    		}
+    		interface Locals {
+    			user?: import('$lib/types').User | null; // Example import from another d.ts
+    			sessionId?: string | null;
+    		}
+    		interface PageData {
+    			session?: import('better-auth').Session | null;
+    			flash?: { type: 'success' | 'error'; message: string };
+    		}
+    		// interface Platform {}
+    	}
 
-	// Example of non-App global type
-	interface WpUser {
-		id: string;
-		databaseId: number;
-		username: string;
-		email: string;
-		firstName?: string;
-		lastName?: string;
-	}
+    	// Example of non-App global type
+    	interface WpUser {
+    		id: string;
+    		databaseId: number;
+    		username: string;
+    		email: string;
+    		firstName?: string;
+    		lastName?: string;
+    	}
 
-	interface WpUserSync {
-		wpUserId: number;
-		wpUsername: string;
-		wpEmail: string;
-	}
-	
-	interface WpUserSyncResponse {
-		success: boolean;
-		message: string;
-		betterAuthUserId?: string;
-	}
+    	interface WpUserSync {
+    		wpUserId: number;
+    		wpUsername: string;
+    		wpEmail: string;
+    	}
 
-}
+    	interface WpUserSyncResponse {
+    		success: boolean;
+    		message: string;
+    		betterAuthUserId?: string;
+    	}
 
-export {}; // Ensures file is treated as a module
-```
+    }
+
+    export {}; // Ensures file is treated as a module
+    ```
 
 ### 3.2 Local Types (JSDoc in `.js` or `.svelte` files)
 
 -   **Use Case:** Types specific to a single component or module. Complex prop types, internal state shapes.
--   **Implementation:** Use `@typedef` within a JSDoc block. Can import types using `import('path').TypeName` if needed.
+-   **Implementation:** Use `@typedef` within a JSDoc block. Can import types using `import('path').TypeName` if needed. Verify structural completeness if defining complex objects (Principle 2.7).
 
-```javascript
-/**
- * @typedef {import('$lib/types').ComplexSharedType} ComplexSharedType
- * @typedef {import('@prisma/client').PrismaClient} PrismaClient // Example DB client type
- */
+    ```javascript
+    /**
+     * @typedef {import('$lib/types').ComplexSharedType} ComplexSharedType
+     * @typedef {import('@prisma/client').PrismaClient} PrismaClient // Example DB client type
+     */
 
-/**
- * @typedef {Object} ComponentState
- * @property {boolean} isLoading
- * @property {string | null} errorMessage
- * @property {ComplexSharedType[]} data
- */
+    /**
+     * Represents the internal state of MyComponent.
+     * Verified against runtime usage.
+     * @typedef {Object} ComponentState
+     * @property {boolean} isLoading
+     * @property {string | null} errorMessage
+     * @property {ComplexSharedType[]} data
+     */
 
-/** @type {ComponentState} */
-let state = $state({ isLoading: false, errorMessage: null, data: [] });
+    /** @type {ComponentState} */
+    let state = $state({ isLoading: false, errorMessage: null, data: [] });
 
-/**
- * @typedef {Object} ComponentProps
- * @property {string} title
- * @property {() => void} onSubmit
- * @property {import('svelte').Snippet} [children] Optional content snippet
- */
+    /**
+     * Defines the properties accepted by MyComponent.
+     * @typedef {Object} ComponentProps
+     * @property {string} title
+     * @property {() => void} onSubmit
+     * @property {import('svelte').Snippet} [children] Optional content snippet
+     */
 
-/** @type {ComponentProps} */
-const { title, onSubmit, children } = $props();
-```
+    /** @type {ComponentProps} */
+    const { title, onSubmit, children } = $props();
+    ```
 
 ## 4. Specific Type Guidance
 
@@ -113,20 +117,21 @@ const { title, onSubmit, children } = $props();
     -   Use JSDoc `@param` for `event` and `resolve`.
     -   Type `event.locals` using the globally defined `App.Locals`.
     -   Use `Request` and `Response` standard types.
-    ```javascript
-    /**
-     * Handles server requests, adding user data to locals.
-     * @param {object} params - The hook parameters.
-     * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event The SvelteKit request event, augmented with App.Locals.
-     * @param {(event: import('@sveltejs/kit').RequestEvent, opts?: { transformPageChunk?: (input: { html: string; done: boolean }) => string | Promise<string>, filterSerializedResponseHeaders?: (name: string, value: string) => boolean }) => Promise<Response>} params.resolve The resolve function.
-     * @returns {Promise<Response>} The response.
-     */
-    export async function handle({ event, resolve }) {
-    	// event.locals is now typed as App.Locals
-    	event.locals.user = await getUserFromSession(event.cookies.get('session'));
-    	return resolve(event);
-    }
-    ```
+
+        ```javascript
+        /**
+         * Handles server requests, adding user data to locals.
+         * @param {object} params - The hook parameters.
+         * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event The SvelteKit request event, augmented with App.Locals.
+         * @param {(event: import('@sveltejs/kit').RequestEvent, opts?: { transformPageChunk?: (input: { html: string; done: boolean }) => string | Promise<string>, filterSerializedResponseHeaders?: (name: string, value: string) => boolean }) => Promise<Response>} params.resolve The resolve function.
+         * @returns {Promise<Response>} The response.
+         */
+        export async function handle({ event, resolve }) {
+        	// event.locals is now typed as App.Locals
+        	event.locals.user = await getUserFromSession(event.cookies.get('session'));
+        	return resolve(event);
+        }
+        ```
 -   **Route `load` functions:**
     -   Use JSDoc `@param` for the event object.
     -   Type `event.locals` as `App.Locals`.
@@ -145,6 +150,7 @@ const { title, onSubmit, children } = $props();
     -   Type `event.params` as `Record<string, string>`.
     -   Type `event.request` as `Request`.
     -   Type return as `Promise<Response>`.
+    -   **MUST** structurally type `event.cookies` completely or use a `@typedef` like `SvelteKitCookies` (see Section 3.2 example) ensuring all required methods (`get`, `getAll`, `set`, `delete`, `serialize`) are included. *(Updated in v1.2)*
 
 ### 4.2 Better Auth Types
 
@@ -152,40 +158,51 @@ const { title, onSubmit, children } = $props();
 -   **`Session` Object:** Can be imported: `@type {import('better-auth').Session}`. Add to `App.PageData` if needed globally.
 -   **`User` Object:** Define your application's `User` interface (e.g., in `src/lib/types/index.d.ts` or `app.d.ts`) including any custom fields. Add this `User` type to `App.Locals`. Ensure it aligns with fields returned by your custom Better Auth adapter functions.
 
-```typescript
-// Example User type (e.g., in src/lib/types/index.d.ts)
-export interface User {
-	id: string;
-	wpId?: number | null; // Link to WordPress ID
-	email: string;
-	displayName?: string | null;
-	// Add other fields returned by your adapter's getUserById/getUserByEmail fns
-	metadata?: {
-		createdAt?: Date | string; // Allow string for potential serialization
-		lastLogin?: Date | string;
-	} | null;
-	sessionToken?: string; // Only if explicitly added/needed
-}
+    ```typescript
+    // Example User type (e.g., in src/lib/types/index.d.ts)
+    export interface User {
+    	id: string;
+    	wpId?: number | null; // Link to WordPress ID
+    	email: string;
+    	displayName?: string | null;
+    	// Add other fields returned by your adapter's getUserById/getUserByEmail fns
+    	metadata?: {
+    		createdAt?: Date | string; // Allow string for potential serialization
+    		lastLogin?: Date | string;
+    	} | null;
+    	sessionToken?: string; // Only if explicitly added/needed
+    }
 
-// Example app.d.ts referencing it
-// ... inside declare global { namespace App { ... } }
-// locals: { user?: import('$lib/types').User | null; ... }
-```
+    // Example app.d.ts referencing it
+    // ... inside declare global { namespace App { ... } }
+    // locals: { user?: import('$lib/types').User | null; ... }
+    ```
 
-## 5. Verification Checklist
+## 5. Fallback for Failed Imports/Inference (Complex Instances) *(New Section v1.2)*
+
+-   **Context:** Applies when an `@type {import(...)}` fails because the type is not exported (e.g., `BetterAuthInstance`), AND defining a full, correct structural type is impractical or still results in unresolved type errors for a complex imported object instance.
+-   **Guideline:** Using a targeted type assertion (e.g., `/** @type {any} */ (variable).property`) may be considered as a **last resort**.
+-   **Requirements:**
+    -   This assertion **MUST** be accompanied by a comment explaining *why* it is needed (e.g., `// Type assertion needed as BetterAuthInstance is not exported and structural typing fails inference`).
+    -   The assertion SHOULD ideally be limited to the specific property access causing the type error, rather than casting the entire variable to `any` if possible.
+    -   This approach bypasses type safety and should be avoided if a proper structural type or globally defined type can be used.
+
+## 6. Verification Checklist *(Updated v1.2)*
 
 When adding or modifying type definitions:
 
--   [ ] **Scope:** Is the type truly global (used across many unrelated modules) or local (specific to one component/module)?
--   [ ] **Location:** Is the type defined in the correct location (`app.d.ts` vs. JSDoc `@typedef`) based on its scope?
--   [ ] **Single Definition:** Does this type already exist elsewhere? If so, reuse the existing definition.
--   [ ] **Naming:** Does the type name use PascalCase? Is it clear and descriptive?
--   [ ] **JSDoc vs. TS:** If in a `.js`/`.svelte` file, are JSDoc annotations used? Is `<script lang="ts">` absent?
--   [ ] **Global Namespace:** If in `app.d.ts`, are `App` augmentations correctly placed within `declare global { namespace App { ... } }`?
--   [ ] **Exports:** If defined in a separate `.d.ts` file (not `app.d.ts`), does the file include `export {};`? Are types intended for import correctly exported (`export interface/type`)?
--   [ ] **Documentation:** Is the type definition accompanied by a clear JSDoc comment explaining its purpose and properties?
--   [ ] **Usage:** Are the types being correctly applied using `@type`, `@param`, `@returns`, etc.?
--   [ ] **Imports:** Are `@type {import(...)}` statements used correctly and only when necessary?
--   [ ] **Conflicts:** Does the new type conflict with existing types (name collisions)?
--   [ ] **Framework Types:** Are SvelteKit/Better Auth types handled according to Section 4 guidelines?
--   [ ] **Linter/Checker:** Does `pnpm check` (or equivalent) pass without errors related to the new/modified types?
+-   [ ] **Scope:** Is the type truly global or local?
+-   [ ] **Location:** Defined in `app.d.ts` vs. JSDoc `@typedef` based on scope?
+-   [ ] **Single Definition:** Does this type already exist elsewhere? Reused?
+-   [ ] **Naming:** PascalCase? Clear?
+-   [ ] **JSDoc vs. TS:** Using JSDoc in `.js`/`.svelte`? `<script lang="ts">` absent?
+-   [ ] **Global Namespace:** `App` augmentations within `declare global { namespace App { ... } }`?
+-   [ ] **Exports:** `export {};` in `.d.ts`? Types exported if needed?
+-   [ ] **Documentation:** Type definition commented?
+-   [ ] **Usage:** Correctly applied (`@type`, `@param`, `@returns`)?
+-   [ ] **Imports:** `@type {import(...)}` used correctly and only when necessary?
+-   [ ] **Structural Type Completeness:** If defining structural types (esp. for framework/library objects), is completeness verified (docs/runtime checks)? (New v1.2)
+-   [ ] **Failed Import Fallback:** If using type assertion (`any`), is it justified with a comment and used as a last resort? (New v1.2)
+-   [ ] **Conflicts:** Name collisions checked?
+-   [ ] **Framework Types:** SvelteKit/Better Auth types handled per Section 4?
+-   [ ] **Linter/Checker:** `pnpm check` passes?

@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# JSDoc Complex Parameter Typing Protocol v1.1
+# JSDoc Complex Parameter Typing Protocol v1.2
 
-*(Self-correction: v1.1 - Added nested parameter example and SvelteKit type guidance)*
+*(Self-correction: v1.1 - Added nested parameter example and SvelteKit type guidance; v1.2 - Added structural type completeness check)*
 
 ## 1. Purpose
 
@@ -18,6 +18,7 @@ This protocol defines a standard, reliable method for applying JSDoc type checki
 -   **Global First:** Leverage globally defined types from project-wide type definition files (e.g., `global.d.ts`, `app.d.ts`, `src/types.d.ts`) whenever possible, especially for shared structures like application state or context interfaces (e.g., `App.Locals`, `AppContext`).
 -   **Explicit Parameters:** Use `@param` tags within the JSDoc block to explicitly type destructured function parameters, referencing their structure or individual properties.
 -   **Targeted Imports:** Use standard JSDoc `@type` imports only when necessary for specific, non-global types (e.g., utility types, types from specific modules). **Avoid framework-specific type imports like `import('@sveltejs/kit').Params`**.
+-   **Structural Type Completeness (MUST):** When defining a structural JSDoc type (`@typedef` or inline) for an object originating from a library or framework (like SvelteKit's `event.cookies`), **MUST** verify the structure's completeness by consulting official documentation or using runtime inspection (e.g., `console.log(Object.keys(variable))`) to identify all necessary properties and methods required by the context where the type is used. *(New in v1.2)*
 
 ## 3. Standard JSDoc Format for Functions with Complex Parameters
 
@@ -111,7 +112,7 @@ export const GET = async (event) => {
 };
 ```
 
-## 5. SvelteKit Common Type Guidance
+## 5. SvelteKit Common Type Guidance *(Updated v1.2)*
 
 Prefer standard JSDoc types or global types (`app.d.ts`) over framework imports:
 
@@ -119,9 +120,9 @@ Prefer standard JSDoc types or global types (`app.d.ts`) over framework imports:
 -   **`Response`**: Use the global `Response` type (`@returns {Promise<Response>}`).
 -   **`Params`**: Use `@param {Record<string, string>} event.params`.
 -   **`Locals`**: Use `@param {App.Locals} event.locals` (requires `App.Locals` definition in `app.d.ts`).
--   **`Cookies`**: Use `@param {{ get: function, set: function, delete: function }} event.cookies` or a similar structural definition. Document specific methods used (e.g., `@param {Function} event.cookies.delete`).
+-   **`Cookies`**: Use a **complete** structural definition (e.g., via `@typedef SvelteKitCookies`) that includes `get`, `getAll`, `set`, `delete`, and `serialize`. **MUST** verify the definition against SvelteKit documentation or runtime inspection. Apply this type using `@param {SvelteKitCookies} event.cookies`.
 
-## 6. Verification Checklist
+## 6. Verification Checklist *(Updated v1.2)*
 
 When implementing or reviewing functions with complex, potentially destructured parameters:
 
@@ -130,8 +131,9 @@ When implementing or reviewing functions with complex, potentially destructured 
 -   [ ] Is there a top-level `@param {object} descriptiveName` tag for the main complex argument?
 -   [ ] Is there a specific `@param` tag for *every* destructured property used from that complex argument?
 -   [ ] Do the types referenced in `@param` tags prioritize globally defined types (e.g., `App.Locals`, `AppContext`) where applicable?
--   [ ] Are framework-specific type aliases (like `$types`) or type imports (`import('@sveltejs/kit').*`) avoided?
+-   [ ] Are framework-specific type aliases (like `$types`) or type imports (`import('@sveltejs/kit').*`) avoided for common types like `Params`, `Cookies`?
 -   [ ] Is the correct JSDoc syntax used for common SvelteKit types (Request, Params, Locals, Cookies)?
+-   [ ] **Is the structural type definition for `event.cookies` complete and verified?** (New v1.2)
 -   [ ] Is the JSDoc syntax for nested parameters correct (typing the parent object)?
 -   [ ] Are `@type` imports used sparingly and only for necessary, specific types?
 -   [ ] Is there a `@returns` tag describing the output type?

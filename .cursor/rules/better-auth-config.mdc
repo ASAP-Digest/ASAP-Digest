@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Better Auth Configuration Protocol v1.2
+# Better Auth Configuration Protocol v1.3
 
-*(Self-correction: Incremented version, added clarification on adapter usage, added Error Handling section)*
+*(Self-correction: v1.2 - Incremented version, added clarification on adapter usage, added Error Handling section; v1.3 - Added Expected Instance Structure section)*
 
 ## 1. Purpose
 
@@ -23,7 +23,7 @@ This protocol defines the standard structure for the configuration object passed
 
 The object passed to `betterAuth()` MUST follow this structure for this project:
 
-````javascript
+```javascript
 import { betterAuth } from 'better-auth';
 import { createPool } from 'mysql2/promise';
 import { MysqlDialect } from 'kysely';
@@ -35,7 +35,8 @@ import {
     createSessionFn, // Especially this one with UUID generation
     deleteSessionFn,
     getUserByWpIdFn,
-    createUserFn
+    createUserFn,
+    createAccountFn // Include createAccountFn if used in adapter object
 } from './path/to/adapter-functions';
 import {
     onUserCreationHook,
@@ -59,7 +60,8 @@ const adapter = {
     createSession: createSessionFn, // This uses crypto.randomUUID()
     deleteSession: deleteSessionFn,
     getUserByWpId: getUserByWpIdFn,
-    createUser: createUserFn
+    createUser: createUserFn,
+    createAccount: createAccountFn // Include createAccountFn if used
 };
 
 export const auth = betterAuth({
@@ -86,7 +88,7 @@ export const auth = betterAuth({
         onSessionCreation: onSessionCreationHook,
     }
 });
-````
+```
 
 ## 4. Common Pitfalls to Avoid
 
@@ -104,7 +106,7 @@ When configuring `betterAuth` for this project:
 -   [ ] Is the `dialect` instance correctly nested *inside* the `database` object?
 -   [ ] Is the `type` property (e.g., `"mysql"`) present *inside* the `database` object alongside the `dialect`?
 -   [ ] Is the `adapter` key present at the top level?
--   [ ] Does the `adapter` object contain all necessary custom adapter functions (including `createSessionFn` with UUID generation)?
+-   [ ] Does the `adapter` object contain all necessary custom adapter functions (including `createSessionFn` with UUID generation and `createAccountFn` if used)?
 -   [ ] Are `sessionCookieName` and `sessionExpiresIn` at the top level (if used)?
 -   [ ] Is the `after` object present at the top level (if hooks are used)?
 -   [ ] Are there any unexpected keys at the top level?
@@ -116,3 +118,13 @@ When configuring `betterAuth` for this project:
 -   If server startup fails due to configuration errors related to `betterAuth`, the `universal-error-resolution-protocol.mdc` MUST be triggered.
 -   During UERP execution for `betterAuth` config errors, the **Verification Checklist (Section 5)** MUST be reviewed to identify the specific misconfiguration.
 
+## 7. Expected Instance Structure (Reference) *(New Section v1.3)*
+
+The `auth` instance returned by `betterAuth()` and exported from `$lib/server/auth.js` is expected to have the following key properties based on the library's functionality and our configuration:
+
+-   **`sessionManager`**: An object containing methods for handling session cookies (`setCookie`, `deleteCookie`). This is crucial for setting the session cookie correctly.
+-   **`adapter`**: The adapter object provided during configuration, containing our custom database functions (`getUserById`, `createSession`, etc.).
+-   **`options`**: The configuration options passed to `betterAuth()`.
+-   **(Other internal properties/methods):** The instance will contain other internal mechanisms used by the library to handle different authentication strategies (email/password, OTP, social), API endpoints, and request handling.
+
+*Note: This section is for reference during type troubleshooting. The exact internal structure might vary slightly between library versions. Always prioritize verifying the existence and usage of specific properties (like `sessionManager`) needed in your code.*

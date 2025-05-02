@@ -89,32 +89,37 @@
   onMount(() => {
     // --- NEW: WP Session Check via GraphQL viewer query (Step C & D) ---
     if (browser && !hasBetterAuthSession) { // Only run if in browser AND no BA session exists
-      console.log('[Layout Mount - Step C] No Better Auth session found. Checking WP session via GraphQL viewer query...');
+      console.log('[Layout V3 - Step C] No Better Auth session found. Checking WP session via GraphQL viewer query...'); // Added V3 prefix
 
       const viewerQuery = `query GetViewerDetails { viewer { databaseId email username name } }`;
       const wpGraphqlUrl = import.meta.env.VITE_PUBLIC_WP_GRAPHQL_URL || 'https://asapdigest.local/graphql';
+      console.log(`[Layout V3 - Step D] Using GraphQL endpoint: ${wpGraphqlUrl}`); // Log the URL
 
       // Step D: Verify WP Session via GraphQL viewer query
       fetch(wpGraphqlUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: viewerQuery }),
         credentials: 'include' // ESSENTIAL: Sends WP cookies
-      })
-      .then(response => {
+        })
+        .then(response => {
         if (!response.ok) {
           // Handle non-2xx HTTP responses (e.g., CORS errors, server errors)
-          console.log(`[Layout Mount - Step D] GraphQL query failed with status: ${response.status}. Stopping auto-login.`);
+          // Log the response text for more details
+          response.text().then(text => {
+            console.error(`[Layout V3 - Step D] GraphQL query fetch failed. Status: ${response.status}, Response: ${text}. Stopping auto-login.`);
+          });
           throw new Error(`GraphQL request failed with status ${response.status}`);
         }
         return response.json();
-      })
+        })
       .then(({ data, errors }) => {
         if (errors || !data?.viewer?.databaseId) {
           // Handle GraphQL errors (e.g., "unauthenticated") or null viewer
-          console.log(`[Layout Mount - Step D] GraphQL query failed or viewer data missing. ${errors ? `Error: ${JSON.stringify(errors)}.` : 'No viewer data.'} Stopping auto-login.`);
-          throw new Error('No active WordPress session detected');
-        }
+          // Log the actual errors object
+          console.log(`[Layout V3 - Step D] GraphQL query logical failure or viewer data missing. ${errors ? `Errors: ${JSON.stringify(errors)}.` : 'No viewer data.'} Stopping auto-login.`);
+          throw new Error(`No active WordPress session detected or GraphQL error: ${JSON.stringify(errors)}`);
+    }
 
         // Success Case: WP Session Validated
         /** @type {WpUserSync} */
@@ -124,31 +129,35 @@
           username: data.viewer.username,
           name: data.viewer.name
         };
-        console.log("[Layout Mount - Step D] WP session verified via GraphQL viewer query. User details:", wpUserDetails);
+        console.log("[Layout V3 - Step D] WP session verified via GraphQL viewer query. User details:", wpUserDetails); // Added V3 prefix
         
         // Step E: Trigger Backend Sync
-        console.log("[Layout Mount - Step E] Triggering backend sync with verified WP user details...");
+        console.log("[Layout V3 - Step E] Triggering backend sync with verified WP user details..."); // Added V3 prefix
         return fetch('/api/auth/wp-user-sync', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(wpUserDetails)
-        });
+            });
         })
         .then(response => {
         if (!response) {
-          throw new Error('No response received from sync endpoint');
+           // This case might be less likely with fetch, but good to have
+           console.error('[Layout V3 - Step E] No response received from sync endpoint.');
+           throw new Error('No response received from sync endpoint');
           }
-        if (!response.ok) {
+                 if (!response.ok) {
+            // Log the response text for backend errors
             return response.text().then(text => {
-            throw new Error(`Backend sync failed with status ${response.status}. Response: ${text}`);
+              console.error(`[Layout V3 - Step E] Backend sync fetch failed. Status: ${response.status}, Response: ${text}`);
+              throw new Error(`Backend sync failed with status ${response.status}. Response: ${text}`);
             });
-          }
+                 } 
         return response.json();
-        })
+            })
         .then(syncResult => {
         // Step G: Handle Sync Success
         if (syncResult?.success) {
-          console.log("[Layout Mount - Step G] Backend sync successful. Invalidating data to refresh session state.");
+          console.log("[Layout V3 - Step G] Backend sync successful. Invalidating data to refresh session state."); // Added V3 prefix
           
           // Show success toast
                         toasts.show(
@@ -161,20 +170,22 @@
             // Wait a tick to allow page store to update
             setTimeout(() => {
               const targetPath = '/dashboard';
-              console.log(`[Layout Mount - Step G] Redirecting to ${targetPath}`);
+              console.log(`[Layout V3 - Step G] Redirecting to ${targetPath}`); // Added V3 prefix
               goto(targetPath, { replaceState: true });
             }, 0);
           });
                     } else {
+          // Log the actual failure result from the backend
+          console.error(`[Layout V3 - Step G] Backend sync reported failure: ${JSON.stringify(syncResult)}`);
           throw new Error(`Backend sync reported failure: ${JSON.stringify(syncResult)}`);
                 }
             })
             .catch(error => {
-        // Handle errors gracefully - don't show error toasts for background auto-login attempts
-        console.log(`[Layout Mount] Auto-login process halted: ${error.message}`);
+        // Log the full error object
+        console.log(`[Layout V3] Auto-login process halted. Error:`, error);
             });
     } else if (browser) {
-      console.log('[Layout Mount] Active Better Auth session detected. Skipping WP session check.');
+      console.log('[Layout V3] Active Better Auth session detected. Skipping WP session check.'); // Added V3 prefix
     } 
     // --- END NEW WP Session Check ---
 
@@ -204,7 +215,7 @@
               invalidateAll(); // Invalidate data to trigger re-fetch
                 } else {
               console.log('[Layout Sync Listener] Update not applicable to current user or missing timestamp. Skipping.'); // DEBUG
-            }
+              }
             }
           } catch (error) {
           console.error('[Layout Sync Listener] Error handling message:', error); // DEBUG
@@ -882,7 +893,7 @@
         } else {
             log("No active Better Auth session found via $page store. Initiating WP session check...");
             checkWordPressSession();
-        }
+    }
     });
     return () => {
         log("Layout unmounting. Unsubscribing from page store.");
