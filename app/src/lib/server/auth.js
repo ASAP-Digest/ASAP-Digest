@@ -603,49 +603,6 @@ async function onSessionCreationHook(session) {
 }
 
 /**
- * Update user metadata in Better Auth
- * @param {string} userId - User ID
- * @param {object} metadata - Metadata object
- * @returns {Promise<boolean>} Success status
- */
-async function updateUserMetadata(userId, metadata) {
-    // Apply Local Variable Type Safety Protocol - verify parameters
-    if (!userId || typeof userId !== 'string') {
-        logConfig(`Failed to update user metadata: Invalid user ID`, 'error');
-        return false;
-    }
-    
-    if (!metadata || typeof metadata !== 'object') {
-        logConfig(`Failed to update user metadata: Invalid metadata`, 'error');
-        return false;
-    }
-    
-    try {
-        const db = new Kysely({ dialect });
-        
-        // Safely stringify metadata with error handling
-        let metadataString;
-        try {
-            metadataString = JSON.stringify(metadata);
-        } catch (stringifyError) {
-            logConfig(`Failed to stringify metadata: ${stringifyError instanceof Error ? stringifyError.message : String(stringifyError)}`, 'error');
-            return false;
-        }
-        
-        await db
-            .updateTable('ba_users')
-            .set({ metadata: metadataString })
-            .where('id', '=', userId)
-            .execute();
-            
-        return true;
-    } catch (error) {
-        logConfig(`Failed to update user metadata: ${error instanceof Error ? error.message : String(error)}`, 'error');
-        return false;
-    }
-}
-
-/**
  * Get a WordPress nonce for authenticated requests
  * @returns {Promise<string>} - WordPress nonce
  */
@@ -698,7 +655,6 @@ export {
     createSessionFn,
     getSessionByTokenFn,
     deleteSessionFn,
-    updateUserMetadata,
     onUserCreationHook,
     onSessionCreationHook,
     pool,

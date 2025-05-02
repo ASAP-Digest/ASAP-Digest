@@ -12,12 +12,12 @@ import { dev } from '$app/environment'; // <-- Import dev
 // Import individual adapter functions directly, as this endpoint provides
 // custom logic outside the standard Better Auth flows handled by [...auth].js
 // Also import the main 'auth' instance for session manager access.
-import {
+import { 
   auth,
-  getUserByWpIdFn,
-  createUserFn,
+  getUserByWpIdFn, 
+  createUserFn, 
   createAccountFn,
-  createSessionFn
+  createSessionFn 
 } from '$lib/server/auth';
 
 import crypto from 'node:crypto';

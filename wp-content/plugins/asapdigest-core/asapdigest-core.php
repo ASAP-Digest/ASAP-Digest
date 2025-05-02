@@ -1315,3 +1315,61 @@ function asap_add_central_command_menu() {
         'asap_render_settings'
     );
 }
+
+/**
+ * Add necessary CORS headers for WPGraphQL OPTIONS preflight requests.
+ * Checks if the request origin is whitelisted and adds required headers.
+ * Environment-aware for SvelteKit frontend origins.
+ *
+ * @param array $headers Existing headers potentially set by WPGraphQL or other filters.
+ * @return array Modified headers array.
+ */
+function asap_filter_graphql_cors_headers( $headers ) {
+    // Only act on OPTIONS preflight requests
+    if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || $_SERVER['REQUEST_METHOD'] !== 'OPTIONS' ) {
+        return $headers;
+    }
+
+    // Determine allowed origin based on environment
+    $allowed_origin = '';
+    $current_env = wp_get_environment_type(); // development, staging, production, local
+
+    if ( $current_env === 'development' || $current_env === 'local' ) {
+        $allowed_origin = 'https://localhost:5173';
+    } elseif ( $current_env === 'production' ) {
+        $allowed_origin = 'https://app.asapdigest.com';
+    } // Add 'staging' environment if needed later
+
+    // Get the origin of the request
+    $request_origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? trim( rtrim( $_SERVER['HTTP_ORIGIN'], '/' ) ) : ''; // Trim trailing slash
+
+    // If the request origin matches our allowed origin for the environment...
+    if ( ! empty( $request_origin ) && $request_origin === $allowed_origin ) {
+
+        // Set the necessary CORS headers, potentially overriding WPGraphQL defaults if needed
+        $headers['Access-Control-Allow-Origin'] = $allowed_origin; // Explicitly set allowed origin
+        $headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS';
+        $headers['Access-Control-Allow-Credentials'] = 'true';
+        // Ensure Allow-Headers includes what the request asked for (Content-Type) and others potentially needed
+        $headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-WPGraphQL-Login-Token, X-WPGraphQL-Login-Refresh-Token, X-Better-Auth-Signature';
+        // Optional: Add Max-Age
+        // $headers['Access-Control-Max-Age'] = '600';
+
+        error_log('[ASAP CORS Filter V3] Added CORS headers for GraphQL OPTIONS request from whitelisted origin: ' . $request_origin);
+
+    } else {
+         // Log why we didn't add headers if debugging is needed
+         // error_log('[ASAP CORS Filter V3] Skipped adding CORS headers. Request Origin: \'' . $request_origin . '\' | Allowed Origin: \'' . $allowed_origin . '\'');
+    }
+
+    // Always return the headers array (potentially modified or original)
+    return $headers;
+}
+
+/**
+ * Add necessary CORS headers using the 'send_headers' action hook.
+ * Checks if the request is an OPTIONS preflight from a whitelisted origin
+ * and adds required headers directly using header().
+ * Environment-aware for SvelteKit frontend origins.
+ */
+// add_action( 'send_headers', 'asap_add_graphql_cors_headers_on_send' );
