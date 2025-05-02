@@ -1,13 +1,47 @@
-// TODO: Implement actual database logic for Better Auth adapter functions
+/**
+ * @file Mock/placeholder adapter functions for Better Auth
+ * 
+ * This file provides placeholder implementations of the adapter functions
+ * required by Better Auth. In a production environment, these should be
+ * replaced with real database logic, likely using Kysely or another query builder.
+ * 
+ * @version 1.0.0
+ * @created 2025-07-29
+ */
+
 import { log } from '$lib/utils/log.js';
 import crypto from 'node:crypto';
 
-// --- Placeholder Functions --- 
-// Replace these with actual implementations querying your database (e.g., using Kysely)
+/**
+ * @typedef {Object} UserMetadata
+ * @property {number} [wp_user_id] - WordPress user ID
+ * @property {string[]} [roles] - User roles array
+ */
 
 /**
- * @param {number} wpUserId 
- * @returns {Promise<import('$lib/server/auth').User | null>} 
+ * @typedef {Object} User
+ * @property {string} id - Better Auth User ID (UUID)
+ * @property {string} email - User email
+ * @property {string} [username] - Optional username
+ * @property {string} [name] - Optional display name
+ * @property {string} displayName - Primary display name 
+ * @property {UserMetadata} [metadata] - User metadata
+ */
+
+/**
+ * @typedef {Object} Session
+ * @property {string} id - Session ID (Primary Key, usually UUID)
+ * @property {string} userId - Better Auth User ID
+ * @property {string} token - Session token
+ * @property {Date} expiresAt - Session expiry date
+ * @property {Date} createdAt - Session creation date
+ * @property {Date} updatedAt - Session update date
+ */
+
+/**
+ * Find user by WordPress ID stored in metadata
+ * @param {number} wpUserId - WordPress User ID
+ * @returns {Promise<User|null>} User object or null if not found
  */
 export async function getUserByWpIdFn(wpUserId) {
     log(`[Adapter] getUserByWpIdFn called for WP ID: ${wpUserId}`);
@@ -16,30 +50,41 @@ export async function getUserByWpIdFn(wpUserId) {
 }
 
 /**
- * @param {object} userData 
- * @param {string} userData.email
- * @param {string} [userData.name]
- * @param {number} [userData.wpUserId]
- * @returns {Promise<import('$lib/server/auth').User | null>} 
+ * Create a new user
+ * @param {Object} userData - Data for the new user
+ * @param {string} userData.email - User email
+ * @param {string} [userData.name] - Optional display name
+ * @param {number} [userData.wpUserId] - Optional WordPress user ID
+ * @param {string[]} [userData.roles] - Optional user roles
+ * @returns {Promise<User|null>} Created user object or null on failure
  */
 export async function createUserFn(userData) {
     log(`[Adapter] createUserFn called for email: ${userData.email}`);
-    // Placeholder: Insert into ba_users table
-    // Ensure you return the created user object including its new ID
+    
+    // Prepare properly structured metadata object
+    /** @type {UserMetadata} */
+    const metadata = {
+        wp_user_id: userData.wpUserId,
+        roles: userData.roles || ['subscriber']
+    };
+    
+    // Return mock user with proper structure
     return {
         id: crypto.randomUUID(), // Example ID generation
-        wpId: userData.wpUserId, 
         email: userData.email,
+        username: userData.email.split('@')[0],
+        name: userData.name,
         displayName: userData.name || userData.email,
-        metadata: { createdAt: new Date() },
+        metadata: metadata
     };
 }
 
 /**
- * @param {object} accountData 
- * @param {string} accountData.userId
- * @param {string} accountData.provider
- * @param {string} accountData.providerAccountId
+ * Create a linked account record
+ * @param {Object} accountData - Account linking data
+ * @param {string} accountData.userId - Better Auth user ID
+ * @param {string} accountData.provider - Provider name (e.g., 'wordpress')
+ * @param {string} accountData.providerAccountId - Provider-specific ID
  * @returns {Promise<boolean>} Success status
  */
 export async function createAccountFn(accountData) {
@@ -49,35 +94,35 @@ export async function createAccountFn(accountData) {
 }
 
 /**
- * @param {object} sessionData
- * @param {string} sessionData.userId 
- * @returns {Promise<import('better-auth').Session | null>} 
+ * Create a new session
+ * @param {Object} sessionData - Session data
+ * @param {string} sessionData.userId - Better Auth user ID
+ * @returns {Promise<Session|null>} Created session or null on failure
  */
 export async function createSessionFn(sessionData) {
     log(`[Adapter] createSessionFn called for user: ${sessionData.userId}`);
-    // Placeholder: Insert into ba_sessions table
+    
     // Generate session ID and token
     const sessionId = crypto.randomUUID();
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const now = new Date();
 
-    // Placeholder return - Structure MUST match better-auth's Session type expectations
+    // Return mock session with proper structure
     return {
-        id: sessionId, // Session primary key
+        id: sessionId,
         userId: sessionData.userId,
         token: token,
         expiresAt: expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        // Include other fields required by better-auth Session type if any
+        createdAt: now,
+        updatedAt: now
     };
 }
 
-// Add other required adapter functions (getUserByEmail, getUserById, getSessionByToken, deleteSession) as needed
-
 /**
- * @param {string} email 
- * @returns {Promise<import('$lib/server/auth').User | null>} 
+ * Get user by email
+ * @param {string} email - User email
+ * @returns {Promise<User|null>} User object or null if not found
  */
 export async function getUserByEmailFn(email) {
     log(`[Adapter] getUserByEmailFn called for email: ${email}`);
@@ -86,8 +131,9 @@ export async function getUserByEmailFn(email) {
 }
 
 /**
- * @param {string} userId 
- * @returns {Promise<import('$lib/server/auth').User | null>} 
+ * Get user by ID
+ * @param {string} userId - Better Auth user ID
+ * @returns {Promise<User|null>} User object or null if not found
  */
 export async function getUserByIdFn(userId) {
     log(`[Adapter] getUserByIdFn called for ID: ${userId}`);
@@ -96,8 +142,9 @@ export async function getUserByIdFn(userId) {
 }
 
 /**
- * @param {string} token 
- * @returns {Promise<import('better-auth').Session | null>} 
+ * Get session by token
+ * @param {string} token - Session token
+ * @returns {Promise<Session|null>} Session object or null if not found/expired
  */
 export async function getSessionByTokenFn(token) {
     log(`[Adapter] getSessionByTokenFn called`);
@@ -106,7 +153,8 @@ export async function getSessionByTokenFn(token) {
 }
 
 /**
- * @param {string} token 
+ * Delete session by token
+ * @param {string} token - Session token
  * @returns {Promise<boolean>} Success status
  */
 export async function deleteSessionFn(token) {

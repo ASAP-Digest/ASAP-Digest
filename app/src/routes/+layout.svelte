@@ -38,7 +38,7 @@
   // Import session store/hook (assuming useSession exists or similar)
   // import { useSession } from '$lib/stores/session'; // Placeholder - Adjust if store name/structure differs
   import { log } from '$lib/utils/log.js'; // Assuming a logging utility
-  // Import environment variables for V4 flow
+  // Import environment variables for V4 flow -- THIS WILL BE REMOVED LATER but kept for now if needed elsewhere
   import { PUBLIC_WP_API_URL } from '$env/dynamic/public'; 
 
   // State management with Svelte 5 runes
@@ -91,30 +91,56 @@
   onMount(() => {
     if (!browser) return; // Only run client-side
 
-    log("[Layout V4 Mount] Checking for existing Better Auth session..."); // Update log prefix
+    // --- V5 Logic Starts ---
+    log("[Layout V5 Mount] Checking for existing Better Auth session..."); 
     if (hasBetterAuthSession) {
-        log("[Layout V4 Mount] Active Better Auth session found. Auto-login flow stopped.");
+        log("[Layout V5 Mount] Active Better Auth session found. Auto-login flow stopped.");
     } else {
-        // --- V4 Flow: Redirect to WP for token generation ---
-        log("[Layout V4 Mount] No active Better Auth session found. Redirecting to WP for token generation.");
+        log("[Layout V5 Mount] No active Better Auth session. Triggering background WP session check...");
         
-        // Construct WP token generation URL (environment-aware)
-        // Ensure PUBLIC_WP_API_URL is correctly defined in .env (e.g., https://asapdigest.local or https://asapdigest.com)
-        if (!PUBLIC_WP_API_URL) {
-             log("Error: PUBLIC_WP_API_URL is not set. Cannot redirect for WP token.", 'error');
-             toasts.show("Configuration Error", "Cannot initiate login.", "destructive");
-             return; // Stop if URL is missing
-        }
-        
-        const wpTokenGenEndpoint = `${PUBLIC_WP_API_URL}/wp-json/asap/v1/generate-sk-token`;
-        log(`[Layout V4 Mount] Redirecting browser to: ${wpTokenGenEndpoint}`);
-        
-        // Perform full browser redirect
-        window.location.href = wpTokenGenEndpoint;
-        
-        // No further action needed here; WP will redirect back to SK backend endpoint
-        // --- End V4 Flow ---
+        // Define the new SK backend endpoint URL
+        const checkWpSessionUrl = '/api/auth/check-wp-session'; 
+
+        // Asynchronous function to perform the background check
+        const checkWpSession = async () => {
+          try {
+            const response = await fetch(checkWpSessionUrl, {
+              method: 'POST', // Use POST as it might imply an action/check
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include' // CRITICAL: Send cookies
+            });
+
+            if (!response.ok) {
+              // Handle HTTP errors (e.g., 500 internal server error)
+              log(`[Layout V5 Mount] Background check failed with HTTP status: ${response.status}`, 'error');
+              toasts.show("Login Check Failed", `Server error (${response.status}).`, "destructive");
+              return; 
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+              log("[Layout V5 Mount] Background WP sync successful. SK Session established via Set-Cookie header.");
+              // Trigger reactive UI update by invalidating session data
+              invalidateAll(); // Reloads all load functions
+              log("[Layout V5 Mount] invalidateAll() called to refresh session state.");
+            } else {
+              // Handle specific errors returned from the backend
+              log(`[Layout V5 Mount] Background WP check failed. User remains logged out of SK. Reason: ${result.error || 'unknown'}`, 'warn');
+            }
+
+          } catch (error) {
+            log('[Layout V5 Mount] Error during background WP session check fetch:', error, 'error');
+            toasts.show("Login Check Error", "Could not check WordPress session.", "destructive");
+          }
+        };
+
+        // Execute the background check
+        checkWpSession();
     }
+    // --- V5 Logic Ends ---
 
     // --- SSE Listener Setup (Remains relevant for live updates) --- 
     let localEventSource = null;

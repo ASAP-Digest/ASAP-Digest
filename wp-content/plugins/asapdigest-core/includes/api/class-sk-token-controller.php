@@ -16,24 +16,39 @@
 namespace ASAPDigest\Core\API;
 
 use WP_Error;
+use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
+use WP_REST_Server;
+use function add_query_arg;
+use function constant;
+use function defined;
+use function delete_user_meta;
+use function get_current_user_id;
+use function get_user_meta;
+use function get_userdata;
+use function is_user_logged_in;
+use function update_user_meta;
+use function wp_generate_password;
+use function wp_safe_redirect;
+use function wp_validate_auth_cookie;
 
 if (!defined('ABSPATH')) {
 	exit; // Exit if accessed directly.
 }
 
 /**
- * Manages the REST API endpoints for SK token exchange.
+ * Manages the REST API endpoints for SK session validation (V5).
+ * V4 Token Exchange code has been removed.
  */
-class SK_Token_Controller {
+class SK_Token_Controller extends WP_REST_Controller {
 
 	/**
 	 * Namespace for the REST API routes.
 	 *
 	 * @var string
 	 */
-	private $namespace = 'asap/v1';
+	protected $namespace = 'asap/v1';
 
 	/**
 	 * Registers the REST API routes.
@@ -41,179 +56,101 @@ class SK_Token_Controller {
 	public function register_routes() {
 		register_rest_route(
 			$this->namespace,
-			'/generate-sk-token',
+			'/validate-session-get-user',
 			[
-				'methods'             => 'GET',
-				'callback'            => [$this, 'handle_generate_token'],
-				'permission_callback' => [$this, 'generate_token_permissions_check'],
-			]
-		);
-
-		register_rest_route(
-			$this->namespace,
-			'/validate-sk-token',
-			[
-				'methods'             => 'POST',
-				'callback'            => [$this, 'handle_validate_token'],
-				'permission_callback' => [$this, 'validate_token_permissions_check'],
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [$this, 'validate_session_and_get_user'],
+				'permission_callback' => [$this, 'validate_session_permissions_check'],
 			]
 		);
 	}
 
 	/**
-	 * Permission check for the token generation endpoint.
-	 * Only logged-in users can generate a token.
-	 *
-	 * @param WP_REST_Request $request The request object.
-	 * @return bool|WP_Error True if permission is granted, WP_Error otherwise.
+	 * Permission check for validating a session via cookie. Requires shared secret. (V5)
+	 * @param WP_REST_Request $request Full data about the request.
+	 * @return bool|WP_Error
 	 */
-	public function generate_token_permissions_check(WP_REST_Request $request) {
-		if (!is_user_logged_in()) {
-			// Option 1: Redirect to login (might be complex with REST)
-			// wp_safe_redirect(wp_login_url($request->get_route())); exit;
-			// Option 2: Return an error
-			return new WP_Error('rest_not_logged_in', __('You are not currently logged in.', 'asapdigest-core'), ['status' => 401]);
+	public function validate_session_permissions_check(WP_REST_Request $request) {
+		$secret_header = $request->get_header('X-ASAP-Sync-Secret');
+		$defined_secret = defined('ASAP_SK_SYNC_SECRET') ? constant('ASAP_SK_SYNC_SECRET') : null;
+
+		if (empty($defined_secret) || empty($secret_header) || !hash_equals($defined_secret, $secret_header)) {
+			error_log('[ASAP Digest Core] V5 Session Validation: Invalid or missing secret header.');
+			return new WP_Error('rest_forbidden_secret', 'Invalid secret.', ['status' => 403]);
 		}
 		return true;
 	}
 
 	/**
-	 * Permission check for the token validation endpoint.
-	 * Requires a valid shared secret header.
-	 *
-	 * @param WP_REST_Request $request The request object.
-	 * @return bool|WP_Error True if permission is granted, WP_Error otherwise.
+	 * Validates the WP auth cookie provided in the header and returns user data if valid. (V5)
+	 * @param WP_REST_Request $request Full data about the request.
+	 * @return WP_REST_Response|WP_Error Response object on success, WP_Error on failure.
 	 */
-	public function validate_token_permissions_check(WP_REST_Request $request) {
-		$shared_secret = defined('ASAP_SK_SYNC_SECRET') ? ASAP_SK_SYNC_SECRET : '';
-		$received_secret = $request->get_header('X-ASAP-Sync-Secret');
+	public function validate_session_and_get_user(WP_REST_Request $request) {
+		// Get the full cookie header sent by SvelteKit backend
+		$cookie_header = $request->get_header('Cookie');
 
-		if (empty($shared_secret) || empty($received_secret) || !hash_equals($shared_secret, $received_secret)) {
-			error_log('[ASAP SK Token] Invalid or missing shared secret for validation.');
-			return new WP_Error('rest_forbidden_context', __('Invalid shared secret.', 'asapdigest-core'), ['status' => 403]);
-		}
-		return true;
-	}
-
-	/**
-	 * Handles the GET request to generate a sync token.
-	 *
-	 * @param WP_REST_Request $request The request object.
-	 * @return WP_REST_Response|WP_Error A response object or WP_Error on failure.
-	 */
-	public function handle_generate_token(WP_REST_Request $request) {
-		$user_id = get_current_user_id();
-		if (!$user_id) {
-			// This should be caught by permission_callback, but double-check
-			return new WP_Error('rest_internal_error', __('Could not get current user ID.', 'asapdigest-core'), ['status' => 500]);
+		if (empty($cookie_header)) {
+			error_log('[ASAP Digest Core] V5 Session Validation: Missing Cookie header.');
+			return new WP_Error('rest_missing_cookie_header', 'Cookie header is missing.', ['status' => 400]);
 		}
 
-		// 1. Generate Token
-		$token = wp_generate_password(64, false);
-		// Hash the token before storing for better security
-		$hashed_token = wp_hash_password($token);
-		$expiry = time() + 120; // 2-minute expiry
-
-		// 2. Store Token (Using User Meta for simplicity)
-		// Store the HASHED token and expiry time
-		$stored = update_user_meta($user_id, '_sk_sync_token_v4', ['token_hash' => $hashed_token, 'expires' => $expiry]);
-
-		if (!$stored) {
-			error_log("[ASAP SK Token] Failed to store token meta for user ID: $user_id");
-			return new WP_Error('rest_internal_error', __('Failed to store sync token.', 'asapdigest-core'), ['status' => 500]);
-		}
-
-		error_log("[ASAP SK Token] Generated and stored token meta for user ID: $user_id");
-
-		// 3. Construct SK URL
-		$sk_verify_url_base = (wp_get_environment_type() === 'production')
-			? 'https://app.asapdigest.com/api/auth/verify-wp-token' // Production URL
-			: 'https://localhost:5173/api/auth/verify-wp-token'; // Development URL
-
-		// Pass the PLAINTEXT token in the URL
-		$redirect_url = add_query_arg('token', $token, $sk_verify_url_base);
-
-		// 4. Redirect
-		wp_safe_redirect($redirect_url);
-		exit;
-	}
-
-	/**
-	 * Handles the POST request to validate a sync token.
-	 *
-	 * @param WP_REST_Request $request The request object.
-	 * @return WP_REST_Response|WP_Error A response object or WP_Error on failure.
-	 */
-	public function handle_validate_token(WP_REST_Request $request) {
-		$params = $request->get_json_params();
-		$token = isset($params['token']) ? sanitize_text_field($params['token']) : '';
-
-		if (empty($token)) {
-			return new WP_Error('rest_bad_request', __('Missing token.', 'asapdigest-core'), ['status' => 400]);
-		}
-
-		error_log("[ASAP SK Token] Received validation request for token.");
-
-		// --- Find User by Token ---
-		// This is inefficient. We need to query users based on meta value.
-		// A custom table would be better, but let's try user meta query first.
-		$args = [
-			'meta_key'     => '_sk_sync_token_v4',
-			'meta_compare' => 'EXISTS', // Find users who have the meta key
-			'fields'       => 'ID', // Only need user IDs
-		];
-		$user_query = new \WP_User_Query($args);
-		$users = $user_query->get_results();
-
-		$valid_user_id = null;
-		$user_data_to_return = null;
-
-		if (!empty($users)) {
-			foreach ($users as $user_id) {
-				$meta_value = get_user_meta($user_id, '_sk_sync_token_v4', true);
-
-				if (is_array($meta_value) && isset($meta_value['token_hash']) && isset($meta_value['expires'])) {
-					// Verify the hash of the received token against the stored hash
-					if (wp_check_password($token, $meta_value['token_hash'])) {
-						// Token matches, now check expiry
-						if (time() < $meta_value['expires']) {
-							// Valid token found! Delete it and store user ID
-							$deleted = delete_user_meta($user_id, '_sk_sync_token_v4');
-							if ($deleted) {
-								error_log("[ASAP SK Token] Valid token found and deleted for user ID: $user_id");
-								$valid_user_id = $user_id;
-							} else {
-								error_log("[ASAP SK Token] Valid token found for user ID $user_id, but FAILED TO DELETE meta.");
-								// Treat as invalid if we can't delete it (prevents replay)
-							}
-							break; // Stop checking once a valid token is found and processed
-						} else {
-							error_log("[ASAP SK Token] Token found for user ID $user_id, but expired. Deleting.");
-							delete_user_meta($user_id, '_sk_sync_token_v4'); // Clean up expired token
-						}
-					}
-					// If hash doesn't match, continue checking other users
+		// Parse header to find the relevant WP auth cookie.
+		$wp_auth_cookie = '';
+		$cookies = explode(';', $cookie_header);
+		foreach ($cookies as $cookie) {
+			if (strpos(trim($cookie), LOGGED_IN_COOKIE) === 0) {
+				$parts = explode('=', $cookie, 2);
+				if (count($parts) == 2) {
+					$wp_auth_cookie = trim($parts[1]);
+					break;
+				}
+			} elseif (defined('SECURE_AUTH_COOKIE') && strpos(trim($cookie), SECURE_AUTH_COOKIE) === 0) {
+				$parts = explode('=', $cookie, 2);
+				if (count($parts) == 2) {
+					$wp_auth_cookie = trim($parts[1]);
+					break;
+				}
+			} elseif (defined('AUTH_COOKIE') && strpos(trim($cookie), AUTH_COOKIE) === 0) {
+				$parts = explode('=', $cookie, 2);
+				if (count($parts) == 2) {
+					$wp_auth_cookie = trim($parts[1]);
+					break;
 				}
 			}
 		}
 
-		if ($valid_user_id) {
-			$user_info = get_userdata($valid_user_id);
-			if ($user_info) {
-				$user_data_to_return = [
-					'wpUserId' => $user_info->ID,
-					'email'    => $user_info->user_email,
-					'username' => $user_info->user_login,
-					'name'     => $user_info->display_name,
-				];
-				return new WP_REST_Response(['success' => true, 'user' => $user_data_to_return], 200);
-			} else {
-				error_log("[ASAP SK Token] Could not retrieve userdata for valid user ID: $valid_user_id");
-				return new WP_Error('rest_internal_error', __('Could not retrieve user data.', 'asapdigest-core'), ['status' => 500]);
-			}
-		} else {
-			error_log("[ASAP SK Token] Token validation failed (not found, expired, hash mismatch, or delete failed).");
-			return new WP_Error('rest_invalid_token', __('Invalid or expired token.', 'asapdigest-core'), ['status' => 401]);
+		if (empty($wp_auth_cookie)) {
+			error_log('[ASAP Digest Core] V5 Session Validation: WP auth cookie not found in header: ' . $cookie_header);
+			return new WP_Error('rest_wp_cookie_not_found', 'WordPress auth cookie not found in provided header.', ['status' => 401]);
 		}
+
+		$user_id = wp_validate_auth_cookie($wp_auth_cookie, 'logged_in');
+
+		if (!$user_id) {
+			error_log('[ASAP Digest Core] V5 Session Validation: wp_validate_auth_cookie failed for cookie value extracted.');
+			return new WP_Error('rest_invalid_session', 'Invalid WordPress session.', ['status' => 401]);
+		}
+
+		// Cookie is valid, get user data
+		$user_data = get_userdata($user_id);
+		if (!$user_data) {
+			error_log('[ASAP Digest Core] V5 Session Validation: Could not get user data for valid user ID: ' . $user_id);
+			return new WP_Error('rest_user_not_found', 'User data could not be retrieved.', ['status' => 500]);
+		}
+
+		// Prepare response data
+		$response_data = [
+			'success' => true,
+			'userData' => [
+				'wpUserId'   => $user_data->ID,
+				'email'      => $user_data->user_email,
+				'username'   => $user_data->user_login,
+				'name'       => $user_data->display_name,
+			],
+		];
+
+		error_log('[ASAP Digest Core] V5 Session Validation: Success for user ' . $user_id);
+		return new WP_REST_Response($response_data, 200);
 	}
 } 
