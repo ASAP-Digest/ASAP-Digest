@@ -110,6 +110,7 @@ class ASAP_Digest_Core {
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-base.php';
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-digest.php';
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-auth.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-session-check-controller.php';
     }
 
     /**
@@ -151,6 +152,10 @@ class ASAP_Digest_Core {
 
         $auth_api = new ASAP_Digest_REST_Auth();
         $auth_api->register_routes();
+        
+        // Register the new session check controller
+        $session_check_api = new API\Session_Check_Controller();
+        $session_check_api->register_routes();
     }
 
     /**

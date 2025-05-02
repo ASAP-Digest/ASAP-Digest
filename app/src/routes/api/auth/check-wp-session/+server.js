@@ -1,11 +1,29 @@
 import { json } from '@sveltejs/kit';
-import { auth } from '$lib/server/auth'; // Import configured Better Auth instance
-import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils'; // Import reusable sync function
-import { log } from '$lib/utils/log'; // Import logging utility
+import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils-fixed';
+import { log } from '$lib/utils/log';
+import { SYNC_SECRET, WP_API_URL } from '$lib/config';
 
-// Get environment variables or use fallbacks for development
-const SYNC_SECRET = 'shared_secret_for_server_to_server_auth'; // Fallback
-const WP_API_URL = 'https://asapdigest.local'; // Fallback
+/**
+ * @typedef {Object} WPUserData
+ * @property {number} wpUserId - WordPress user ID 
+ * @property {string} email - User email address
+ * @property {string} username - WordPress username
+ * @property {string} displayName - User display name
+ * @property {string[]} roles - Array of user roles
+ * @property {string} firstName - User first name
+ * @property {string} lastName - User last name
+ * @property {Object} metadata - Additional user metadata
+ */
+
+/**
+ * @typedef {Object} SessionResponse
+ * @property {boolean} success - Whether the operation was successful
+ * @property {Object} [user] - User data if success is true
+ * @property {string} [user.id] - User ID
+ * @property {string} [user.email] - User email
+ * @property {string} [user.displayName] - User display name
+ * @property {string} [error] - Error message if success is false
+ */
 
 /**
  * Handles POST requests to check the WP session via cookies and establish an SK session.
@@ -38,7 +56,8 @@ export async function POST(event) {
 				'Content-Type': 'application/json',
 				'Cookie': wpAuthCookieHeader,
 				'X-ASAP-Sync-Secret': SYNC_SECRET
-			}
+			},
+			credentials: 'include' // CRITICAL: Send cookies
 		});
 
 		log(`[API /check-wp-session] Received response from WP: Status ${wpResponse.status}`);
@@ -49,6 +68,7 @@ export async function POST(event) {
 			return json({ success: false, error: 'wp_validation_failed_http' }, { status: 502 });
 		}
 
+		/** @type {{success: boolean, userData?: WPUserData, error?: string}} */
 		const wpResult = await wpResponse.json();
 		log('[API /check-wp-session] Parsed WP JSON response.');
 
@@ -67,21 +87,21 @@ export async function POST(event) {
 
 				// 7. Return success to frontend with Set-Cookie header
 				log('[API /check-wp-session] Returning success to frontend with Set-Cookie header.');
-				return json(
-					{ 
-						success: true, 
-						user: {
-							id: session.userId,
-							email: wpResult.userData.email,
-							displayName: wpResult.userData.name || wpResult.userData.username
-						} 
-					},
-					{
-						headers: {
-							'Set-Cookie': cookieHeader
-						}
+				/** @type {SessionResponse} */
+				const response = { 
+					success: true, 
+					user: {
+						id: session.userId,
+						email: wpResult.userData.email,
+						displayName: wpResult.userData.displayName || wpResult.userData.username
+					} 
+				};
+				
+				return json(response, {
+					headers: {
+						'Set-Cookie': cookieHeader
 					}
-				);
+				});
 			} else {
 				log('[API /check-wp-session] SK syncWordPressUserAndCreateSession failed.', 'error');
 				return json({ success: false, error: 'sk_sync_failed' }, { status: 500 });

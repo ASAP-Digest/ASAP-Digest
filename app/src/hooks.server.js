@@ -144,11 +144,17 @@ const betterAuthHandle = async ({ event, resolve }) => {
         const isMutatingMethod = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(event.request.method);
         const CORRECT_SYNC_PATH = '/api/auth/sync'; // Define constant for clarity
         const isSyncPath = event.url.pathname === CORRECT_SYNC_PATH; // Correct path check
-        const VERIFY_TOKEN_PATH = '/api/auth/verify-sync-token'; // Define path for verification endpoint
+        const VERIFY_TOKEN_PATH = '/api/auth/verify-sync-token';
+        // Add new constant for the check-wp-session path
+        const CHECK_WP_SESSION_PATH = '/api/auth/check-wp-session';
 
         if (isAuthPath && isMutatingMethod) {
             let isAuthorized = false;
             let expectedAuthMethod = ''; // For logging/error message
+
+            // Check for explicit CSRF bypass header (only for specific endpoints)
+            const bypassCSRF = event.request.headers.get('X-CSRF-Protection') === 'none';
+            const isCheckWpSession = event.url.pathname === CHECK_WP_SESSION_PATH;
 
             if (event.url.pathname === VERIFY_TOKEN_PATH && event.request.method === 'POST') {
                 // For the token verification endpoint from the bridge, bypass standard CSRF/Secret check.
@@ -156,6 +162,11 @@ const betterAuthHandle = async ({ event, resolve }) => {
                 console.log(`[Auth Handle] Allowing POST to ${VERIFY_TOKEN_PATH} without CSRF/Secret check (Bridge Token Verification).`);
                 isAuthorized = true; // Assume authorized here; validation happens in the endpoint
                 expectedAuthMethod = 'Bridge Token Verification'; // Log this specific flow
+            } else if (isCheckWpSession && bypassCSRF) {
+                // For the background check-wp-session endpoint, bypass CSRF when explicitly requested
+                console.log(`[Auth Handle] Allowing ${event.request.method} to ${CHECK_WP_SESSION_PATH} with CSRF bypass header.`);
+                isAuthorized = true;
+                expectedAuthMethod = 'CSRF Bypass';
             } else if (isSyncPath) {
                 // For the specific internal sync path, check the shared secret
                 console.log(`[Auth Handle] Checking sync secret for ${CORRECT_SYNC_PATH}`); // Correct log

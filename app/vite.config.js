@@ -6,6 +6,7 @@ import { dirname, resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import fs from 'node:fs';
 import mkcert from 'vite-plugin-mkcert';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -51,7 +52,7 @@ export default defineConfig(({ mode }) => {
 				port: parseInt(env.PORT || '5173', 10),
 				host: env.HOST || 'localhost',
 				overlay: true,
-				timeout: 60000
+				timeout: 120000
 			},
 			strictPort: true
 		},
@@ -77,7 +78,8 @@ export default defineConfig(({ mode }) => {
 			alias: {
 				'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
 				'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
-				'svelte-chart': resolve(__dirname, 'src/lib/utils/svelte-chart-compat.js')
+				'svelte-chart': resolve(__dirname, 'src/lib/utils/svelte-chart-compat.js'),
+				'$src': path.resolve('./src'),
 			}
 		},
 		optimizeDeps: {
@@ -94,7 +96,8 @@ export default defineConfig(({ mode }) => {
 			}
 		},
 		ssr: {
-			noExternal: ['esm-env']
+			timeout: 120000,
+			noExternal: ['lucide-svelte', '@floating-ui/dom', 'clsx', 'class-variance-authority', 'tailwind-merge']
 		},
 		// Expose all environment variables to the client
 		define: {

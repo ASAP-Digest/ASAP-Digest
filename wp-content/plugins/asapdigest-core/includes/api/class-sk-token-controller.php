@@ -110,7 +110,7 @@ class SK_Token_Controller extends WP_REST_Controller {
 				if (count($parts) == 2) {
 					$wp_auth_cookie = trim($parts[1]);
 					break;
-				}
+	}
 			} elseif (defined('AUTH_COOKIE') && strpos(trim($cookie), AUTH_COOKIE) === 0) {
 				$parts = explode('=', $cookie, 2);
 				if (count($parts) == 2) {

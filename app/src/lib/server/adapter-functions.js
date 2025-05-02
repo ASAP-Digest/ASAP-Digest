@@ -1,21 +1,20 @@
 /**
- * @file Mock/placeholder adapter functions for Better Auth
- * 
- * This file provides placeholder implementations of the adapter functions
- * required by Better Auth. In a production environment, these should be
- * replaced with real database logic, likely using Kysely or another query builder.
- * 
+ * @file Better Auth adapter functions for database operations
+ * @description Provides standalone functions for user/session management
  * @version 1.0.0
- * @created 2025-07-29
  */
 
-import { log } from '$lib/utils/log.js';
 import crypto from 'node:crypto';
+import { log } from '$lib/utils/log';
 
 /**
  * @typedef {Object} UserMetadata
  * @property {number} [wp_user_id] - WordPress user ID
  * @property {string[]} [roles] - User roles array
+ * @property {string} [wpUsername] - WordPress username
+ * @property {string} [wpFirstName] - WordPress first name
+ * @property {string} [wpLastName] - WordPress last name 
+ * @property {string} [wpDisplayName] - WordPress display name
  */
 
 /**
@@ -45,8 +44,9 @@ import crypto from 'node:crypto';
  */
 export async function getUserByWpIdFn(wpUserId) {
     log(`[Adapter] getUserByWpIdFn called for WP ID: ${wpUserId}`);
-    // Placeholder: Query ba_users table based on wpUserId metadata or join with ba_accounts
-    return null; 
+    // This would normally query the database
+    // For now, return null to simulate not finding the user
+    return Promise.resolve(null);
 }
 
 /**
@@ -56,27 +56,38 @@ export async function getUserByWpIdFn(wpUserId) {
  * @param {string} [userData.name] - Optional display name
  * @param {number} [userData.wpUserId] - Optional WordPress user ID
  * @param {string[]} [userData.roles] - Optional user roles
- * @returns {Promise<User|null>} Created user object or null on failure
+ * @param {Object} [userData.metadata] - Optional additional metadata
+ * @returns {Promise<User>} Created user object
  */
 export async function createUserFn(userData) {
     log(`[Adapter] createUserFn called for email: ${userData.email}`);
     
-    // Prepare properly structured metadata object
+    // Normalize the WordPress user ID to a number
+    const wpUserId = userData.wpUserId ? Number(userData.wpUserId) : undefined;
+    
+    // Construct metadata object with WordPress-specific fields
     /** @type {UserMetadata} */
     const metadata = {
-        wp_user_id: userData.wpUserId,
-        roles: userData.roles || ['subscriber']
+        wp_user_id: wpUserId,
+        roles: userData.roles || ['subscriber'],
+        ...userData.metadata
     };
     
-    // Return mock user with proper structure
-    return {
-        id: crypto.randomUUID(), // Example ID generation
+    // Create a new user with a random UUID
+    /** @type {User} */
+    const user = {
+        id: crypto.randomUUID(),
         email: userData.email,
         username: userData.email.split('@')[0],
         name: userData.name,
         displayName: userData.name || userData.email,
         metadata: metadata
     };
+    
+    log(`[Adapter] Created user with ID: ${user.id}`);
+    
+    // In a real implementation, this would save to database
+    return Promise.resolve(user);
 }
 
 /**
@@ -89,27 +100,31 @@ export async function createUserFn(userData) {
  */
 export async function createAccountFn(accountData) {
     log(`[Adapter] createAccountFn called for user: ${accountData.userId}, provider: ${accountData.provider}`);
-    // Placeholder: Insert into ba_accounts table
-    return true; // Assume success for placeholder
+    // This would normally create a record in the accounts table
+    return Promise.resolve(true);
 }
 
 /**
  * Create a new session
  * @param {Object} sessionData - Session data
  * @param {string} sessionData.userId - Better Auth user ID
- * @returns {Promise<Session|null>} Created session or null on failure
+ * @param {Date} [sessionData.expires] - Optional expiration date
+ * @param {Object} [sessionData.metadata] - Optional session metadata
+ * @returns {Promise<Session>} Created session
  */
 export async function createSessionFn(sessionData) {
     log(`[Adapter] createSessionFn called for user: ${sessionData.userId}`);
     
-    // Generate session ID and token
+    // Generate a random session ID and token
     const sessionId = crypto.randomUUID();
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
     const now = new Date();
-
-    // Return mock session with proper structure
-    return {
+    
+    // Default expiration is 30 days if not provided
+    const expiresAt = sessionData.expires || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    
+    /** @type {Session} */
+    const session = {
         id: sessionId,
         userId: sessionData.userId,
         token: token,
@@ -117,48 +132,53 @@ export async function createSessionFn(sessionData) {
         createdAt: now,
         updatedAt: now
     };
+    
+    log(`[Adapter] Created session with ID: ${session.id}`);
+    
+    // In a real implementation, this would save to database
+    return Promise.resolve(session);
 }
 
 /**
- * Get user by email
- * @param {string} email - User email
+ * Get a user by their email address
+ * @param {string} email - User email address
  * @returns {Promise<User|null>} User object or null if not found
  */
 export async function getUserByEmailFn(email) {
     log(`[Adapter] getUserByEmailFn called for email: ${email}`);
-    // Placeholder
-    return null;
+    // This would normally query the database
+    return Promise.resolve(null);
 }
 
 /**
- * Get user by ID
- * @param {string} userId - Better Auth user ID
+ * Get a user by their ID
+ * @param {string} id - User ID
  * @returns {Promise<User|null>} User object or null if not found
  */
-export async function getUserByIdFn(userId) {
-    log(`[Adapter] getUserByIdFn called for ID: ${userId}`);
-    // Placeholder
-    return null;
+export async function getUserByIdFn(id) {
+    log(`[Adapter] getUserByIdFn called for ID: ${id}`);
+    // This would normally query the database
+    return Promise.resolve(null);
 }
 
 /**
- * Get session by token
+ * Get a session by its token
  * @param {string} token - Session token
- * @returns {Promise<Session|null>} Session object or null if not found/expired
+ * @returns {Promise<Session|null>} Session object or null if not found
  */
 export async function getSessionByTokenFn(token) {
     log(`[Adapter] getSessionByTokenFn called`);
-    // Placeholder
-    return null;
+    // This would normally query the database
+    return Promise.resolve(null);
 }
 
 /**
- * Delete session by token
- * @param {string} token - Session token
+ * Delete a session
+ * @param {string} sessionId - Session ID
  * @returns {Promise<boolean>} Success status
  */
-export async function deleteSessionFn(token) {
-    log(`[Adapter] deleteSessionFn called`);
-    // Placeholder
-    return true;
+export async function deleteSessionFn(sessionId) {
+    log(`[Adapter] deleteSessionFn called for session: ${sessionId}`);
+    // This would normally delete from database
+    return Promise.resolve(true);
 } 

@@ -1,0 +1,277 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Environment Variables & Configuration Management Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard approach for managing environment variables, configuration values, and application settings in ASAP Digest. It ensures type safety, documentation, and consistent access patterns while adhering to standard SvelteKit/Vite practices. Following this protocol prevents common issues like undefined environment variables in production, missing type information, and inconsistent access patterns across the codebase.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. asap-digest-stack.mdc                │ // Core Tech Stack
+│ 4. jsdoc-complex-parameter-typing.mdc   │ // JSDoc Type Standards
+│ 5. local-variable-type-safety.mdc       │ // Type Guard Usage
+│ 6. tooling-setup-guide.mdc              │ // ESLint/Other Tool Config
+│ 7. Environment Variables Protocol (This)│ // This Protocol
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Components
+
+### 3.1 Environment Files
+
+```
+app/
+├── .env                  # Default values for all environments (committed)
+├── .env.local            # Local overrides (not committed)
+├── .env.production       # Production values (committed, non-sensitive)
+└── src/
+    └── lib/
+        └── config.js     # Typed configuration module (SINGLE SOURCE OF TRUTH)
+```
+
+### 3.2 Configuration Module
+
+The project MUST use a single, centralized configuration module located at `app/src/lib/config.js` that serves as the SINGLE SOURCE OF TRUTH for all environment variables and configuration settings.
+
+```javascript
+/**
+ * @file Environment configuration with TypeScript definitions
+ * @description Provides typed access to environment variables with documentation
+ */
+
+/**
+ * WordPress API URL
+ * @type {string}
+ */
+export const WP_API_URL = import.meta.env.PUBLIC_WP_API_URL || 'https://asapdigest.local';
+
+/**
+ * Auth API URL used for authentication requests
+ * @type {string}
+ */
+export const AUTH_API_URL = import.meta.env.PUBLIC_AUTH_API_URL || 'https://asapdigest.local';
+
+// Additional variables with JSDoc types...
+```
+
+## 4. Environment Variable Management Rules
+
+### 4.1 Environment Files (MUST)
+
+1. **Basic Structure:** The project MUST use standard `.env*` files for environment configuration:
+   - `.env`: Default values, committed to version control, NO SECRETS
+   - `.env.local`: Local development overrides, NOT committed
+   - `.env.production`: Production values (non-sensitive only), committed
+
+2. **Variable Naming Conventions:**
+   - **Public Variables:** MUST be prefixed with `PUBLIC_` if they need to be accessible in client-side code
+   - **Private Variables:** MUST NOT have a `PUBLIC_` prefix if they should only be accessible in server-side code
+   - **All Variables:** MUST use UPPER_SNAKE_CASE
+
+3. **Example .env File:**
+   ```text
+   # WordPress Connection
+   PUBLIC_WP_API_URL=https://asapdigest.local
+   PUBLIC_WP_GRAPHQL_URL=https://asapdigest.local/graphql
+   
+   # Authentication
+   BETTER_AUTH_SECRET=development_auth_secret
+   ASAP_SK_SYNC_SECRET=shared_secret_for_server_to_server_auth
+   
+   # Application Settings
+   PUBLIC_SITE_NAME=⚡️ ASAP Digest
+   PUBLIC_APP_ENV=development
+   ```
+
+### 4.2 Configuration Module (MUST)
+
+1. **File Location:** MUST be located at `app/src/lib/config.js`
+
+2. **JSDoc Types:** MUST include JSDoc type annotations for EVERY exported variable:
+   ```javascript
+   /**
+    * WordPress API URL
+    * @type {string}
+    */
+   export const WP_API_URL = import.meta.env.PUBLIC_WP_API_URL || 'https://asapdigest.local';
+   ```
+
+3. **Default Values:** MUST include sensible default values for development:
+   ```javascript
+   // CORRECT with default value
+   export const SITE_NAME = import.meta.env.PUBLIC_SITE_NAME || '⚡️ ASAP Digest';
+   
+   // INCORRECT without default
+   // export const SITE_NAME = import.meta.env.PUBLIC_SITE_NAME;
+   ```
+
+4. **Access Pattern:** MUST use standard Vite `import.meta.env` syntax directly:
+   ```javascript
+   // CORRECT
+   export const APP_URL = import.meta.env.PUBLIC_APP_URL || 'https://localhost:5173';
+   
+   // INCORRECT
+   // export const APP_URL = process.env.PUBLIC_APP_URL || 'https://localhost:5173';
+   ```
+
+5. **Type Conversion:** MUST handle type conversion for non-string values:
+   ```javascript
+   /**
+    * Flag to enable/disable PWA features
+    * @type {boolean}
+    */
+   export const ENABLE_PWA = import.meta.env.PUBLIC_ENABLE_PWA === 'true';
+   
+   /**
+    * Session duration in days
+    * @type {number}
+    */
+   export const SESSION_DURATION_DAYS = parseInt(import.meta.env.SESSION_DURATION_DAYS || '30', 10);
+   ```
+
+6. **Derived Values:** MAY include computed/derived values from other config values:
+   ```javascript
+   /**
+    * Checks if the current environment is development
+    * @type {boolean}
+    */
+   export const IS_DEV = APP_ENV === 'development';
+   ```
+
+### 4.3 Usage Throughout Codebase (MUST)
+
+1. **Import Rule:** MUST import configuration values ONLY from the config module:
+   ```javascript
+   // CORRECT
+   import { WP_API_URL, SYNC_SECRET } from '$lib/config';
+   
+   // INCORRECT - Direct import from env
+   // import { PUBLIC_WP_API_URL } from '$env/static/public';
+   // import { SYNC_SECRET } from '$env/static/private';
+   ```
+
+2. **No Direct `import.meta.env` Access:** MUST NOT access `import.meta.env` directly outside of the config module:
+   ```javascript
+   // INCORRECT - Direct access in component/route
+   // const apiUrl = import.meta.env.PUBLIC_WP_API_URL;
+   ```
+
+3. **Type Guards:** MUST use appropriate type guards if concatenating with potentially undefined values:
+   ```javascript
+   // CORRECT
+   const endpoint = `${WP_API_URL}/wp-json/asap/v1/endpoint`;
+   
+   // INCORRECT without ensuring WP_API_URL exists
+   // const endpoint = `${import.meta.env.PUBLIC_WP_API_URL}/wp-json/asap/v1/endpoint`;
+   ```
+
+## 5. Verification Methods
+
+### 5.1 Automated Checks
+
+1. **ESLint Rule:** Create/use an ESLint rule to enforce that `import.meta.env` is only used in `config.js`.
+
+2. **Grep Search:** Verify no direct imports from `$env/` directories:
+   ```bash
+   grep -r "from '\$env/" --include="*.js" --include="*.svelte" app/src
+   ```
+
+3. **Grep Search:** Verify no direct access to `import.meta.env` outside config.js:
+   ```bash
+   grep -r "import\.meta\.env" --include="*.js" --include="*.svelte" --exclude="config.js" app/src
+   ```
+
+### 5.2 Manual Checklist
+
+- [ ] All environment variables have corresponding typed exports in `config.js`
+- [ ] All exports in `config.js` have JSDoc type annotations
+- [ ] All exports in `config.js` include sensible default values
+- [ ] No direct imports from `$env/static/public` or `$env/static/private`
+- [ ] No direct access to `import.meta.env` outside of `config.js`
+- [ ] Complex type conversions (boolean, number) are handled correctly
+
+## 6. Examples
+
+### 6.1 Correct Configuration Module Example
+
+```javascript
+/**
+ * @file Environment configuration with TypeScript definitions
+ * @description Provides typed access to environment variables with documentation
+ */
+
+/**
+ * WordPress API URL
+ * @type {string}
+ */
+export const WP_API_URL = import.meta.env.PUBLIC_WP_API_URL || 'https://asapdigest.local';
+
+/**
+ * Better Auth secret used for token signing
+ * @type {string}
+ */
+export const BETTER_AUTH_SECRET = import.meta.env.BETTER_AUTH_SECRET || 'development_auth_secret';
+
+/**
+ * Flag to enable/disable PWA features
+ * @type {boolean}
+ */
+export const ENABLE_PWA = import.meta.env.PUBLIC_ENABLE_PWA === 'true';
+
+/**
+ * Checks if the current environment is production
+ * @type {boolean}
+ */
+export const IS_PROD = import.meta.env.PUBLIC_APP_ENV === 'production';
+```
+
+### 6.2 Correct Usage Example
+
+```javascript
+// In server-side code (+server.js, hooks.server.js)
+import { BETTER_AUTH_SECRET, WP_API_URL } from '$lib/config';
+
+export async function POST() {
+  const endpoint = `${WP_API_URL}/api/auth`;
+  // Use BETTER_AUTH_SECRET for server-side operations
+}
+
+// In client-side code (component.svelte)
+<script>
+  import { SITE_NAME, IS_DEV } from '$lib/config';
+  
+  // Use public variables only
+</script>
+
+<h1>{SITE_NAME}</h1>
+{#if IS_DEV}
+  <div class="dev-mode-indicator">Development Mode</div>
+{/if}
+```
+
+## 7. Benefits of This Approach
+
+1. **Type Safety:** JSDoc types provide IntelliSense/autocompletion and type checking
+2. **Documentation:** Each variable includes description and type information
+3. **Default Values:** Prevents runtime errors from undefined variables
+4. **Centralization:** Single source of truth for all configuration
+5. **Standard Practices:** Follows SvelteKit/Vite conventions
+6. **Simplicity:** Easier onboarding than custom env folder structures
+
+## 8. Protocol Enforcement
+
+This protocol MUST be enforced during:
+1. Code reviews
+2. Linting checks (via custom ESLint rule)
+3. New feature development
+4. Environment variable addition or modification

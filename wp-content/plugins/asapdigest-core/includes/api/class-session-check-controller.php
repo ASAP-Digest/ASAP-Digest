@@ -1,145 +1,126 @@
 <?php
 /**
- * Controller for checking WordPress session status via REST API.
+ * Session Check Controller
  *
  * @package ASAPDigest_Core
- * @created 2025/04/15 | 18:36:53 PDT
- * @file-marker SessionCheckController
+ * @created 05.02.25 | 01:45 PM PDT
+ * @file-marker Session_Check_Controller
  */
 
 namespace ASAPDigest\Core\API;
 
+use WP_Error;
 use WP_REST_Controller;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
-use WP_User;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
 /**
- * Class Session_Check_Controller
- * Handles the /wp-json/asap/v1/check-wp-session endpoint.
+ * Handles session validation directly from cookies
  */
 class Session_Check_Controller extends WP_REST_Controller {
+    /**
+     * @var string
+     */
+    protected $namespace = 'asap/v1';
 
     /**
-     * Constructor.
+     * Constructor
      */
     public function __construct() {
-        $this->namespace = 'asap/v1';
-        $this->rest_base = 'check-wp-session';
+        error_log('Session_Check_Controller: register_routes called');
     }
 
     /**
-     * Registers the routes for the objects of the controller.
+     * Register the routes
      */
     public function register_routes() {
-        error_log('Session_Check_Controller: register_routes called'); // DEBUG LOG
-
         register_rest_route(
             $this->namespace,
-            '/' . $this->rest_base,
+            '/validate-session-get-user',
             [
                 [
-                    'methods'             => WP_REST_Server::READABLE,
-                    'callback'            => [$this, 'check_session_status'],
-                    'permission_callback' => '__return_true', // Endpoint is public, relies on cookie auth handled by WP core
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [$this, 'validate_session'],
+                    'permission_callback' => [$this, 'validate_sync_secret'],
                 ],
-                'schema' => [$this, 'get_public_item_schema'],
             ]
         );
     }
 
     /**
-     * Checks the current WordPress session status.
-     *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response Response object.
+     * Validate sync secret from request header
+     * 
+     * @param WP_REST_Request $request
+     * @return bool|WP_Error
      */
-    public function check_session_status(WP_REST_Request $request) {
-        // Check if the user is logged into WordPress
-        $logged_in = is_user_logged_in();
-        $user_data = null;
-
-        if ($logged_in) {
-            $current_user = wp_get_current_user();
-            if ($current_user instanceof WP_User && $current_user->ID > 0) {
-                $user_data = [
-                    'wpUserId'    => $current_user->ID,
-                    'email'       => $current_user->user_email,
-                    'displayName' => $current_user->display_name,
-                    // Add other relevant user data if needed
-                ];
-            } else {
-                // Edge case: is_user_logged_in() true but wp_get_current_user() failed
-                $logged_in = false;
-                error_log('ASAP Digest: check_session_status - is_user_logged_in true, but wp_get_current_user failed.');
-            }
+    public function validate_sync_secret($request) {
+        // Get the sync secret from header
+        $sync_secret = $request->get_header('X-ASAP-Sync-Secret');
+        
+        // Check if secret exists and matches
+        if (!$sync_secret) {
+            return new WP_Error(
+                'missing_sync_secret',
+                'Missing sync secret header',
+                ['status' => 403]
+            );
         }
-
-        // Autosync setting omitted based on earlier analysis - needs implementation if required
-        $autosync_active = false; // Defaulting to false
-
-        $response_data = [
-            'loggedIn'       => $logged_in,
-            'autosyncActive' => $autosync_active,
-            'userData'       => $user_data, // Embed user data directly if logged in
-        ];
-
-        return new WP_REST_Response($response_data, 200);
+        
+        // Get the actual secret value
+        $actual_secret = defined('ASAP_SK_SYNC_SECRET') ? constant('ASAP_SK_SYNC_SECRET') : 'shared_secret_for_server_to_server_auth';
+        
+        if ($sync_secret !== $actual_secret) {
+            return new WP_Error(
+                'invalid_sync_secret',
+                'Invalid sync secret',
+                ['status' => 403]
+            );
+        }
+        
+        return true;
     }
 
     /**
-     * Retrieves the item's schema, conforming to JSON Schema.
-     *
-     * @return array Item schema data.
+     * Validate WP session from cookies
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response|WP_Error
      */
-    public function get_public_item_schema() {
-        if ($this->schema) {
-            return $this->schema;
+    public function validate_session($request) {
+        // Check if user is logged in based on incoming cookies
+        $user = wp_get_current_user();
+        
+        // If no valid user found
+        if (!$user || !$user->exists()) {
+            return rest_ensure_response([
+                'success' => false,
+                'error' => 'wp_session_invalid',
+                'message' => 'No valid WordPress session found'
+            ]);
         }
-
-        $this->schema = [
-            '$schema'    => 'http://json-schema.org/draft-04/schema#',
-            'title'      => 'wp_session_status',
-            'type'       => 'object',
-            'properties' => [
-                'loggedIn' => [
-                    'description' => esc_html__('Whether a user is logged into WordPress.', 'asap-digest'),
-                    'type'        => 'boolean',
-                ],
-                'autosyncActive' => [
-                    'description' => esc_html__('Whether auto-sync is active for the user (Currently not implemented).', 'asap-digest'),
-                    'type'        => 'boolean',
-                ],
+        
+        // Return user data for SK to create session
+        return rest_ensure_response([
+            'success' => true,
                 'userData' => [
-                    'description' => esc_html__('User details if logged in, otherwise null.', 'asap-digest'),
-                    'type'        => ['object', 'null'],
-                    'properties'  => [
-                        'wpUserId' => [
-                            'description' => esc_html__('The WordPress user ID.', 'asap-digest'),
-                            'type'        => 'integer',
-                        ],
-                        'email' => [
-                            'description' => esc_html__('The user\'s email address.', 'asap-digest'),
-                            'type'        => 'string',
-                            'format'      => 'email',
-                        ],
-                        'displayName' => [
-                            'description' => esc_html__('The user\'s display name.', 'asap-digest'),
-                            'type'        => 'string',
-                        ],
-                        // Add schema for other user data properties if included
-                    ],
-                    'context'     => ['view', 'edit', 'embed'],
-                    'readonly'    => true,
-                ],
-            ],
-        ];
-
-        return $this->schema;
+                'wpUserId' => $user->ID,
+                'email' => $user->user_email,
+                'username' => $user->user_login,
+                'displayName' => $user->display_name,
+                'firstName' => $user->first_name,
+                'lastName' => $user->last_name,
+                'roles' => $user->roles,
+                'metadata' => [
+                    'description' => $user->description,
+                    'nickname' => $user->nickname,
+                    // Add any other metadata needed
+                ]
+            ]
+        ]);
     }
 }
