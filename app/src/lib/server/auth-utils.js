@@ -128,10 +128,10 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 			return null;
 		}
 		log(`Attempting to create BA session (ba_sessions) for BA User ID: ${baUser.id}`);
-		// Use Better Auth adapter
-		// Pass the required userId argument
+		
+		// Fix: Pass the userId directly as a string, not wrapped in an object
 		// Type assertion needed as Better Auth type is not exported and structural typing fails inference
-		const session = await /** @type {any} */ (auth).adapter.createSession({ userId: String(baUser.id) }); 
+		const session = await /** @type {any} */ (auth).adapter.createSession(String(baUser.id));
 
 		if (!session || typeof session !== 'object' || !session.token) {
 			 log(`Session creation failed or did not return valid session object. Result: ${JSON.stringify(session)}`, 'error');

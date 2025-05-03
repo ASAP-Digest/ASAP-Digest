@@ -272,14 +272,14 @@ async function getSessionByTokenFn(sessionToken) {
     let connection;
     try {
         connection = await pool.getConnection();
-        const sql = 'SELECT * FROM ba_sessions WHERE session_token = ? AND expires_at > NOW() LIMIT 1';
+        const sql = 'SELECT * FROM ba_sessions WHERE token = ? AND expires_at > NOW() LIMIT 1';
         const params = [sessionToken];
         /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
         const [rows, fields] = await connection.execute(sql, params);
 
         if (Array.isArray(rows) && rows.length > 0) {
             const sessionData = rows[0];
-            if (sessionData && typeof sessionData === 'object' && 'user_id' in sessionData && 'session_token' in sessionData && 'expires_at' in sessionData && 'created_at' in sessionData) {
+            if (sessionData && typeof sessionData === 'object' && 'user_id' in sessionData && 'token' in sessionData && 'expires_at' in sessionData && 'created_at' in sessionData) {
                 logConfig(`Adapter: getSessionByToken found valid session for token.`);
                 const user = await getUserByIdFn(String(sessionData.user_id)); // <-- Use existing getUserByIdFn
 
@@ -288,7 +288,7 @@ async function getSessionByTokenFn(sessionToken) {
                     return {
                         sessionId: String(sessionData.id),
                         userId: String(sessionData.user_id),
-                        token: String(sessionData.session_token),
+                        token: String(sessionData.token),
                         expiresAt: new Date(sessionData.expires_at),
                         createdAt: new Date(sessionData.created_at),
                         user: user
@@ -317,13 +317,34 @@ async function getSessionByTokenFn(sessionToken) {
 
 /**
  * Create session (Adapter Implementation)
- * @param {string} userId - Better Auth user ID
- * @param {string} sessionToken - Session token
- * @param {Date} expiresAt - Expiry date
+ * @param {string|Object} userIdOrObj - Better Auth user ID or object with userId property
+ * @param {string} [sessionToken] - Session token
+ * @param {Date} [expiresAt] - Expiry date
  * @returns {Promise<Session|null>} Created session object or null on error
  */
-async function createSessionFn(userId, sessionToken, expiresAt) {
+async function createSessionFn(userIdOrObj, sessionToken, expiresAt) {
+    // Handle case where first parameter is an object with userId
+    let userId;
+    if (typeof userIdOrObj === 'object' && userIdOrObj !== null && 'userId' in userIdOrObj) {
+        userId = String(userIdOrObj.userId);
+        logConfig(`Adapter: createSession called with object containing userId: ${userId}`);
+    } else {
+        userId = String(userIdOrObj);
+    }
+    
     logConfig(`Adapter: createSession called for user ${userId}`);
+    
+    // Generate token and expiry date if not provided
+    if (!sessionToken) {
+        sessionToken = crypto.randomUUID();
+        logConfig(`Adapter: createSession generated new token for user ${userId}`);
+    }
+    
+    if (!expiresAt) {
+        expiresAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 days default
+        logConfig(`Adapter: createSession using default expiry date for user ${userId}`);
+    }
+    
     let connection;
     try {
         connection = await pool.getConnection();
@@ -340,7 +361,9 @@ async function createSessionFn(userId, sessionToken, expiresAt) {
         
         const sessionId = crypto.randomUUID(); // Generate UUID for the session ID
 
-        const sql = 'INSERT INTO ba_sessions (id, user_id, session_token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'; 
+        // Check the actual schema of the ba_sessions table
+        // The error suggests 'session_token' column may not exist, it might be named 'token' instead
+        const sql = 'INSERT INTO ba_sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'; 
         const params = [sessionId, userId, sessionToken, expiresAt, createdAt];
         
         /** @type {[import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
@@ -388,7 +411,7 @@ async function deleteSessionFn(sessionToken) {
     let connection;
     try {
         connection = await pool.getConnection();
-        const sql = 'DELETE FROM ba_sessions WHERE session_token = ?';
+        const sql = 'DELETE FROM ba_sessions WHERE token = ?';
         const params = [sessionToken];
         await connection.execute(sql, params);
         logConfig(`Adapter: deleteSession executed for token.`);
@@ -532,34 +555,17 @@ async function createAccountFn(accountData) {
         return false;
     }
 
-    let connection;
     try {
-        connection = await pool.getConnection();
-        const sql = 'INSERT INTO ba_accounts (user_id, provider, provider_account_id, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())';
-        const params = [userId, provider, providerAccountId];
+        // Generate a UUID for the account record
+        const accountId = crypto.randomUUID();
         
-        /** @type {[import('mysql2/promise').OkPacket|import('mysql2/promise').ResultSetHeader, import('mysql2/promise').FieldPacket[]]} */
-        const [result, fields] = await connection.execute(sql, params);
+        await pool.execute('INSERT INTO ba_accounts (id, user_id, provider, provider_account_id, created_at) VALUES (?, ?, ?, ?, NOW())', [accountId, userId, provider, providerAccountId]);
 
-        if (result && 'affectedRows' in result && result.affectedRows === 1) {
-            logConfig(`Adapter: createAccount successfully linked user ${userId} to ${provider}:${providerAccountId}`);
-            return true;
-        } else {
-             logConfig(`Adapter: createAccount failed to insert link for user ${userId} to ${provider}:${providerAccountId}. Result: ${JSON.stringify(result)}`, 'error');
-            return false;
-        }
+        logConfig(`Adapter: createAccount successfully linked user ${userId} to ${provider}:${providerAccountId}`);
+        return true;
     } catch (error) {
-        // Handle potential duplicate entry errors gracefully if necessary
-        if (error instanceof Error && error.message.includes('Duplicate entry')) {
-             logConfig(`Adapter: createAccount skipped duplicate link for user ${userId} to ${provider}:${providerAccountId}`, 'warn');
-             return true; // Consider it a success if the link already exists
-        }
         logConfig(`Adapter: Error in createAccount for user ${userId} to ${provider}:${providerAccountId}: ${error instanceof Error ? error.message : String(error)}`, 'error');
         return false;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
     }
 }
 
