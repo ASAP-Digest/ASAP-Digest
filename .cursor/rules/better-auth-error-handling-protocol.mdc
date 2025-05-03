@@ -1,0 +1,693 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Error Handling Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes a standardized approach for handling, logging, and resolving errors in Better Auth integrations within a JavaScript-based headless WordPress/SvelteKit architecture. It ensures consistent error handling patterns, informative error messages, appropriate client responses, and reliable logging to facilitate debugging and issue resolution.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. WP-SK User Synchronization Protocol  │ // User data transfer
+│ 4. JSDoc Type Definitions Protocol      │ // Type safety
+│ 5. Better Auth Error Handling (This)    │ // Error handling
+│ 6. universal-error-resolution-protocol  │ // General error handling
+└─────────────────────────────────────────┘
+```
+
+## 3. Error Categorization and Types
+
+### 3.1 Error Categories
+
+```javascript
+/**
+ * @typedef {Object} BetterAuthError
+ * @property {string} code - Error code (e.g., "invalid_credentials")
+ * @property {string} message - Human-readable error message
+ * @property {string} [component] - Component where error occurred
+ * @property {string} [context] - Additional context information
+ * @property {Error} [originalError] - Original caught error
+ */
+```
+
+### 3.2 Error Codes
+
+Standardized error codes by category:
+
+1. **Configuration Errors (1xx):**
+   - `CONFIG_MISSING_SECRET`: 101 - Missing Better Auth secret
+   - `CONFIG_MISSING_DATABASE`: 102 - Missing database configuration
+   - `CONFIG_INVALID_ADAPTER`: 103 - Invalid adapter configuration
+   - `CONFIG_MISSING_S2S_SECRET`: 104 - Missing server-to-server secret
+
+2. **Authentication Errors (2xx):**
+   - `AUTH_INVALID_CREDENTIALS`: 201 - Invalid username/password
+   - `AUTH_EXPIRED_SESSION`: 202 - Session has expired
+   - `AUTH_INVALID_TOKEN`: 203 - Invalid authentication token
+   - `AUTH_INVALID_REFRESH_TOKEN`: 204 - Invalid refresh token
+   - `AUTH_INSUFFICIENT_PERMISSIONS`: 205 - Insufficient permissions
+
+3. **User Management Errors (3xx):**
+   - `USER_ALREADY_EXISTS`: 301 - User already exists
+   - `USER_NOT_FOUND`: 302 - User not found
+   - `USER_CREATION_FAILED`: 303 - Failed to create user
+   - `USER_UPDATE_FAILED`: 304 - Failed to update user
+   - `USER_INVALID_DATA`: 305 - Invalid user data
+
+4. **Database Errors (4xx):**
+   - `DB_CONNECTION_ERROR`: 401 - Database connection error
+   - `DB_QUERY_ERROR`: 402 - Database query error
+   - `DB_TRANSACTION_ERROR`: 403 - Database transaction error
+   - `DB_MIGRATION_ERROR`: 404 - Database migration error
+
+5. **WordPress Integration Errors (5xx):**
+   - `WP_API_ERROR`: 501 - WordPress API error
+   - `WP_UNAUTHORIZED`: 502 - Unauthorized WordPress API request
+   - `WP_SYNC_ERROR`: 503 - WordPress user sync error
+   - `WP_SECRET_MISMATCH`: 504 - WordPress secret key mismatch
+   - `WP_MISSING_USER_DATA`: 505 - Missing required WP user data
+
+6. **SvelteKit Integration Errors (6xx):**
+   - `SK_ROUTE_ERROR`: 601 - SvelteKit route handler error
+   - `SK_HOOKS_ERROR`: 602 - SvelteKit hooks error
+   - `SK_COOKIE_ERROR`: 603 - SvelteKit cookie handling error
+   - `SK_SESSION_ERROR`: 604 - SvelteKit session error
+   - `SK_SSR_ERROR`: 605 - Server-side rendering error
+
+7. **Rate Limiting Errors (7xx):**
+   - `RATE_LIMIT_EXCEEDED`: 701 - Rate limit exceeded
+   - `RATE_LIMIT_CONFIG_ERROR`: 702 - Rate limit configuration error
+
+## 4. Error Handler Implementation
+
+### 4.1 Configuration Errors
+
+These are detected during application startup and should trigger application halt.
+
+```javascript
+/**
+ * Configuration error handler
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Object} [context] - Additional context
+ * @returns {BetterAuthError} Standardized error object
+ */
+function handleConfigError(code, message, context = {}) {
+  console.error(`[Better Auth Config Error] ${code}: ${message}`, context);
+  
+  // Log to persistent storage if available
+  if (typeof logger !== 'undefined') {
+    logger.error({
+      code,
+      message,
+      component: 'configuration',
+      context
+    });
+  }
+  
+  // Create standardized error
+  const error = {
+    code,
+    message,
+    component: 'configuration',
+    context
+  };
+  
+  // Trigger universal error resolution protocol
+  triggerUERP(error);
+  
+  return error;
+}
+```
+
+### 4.2 API Response Errors
+
+For errors that occur during API requests and should be returned to the client.
+
+```javascript
+/**
+ * API error handler
+ * @param {import('@sveltejs/kit').RequestEvent} event - SvelteKit request event
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {number} [status=400] - HTTP status code
+ * @param {Object} [context] - Additional context
+ * @returns {Response} JSON response with error details
+ */
+function handleApiError(event, code, message, status = 400, context = {}) {
+  // Log error
+  console.error(`[Better Auth API Error] ${code}: ${message}`, context);
+  
+  // Log to persistent storage if available
+  if (typeof logger !== 'undefined') {
+    logger.error({
+      code,
+      message,
+      component: 'api',
+      context,
+      url: event.url.pathname,
+      method: event.request.method
+    });
+  }
+  
+  // Return standardized error response
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: {
+        code,
+        message
+      }
+    }),
+    {
+      status,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  );
+}
+```
+
+### 4.3 Database Errors
+
+For errors that occur during database operations.
+
+```javascript
+/**
+ * Database error handler
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Error} [originalError] - Original database error
+ * @param {Object} [context] - Additional context
+ * @returns {BetterAuthError} Standardized error object
+ */
+function handleDatabaseError(code, message, originalError, context = {}) {
+  // Sanitize error details to remove sensitive information
+  const sanitizedError = sanitizeDatabaseError(originalError);
+  
+  // Log error
+  console.error(`[Better Auth Database Error] ${code}: ${message}`, sanitizedError);
+  
+  // Log to persistent storage if available
+  if (typeof logger !== 'undefined') {
+    logger.error({
+      code,
+      message,
+      component: 'database',
+      context,
+      originalError: sanitizedError
+    });
+  }
+  
+  // Create standardized error
+  return {
+    code,
+    message,
+    component: 'database',
+    context,
+    originalError: sanitizedError
+  };
+}
+
+/**
+ * Sanitize database error to remove sensitive information
+ * @param {Error} error - Original error
+ * @returns {Object} Sanitized error
+ */
+function sanitizeDatabaseError(error) {
+  if (!error) return null;
+  
+  // Create a new object with only safe properties
+  const sanitized = {
+    name: error.name,
+    message: error.message,
+    code: error.code
+  };
+  
+  // Remove connection strings, passwords, etc.
+  if (sanitized.message) {
+    sanitized.message = sanitized.message
+      .replace(/('|")?password('|")?\s*:\s*('|").*?('|")/gi, "'password':'[REDACTED]'")
+      .replace(/(mysql|postgresql|mongodb):\/\/[^@]*@/gi, "$1://[REDACTED]@");
+  }
+  
+  return sanitized;
+}
+```
+
+### 4.4 WordPress Integration Errors
+
+For errors that occur during WordPress integration.
+
+```javascript
+/**
+ * WordPress integration error handler
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Object} [context] - Additional context
+ * @returns {BetterAuthError} Standardized error object
+ */
+function handleWordPressError(code, message, context = {}) {
+  // Log error
+  console.error(`[Better Auth WordPress Error] ${code}: ${message}`, context);
+  
+  // Log to persistent storage if available
+  if (typeof logger !== 'undefined') {
+    logger.error({
+      code,
+      message,
+      component: 'wordpress',
+      context
+    });
+  }
+  
+  // Create standardized error
+  return {
+    code,
+    message,
+    component: 'wordpress',
+    context
+  };
+}
+```
+
+## 5. Client-Facing Error Responses
+
+### 5.1 Standardized API Responses
+
+All API endpoints should return errors in a consistent format.
+
+```javascript
+// Example API error response structure
+{
+  "success": false,
+  "error": {
+    "code": "AUTH_INVALID_CREDENTIALS",
+    "message": "The provided email or password is incorrect."
+  }
+}
+```
+
+### 5.2 User-Friendly Error Messages
+
+Map technical error codes to user-friendly messages.
+
+```javascript
+const userFriendlyMessages = {
+  // Authentication errors
+  'AUTH_INVALID_CREDENTIALS': 'The email or password you entered is incorrect.',
+  'AUTH_EXPIRED_SESSION': 'Your session has expired. Please sign in again.',
+  'AUTH_INVALID_TOKEN': 'Invalid authentication. Please sign in again.',
+  
+  // User management errors
+  'USER_ALREADY_EXISTS': 'An account with this email already exists.',
+  'USER_NOT_FOUND': 'Account not found. Please check your information.',
+  
+  // WordPress integration errors
+  'WP_SYNC_ERROR': 'Unable to sync with WordPress. Please try again later.',
+  
+  // Generic fallback
+  'DEFAULT': 'An unexpected error occurred. Please try again later.'
+};
+
+/**
+ * Get user-friendly error message
+ * @param {string} code - Error code
+ * @returns {string} User-friendly message
+ */
+function getUserFriendlyMessage(code) {
+  return userFriendlyMessages[code] || userFriendlyMessages.DEFAULT;
+}
+```
+
+## 6. Error Logging and Monitoring
+
+### 6.1 Structured Logging Format
+
+All errors should be logged in a consistent format.
+
+```javascript
+/**
+ * Log error to persistent storage
+ * @param {BetterAuthError} error - Error object
+ */
+function logError(error) {
+  if (typeof logger === 'undefined') return;
+  
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    level: 'error',
+    code: error.code,
+    message: error.message,
+    component: error.component || 'unknown',
+    context: error.context || {},
+    stack: error.originalError?.stack
+  };
+  
+  logger.error(logEntry);
+}
+```
+
+### 6.2 Error Monitoring Integration
+
+```javascript
+/**
+ * Send error to monitoring service (like Sentry)
+ * @param {BetterAuthError} error - Error object
+ */
+function monitorError(error) {
+  if (typeof errorMonitor === 'undefined') return;
+  
+  errorMonitor.captureException(error.originalError || new Error(error.message), {
+    tags: {
+      component: error.component,
+      code: error.code
+    },
+    extra: error.context
+  });
+}
+```
+
+## 7. Error Recovery Strategies
+
+### 7.1 Authentication Failures
+
+```javascript
+/**
+ * Handle authentication failure
+ * @param {string} code - Error code
+ * @param {object} event - SvelteKit request event
+ * @returns {Response} JSON response
+ */
+function handleAuthFailure(code, event) {
+  // Clear cookies on auth failures
+  if (code.startsWith('AUTH_')) {
+    return handleApiError(
+      event,
+      code,
+      getUserFriendlyMessage(code),
+      401,
+      {},
+      {
+        'Set-Cookie': 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      }
+    );
+  }
+}
+```
+
+### 7.2 Database Connection Retry
+
+```javascript
+/**
+ * Retry database operation with exponential backoff
+ * @param {Function} operation - Database operation to retry
+ * @param {number} [maxRetries=3] - Maximum number of retries
+ * @param {number} [initialDelay=500] - Initial delay in ms
+ * @returns {Promise<any>} Operation result
+ */
+async function retryDatabaseOperation(operation, maxRetries = 3, initialDelay = 500) {
+  let lastError;
+  let delay = initialDelay;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      
+      // Only retry specific errors
+      if (!isDatabaseConnectionError(error)) {
+        throw handleDatabaseError(
+          'DB_QUERY_ERROR',
+          'Database query failed',
+          error
+        );
+      }
+      
+      if (attempt < maxRetries) {
+        console.warn(`Database operation failed, retrying in ${delay}ms (${attempt+1}/${maxRetries})`, error);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+      }
+    }
+  }
+  
+  throw handleDatabaseError(
+    'DB_CONNECTION_ERROR',
+    `Database operation failed after ${maxRetries} retries`,
+    lastError
+  );
+}
+```
+
+## 8. Integration with Universal Error Resolution Protocol
+
+```javascript
+/**
+ * Trigger Universal Error Resolution Protocol
+ * @param {BetterAuthError} error - Error object
+ */
+function triggerUERP(error) {
+  // Log the error
+  console.error(`[UERP Triggered] ${error.code}: ${error.message}`, error);
+  
+  // Create Error entity in Server Memory
+  if (typeof mcp_Server_Memory_create_entities !== 'undefined') {
+    const timestamp = new Date().toISOString();
+    const logTimestamp = timestamp.replace(/[-:]/g, '').replace('T', '_').substring(0, 15);
+    
+    mcp_Server_Memory_create_entities({
+      entities: [{
+        name: `Error_BetterAuth_${error.code}_${logTimestamp}`,
+        entityType: "Error",
+        observations: [
+          `Error occurred at ${timestamp}`,
+          `Type: BetterAuth - ${error.component}`,
+          `Description: ${error.message}`,
+          `Status: active`
+        ]
+      }]
+    });
+  }
+  
+  // Additional UERP actions would go here
+}
+```
+
+## 9. Verification Checklist
+
+- [ ] All Better Auth routes implement consistent error handling
+- [ ] Error codes are properly categorized and documented
+- [ ] User-facing error messages are clear and helpful
+- [ ] Sensitive information is properly sanitized from error logs
+- [ ] Error logging is implemented for all components
+- [ ] Error recovery strategies are defined for critical operations
+- [ ] Universal Error Resolution Protocol integration is implemented
+- [ ] Authentication failures properly clear cookies
+
+## 10. Example Implementation
+
+### 10.1 SvelteKit API Endpoint with Error Handling
+
+```javascript
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ */
+
+/**
+ * Handle POST requests to login endpoint
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  try {
+    // Get request body
+    const requestData = await event.request.json().catch(() => ({}));
+    
+    // Validate request data
+    if (!requestData.email || !requestData.password) {
+      return handleApiError(
+        event,
+        'AUTH_INVALID_DATA',
+        'Email and password are required',
+        400
+      );
+    }
+    
+    // Attempt authentication
+    try {
+      const result = await auth.authenticateWithCredentials(requestData.email, requestData.password);
+      
+      if (!result.success) {
+        return handleApiError(
+          event,
+          'AUTH_INVALID_CREDENTIALS',
+          getUserFriendlyMessage('AUTH_INVALID_CREDENTIALS'),
+          401
+        );
+      }
+      
+      // Set session cookie
+      const cookieHeader = `better_auth_session=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+      
+      // Return success response with cookie
+      return new Response(
+        JSON.stringify({
+          success: true,
+          user: result.user
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookieHeader
+          }
+        }
+      );
+    } catch (error) {
+      // Handle unexpected errors
+      return handleApiError(
+        event,
+        'AUTH_INTERNAL_ERROR',
+        'An error occurred during authentication',
+        500,
+        { originalError: error }
+      );
+    }
+  } catch (error) {
+    // Handle unexpected request errors
+    return handleApiError(
+      event,
+      'SK_ROUTE_ERROR',
+      'An unexpected error occurred',
+      500,
+      { originalError: error }
+    );
+  }
+}
+```
+
+### 10.2 Error Handling in WordPress Sync Endpoint
+
+```javascript
+/**
+ * WordPress session check endpoint 
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  try {
+    // Skip during SSR
+    if (event.request.headers.get('x-sveltekit-load') === 'true') {
+      return json({ success: false, error: 'ssr_context' });
+    }
+
+    try {
+      // Get request body
+      const requestData = await event.request.json();
+      
+      // Validate WordPress sync secret
+      const wpSyncSecret = auth.options.serverToServer?.syncSecret;
+      const requestSecret = event.request.headers.get('x-wp-sync-secret');
+      
+      if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+        return handleApiError(
+          event,
+          'WP_SECRET_MISMATCH',
+          'Invalid secret key',
+          401
+        );
+      }
+      
+      // Process WordPress user data
+      const { activeSessions } = requestData;
+      
+      if (!activeSessions?.length) {
+        return handleApiError(
+          event,
+          'WP_MISSING_USER_DATA',
+          'No active WordPress sessions provided',
+          400
+        );
+      }
+      
+      // Get first active session user data
+      const wpUserData = activeSessions[0];
+      
+      // Verify user data
+      if (!wpUserData.wpUserId || !wpUserData.email) {
+        return handleApiError(
+          event,
+          'WP_MISSING_USER_DATA',
+          'Required user data is missing',
+          400
+        );
+      }
+      
+      // Sync WordPress user and create session
+      try {
+        const session = await syncWordPressUserAndCreateSession(wpUserData);
+        
+        if (session) {
+          // Create session cookie
+          const cookieHeader = `better_auth_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+          
+          return json({ 
+            success: true, 
+            user: {
+              id: session.userId,
+              email: wpUserData.email,
+              displayName: wpUserData.displayName || wpUserData.username
+            } 
+          }, {
+            headers: {
+              'Set-Cookie': cookieHeader
+            }
+          });
+        } else {
+          return handleApiError(
+            event,
+            'WP_SYNC_ERROR',
+            'Failed to sync WordPress user',
+            500
+          );
+        }
+      } catch (syncError) {
+        return handleApiError(
+          event,
+          'WP_SYNC_ERROR',
+          'Error during WordPress user sync',
+          500,
+          { originalError: syncError }
+        );
+      }
+    } catch (processError) {
+      return handleApiError(
+        event,
+        'WP_API_ERROR',
+        'Error processing WordPress request',
+        500,
+        { originalError: processError }
+      );
+    }
+  } catch (requestError) {
+    return handleApiError(
+      event,
+      'SK_ROUTE_ERROR',
+      'Unexpected error in WordPress sync endpoint',
+      500,
+      { originalError: requestError }
+    );
+  }
+}
+```

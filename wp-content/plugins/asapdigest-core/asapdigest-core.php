@@ -18,7 +18,12 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Define constants
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
+// Define a temporary sync secret for development server-to-server communication
+if (!defined('BETTER_AUTH_SECRET')) {
+    define('BETTER_AUTH_SECRET', 'development-sync-secret-v6');
+}
 
 // Include Better Auth configuration
 require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
@@ -30,6 +35,8 @@ require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-contr
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php');
 // Include the NEW V4 SvelteKit Token Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-token-controller.php');
+// Include the NEW V5 Active Sessions Controller (True Server-to-Server)
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-active-sessions-controller.php');
 // Include the REST Auth Controller
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
 // Include the (Obsolete V3) SK User Sync Controller
@@ -130,6 +137,12 @@ function asap_init_core() {
     // Register the NEW V4 SK token generation/validation routes
     add_action('rest_api_init', function() {
         $controller = new \ASAPDigest\Core\API\SK_Token_Controller();
+        $controller->register_routes();
+    }, 10);
+    
+    // Register the NEW V5 Active Sessions Controller (True Server-to-Server)
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\Active_Sessions_Controller();
         $controller->register_routes();
     }, 10);
     

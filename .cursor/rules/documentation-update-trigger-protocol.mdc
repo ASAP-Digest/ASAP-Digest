@@ -3,11 +3,11 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Documentation Update Trigger Protocol v1.0
+# Documentation Update Trigger Protocol v1.1
 
 ## 1. Purpose
 
-This protocol defines the process triggered by the "Update Documentation" (`UD`) command (defined in `work-session-activation-protocol.mdc`). Its primary focus is to automate specific documentation generation tasks, currently centered around the OpenAPI specification, while clarifying its relationship to other documentation update mechanisms within the VeriDX system.
+This protocol defines the process triggered by the "Update Documentation" (`UD`) command (defined in `work-session-activation-protocol.mdc`). Its primary focus is to automate specific documentation generation tasks, centered around the OpenAPI specification and Mintlify documentation validation, while clarifying its relationship to other documentation update mechanisms within the system.
 
 ## 2. Protocol Integration Layer
 
@@ -19,10 +19,11 @@ This protocol defines the process triggered by the "Update Documentation" (`UD`)
 │ 2. Work Session Activation Proto v2.9+  │ // Defines 'UD' command trigger
 │ 3. Tooling Setup Guide (v1.2+)          │ // Defines generation/linting scripts
 │ 4. Universal Error Resolution (UERP)    │ // Handles script execution failures
-│ 5. Update Memory Protocol (v2.1+)       │ // Handles manual doc updates (Roadmap, Checklist)
-│ 6. New Rule Creation Protocol (v1.1+)   │ // Handles manual doc updates (Rule Index)
-│ 7. Audit Trail System                   │ // Logs execution
-│ 8. Documentation Update Trigger (This)  │ // Self-reference
+│ 5. Documentation Standards Protocol      │ // Defines Mintlify standards
+│ 6. Update Memory Protocol (v2.1+)       │ // Handles manual doc updates (Roadmap, Checklist)
+│ 7. New Rule Creation Protocol (v1.1+)   │ // Handles manual doc updates (Rule Index)
+│ 8. Audit Trail System                   │ // Logs execution
+│ 9. Documentation Update Trigger (This)  │ // Self-reference
 └─────────────────────────────────────────┘
 ```
 
@@ -30,20 +31,21 @@ This protocol defines the process triggered by the "Update Documentation" (`UD`)
 
 - **Command:** "Update Documentation"
 - **Alias:** `UD`
-- **Context:** Can be run at any time, typically after making changes to API route JSDoc annotations or when needing to ensure the OpenAPI spec is up-to-date.
+- **Context:** Can be run at any time, typically after making changes to API route JSDoc annotations or when needing to ensure the OpenAPI spec and Mintlify documentation are up-to-date.
 
 ## 4. Scope & Relationship to Other Protocols
 
 - **Primary Scope:** This protocol, triggered by `UD`, is responsible for executing **automated documentation generation and validation scripts** defined in the `tooling-setup-guide.mdc`. Currently, this involves:
     - Running the OpenAPI annotation linter (`scripts/lint-openapi-annotations.js`).
     - Running the OpenAPI specification generator (`scripts/generate-openapi.js`).
+    - Running the Mintlify documentation validator (`scripts/validate-openapi-docs.js`).
     - Potentially running a broken link checker for Markdown files (if configured).
 - **Manual Updates (Handled Elsewhere):** This protocol does **NOT** handle manual updates to documentation files like:
     - `md-docs/ROADMAP_TASKS.md` (updated by `update-memory.mdc`, `WSMP`, `TVP`).
     - `md-docs/DEPLOYMENT_CHECKLIST.md` (updated by `update-memory.mdc`).
     - `.cursor/rules/index.mdc` (updated by `new-rule-creation-protocol.mdc`).
     - `CHANGELOG.md` (updated manually or via specific release protocols).
-- **Intention:** The `UD` command provides a convenient way to manually trigger the *automated parts* of the documentation workflow, ensuring generated artifacts like `openapi.json` are current, without needing a full commit cycle (which also runs these via hooks). It complements, but does not replace, the manual documentation updates performed by other protocols.
+- **Intention:** The `UD` command provides a convenient way to manually trigger the *automated parts* of the documentation workflow, ensuring generated artifacts like `openapi.json` and Mintlify docs are current, without needing a full commit cycle (which also runs these via hooks). It complements, but does not replace, the manual documentation updates performed by other protocols.
 
 ## 5. Execution Steps
 
@@ -54,17 +56,130 @@ This protocol defines the process triggered by the "Update Documentation" (`UD`)
 3.  **Run OpenAPI Generator (if configured):**
     *   Execute the script defined in `tooling-setup-guide.mdc` (e.g., `node ./scripts/generate-openapi.js`).
     *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_GEN_FAIL` in Audit Trail, trigger UERP, and HALT.
-4.  **Run Broken Link Checker (Optional, if configured):**
+4.  **Run Mintlify Documentation Validator (if configured):**
+    *   Execute the script defined in `tooling-setup-guide.mdc` (e.g., `node ./scripts/validate-openapi-docs.js`).
+    *   This script should validate:
+        - Frontmatter presence and required fields (title, description)
+        - Proper code block language specifications
+        - Required sections (e.g., Overview)
+        - Navigation configuration in docs.json
+    *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_VALIDATOR_FAIL` in Audit Trail, trigger UERP, and HALT.
+5.  **Run Broken Link Checker (Optional, if configured):**
     *   Execute the command defined in `tooling-setup-guide.mdc` (e.g., `markdown-link-check ...`).
     *   **Error Handling:** If the script fails, report the error, log `DOC_UPDATE_LINK_CHECK_FAIL` in Audit Trail, trigger UERP, and HALT.
-5.  **Report Completion:** Inform the user that the documentation update/generation process completed successfully.
-6.  **Audit:** Record `DOC_UPDATE_COMPLETE` event in Audit Trail.
+6.  **Report Completion:** Inform the user that the documentation update/generation/validation process completed successfully.
+7.  **Audit:** Record `DOC_UPDATE_COMPLETE` event in Audit Trail.
 
-## 6. Verification Checklist (for this protocol)
+## 6. Mintlify Documentation Validation
+
+The Mintlify documentation validator should check for the following standards compliance:
+
+### 6.1 Required Validation Checks
+
+```javascript
+// Example validation script structure
+const validateMintlifyDocs = () => {
+  // 1. Check docs.json structure
+  //    - Valid JSON
+  //    - Proper navigation structure
+  //    - Required sections defined
+  
+  // 2. For each MDX file:
+  //    - Frontmatter exists with title and description
+  //    - Code blocks have language specifications
+  //    - Required sections exist (e.g., Overview)
+  //    - Links use proper formats
+  
+  // 3. For API Reference pages:
+  //    - OpenAPI frontmatter is used correctly
+  //    - No duplication of OpenAPI-generated content
+  
+  // Report warnings and errors
+};
+```
+
+### 6.2 Validator Output Expectations
+
+The validator should produce output similar to:
+
+```text
+🔍 Validating Mintlify documentation...
+✅ docs.json is valid JSON
+✅ Authentication endpoints are properly configured in navigation
+✅ introduction.mdx has frontmatter
+✅ introduction.mdx has an authentication overview section
+✅ wp-session-check.mdx has frontmatter
+✅ wp-session-check.mdx has an overview section
+⚠️ active-sessions.mdx has code blocks without language specification
+
+🎉 Documentation validation completed!
+Found 1 warning and 0 errors.
+```
+
+## 7. Example Implementation of Documentation Validator
+
+Here's an example implementation of a documentation validator script:
+
+```javascript
+#!/usr/bin/env node
+
+/**
+ * Validates Mintlify documentation against the Documentation Standards Protocol
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+console.log('🔍 Validating Mintlify documentation...');
+
+// Validate docs.json
+try {
+  const docsConfigPath = path.join(__dirname, '..', 'docs', 'docs.json');
+  const docsConfig = JSON.parse(fs.readFileSync(docsConfigPath, 'utf8'));
+  
+  console.log('✅ docs.json is valid JSON');
+  
+  // Check navigation structure
+  // ... validation logic here
+} catch (error) {
+  console.error('❌ Error validating docs.json:', error.message);
+  process.exit(1);
+}
+
+// Validate MDX files
+const filesToCheck = [
+  // List of MDX files to check
+];
+
+let warningCount = 0;
+let errorCount = 0;
+
+for (const file of filesToCheck) {
+  try {
+    const content = fs.readFileSync(file, 'utf8');
+    
+    // Check frontmatter
+    // Check section structure
+    // Check code blocks
+    // ... validation logic here
+    
+  } catch (error) {
+    errorCount++;
+    // ... error handling
+  }
+}
+
+console.log(`\n🎉 Documentation validation completed!`);
+console.log(`Found ${warningCount} warning(s) and ${errorCount} error(s).`);
+process.exit(errorCount > 0 ? 1 : 0);
+```
+
+## 8. Verification Checklist (for this protocol)
 
 - [ ] Does the protocol clearly define the `UD` trigger?
-- [ ] Does Section 4 accurately clarify its scope (automated generation) versus manual updates handled by other protocols?
+- [ ] Does Section 4 accurately clarify its scope (automated generation and validation) versus manual updates handled by other protocols?
 - [ ] Does the execution sequence correctly reference running scripts defined in the `tooling-setup-guide.mdc`?
 - [ ] Does each script execution step include appropriate error handling (report, log, UERP trigger, HALT)?
+- [ ] Is the Mintlify documentation validation process clearly defined?
 - [ ] Does the protocol conclude with a completion report and audit log?
 - [ ] Does the formatting adhere to `rule-formatting-protocol.mdc`?

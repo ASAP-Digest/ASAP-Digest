@@ -3,67 +3,298 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Better Auth Route Handling in SvelteKit
+# Better Auth Route Handling in SvelteKit with WP Integration v1.2
+
+*(Self-correction: v1.1 - Added Headless WP/SK specific endpointype annotations)*
 
 ## 0. Prerequisite: Configuration
-- The `auth` instance MUST be configured according to `[better-auth-config.mdc](mdc:.cursor/rules/better-auth-config.mdc)` before being used in route handlers.
+- The `auth` instance MUST be configured according to `better-auth-config.mdc` before being used in route handlers.
 
-## 1. Route Handler Structure
-   - Place Better Auth route handlers in `app/src/routes/api/auth/[...auth]/+server.js`
-   - Use JSDoc for type annotations, not TypeScript imports
-   - Export all HTTP methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
+## 1. Standard Authentication Route Handler
+   - Place in `app/src/routes/api/auth/[...auth]/+server.js`
+   - Use JSDoc for type annotations
+   - Export all HTTP methods
 
-## 2. Handler Configuration
-   ````javascript
-   import { auth } from '$lib/server/auth'; // Assumes auth is correctly configured per better-auth-config.mdc
-   import { svelteKitHandler } from 'better-auth/svelte-kit';
+```javascript
+import { auth } from '$lib/server/auth'; // Configured per better-auth-config.mdc
+import { svelteKitHandler } from 'better-auth/svelte-kit';
 
-   /** @type {import('@sveltejs/kit').RequestHandler} */
-   const handler = (event) => {
-       // Use the standard RequestEvent directly if the library supports it
-       // Or construct the expected object precisely
-       return svelteKitHandler({
-           event: { // Ensure this structure matches what svelteKitHandler expects
-               request: event.request,
-               url: event.url
-               // Add other required event properties if necessary
-           },
-           resolve: () => {}, // Default empty resolve for dedicated auth routes
-           auth // The configured auth instance
-       });
-   };
-   
-   // Export all methods pointing to the handler
-   export const GET = handler;
-   export const POST = handler;
-   export const PUT = handler;
-   export const DELETE = handler;
-   export const PATCH = handler;
-   export const OPTIONS = handler; // Include OPTIONS if needed for CORS preflight
-   ````
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ */
 
-## 3. Required Parameters for `svelteKitHandler`
-   - `event`: Object containing SvelteKit request details.
-     - **Crucial:** MUST include `request` and `url` properties at minimum. Verify library docs for any other required properties from the SvelteKit `RequestEvent`.
-   - `resolve`: Function to handle non-auth routes (typically an empty function `() => {}` for dedicated auth route handlers).
-   - `auth`: The configured Better Auth instance imported from server configuration (`$lib/server/auth.js`).
+/**
+ * Standard Better Auth request handler
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} HTTP response
+ */
+const handler = (event) => {
+    return svelteKitHandler({
+        event: {
+            request: event.request,
+            url: event.url
+        },
+        resolve: () => {}, // Default empty resolve for dedicated auth routes
+        auth // The configured auth instance
+    });
+};
 
-## 4. Common Issues to Avoid
-   - Don't use TypeScript imports in `.js` files.
-   - Don't pass the raw configuration object directly to the handler; pass the *initialized `auth` instance*.
-   - Don't use simplified event passing (e.g., `svelteKitHandler(event, auth)` if the library expects the structured object `{ event: { request, url }, resolve, auth }`).
-   - Don't strip the `/api/auth` prefix from URLs within the handler logic unless explicitly required by the library.
-   - Ensure the `auth` instance is correctly configured *before* the handler is invoked (See Section 0).
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const DELETE = handler;
+export const PATCH = handler;
+export const OPTIONS = handler;
+```
 
-## 5. Version Compatibility
-   - Better Auth v1.2.5+ requires `better-auth/svelte-kit` import path.
-   - Use `svelteKitHandler`, not deprecated names like `toSvelteKitHandler`.
-   - Ensure the `auth` instance passed is fully initialized and configured.
+## 2. WordPress Server-to-Server Authentication Endpoint
+   - Place in `app/src/routes/api/auth/check-wp-session/+server.js`
+   - Handles communication with WordPress
+   - Verifies shared secret
+   - Creates/links Better Auth user with WordPress user
 
-## 6. Error Prevention & Verification
-   - Always validate the structure of the object passed to `svelteKitHandler`, especially the nested `event` object.
-   - Ensure the `auth` instance is correctly imported from `$lib/server/auth.js`.
-   - Verify all necessary HTTP methods are exported from `+server.js`.
-   - Test the `/api/auth/[...auth]` route with various operations (login, logout, registration, etc.).
-   - Check browser network console and server logs for errors during auth operations.
-   
+```javascript
+import { json } from '@sveltejs/kit';
+import { auth } from '$lib/server/auth';
+import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils';
+
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ * @typedef {Object} WPUserData
+ * @property {string} wpUserId WordPress user ID
+ * @property {string} email User email
+ * @property {string} username Username
+ * @property {string} [displayName] Display name
+ * @property {string} [firstName] First name
+ * @property {string} [lastName] Last name
+ * @property {string[]} [roles] WordPress roles
+ */
+
+/**
+ * WordPress session check endpoint 
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+    // Skip during SSR
+    if (event.request.headers.get('x-sveltekit-load') === 'true') {
+        return json({ success: false, error: 'ssr_context' });
+    }
+
+    try {
+        // Get request body
+        const requestData = await event.request.json();
+        
+        // Validate WordPress sync secret
+        const wpSyncSecret = auth.options.serverToServer?.syncSecret;
+        const requestSecret = event.request.headers.get('x-wp-sync-secret');
+        
+        if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+            return json({ success: false, error: 'invalid_secret' }, { status: 401 });
+        }
+        
+        // Process WordPress user data
+        const { activeSessions } = requestData;
+        
+        if (!activeSessions?.length) {
+            return json({ success: false, error: 'no_active_wp_sessions' });
+        }
+        
+        // Get first active session user data
+        /** @type {WPUserData} */
+        const wpUserData = activeSessions[0];
+        
+        // Verify user exists or create new user
+        const session = await syncWordPressUserAndCreateSession(wpUserData);
+        
+        if (session) {
+            // Create session cookie
+            const cookieHeader = `better_auth_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+            
+            return json({ 
+                success: true, 
+                user: {
+                    id: session.userId,
+                    email: wpUserData.email,
+                    displayName: wpUserData.displayName || wpUserData.username
+                } 
+            }, {
+                headers: {
+                    'Set-Cookie': cookieHeader
+                }
+            });
+        } else {
+            return json({ success: false, error: 'sk_sync_failed' });
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return json({ success: false, error: 'wp_request_error', message: errorMessage });
+    }
+}
+```
+
+## 3. Session Management Endpoint
+   - Place in `app/src/routes/api/auth/session/+server.js`
+   - Provides endpoints for checking current session
+   - Allows session revocation
+
+```javascript
+import { json } from '@sveltejs/kit';
+import { auth } from '$lib/server/auth';
+
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ */
+
+/**
+ * GET session information for current user
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response with session data
+ */
+export async function GET(event) {
+    try {
+        const session = await auth.sessionManager.getSession(event.request);
+        
+        if (!session) {
+            return json({ authenticated: false });
+        }
+        
+        const user = await auth.adapter.getUserById(session.userId);
+        
+        if (!user) {
+            return json({ authenticated: false });
+        }
+        
+        return json({
+            authenticated: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                displayName: user.display_name || user.username
+                // Add other user fields as needed
+            }
+        });
+    } catch (error) {
+        return json({ authenticated: false, error: 'session_check_failed' });
+    }
+}
+
+/**
+ * DELETE current session (logout)
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function DELETE(event) {
+    try {
+        const session = await auth.sessionManager.getSession(event.request);
+        
+        if (!session) {
+            return json({ success: false, error: 'no_active_session' });
+        }
+        
+        await auth.adapter.deleteSession(session.token);
+        
+        // Clear session cookie
+        return json({ success: true }, {
+            headers: {
+                'Set-Cookie': 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+            }
+        });
+    } catch (error) {
+        return json({ success: false, error: 'logout_failed' });
+    }
+}
+```
+
+## 4. Token Refresh Endpoint
+   - Place in `app/src/routes/api/auth/refresh/+server.js`
+   - Handles refresh token operations
+   - Replaces expired access tokens
+
+```javascript
+import { json } from '@sveltejs/kit';
+import { auth } from '$lib/server/auth';
+
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ */
+
+/**
+ * POST to refresh an access token
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response with new token
+ */
+export async function POST(event) {
+    try {
+        const { refreshToken } = await event.request.json();
+        
+        if (!refreshToken) {
+            return json({ success: false, error: 'missing_refresh_token' }, { status: 400 });
+        }
+        
+        // Implement token refresh logic using your adapter
+        // This is a simplified example
+        const newSession = await auth.sessionManager.refreshSession(refreshToken);
+        
+        if (!newSession) {
+            return json({ success: false, error: 'invalid_refresh_token' }, { status: 401 });
+        }
+        
+        // Set the new session cookie
+        const cookieHeader = `better_auth_session=${newSession.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+        
+        return json({ 
+            success: true,
+            token: newSession.token,
+            expiresAt: newSession.expiresAt
+        }, {
+            headers: {
+                'Set-Cookie': cookieHeader
+            }
+        });
+    } catch (error) {
+        return json({ success: false, error: 'refresh_failed' });
+    }
+}
+```
+
+## 5. Required Parameters for Handlers
+
+- **Standard Auth Handler:**
+  - `event`: Object containing SvelteKit request details.
+  - `resolve`: Function to handle non-auth routes (typically empty function for dedicated auth routes).
+  - `auth`: The configured Better Auth instance.
+
+- **Server-to-Server Handler:**
+  - Requires `x-wp-sync-secret` header matching the configured secret.
+  - Request body must contain WordPress user data.
+
+- **Session Management Handler:**
+  - Requires valid session cookie for GET and DELETE operations.
+
+- **Token Refresh Handler:**
+  - Requires `refreshToken` in the request body.
+
+## 6. Common Issues to Avoid
+
+- **TypeScript Imports:** Don't use TypeScript imports in `.js` files. Use JSDoc for typing.
+- **Raw Config Usage:** Don't pass raw configuration directly to handlers; pass the initialized `auth` instance.
+- **Missing Auth Routes:** Ensure the standard `[...auth]` catch-all route is properly set up.
+- **Insecure Secrets:** Don't hardcode the WordPress sync secret; load from environment variables.
+- **Missing CORS Headers:** Ensure CORS headers are properly set if frontend is on a different domain.
+- **Inconsistent Cookie Settings:** Make sure cookie settings (path, SameSite, etc.) match between endpoints.
+- **Incomplete User Sync Function:** Ensure `syncWordPressUserAndCreateSession` properly handles all user fields.
+
+## 7. Version Compatibility
+
+- **Better Auth v1.2.5+:** Requires `better-auth/svelte-kit` import path.
+- **SvelteKit v2.0+:** Uses updated event handling patterns.
+- **WPGraphQL Integration:** For WordPress GraphQL API integration, ensure compatible WPGraphQL plugin versions.
+
+## 8. Error Prevention & Verification
+
+- **Request Validation:** Always validate incoming data and headers.
+- **Error Handling:** Use try/catch blocks to handle errors gracefully.
+- **Response Structure:** Maintain consistent response structure across endpoints.
+- **Security Checks:** Verify secrets, tokens, and user permissions.
+- **Test Authentication Flow:** Test the full flow from WordPress login to SvelteKit session creation.

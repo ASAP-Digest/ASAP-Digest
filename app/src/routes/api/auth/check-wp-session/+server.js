@@ -1,7 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils-fixed';
+import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils-fixed.js';
 import { log } from '$lib/utils/log';
-import { SYNC_SECRET, WP_API_URL } from '$lib/config';
+// Remove import from $lib/config that might be causing issues
+// import { SYNC_SECRET, WP_API_URL } from '$lib/config';
+
+// Get environment variables for server-to-server communication
+const SYNC_SECRET = process.env.BETTER_AUTH_SECRET || 'development-sync-secret-v6'; // Must match WP's BETTER_AUTH_SECRET
+const WP_API_URL = process.env.WP_API_URL || 'https://asapdigest.local';
 
 /**
  * @typedef {Object} WPUserData
@@ -23,106 +28,187 @@ import { SYNC_SECRET, WP_API_URL } from '$lib/config';
  * @property {string} [user.email] - User email
  * @property {string} [user.displayName] - User display name
  * @property {string} [error] - Error message if success is false
+ * @property {string} [details] - Additional error details or diagnostic information
+ * @property {boolean} [sessionCreated] - Whether a new session was created
+ * @property {boolean} [created] - Whether a new user was created
+ * @property {number} [status] - HTTP status code
  */
 
 /**
- * Handles POST requests to check the WP session via cookies and establish an SK session.
- * @param {import('@sveltejs/kit').RequestEvent} event The SvelteKit request event object.
- * @returns {Promise<Response>} JSON response indicating success or failure.
+ * Handle POST requests to check WordPress session status
+ * This is a server-to-server endpoint that communicates with WordPress
+ * to check for active WordPress session and sync the user if found.
+ *
+ * @param {import('@sveltejs/kit').RequestEvent} event The SvelteKit request event
+ * @returns {Promise<Response>} JSON response with user data or error message
  */
 export async function POST(event) {
-	log('[API /check-wp-session] Received POST request.');
+	const { request, cookies } = event;
+	log('[API /check-wp-session] Processing WordPress session check request', 'info');
 
-	// 1. Extract WP Auth Cookies from the incoming request header
-	const requestCookies = event.request.headers.get('cookie');
-	if (!requestCookies) {
-		log('[API /check-wp-session] No cookies found in request header.', 'warn');
-		return json({ success: false, error: 'wp_cookie_missing' }, { status: 400 });
-	}
+	// Get client IP and user agent for logging and session tracking
+	const clientIp = getClientAddress(event);
+	const userAgent = request.headers.get('user-agent') || 'Server-to-server sync';
 
-	const wpAuthCookieHeader = requestCookies; // Send all cookies to WP for validation
-	log('[API /check-wp-session] Extracted WP Auth Cookie header.');
+	log(`[API /check-wp-session] Request from ${clientIp} with agent: ${userAgent.substring(0, 50)}...`, 'debug');
 
-	// 2. Determine WP validation endpoint URL
-	const wpValidateUrl = `${WP_API_URL}/wp-json/asap/v1/validate-session-get-user`;
-	log(`[API /check-wp-session] WP Validation URL: ${wpValidateUrl}`);
+	// Get configuration from server environment
+	// Retry configuration for more reliable operation
+	const maxRetries = 3;
+	const retryDelayMs = 1000;
+	const timeoutMs = 10000;
 
-	// 3. Make server-to-server call to WP
-	let wpResponse;
 	try {
-		wpResponse = await fetch(wpValidateUrl, {
+		// Set up abort controller for timeout
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+		// Prepare the payload with client timestamp for request tracing
+		const requestPayload = {
+			clientIp,
+			clientTimestamp: Date.now(),
+			checkType: 'session'
+		};
+
+		// Determine the WordPress endpoint
+		const url = `${WP_API_URL}/wp-json/asap/v1/get-active-sessions`;
+		log(`[API /check-wp-session] Preparing request to WordPress endpoint: ${url}`, 'debug');
+		log(`[API /check-wp-session] Using secret with length: ${SYNC_SECRET ? SYNC_SECRET.length : 0}`, 'debug');
+
+		// Make the server-to-server request
+		log('[API /check-wp-session] Sending server-to-server request to WordPress', 'info');
+		const response = await fetch(url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Cookie': wpAuthCookieHeader,
-				'X-ASAP-Sync-Secret': SYNC_SECRET
+				'X-ASAP-Sync-Secret': SYNC_SECRET,
+				'X-ASAP-Client-IP': clientIp,
+				'X-ASAP-Request-Source': 'svelte-kit-server',
+				'User-Agent': userAgent
 			},
-			credentials: 'include' // CRITICAL: Send cookies
+			body: JSON.stringify(requestPayload),
+			signal: controller.signal
 		});
 
-		log(`[API /check-wp-session] Received response from WP: Status ${wpResponse.status}`);
+		// Clear the timeout
+		clearTimeout(timeoutId);
 
-		if (!wpResponse.ok) {
-			const errorText = await wpResponse.text();
-			log(`[API /check-wp-session] WP validation request failed with status ${wpResponse.status}: ${errorText}`, 'error');
-			return json({ success: false, error: 'wp_validation_failed_http' }, { status: 502 });
+		// Handle WordPress response
+		if (!response.ok) {
+			const errorText = await response.text();
+			log(`[API /check-wp-session] WordPress API returned error: ${response.status} ${response.statusText}`, 'error');
+			log(`[API /check-wp-session] Error response: ${errorText}`, 'error');
+			return json({
+				success: false,
+				error: 'wp_api_error',
+				status: response.status,
+				message: response.statusText,
+				details: errorText
+			}, { status: 502 }); // 502 Bad Gateway
 		}
 
-		/** @type {{success: boolean, userData?: WPUserData, error?: string}} */
-		const wpResult = await wpResponse.json();
-		log('[API /check-wp-session] Parsed WP JSON response.');
+		// Parse the response
+		const data = await response.json();
+		log(`[API /check-wp-session] WordPress API response received - success: ${!!data.success}`, 'info');
 
-		// 4. Process WP Response
-		if (wpResult.success && wpResult.userData) {
-			log('[API /check-wp-session] WP validation successful. Proceeding with user sync.');
-			
-			// 5. Sync User and Create SK Session
-			const session = await syncWordPressUserAndCreateSession(wpResult.userData);
+		// Check if the WordPress response indicates an active session
+		if (!data.success || !data.activeSessions || data.activeSessions.length === 0) {
+			log('[API /check-wp-session] No active WordPress session found', 'info');
+			log(`[API /check-wp-session] WordPress response details: ${JSON.stringify(data)}`, 'debug');
+			return json({
+				success: false,
+				error: 'no_wordpress_session',
+				details: data.error || 'No active WordPress sessions found'
+			});
+		}
 
-			if (session) {
-				log('[API /check-wp-session] SK user sync/session creation successful.');
-				
-				// 6. Set Better Auth session cookie - using a simplified approach
-				const cookieHeader = `better_auth_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+		// Extract WordPress user data from response (use first active session)
+		const wpUserData = data.activeSessions[0];
+		
+		log(`[API /check-wp-session] WordPress user found: ${wpUserData.email} (ID: ${wpUserData.wpUserId})`, 'info');
 
-				// 7. Return success to frontend with Set-Cookie header
-				log('[API /check-wp-session] Returning success to frontend with Set-Cookie header.');
-				/** @type {SessionResponse} */
-				const response = { 
-					success: true, 
-					user: {
-						id: session.userId,
-						email: wpResult.userData.email,
-						displayName: wpResult.userData.displayName || wpResult.userData.username
-					} 
-				};
-				
-				return json(response, {
-					headers: {
-						'Set-Cookie': cookieHeader
-					}
-				});
-			} else {
-				log('[API /check-wp-session] SK syncWordPressUserAndCreateSession failed.', 'error');
-				return json({ success: false, error: 'sk_sync_failed' }, { status: 500 });
-			}
+		// Use the enhanced utility to sync WP user to Better Auth and create session
+		// Pass client IP and user agent for session tracking
+		log('[API /check-wp-session] Syncing WordPress user to Better Auth...', 'info');
+		const result = await syncWordPressUserAndCreateSession(
+			wpUserData, 
+			cookies, 
+			maxRetries, 
+			retryDelayMs,
+			clientIp,
+			userAgent
+		);
+
+		// Return the result of the sync operation
+		if (result.success && result.user) {
+			log(`[API /check-wp-session] Auto-login successful for user: ${result.user.email}`, 'info');
+			return json({
+				success: true,
+				user: result.user,
+				created: result.created
+			});
 		} else {
-			// WP validation failed (invalid cookie, expired, etc.)
-			log(`[API /check-wp-session] WP validation returned failure. Reason: ${wpResult.error || 'wp_session_invalid'}`, 'warn');
-			return json({ success: false, error: wpResult.error || 'wp_session_invalid' }, { status: 401 });
+			log(`[API /check-wp-session] Failed to auto-login WordPress user: ${result.error || 'Unknown error'}`, 'error');
+			log(`[API /check-wp-session] Error details: ${result.details || 'No details provided'}`, 'error');
+			
+			// Provide enhanced error information for debugging
+			return json({
+				success: false,
+				error: result.error || 'sync_failed',
+				details: result.details || 'unknown_error',
+				diagnosticInfo: {
+					// Include safe diagnostic info - don't include actual credentials
+					timestamp: new Date().toISOString(),
+					wpUserId: wpUserData.wpUserId,
+					errorCategory: result.details?.includes('session_creation') ? 'session_error' : 
+						          result.details?.includes('user_creation') ? 'user_error' : 
+								  'unknown_error',
+				}
+			});
 		}
-
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		log(`[API /check-wp-session] Error during server-to-server fetch to WP: ${errorMessage}`, 'error');
-		return json({ success: false, error: 'wp_fetch_error' }, { status: 500 });
+		log(`[API /check-wp-session] Unexpected error: ${errorMessage}`, 'error');
+		if (error instanceof Error && error.stack) {
+			log(`[API /check-wp-session] Error stack: ${error.stack}`, 'debug');
+		}
+		return json({
+			success: false,
+			error: 'unexpected_error',
+			message: errorMessage,
+			details: error instanceof Error ? error.stack : 'No stack trace available'
+		}, { status: 500 });
 	}
 }
 
 /**
+ * Get the client IP address from the request event
+ * @param {import('@sveltejs/kit').RequestEvent} event - The SvelteKit request event
+ * @returns {string} The client IP address
+ */
+function getClientAddress(event) {
+	// Try to get IP from various headers that might be set by proxies
+	const forwardedFor = event.request.headers.get('x-forwarded-for');
+	if (forwardedFor) {
+		// The header can contain multiple IPs, get the first one which is the client
+		const ips = forwardedFor.split(',');
+		return ips[0].trim();
+	}
+	
+	const realIp = event.request.headers.get('x-real-ip');
+	if (realIp) {
+		return realIp.trim();
+	}
+	
+	// Default fallback
+	return '127.0.0.1';
+}
+
+/**
  * Default GET handler (optional, could return method not allowed).
- * @param {import('@sveltejs/kit').RequestEvent} event
- * @returns {Promise<Response>}
+ * @param {Object} event - The SvelteKit request event
+ * @param {Request} event.request - The request object
+ * @returns {Promise<Response>} JSON response with method not allowed message
  */
 export async function GET(event) {
     return json({ message: 'Method Not Allowed. Use POST.' }, { status: 405 });

@@ -1,0 +1,1275 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Email Configuration Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes the standards for configuring, implementing, and managing email functionality within Better Auth for headless WordPress/SvelteKit applications. It covers email template creation, delivery methods, verification flows, security considerations, and testing procedures. Following this protocol ensures reliable email delivery, consistent branding, secure verification processes, and proper error handling across all authentication-related communications.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. Better Auth Session Management Proto │ // Session handling
+│ 4. JSDoc Type Definitions Protocol      │ // Type safety
+│ 5. Better Auth Error Handling Protocol  │ // Error handling
+│ 6. Email Configuration Protocol (This)  │ // Email handling
+└─────────────────────────────────────────┘
+```
+
+## 3. Email Provider Configuration
+
+### 3.1 Supported Email Providers
+
+```javascript
+/**
+ * @typedef {Object} EmailProviderConfig
+ * @property {'nodemailer'|'sendgrid'|'mailgun'|'ses'|'smtp'|'test'} provider - Email provider type
+ * @property {Object} options - Provider-specific configuration options
+ */
+
+/**
+ * @typedef {Object} EmailSendResult
+ * @property {boolean} success - Whether the email was sent successfully
+ * @property {string} [messageId] - The ID of the sent message (if available)
+ * @property {string} [error] - Error message if send failed
+ */
+```
+
+### 3.2 Nodemailer Configuration (SMTP)
+
+```javascript
+/**
+ * Configure Nodemailer for SMTP
+ * @returns {EmailProviderConfig} Provider configuration
+ */
+function configureNodemailerSMTP() {
+  return {
+    provider: 'nodemailer',
+    options: {
+      host: process.env.EMAIL_SMTP_HOST,
+      port: parseInt(process.env.EMAIL_SMTP_PORT || '587'),
+      secure: process.env.EMAIL_SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_SMTP_USER,
+        pass: process.env.EMAIL_SMTP_PASS
+      },
+      // Optional TLS configuration
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
+      }
+    }
+  };
+}
+```
+
+### 3.3 SendGrid Configuration
+
+```javascript
+/**
+ * Configure SendGrid
+ * @returns {EmailProviderConfig} Provider configuration
+ */
+function configureSendGrid() {
+  return {
+    provider: 'sendgrid',
+    options: {
+      apiKey: process.env.SENDGRID_API_KEY
+    }
+  };
+}
+```
+
+### 3.4 Test/Development Provider
+
+```javascript
+/**
+ * Configure test email provider (for development)
+ * @returns {EmailProviderConfig} Provider configuration
+ */
+function configureTestProvider() {
+  return {
+    provider: 'test',
+    options: {
+      // Log emails to console instead of sending
+      outputDir: process.env.EMAIL_TEST_OUTPUT || './email-previews',
+      // Optionally forward to a test mailbox
+      forwardTo: process.env.EMAIL_TEST_FORWARD
+    }
+  };
+}
+```
+
+## 4. Email Template Configuration
+
+### 4.1 Template Structure
+
+```javascript
+/**
+ * @typedef {Object} EmailTemplate
+ * @property {string} subject - Email subject template
+ * @property {string} text - Plain text email template
+ * @property {string} html - HTML email template
+ * @property {Object} [variables] - Default variables for the template
+ */
+
+/**
+ * @typedef {Object} EmailTemplates
+ * @property {EmailTemplate} verificationEmail - Email verification template
+ * @property {EmailTemplate} resetPassword - Password reset template
+ * @property {EmailTemplate} welcomeEmail - Welcome email template
+ * @property {EmailTemplate} magicLinkLogin - Magic link login template
+ * @property {Object.<string, EmailTemplate>} [custom] - Custom email templates
+ */
+```
+
+### 4.2 Default Templates
+
+```javascript
+/**
+ * Create default email templates
+ * @param {Object} options - Template options
+ * @param {string} options.appName - Application name
+ * @param {string} options.appUrl - Application URL
+ * @param {string} options.supportEmail - Support email address
+ * @returns {EmailTemplates} Email templates
+ */
+function createDefaultTemplates(options) {
+  const { appName, appUrl, supportEmail } = options;
+  
+  return {
+    verificationEmail: {
+      subject: `Verify your email for ${appName}`,
+      text: `
+        Please verify your email address for ${appName}
+        
+        Click the link below to verify your email address:
+        {{ verificationUrl }}
+        
+        This link expires in {{ expiresIn }}.
+        
+        If you didn't request this, please ignore this email.
+        
+        Need help? Contact us at ${supportEmail}
+      `,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Please verify your email address for ${appName}</h2>
+          <p>Click the button below to verify your email address:</p>
+          <p>
+            <a href="{{ verificationUrl }}" style="display: inline-block; padding: 12px 20px; background-color: #4a5568; color: white; text-decoration: none; border-radius: 4px;">
+              Verify Email Address
+            </a>
+          </p>
+          <p>Or copy and paste this link: <a href="{{ verificationUrl }}">{{ verificationUrl }}</a></p>
+          <p>This link expires in {{ expiresIn }}.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <p>Need help? Contact us at <a href="mailto:${supportEmail}">${supportEmail}</a></p>
+        </div>
+      `,
+      variables: {
+        expiresIn: '24 hours'
+      }
+    },
+    
+    resetPassword: {
+      subject: `Reset your password for ${appName}`,
+      text: `
+        Password Reset Request for ${appName}
+        
+        Click the link below to reset your password:
+        {{ resetUrl }}
+        
+        This link expires in {{ expiresIn }}.
+        
+        If you didn't request this, please ignore this email or contact support if you're concerned.
+        
+        Need help? Contact us at ${supportEmail}
+      `,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Password Reset Request for ${appName}</h2>
+          <p>Click the button below to reset your password:</p>
+          <p>
+            <a href="{{ resetUrl }}" style="display: inline-block; padding: 12px 20px; background-color: #4a5568; color: white; text-decoration: none; border-radius: 4px;">
+              Reset Password
+            </a>
+          </p>
+          <p>Or copy and paste this link: <a href="{{ resetUrl }}">{{ resetUrl }}</a></p>
+          <p>This link expires in {{ expiresIn }}.</p>
+          <p>If you didn't request this, please ignore this email or contact support if you're concerned.</p>
+          <p>Need help? Contact us at <a href="mailto:${supportEmail}">${supportEmail}</a></p>
+        </div>
+      `,
+      variables: {
+        expiresIn: '1 hour'
+      }
+    },
+    
+    welcomeEmail: {
+      subject: `Welcome to ${appName}!`,
+      text: `
+        Welcome to ${appName}!
+        
+        Thank you for joining us. Your account has been created successfully.
+        
+        Get started by visiting our site:
+        ${appUrl}
+        
+        If you have any questions, feel free to contact us at ${supportEmail}
+      `,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Welcome to ${appName}!</h2>
+          <p>Thank you for joining us. Your account has been created successfully.</p>
+          <p>
+            <a href="${appUrl}" style="display: inline-block; padding: 12px 20px; background-color: #4a5568; color: white; text-decoration: none; border-radius: 4px;">
+              Get Started
+            </a>
+          </p>
+          <p>If you have any questions, feel free to contact us at <a href="mailto:${supportEmail}">${supportEmail}</a></p>
+        </div>
+      `,
+      variables: {}
+    },
+    
+    magicLinkLogin: {
+      subject: `Your login link for ${appName}`,
+      text: `
+        Login Request for ${appName}
+        
+        Click the link below to log in:
+        {{ magicLinkUrl }}
+        
+        This link expires in {{ expiresIn }}.
+        
+        If you didn't request this, please ignore this email or contact support.
+        
+        Need help? Contact us at ${supportEmail}
+      `,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Login Request for ${appName}</h2>
+          <p>Click the button below to log in:</p>
+          <p>
+            <a href="{{ magicLinkUrl }}" style="display: inline-block; padding: 12px 20px; background-color: #4a5568; color: white; text-decoration: none; border-radius: 4px;">
+              Log In
+            </a>
+          </p>
+          <p>Or copy and paste this link: <a href="{{ magicLinkUrl }}">{{ magicLinkUrl }}</a></p>
+          <p>This link expires in {{ expiresIn }}.</p>
+          <p>If you didn't request this, please ignore this email or contact support.</p>
+          <p>Need help? Contact us at <a href="mailto:${supportEmail}">${supportEmail}</a></p>
+        </div>
+      `,
+      variables: {
+        expiresIn: '15 minutes'
+      }
+    }
+  };
+}
+```
+
+### 4.3 Custom Templates
+
+```javascript
+/**
+ * Create a custom email template
+ * @param {string} name - Template name
+ * @param {EmailTemplate} template - Email template
+ * @returns {EmailTemplate} Email template
+ */
+function createCustomTemplate(name, template) {
+  return {
+    [name]: template
+  };
+}
+```
+
+### 4.4 Template Variables
+
+```javascript
+/**
+ * Template variable replacement
+ * @param {string} template - Template string
+ * @param {Object} variables - Variables to replace
+ * @returns {string} Processed template
+ */
+function processTemplate(template, variables) {
+  let result = template;
+  
+  // Replace all {{ variable }} occurrences
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+    result = result.replace(regex, value);
+  });
+  
+  return result;
+}
+```
+
+## 5. Email Service Implementation
+
+### 5.1 Email Service Interface
+
+```javascript
+/**
+ * Email service implementation
+ */
+class EmailService {
+  /**
+   * Create email service
+   * @param {EmailProviderConfig} providerConfig - Email provider configuration
+   * @param {EmailTemplates} templates - Email templates
+   * @param {Object} defaultVariables - Default variables for all templates
+   */
+  constructor(providerConfig, templates, defaultVariables = {}) {
+    this.provider = providerConfig;
+    this.templates = templates;
+    this.defaultVariables = defaultVariables;
+    this.transport = this._initializeTransport(providerConfig);
+  }
+  
+  /**
+   * Initialize email transport
+   * @param {EmailProviderConfig} config - Provider configuration
+   * @returns {Object} Email transport
+   * @private
+   */
+  _initializeTransport(config) {
+    switch (config.provider) {
+      case 'nodemailer':
+        return require('nodemailer').createTransport(config.options);
+      case 'sendgrid':
+        return require('@sendgrid/mail').setApiKey(config.options.apiKey);
+      case 'test':
+        return {
+          sendMail: async (mailOptions) => {
+            console.log('Test email service:', mailOptions);
+            // Write to file if outputDir is configured
+            if (config.options.outputDir) {
+              const fs = require('fs');
+              const path = require('path');
+              const dir = config.options.outputDir;
+              
+              if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+              }
+              
+              const filename = `${Date.now()}-${mailOptions.subject.replace(/[^a-z0-9]/gi, '_')}.html`;
+              fs.writeFileSync(
+                path.join(dir, filename),
+                mailOptions.html || mailOptions.text
+              );
+            }
+            
+            return { success: true, messageId: `test-${Date.now()}` };
+          }
+        };
+      default:
+        throw new Error(`Unsupported email provider: ${config.provider}`);
+    }
+  }
+  
+  /**
+   * Send an email
+   * @param {Object} options - Email options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.templateName - Template name
+   * @param {Object} options.variables - Variables for template
+   * @param {string} [options.from] - Sender email (falls back to default)
+   * @returns {Promise<EmailSendResult>} Send result
+   */
+  async sendEmail(options) {
+    try {
+      const { to, templateName, variables = {}, from = this.defaultVariables.from } = options;
+      
+      // Get template
+      const template = this.templates[templateName];
+      if (!template) {
+        throw new Error(`Email template not found: ${templateName}`);
+      }
+      
+      // Merge variables
+      const mergedVariables = {
+        ...this.defaultVariables,
+        ...template.variables,
+        ...variables
+      };
+      
+      // Process templates
+      const subject = processTemplate(template.subject, mergedVariables);
+      const text = processTemplate(template.text, mergedVariables);
+      const html = processTemplate(template.html, mergedVariables);
+      
+      // Prepare mail options
+      const mailOptions = {
+        from,
+        to,
+        subject,
+        text,
+        html
+      };
+      
+      // Send email based on provider
+      if (this.provider.provider === 'nodemailer') {
+        const info = await this.transport.sendMail(mailOptions);
+        return { success: true, messageId: info.messageId };
+      } else if (this.provider.provider === 'sendgrid') {
+        const [response] = await this.transport.send(mailOptions);
+        return { 
+          success: response.statusCode >= 200 && response.statusCode < 300,
+          messageId: response.headers['x-message-id']
+        };
+      } else if (this.provider.provider === 'test') {
+        return await this.transport.sendMail(mailOptions);
+      }
+      
+      throw new Error(`Sending with provider ${this.provider.provider} not implemented`);
+    } catch (error) {
+      console.error('Email send error:', error);
+      return {
+        success: false,
+        error: error.message || 'Unknown error sending email'
+      };
+    }
+  }
+  
+  /**
+   * Send verification email
+   * @param {Object} options - Options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.token - Verification token
+   * @param {string} options.userId - User ID
+   * @returns {Promise<EmailSendResult>} Send result
+   */
+  async sendVerificationEmail(options) {
+    const { to, token, userId } = options;
+    
+    const verificationUrl = `${this.defaultVariables.appUrl}/verify-email?token=${token}&userId=${userId}`;
+    
+    return await this.sendEmail({
+      to,
+      templateName: 'verificationEmail',
+      variables: {
+        verificationUrl,
+        userEmail: to
+      }
+    });
+  }
+  
+  /**
+   * Send password reset email
+   * @param {Object} options - Options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.token - Reset token
+   * @param {string} options.userId - User ID
+   * @returns {Promise<EmailSendResult>} Send result
+   */
+  async sendPasswordResetEmail(options) {
+    const { to, token, userId } = options;
+    
+    const resetUrl = `${this.defaultVariables.appUrl}/reset-password?token=${token}&userId=${userId}`;
+    
+    return await this.sendEmail({
+      to,
+      templateName: 'resetPassword',
+      variables: {
+        resetUrl,
+        userEmail: to
+      }
+    });
+  }
+  
+  /**
+   * Send welcome email
+   * @param {Object} options - Options
+   * @param {string} options.to - Recipient email
+   * @param {string} [options.name] - User's name
+   * @returns {Promise<EmailSendResult>} Send result
+   */
+  async sendWelcomeEmail(options) {
+    const { to, name } = options;
+    
+    return await this.sendEmail({
+      to,
+      templateName: 'welcomeEmail',
+      variables: {
+        name: name || to.split('@')[0],
+        userEmail: to
+      }
+    });
+  }
+  
+  /**
+   * Send magic link login email
+   * @param {Object} options - Options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.token - Magic link token
+   * @returns {Promise<EmailSendResult>} Send result
+   */
+  async sendMagicLinkEmail(options) {
+    const { to, token } = options;
+    
+    const magicLinkUrl = `${this.defaultVariables.appUrl}/auth/magic-link?token=${token}&email=${encodeURIComponent(to)}`;
+    
+    return await this.sendEmail({
+      to,
+      templateName: 'magicLinkLogin',
+      variables: {
+        magicLinkUrl,
+        userEmail: to
+      }
+    });
+  }
+}
+```
+
+## 6. Better Auth Integration
+
+### 6.1 Configuration
+
+```javascript
+import { betterAuth } from 'better-auth';
+import { EmailService } from './email-service';
+
+/**
+ * Initialize Better Auth with email service
+ * @returns {Object} Better Auth instance
+ */
+export function initAuth() {
+  // Create email service
+  const emailService = new EmailService(
+    process.env.NODE_ENV === 'production'
+      ? configureNodemailerSMTP()
+      : configureTestProvider(),
+    createDefaultTemplates({
+      appName: process.env.APP_NAME || 'My App',
+      appUrl: process.env.APP_URL || 'http://localhost:5173',
+      supportEmail: process.env.SUPPORT_EMAIL || 'support@example.com'
+    }),
+    {
+      from: process.env.EMAIL_FROM || 'noreply@example.com',
+      appName: process.env.APP_NAME || 'My App',
+      appUrl: process.env.APP_URL || 'http://localhost:5173'
+    }
+  );
+  
+  // Initialize Better Auth
+  return betterAuth({
+    // ... other configurations
+    
+    // Email-related options
+    emailAndPassword: {
+      enabled: true,
+      loginRoute: '/api/auth/login',
+      registerRoute: '/api/auth/register',
+      verifyEmailRoute: '/api/auth/verify-email',
+      resetPasswordRoute: '/api/auth/reset-password',
+      // Custom email handlers
+      sendVerificationEmail: async (user, token) => {
+        return await emailService.sendVerificationEmail({
+          to: user.email,
+          token,
+          userId: user.id
+        });
+      },
+      sendPasswordResetEmail: async (user, token) => {
+        return await emailService.sendPasswordResetEmail({
+          to: user.email,
+          token,
+          userId: user.id
+        });
+      }
+    },
+    
+    magicLink: {
+      enabled: true,
+      loginRoute: '/api/auth/magic-link',
+      // Custom email handler
+      sendMagicLinkEmail: async (email, token) => {
+        return await emailService.sendMagicLinkEmail({
+          to: email,
+          token
+        });
+      }
+    },
+    
+    // Lifecycle hooks for email events
+    after: {
+      onUserCreation: async (user) => {
+        // Send welcome email for new users
+        if (user.email) {
+          await emailService.sendWelcomeEmail({
+            to: user.email,
+            name: user.display_name || user.username
+          });
+        }
+      }
+    }
+  });
+}
+```
+
+### 6.2 API Endpoint Integration
+
+```javascript
+/**
+ * Handle POST requests to verify email endpoint
+ * @param {import('@sveltejs/kit').RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  try {
+    const { token, userId } = await event.request.json();
+    
+    if (!token || !userId) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Missing token or userId'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Verify the email using Better Auth
+    const result = await auth.emailAndPassword.verifyEmail(token, userId);
+    
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: result.error || 'Failed to verify email'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Email verified successfully'
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'An unexpected error occurred'
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
+```
+
+## 7. Email Security Considerations
+
+### 7.1 Token Security
+
+1. **Expiration:** All email verification, password reset, and magic link tokens MUST have short expiration times:
+   - Verification tokens: 24 hours maximum
+   - Password reset tokens: 1 hour maximum
+   - Magic link tokens: 15 minutes maximum
+
+2. **One-Time Use:** Tokens MUST be invalidated after first use.
+
+3. **Secure Storage:** Tokens MUST be stored securely with hashing.
+
+```javascript
+/**
+ * Generate a secure token
+ * @param {number} [length=32] - Token length
+ * @returns {string} Generated token
+ */
+function generateSecureToken(length = 32) {
+  return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
+}
+
+/**
+ * Hash a token for storage
+ * @param {string} token - Plain token
+ * @returns {string} Hashed token
+ */
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Store token in database
+ * @param {string} token - Plain token
+ * @param {string} userId - User ID
+ * @param {string} type - Token type (verification, reset, magic-link)
+ * @param {Date} expiresAt - Expiration date
+ * @returns {Promise<void>}
+ */
+async function storeToken(token, userId, type, expiresAt) {
+  const hashedToken = hashToken(token);
+  
+  await db
+    .insertInto('ba_tokens')
+    .values({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      token: hashedToken,
+      type,
+      expires_at: expiresAt,
+      created_at: new Date()
+    })
+    .execute();
+}
+
+/**
+ * Verify token
+ * @param {string} token - Plain token
+ * @param {string} userId - User ID
+ * @param {string} type - Token type
+ * @returns {Promise<boolean>} Verification result
+ */
+async function verifyToken(token, userId, type) {
+  const hashedToken = hashToken(token);
+  
+  const result = await db
+    .selectFrom('ba_tokens')
+    .where('token', '=', hashedToken)
+    .where('user_id', '=', userId)
+    .where('type', '=', type)
+    .where('expires_at', '>', new Date())
+    .executeTakeFirst();
+  
+  if (!result) {
+    return false;
+  }
+  
+  // Delete token after successful verification (one-time use)
+  await db
+    .deleteFrom('ba_tokens')
+    .where('id', '=', result.id)
+    .execute();
+  
+  return true;
+}
+```
+
+### 7.2 Rate Limiting
+
+```javascript
+/**
+ * Create email rate limiter
+ * @param {Object} options - Rate limiter options
+ * @param {number} [options.maxAttempts=5] - Maximum attempts per window
+ * @param {number} [options.windowSizeMinutes=60] - Window size in minutes
+ * @returns {Function} Rate limiter middleware
+ */
+function createEmailRateLimiter(options = {}) {
+  const maxAttempts = options.maxAttempts || 5;
+  const windowSize = (options.windowSizeMinutes || 60) * 60 * 1000; // Convert to ms
+  
+  // Simple in-memory store for rate limits
+  // In production, use Redis or a database
+  const attempts = new Map();
+  
+  return async (email) => {
+    const now = Date.now();
+    const key = `email:${email}`;
+    
+    // Get current attempts for this email
+    const current = attempts.get(key) || { count: 0, timestamp: now };
+    
+    // Reset if window has passed
+    if (now - current.timestamp > windowSize) {
+      current.count = 0;
+      current.timestamp = now;
+    }
+    
+    // Check if limit exceeded
+    if (current.count >= maxAttempts) {
+      return {
+        allowed: false,
+        remainingTime: Math.ceil((current.timestamp + windowSize - now) / 1000 / 60) // minutes
+      };
+    }
+    
+    // Increment and store
+    current.count++;
+    attempts.set(key, current);
+    
+    return {
+      allowed: true,
+      attemptsRemaining: maxAttempts - current.count
+    };
+  };
+}
+```
+
+### 7.3 Email Address Validation
+
+```javascript
+/**
+ * Validate email address format
+ * @param {string} email - Email address to validate
+ * @returns {boolean} Validation result
+ */
+function validateEmailFormat(email) {
+  // Basic regex for email format validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * Normalize email address
+ * @param {string} email - Email address to normalize
+ * @returns {string} Normalized email
+ */
+function normalizeEmail(email) {
+  if (!email) return '';
+  
+  // Convert to lowercase
+  let normalized = email.toLowerCase();
+  
+  // Handle Gmail dot tricks (remove dots before @gmail.com)
+  if (normalized.endsWith('@gmail.com')) {
+    const [local, domain] = normalized.split('@');
+    normalized = `${local.replace(/\./g, '')}@${domain}`;
+  }
+  
+  return normalized;
+}
+```
+
+## 8. Email Verification Flows
+
+### 8.1 Registration with Verification
+
+```javascript
+/**
+ * Handle POST requests to register endpoint
+ * @param {import('@sveltejs/kit').RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  try {
+    const { email, password, username } = await event.request.json();
+    
+    // Validate required fields
+    if (!email || !password) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Email and password are required'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Validate email format
+    if (!validateEmailFormat(email)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Invalid email format'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check rate limits
+    const rateLimiter = createEmailRateLimiter();
+    const rateLimit = await rateLimiter(email);
+    
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Too many requests. Please try again in ${rateLimit.remainingTime} minutes.`
+        }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Register user with Better Auth
+    const result = await auth.emailAndPassword.register(email, password, {
+      username: username || email.split('@')[0],
+      // Set email_verified to false initially
+      email_verified: false
+    });
+    
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: result.error || 'Registration failed'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Generate verification token
+    const token = generateSecureToken(32);
+    
+    // Store token
+    await storeToken(
+      token,
+      result.user.id,
+      'verification',
+      new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    );
+    
+    // Send verification email
+    // This will be handled by Better Auth's sendVerificationEmail hook
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Registration successful. Please check your email for verification instructions.',
+        requiresVerification: true
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'An unexpected error occurred'
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
+```
+
+### 8.2 Password Reset Flow
+
+```javascript
+/**
+ * Handle POST requests to request password reset endpoint
+ * @param {import('@sveltejs/kit').RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  try {
+    const { email } = await event.request.json();
+    
+    if (!email) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Email is required'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Check rate limits
+    const rateLimiter = createEmailRateLimiter();
+    const rateLimit = await rateLimiter(email);
+    
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Too many requests. Please try again in ${rateLimit.remainingTime} minutes.`
+        }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Request password reset using Better Auth
+    const result = await auth.emailAndPassword.requestPasswordReset(email);
+    
+    // Always return success even if user doesn't exist (security best practice)
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'If an account exists with this email, password reset instructions have been sent.'
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'An unexpected error occurred'
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
+```
+
+## 9. Testing & Troubleshooting
+
+### 9.1 Email Preview Mode
+
+```javascript
+/**
+ * Enable email preview mode for development
+ * @param {Object} options - Preview options
+ * @param {string} [options.outputDir='./email-previews'] - Directory to save previews
+ * @returns {void}
+ */
+function enableEmailPreviewMode(options = {}) {
+  const outputDir = options.outputDir || './email-previews';
+  const fs = require('fs');
+  const path = require('path');
+  
+  // Create output directory if it doesn't exist
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+  
+  // Override email service send method to save previews
+  const originalSend = EmailService.prototype.sendEmail;
+  EmailService.prototype.sendEmail = async function(options) {
+    const result = await originalSend.call(this, options);
+    
+    // Save preview
+    const { to, templateName, variables } = options;
+    const template = this.templates[templateName];
+    
+    if (template) {
+      const mergedVariables = {
+        ...this.defaultVariables,
+        ...template.variables,
+        ...variables
+      };
+      
+      const subject = processTemplate(template.subject, mergedVariables);
+      const html = processTemplate(template.html, mergedVariables);
+      
+      const filename = `${Date.now()}-${templateName}-${to.replace(/@/g, '_at_')}.html`;
+      fs.writeFileSync(
+        path.join(outputDir, filename),
+        `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Email Preview: ${subject}</title>
+              <style>
+                body { font-family: sans-serif; padding: 20px; }
+                .preview-info { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; }
+                .email-content { border: 1px solid #ddd; padding: 20px; }
+              </style>
+            </head>
+            <body>
+              <div class="preview-info">
+                <h2>Email Preview</h2>
+                <p><strong>Template:</strong> ${templateName}</p>
+                <p><strong>To:</strong> ${to}</p>
+                <p><strong>Subject:</strong> ${subject}</p>
+                <p><strong>Variables:</strong></p>
+                <pre>${JSON.stringify(variables, null, 2)}</pre>
+              </div>
+              <div class="email-content">
+                ${html}
+              </div>
+            </body>
+          </html>
+        `
+      );
+    }
+    
+    return result;
+  };
+}
+```
+
+### 9.2 Email Logging
+
+```javascript
+/**
+ * Create email logger
+ * @returns {Object} Email logger
+ */
+function createEmailLogger() {
+  return {
+    /**
+     * Log email send attempt
+     * @param {Object} data - Log data
+     */
+    logSendAttempt: async (data) => {
+      try {
+        await db
+          .insertInto('ba_email_logs')
+          .values({
+            id: crypto.randomUUID(),
+            recipient: data.to,
+            template: data.templateName,
+            subject: data.subject,
+            status: 'SENDING',
+            created_at: new Date()
+          })
+          .execute();
+      } catch (error) {
+        console.error('Error logging email send attempt:', error);
+      }
+    },
+    
+    /**
+     * Update email send status
+     * @param {string} id - Log ID
+     * @param {string} status - New status
+     * @param {string} [messageId] - Email message ID
+     * @param {string} [error] - Error message
+     */
+    updateStatus: async (id, status, messageId, error) => {
+      try {
+        await db
+          .updateTable('ba_email_logs')
+          .set({
+            status,
+            message_id: messageId,
+            error,
+            updated_at: new Date()
+          })
+          .where('id', '=', id)
+          .execute();
+      } catch (logError) {
+        console.error('Error updating email log status:', logError);
+      }
+    }
+  };
+}
+```
+
+### 9.3 Email Testing
+
+```javascript
+/**
+ * Test email configuration
+ * @param {EmailService} emailService - Email service
+ * @returns {Promise<boolean>} Test result
+ */
+async function testEmailConfiguration(emailService) {
+  try {
+    // Send test email
+    const result = await emailService.sendEmail({
+      to: process.env.TEST_EMAIL || 'test@example.com',
+      templateName: 'welcomeEmail',
+      variables: {
+        name: 'Test User'
+      }
+    });
+    
+    if (!result.success) {
+      console.error('Email test failed:', result.error);
+      return false;
+    }
+    
+    console.log('Email test successful:', result.messageId);
+    return true;
+  } catch (error) {
+    console.error('Email test error:', error);
+    return false;
+  }
+}
+```
+
+## 10. Error Handling Integration
+
+```javascript
+/**
+ * Handle email errors
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Object} context - Error context
+ * @returns {BetterAuthError} Error object
+ */
+function handleEmailError(code, message, context = {}) {
+  // Import from Better Auth Error Handling Protocol
+  return handleError(code, message, 'email', context);
+}
+```
+
+## 11. Implementation Checklist
+
+- [ ] Configure email provider (SMTP, SendGrid, etc.)
+- [ ] Create email templates with variables
+- [ ] Implement EmailService class
+- [ ] Configure Better Auth with email hooks
+- [ ] Implement API endpoints for verification flows
+- [ ] Add token security measures
+- [ ] Implement rate limiting for email endpoints
+- [ ] Set up email preview mode for development
+- [ ] Add email logging for troubleshooting
+- [ ] Test email delivery with all templates
+
+## 12. Troubleshooting Common Issues
+
+1. **Emails Not Sending:**
+   - Check provider configuration (host, port, credentials)
+   - Verify network connectivity
+   - Check for rate limits or sending restrictions
+   - Look for error messages in logs
+   - Test provider directly
+
+2. **Emails Going to Spam:**
+   - Set up proper SPF, DKIM, and DMARC records
+   - Use a reputable sending domain
+   - Avoid spam trigger words in subject/content
+   - Ensure proper HTML formatting
+   - Include unsubscribe links where appropriate
+
+3. **Template Rendering Issues:**
+   - Verify variable replacement is working
+   - Check HTML validity
+   - Test in multiple email clients
+   - Ensure content is responsive
+
+4. **Security Concerns:**
+   - Verify tokens are properly hashed
+   - Ensure short expiration times
+   - Implement rate limiting
+   - Use HTTPS links in emails
+   - Sanitize all user inputs

@@ -1,5 +1,7 @@
 const { betterAuth } = require("better-auth");
-require('dotenv').config({ path: '.env.local' });
+// Load environment based on NODE_ENV
+const path = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
+require('dotenv').config({ path });
 
 // Validate required environment variables
 const requiredVars = {
@@ -8,7 +10,7 @@ const requiredVars = {
     DB_USER: process.env.DB_USER || 'root',
     DB_PASS: process.env.DB_PASS || 'root',
     DB_NAME: process.env.DB_NAME || 'local',
-    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET || 'development-sync-secret-v6', // Provide fallback for builds
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || 'https://localhost:5173'
 };
 

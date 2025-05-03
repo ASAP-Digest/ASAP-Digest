@@ -1,0 +1,767 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth MySQL Adapter Implementation Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standardized approach for implementing a MySQL adapter for Better Auth in a headless WordPress/SvelteKit architecture. It ensures type-safe database operations, proper integration with Kysely, and consistent query patterns across all user and session management functions. This protocol addresses the need for reliable database connectivity while maintaining compatibility with the JSDoc-based type system.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. WP-SK User Synchronization Protocol  │ // User data transfer
+│ 4. JSDoc Type Definitions Protocol      │ // Type safety
+│ 5. Better Auth Error Handling Protocol  │ // Error handling
+│ 6. MySQL Adapter Implementation (This)  │ // Database adapter
+│ 7. Better Auth Session Management Proto │ // Session handling
+└─────────────────────────────────────────┘
+```
+
+## 3. Database Schema Definition
+
+### 3.1 Users Table
+
+```sql
+CREATE TABLE ba_users (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255),
+  username VARCHAR(255),
+  display_name VARCHAR(255),
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  email_verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  image VARCHAR(255)
+);
+```
+
+### 3.2 Sessions Table
+
+```sql
+CREATE TABLE ba_sessions (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES ba_users(id) ON DELETE CASCADE
+);
+```
+
+### 3.3 Accounts Table
+
+```sql
+CREATE TABLE ba_accounts (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  provider VARCHAR(255) NOT NULL,
+  provider_account_id VARCHAR(255) NOT NULL,
+  refresh_token TEXT,
+  access_token TEXT,
+  expires_at BIGINT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE(provider, provider_account_id),
+  FOREIGN KEY (user_id) REFERENCES ba_users(id) ON DELETE CASCADE
+);
+```
+
+### 3.4 WordPress User Mapping Table
+
+```sql
+CREATE TABLE ba_wp_user_map (
+  id VARCHAR(36) PRIMARY KEY,
+  ba_user_id VARCHAR(36) NOT NULL,
+  wp_user_id VARCHAR(36) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE(wp_user_id),
+  FOREIGN KEY (ba_user_id) REFERENCES ba_users(id) ON DELETE CASCADE
+);
+```
+
+## 4. Kysely Database Type Definitions
+
+```javascript
+/**
+ * Database tables type definitions for Kysely
+ * @typedef {Object} Database
+ * @property {Users} ba_users - Users table
+ * @property {Sessions} ba_sessions - Sessions table
+ * @property {Accounts} ba_accounts - Accounts table
+ * @property {WPUserMap} ba_wp_user_map - WordPress user mapping table
+ */
+
+/**
+ * Users table type definition
+ * @typedef {Object} Users
+ * @property {string} id - User ID (UUID)
+ * @property {string} email - User email
+ * @property {string} [password] - Hashed password (if using email/pass auth)
+ * @property {string} [username] - Username
+ * @property {string} [display_name] - Display name
+ * @property {string} [first_name] - First name
+ * @property {string} [last_name] - Last name
+ * @property {boolean} [email_verified] - Whether email is verified
+ * @property {Date} created_at - Creation timestamp
+ * @property {Date} updated_at - Last update timestamp
+ * @property {string} [image] - Profile image URL
+ */
+
+/**
+ * Sessions table type definition
+ * @typedef {Object} Sessions
+ * @property {string} id - Session ID (UUID)
+ * @property {string} user_id - User ID (reference to ba_users.id)
+ * @property {string} token - Session token
+ * @property {Date} expires_at - Expiration timestamp
+ * @property {Date} created_at - Creation timestamp
+ * @property {Date} updated_at - Last update timestamp
+ */
+
+/**
+ * Accounts table type definition
+ * @typedef {Object} Accounts
+ * @property {string} id - Account ID (UUID)
+ * @property {string} user_id - User ID (reference to ba_users.id)
+ * @property {string} provider - Provider name (e.g., "google", "wordpress")
+ * @property {string} provider_account_id - Provider's account ID
+ * @property {string} [refresh_token] - OAuth refresh token
+ * @property {string} [access_token] - OAuth access token
+ * @property {number} [expires_at] - Token expiration timestamp
+ * @property {Date} created_at - Creation timestamp
+ * @property {Date} updated_at - Last update timestamp
+ */
+
+/**
+ * WordPress user mapping table type definition
+ * @typedef {Object} WPUserMap
+ * @property {string} id - Mapping ID (UUID)
+ * @property {string} ba_user_id - Better Auth user ID
+ * @property {string} wp_user_id - WordPress user ID
+ * @property {Date} created_at - Creation timestamp
+ * @property {Date} updated_at - Last update timestamp
+ */
+```
+
+## 5. MySQL Dialect Configuration
+
+```javascript
+import { createPool } from 'mysql2/promise';
+import { Kysely, MysqlDialect } from 'kysely';
+
+/**
+ * Create Kysely dialect for MySQL
+ * @param {Object} config - Database configuration
+ * @param {string} config.host - Database host
+ * @param {number} config.port - Database port
+ * @param {string} config.database - Database name
+ * @param {string} config.user - Database user
+ * @param {string} config.password - Database password
+ * @param {string} [config.socketPath] - Unix socket path (alternative to host/port)
+ * @returns {MysqlDialect} Configured MySQL dialect
+ */
+function createMysqlDialect(config) {
+  const connectionConfig = {
+    database: config.database,
+    user: config.user,
+    password: config.password,
+    // Connect via socket if available, otherwise host/port
+    ...(config.socketPath 
+      ? { socketPath: config.socketPath }
+      : { host: config.host, port: config.port })
+  };
+  
+  const pool = createPool({
+    ...connectionConfig,
+    // Connection pool configuration
+    connectionLimit: 10,
+    // Enable debugging in development
+    debug: process.env.NODE_ENV === 'development',
+    // Convert dates to JS Date objects
+    dateStrings: false,
+    // Automatically reconnect if connection is lost
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000, // 10 seconds
+    timezone: '+00:00', // Use UTC
+  });
+  
+  return new MysqlDialect({
+    pool
+  });
+}
+```
+
+## 6. Standard Adapter Functions Implementation
+
+### 6.1 User Management Functions
+
+```javascript
+/**
+ * Get user by email
+ * @param {string} email - User email
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserByEmail(email) {
+  try {
+    const user = await db
+      .selectFrom('ba_users')
+      .where('email', '=', email)
+      .selectAll()
+      .executeTakeFirst();
+    
+    return user || null;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error getting user by email', error, { email });
+    return null;
+  }
+}
+
+/**
+ * Get user by ID
+ * @param {string} id - User ID
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserById(id) {
+  try {
+    const user = await db
+      .selectFrom('ba_users')
+      .where('id', '=', id)
+      .selectAll()
+      .executeTakeFirst();
+    
+    return user || null;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error getting user by ID', error, { id });
+    return null;
+  }
+}
+
+/**
+ * Get user by WordPress user ID
+ * @param {string} wpUserId - WordPress user ID
+ * @returns {Promise<User|null>} User object or null if not found
+ */
+async function getUserByWpId(wpUserId) {
+  try {
+    const result = await db
+      .selectFrom('ba_users')
+      .innerJoin('ba_wp_user_map', 'ba_users.id', 'ba_wp_user_map.ba_user_id')
+      .where('ba_wp_user_map.wp_user_id', '=', wpUserId)
+      .selectAll('ba_users')
+      .executeTakeFirst();
+    
+    return result || null;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error getting user by WordPress ID', error, { wpUserId });
+    return null;
+  }
+}
+
+/**
+ * Create a new user
+ * @param {Object} userData - User data
+ * @param {string} userData.email - User email
+ * @param {string} [userData.password] - Hashed password
+ * @param {string} [userData.username] - Username
+ * @param {string} [userData.display_name] - Display name
+ * @param {string} [userData.first_name] - First name
+ * @param {string} [userData.last_name] - Last name
+ * @returns {Promise<User>} Created user object
+ */
+async function createUser(userData) {
+  try {
+    // Generate UUID for new user
+    const id = crypto.randomUUID();
+    
+    const insertData = {
+      id,
+      email: userData.email,
+      password: userData.password,
+      username: userData.username || userData.email.split('@')[0],
+      display_name: userData.display_name || userData.username || userData.email.split('@')[0],
+      first_name: userData.first_name || null,
+      last_name: userData.last_name || null,
+      email_verified: userData.email_verified || false,
+      image: userData.image || null
+    };
+    
+    await db
+      .insertInto('ba_users')
+      .values(insertData)
+      .execute();
+    
+    return await getUserById(id);
+  } catch (error) {
+    throw handleDatabaseError('DB_QUERY_ERROR', 'Error creating user', error, { email: userData.email });
+  }
+}
+
+/**
+ * Update an existing user
+ * @param {string} id - User ID
+ * @param {Object} userData - User data to update
+ * @returns {Promise<User>} Updated user object
+ */
+async function updateUser(id, userData) {
+  try {
+    await db
+      .updateTable('ba_users')
+      .set(userData)
+      .where('id', '=', id)
+      .execute();
+    
+    return await getUserById(id);
+  } catch (error) {
+    throw handleDatabaseError('DB_QUERY_ERROR', 'Error updating user', error, { id });
+  }
+}
+
+/**
+ * Link WordPress user to Better Auth user
+ * @param {string} wpUserId - WordPress user ID
+ * @param {string} baUserId - Better Auth user ID
+ * @returns {Promise<Object>} Created mapping record
+ */
+async function linkWpUser(wpUserId, baUserId) {
+  try {
+    // Check if mapping already exists
+    const existingMapping = await db
+      .selectFrom('ba_wp_user_map')
+      .where('wp_user_id', '=', wpUserId)
+      .selectAll()
+      .executeTakeFirst();
+    
+    if (existingMapping) {
+      // Update if the mapping exists but points to a different BA user
+      if (existingMapping.ba_user_id !== baUserId) {
+        await db
+          .updateTable('ba_wp_user_map')
+          .set({ ba_user_id: baUserId })
+          .where('wp_user_id', '=', wpUserId)
+          .execute();
+      }
+      return existingMapping;
+    }
+    
+    // Create new mapping
+    const id = crypto.randomUUID();
+    
+    await db
+      .insertInto('ba_wp_user_map')
+      .values({
+        id,
+        ba_user_id: baUserId,
+        wp_user_id: wpUserId
+      })
+      .execute();
+    
+    return {
+      id,
+      ba_user_id: baUserId,
+      wp_user_id: wpUserId
+    };
+  } catch (error) {
+    throw handleDatabaseError('DB_QUERY_ERROR', 'Error linking WordPress user', error, { wpUserId, baUserId });
+  }
+}
+```
+
+### 6.2 Session Management Functions
+
+```javascript
+/**
+ * Get session by token
+ * @param {string} token - Session token
+ * @returns {Promise<Session|null>} Session object or null if not found
+ */
+async function getSessionByToken(token) {
+  try {
+    const session = await db
+      .selectFrom('ba_sessions')
+      .where('token', '=', token)
+      .where('expires_at', '>', new Date())
+      .selectAll()
+      .executeTakeFirst();
+    
+    return session || null;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error getting session by token', error, { token });
+    return null;
+  }
+}
+
+/**
+ * Create a new session
+ * @param {Object} sessionData - Session data
+ * @param {string} sessionData.userId - User ID
+ * @param {string} sessionData.token - Session token
+ * @param {Date} sessionData.expiresAt - Expiration date
+ * @returns {Promise<Session>} Created session object
+ */
+async function createSession(sessionData) {
+  try {
+    const id = crypto.randomUUID();
+    
+    await db
+      .insertInto('ba_sessions')
+      .values({
+        id,
+        user_id: sessionData.userId,
+        token: sessionData.token,
+        expires_at: sessionData.expiresAt
+      })
+      .execute();
+    
+    return {
+      id,
+      userId: sessionData.userId,
+      token: sessionData.token,
+      expiresAt: sessionData.expiresAt
+    };
+  } catch (error) {
+    throw handleDatabaseError('DB_QUERY_ERROR', 'Error creating session', error, { userId: sessionData.userId });
+  }
+}
+
+/**
+ * Delete a session
+ * @param {string} token - Session token
+ * @returns {Promise<boolean>} Success status
+ */
+async function deleteSession(token) {
+  try {
+    await db
+      .deleteFrom('ba_sessions')
+      .where('token', '=', token)
+      .execute();
+    
+    return true;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error deleting session', error, { token });
+    return false;
+  }
+}
+
+/**
+ * Delete all sessions for a user
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+async function deleteAllUserSessions(userId) {
+  try {
+    await db
+      .deleteFrom('ba_sessions')
+      .where('user_id', '=', userId)
+      .execute();
+    
+    return true;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error deleting user sessions', error, { userId });
+    return false;
+  }
+}
+```
+
+### 6.3 Account Management Functions
+
+```javascript
+/**
+ * Create an account link (for OAuth providers)
+ * @param {Object} accountData - Account data
+ * @param {string} accountData.userId - User ID
+ * @param {string} accountData.provider - Provider name
+ * @param {string} accountData.providerAccountId - Provider's account ID
+ * @param {string} [accountData.refreshToken] - OAuth refresh token
+ * @param {string} [accountData.accessToken] - OAuth access token
+ * @param {number} [accountData.expiresAt] - Token expiration timestamp
+ * @returns {Promise<Object>} Created account object
+ */
+async function createAccount(accountData) {
+  try {
+    const id = crypto.randomUUID();
+    
+    await db
+      .insertInto('ba_accounts')
+      .values({
+        id,
+        user_id: accountData.userId,
+        provider: accountData.provider,
+        provider_account_id: accountData.providerAccountId,
+        refresh_token: accountData.refreshToken || null,
+        access_token: accountData.accessToken || null,
+        expires_at: accountData.expiresAt || null
+      })
+      .execute();
+    
+    return {
+      id,
+      userId: accountData.userId,
+      provider: accountData.provider,
+      providerAccountId: accountData.providerAccountId
+    };
+  } catch (error) {
+    throw handleDatabaseError('DB_QUERY_ERROR', 'Error creating account', error, { 
+      userId: accountData.userId,
+      provider: accountData.provider
+    });
+  }
+}
+
+/**
+ * Get account by provider details
+ * @param {string} provider - Provider name
+ * @param {string} providerAccountId - Provider's account ID
+ * @returns {Promise<Object|null>} Account object or null if not found
+ */
+async function getAccountByProvider(provider, providerAccountId) {
+  try {
+    const account = await db
+      .selectFrom('ba_accounts')
+      .where('provider', '=', provider)
+      .where('provider_account_id', '=', providerAccountId)
+      .selectAll()
+      .executeTakeFirst();
+    
+    return account || null;
+  } catch (error) {
+    handleDatabaseError('DB_QUERY_ERROR', 'Error getting account by provider', error, { provider, providerAccountId });
+    return null;
+  }
+}
+```
+
+## 7. Better Auth Adapter Integration
+
+```javascript
+import { betterAuth } from 'better-auth';
+import { createMysqlDialect } from './mysql-dialect';
+import {
+  getUserByEmail,
+  getUserById,
+  createUser,
+  updateUser,
+  getSessionByToken,
+  createSession,
+  deleteSession,
+  getUserByWpId,
+  linkWpUser,
+  deleteAllUserSessions,
+  createAccount,
+  getAccountByProvider
+} from './adapter-functions';
+
+/**
+ * Initialize Better Auth with MySQL adapter
+ * @param {Object} config - Configuration options
+ * @returns {Object} Configured Better Auth instance
+ */
+export function initBetterAuth(config) {
+  const dbConfig = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '3306'),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    socketPath: process.env.DB_SOCKET_PATH || undefined
+  };
+  
+  const dialect = createMysqlDialect(dbConfig);
+  
+  // Define the custom adapter
+  const adapter = {
+    getUserByEmail,
+    getUserById,
+    createUser,
+    updateUser,
+    getSessionByToken,
+    createSession,
+    deleteSession,
+    // Custom functions for WordPress integration
+    getUserByWpId,
+    linkWpUser,
+    // Additional functions
+    deleteAllUserSessions,
+    createAccount,
+    getAccountByProvider
+  };
+  
+  // Initialize Better Auth
+  return betterAuth({
+    secret: process.env.BETTER_AUTH_SECRET,
+    sessionCookieName: 'better_auth_session',
+    sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // 30 days
+    
+    // Database Configuration
+    database: {
+      dialect: dialect,
+      type: "mysql",
+    },
+    
+    // Custom Adapter
+    adapter: adapter,
+    
+    // CORS Configuration for Headless Architecture
+    cors: {
+      origin: [process.env.FRONTEND_URL || 'http://localhost:5173'],
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-WP-Sync-Secret'],
+    },
+    
+    // Server-to-Server Authentication Config
+    serverToServer: {
+      enabled: true,
+      syncSecret: process.env.WP_SYNC_SECRET,
+      allowedSources: ['wordpress'],
+      syncFields: ['email', 'displayName', 'firstName', 'lastName', 'roles'],
+    },
+    
+    // Additional configuration options...
+    ...config
+  });
+}
+```
+
+## 8. Transaction Support
+
+```javascript
+/**
+ * Execute database operations within a transaction
+ * @param {Function} operations - Function containing operations to execute
+ * @returns {Promise<any>} Result of operations
+ */
+async function withTransaction(operations) {
+  return await db.transaction().execute(async (trx) => {
+    try {
+      return await operations(trx);
+    } catch (error) {
+      throw handleDatabaseError('DB_TRANSACTION_ERROR', 'Transaction failed', error);
+    }
+  });
+}
+```
+
+## 9. Error Handling Integration
+
+```javascript
+/**
+ * Handle database errors with Better Auth Error Protocol
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Error} [originalError] - Original database error
+ * @param {Object} [context] - Additional context
+ * @returns {BetterAuthError} Standardized error object
+ */
+function handleDatabaseError(code, message, originalError, context = {}) {
+  // Import from Better Auth Error Handling Protocol
+  return handleDatabaseError(code, message, originalError, context);
+}
+```
+
+## 10. Testing & Verification
+
+### 10.1 Connection Testing
+
+```javascript
+/**
+ * Test database connection
+ * @returns {Promise<boolean>} Connection status
+ */
+async function testConnection() {
+  try {
+    // Simple query to test connection
+    await db.selectFrom('ba_users')
+      .select(db.fn.count('id').as('count'))
+      .executeTakeFirst();
+    
+    return true;
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    return false;
+  }
+}
+```
+
+### 10.2 Verification Checklist
+
+- [ ] Database connection can be established using the dialect configuration
+- [ ] All required tables exist in the database
+- [ ] All adapter functions handle errors appropriately
+- [ ] Transaction support works correctly
+- [ ] WordPress user mapping functions work as expected
+- [ ] Better Auth instance initializes successfully with the adapter
+- [ ] Session creation and validation functions work correctly
+- [ ] User creation and lookup functions work correctly
+- [ ] Type definitions are correctly applied to all database operations
+
+## 11. Example Usage
+
+```javascript
+// src/lib/server/auth.js
+import { initBetterAuth } from './better-auth-mysql';
+
+// Initialize Better Auth with MySQL adapter
+export const auth = initBetterAuth({
+  // Additional configuration options
+  emailAndPassword: {
+    enabled: true,
+    loginRoute: '/api/auth/login',
+    registerRoute: '/api/auth/register',
+  },
+  
+  // Lifecycle hooks
+  after: {
+    onUserCreation: async (user) => {
+      console.log(`User created: ${user.id}`);
+      // Additional custom logic
+    },
+    onSessionCreation: async (session, user) => {
+      console.log(`Session created for user: ${user.id}`);
+      // Additional custom logic
+    }
+  }
+});
+```
+
+## 12. Implementation Steps
+
+1. Set up database schema with required tables
+2. Implement Kysely type definitions
+3. Create MySQL dialect configuration
+4. Implement adapter functions for user and session management
+5. Implement WordPress user mapping functions
+6. Integrate with Better Auth Error Handling Protocol
+7. Test all adapter functions
+8. Initialize Better Auth with the adapter
+9. Test full authentication flow
+
+## 13. Troubleshooting
+
+### 13.1 Common Database Connection Issues
+
+- **Socket vs. Host/Port:** Ensure you're consistently using either socket or host/port connection, not mixing them.
+- **Connection Pool Exhaustion:** Monitor pool size and connection usage; adjust limits if needed.
+- **Transaction Deadlocks:** Review transaction isolation levels and lock timeouts.
+
+### 13.2 Query Performance
+
+- **Add Indexes:** Ensure tables have appropriate indexes, especially for commonly queried fields:
+  ```sql
+  CREATE INDEX ba_users_email_idx ON ba_users(email);
+  CREATE INDEX ba_sessions_token_idx ON ba_sessions(token);
+  CREATE INDEX ba_sessions_user_id_idx ON ba_sessions(user_id);
+  CREATE INDEX ba_wp_user_map_wp_user_id_idx ON ba_wp_user_map(wp_user_id);
+  ```
+
+- **Query Optimization:** Use Kysely's query builder effectively to optimize SQL queries.

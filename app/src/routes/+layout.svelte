@@ -94,83 +94,129 @@
   onMount(() => {
     if (!browser) return; // Only run client-side
 
-    // --- V5 Logic Starts ---
-    log("[Layout V5 Mount] Checking for existing Better Auth session..."); 
+    // --- V6 Auto Login Logic ---
+    const startTime = Date.now();
+    log("[Layout V6] Checking for existing Better Auth session...", "info"); 
     if (hasBetterAuthSession) {
-        log("[Layout V5 Mount] Active Better Auth session found. Auto-login flow stopped.");
+        log("[Layout V6] Active Better Auth session found. Auto-login flow stopped.", "info");
+        log(`[Layout V6] User already logged in as: ${$page.data.user?.email || 'Unknown'}`, "info");
     } else {
-        log("[Layout V5 Mount] No active Better Auth session. Triggering background WP session check...");
+        log("[Layout V6] No active Better Auth session. Triggering server-to-server check...", "info");
         
-        // Define the new SK backend endpoint URL
+        // Define the SK backend endpoint URL
         const checkWpSessionUrl = '/api/auth/check-wp-session'; 
+        log(`[Layout V6] Using endpoint: ${checkWpSessionUrl}`, "debug");
 
-        // Asynchronous function to perform the background check
+        // Asynchronous function to perform the background server-to-server check
+        // This will continuously retry in the background until successful
         const checkWpSession = async () => {
           try {
-            // Generate simple timestamp nonce for minimal security
-            const nonce = Date.now().toString();
-            
+                log(`[Layout V6] Sending fetch request to ${checkWpSessionUrl}...`, "debug");
+                // This is a true server-to-server check that doesn't rely on cookies
+                const startFetchTime = Date.now();
             const response = await fetch(checkWpSessionUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Protection': 'none', // Signal we're skipping CSRF check for this background operation
-                'X-Request-Nonce': nonce
+                        'X-CSRF-Protection': 'none' // Add header to bypass CSRF validation
               },
-              credentials: 'include', // CRITICAL: Send cookies
-              // Add body to help with CSRF validation if needed
               body: JSON.stringify({ 
-                timestamp: nonce,
-                source: 'background-check'
-              })
+                        clientTimestamp: Date.now(),
+                    }),
             });
+                const fetchDurationMs = Date.now() - startFetchTime;
+                log(`[Layout V6] Server response received in ${fetchDurationMs}ms with status: ${response.status}`, "debug");
 
             if (!response.ok) {
-              // Handle HTTP errors (e.g., 500 internal server error)
-              log(`[Layout V5 Mount] Background check failed with HTTP status: ${response.status}`, 'error');
-              if (response.status === 401 || response.status === 403) {
-                // Don't show error toast for auth failures - expected if user isn't logged in
-                log('[Layout V5 Mount] User not authenticated with WordPress. No auto-login possible.', 'info');
-              } else {
-                // Show error toast for other server errors
-                toasts.show("Login Check Failed", `Server error (${response.status}).`, "destructive");
-              }
-              return; 
+                    log(`[Layout V6] Server returned error status: ${response.status} ${response.statusText}`, "error");
+                    // Will retry again after retryIntervalMs
+                    return false;
             }
 
-            const result = await response.json();
+            const data = await response.json();
+                log(`[Layout V6] Server response parsed successfully: ${JSON.stringify(data)}`, "debug");
 
-            if (result.success) {
-              log("[Layout V5 Mount] Background WP sync successful. SK Session established via Set-Cookie header.");
-              log("[Layout V5 Mount] User data:", JSON.stringify(result.user || {}), 'info');
-              
-              // Show success toast
-              toasts.show("Authentication Sync", `Welcome ${result.user?.displayName || 'back'}!`, "default");
-              
-              // Trigger reactive UI update by invalidating session data
-              invalidateAll(); // Reloads all load functions
-              log("[Layout V5 Mount] invalidateAll() called to refresh session state.");
+            // Verify the response contains a valid user object
+            if (data.success && data.user) {
+                    log(`[Layout V6] Auto-login successful! User: ${data.user.email}`, "info");
+                    
+                    if (data.created) {
+                        log(`[Layout V6] A new Better Auth user was created during sync`, "info");
             } else {
-              // Handle specific errors returned from the backend
-              const errorReason = result.error || 'unknown';
-              log(`[Layout V5 Mount] Background WP check failed. User remains logged out of SK. Reason: ${errorReason}`, 'warn');
-              
-              // Only show toast for technical errors, not auth failures
-              if (errorReason !== 'wp_session_invalid' && errorReason !== 'wp_cookie_missing') {
-                toasts.show("Login Sync Failed", "Could not verify WordPress session.", "destructive");
-              }
-            }
-
-          } catch (error) {
-            log('[Layout V5 Mount] Error during background WP session check fetch:', error, 'error');
-            toasts.show("Login Check Error", "Could not check WordPress session.", "destructive");
+                        log(`[Layout V6] Existing Better Auth user was used`, "info");
+                    }
+                    
+                    // Update the UI reactively without refreshing the page
+                    log(`[Layout V6] Updating UI via SvelteKit invalidation...`, "info");
+                    invalidateAll(); // This tells SvelteKit to re-fetch all data
+                    
+                    // Auto-login successful, return true to stop retry loop
+                    return true;
+                } else {
+                    // Handle error case
+                    log(`[Layout V6] Auto-login failed: ${data.error || 'Unknown error'}`, "error");
+                    if (data.details) {
+                        log(`[Layout V6] Error details: ${data.details}`, "debug");
+                    }
+                    // Will retry again after retryIntervalMs
+                    return false;
+                }
+          } catch (err) {
+            // Handle unexpected errors
+            log(`[Layout V6] Error during auto-login check: ${err.message}`, "error");
+            // Will retry again after retryIntervalMs
+            return false;
           }
         };
 
-        // Execute the background check
-        checkWpSession();
+        // Configurable auto-login retry settings
+        const initialDelayMs = 500;
+        const retryIntervalMs = 30000; // 30 seconds between retries 
+        // Remove maxRetryDurationMs to allow indefinite retries
+        let autoLoginIntervalId = null;
+        let firstAttemptCompleted = false;
+        let startTime = Date.now();
+        let retryCount = 0;
+
+        // Start the initial auto-login check with a small delay
+        log(`[Layout V6] Starting auto-login check with ${initialDelayMs}ms delay...`, "debug");
+        setTimeout(async () => {
+            // Make the initial attempt
+            const success = await checkWpSession();
+            firstAttemptCompleted = true;
+            
+            // If first attempt successful, we're done
+            if (success) {
+                log(`[Layout V6] Auto-login successful on first attempt`, "info");
+                return;
+            }
+            
+            // If unsuccessful, start the retry interval
+            log(`[Layout V6] Initial auto-login attempt failed, starting retry interval (every ${retryIntervalMs/1000}s)`, "info");
+            
+            // Begin continuous retry interval without max duration limit
+            autoLoginIntervalId = setInterval(async () => {
+                retryCount++;
+                
+                // Attempt auto-login again
+                log(`[Layout V6] Retrying auto-login (attempt #${retryCount})...`, "info");
+                const success = await checkWpSession();
+                
+                // If successful, clear the interval
+                if (success) {
+                    log(`[Layout V6] Auto-login successful after ${retryCount} retries, stopping further attempts`, "info");
+                    if (autoLoginIntervalId) clearInterval(autoLoginIntervalId);
+                }
+            }, retryIntervalMs);
+            
+        }, initialDelayMs);
+
+        onDestroy(() => {
+            // Clean up interval on component destruction
+            if (autoLoginIntervalId) clearInterval(autoLoginIntervalId);
+        });
     }
-    // --- V5 Logic Ends ---
+    // --- End V6 Auto Login Logic ---
 
     // --- SSE Listener Setup (Remains relevant for live updates) --- 
     let localEventSource = null;

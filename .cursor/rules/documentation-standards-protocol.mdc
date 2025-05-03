@@ -3,7 +3,7 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Documentation Standards Protocol (Mintlify) v1.0
+# Documentation Standards Protocol (Mintlify) v1.1
 
 ## 1. Purpose
 This protocol defines the standards for creating, writing, and maintaining project documentation hosted using Mintlify (https://mintlify.com). It ensures consistency, clarity, discoverability, and leverages Mintlify's features effectively. This applies to all user guides, technical references, API documentation, and internal process documents intended for the hosted documentation site.
@@ -38,13 +38,14 @@ This protocol defines the standards for creating, writing, and maintaining proje
 - **Naming Conventions:**
     - Use lowercase `kebab-case` for filenames and directories (e.g., `getting-started.md`, `api-reference/`).
     - Use `index.md` (or `index.mdx`) for the main page within a directory/category.
-- **Configuration:** The core navigation and project settings MUST be managed in the `mint.json` file at the root of the documentation source directory.
+- **Configuration:** The core navigation and project settings MUST be managed in the `mint.json` file (or `docs.json`) at the root of the documentation source directory.
 
-## 5. Navigation (`mint.json`)
-- **Logical Grouping:** Structure the `"navigation"` array in `mint.json` logically, reflecting user workflows or conceptual areas (e.g., "Getting Started", "Core Concepts", "API Reference", "Guides", "Protocols").
+## 5. Navigation (`mint.json` or `docs.json`)
+- **Logical Grouping:** Structure the `"navigation"` array in the config file logically, reflecting user workflows or conceptual areas (e.g., "Getting Started", "Core Concepts", "API Reference", "Guides", "Protocols").
 - **Clear Titles:** Use concise and descriptive titles for navigation groups and pages.
 - **Ordering:** Arrange groups and pages within groups in a logical order (e.g., introductory topics first).
-- **Versioning (If Applicable):** Use Mintlify's versioning features if documenting multiple versions of the project/API. Configure versions in `mint.json`.
+- **Tabs Structure:** For larger documentation sites, organize content into tabs that group related sections (e.g., "Guides", "API Reference", "Components").
+- **Versioning (If Applicable):** Use Mintlify's versioning features if documenting multiple versions of the project/API. Configure versions in the config file.
 
 ## 6. Content Writing Standards
 
@@ -62,42 +63,104 @@ This protocol defines the standards for creating, writing, and maintaining proje
     - Use *italics* sparingly for emphasis or defining terms.
 - **Code Blocks:**
     - Use triple backticks (` ``` `) for all code examples.
-    - MUST include a language specifier (e.g., `javascript`, `bash`, `json`, `php`, `svelte`).
-    - Keep examples concise and focused on the point being illustrated.
+    - MUST include a language specifier (e.g., `javascript`, `bash`, `json`, `php`, `svelte`, `mermaid`).
+    - Keep e point being illustrated.
     - Provide context for code examples (e.g., "Add the following to your `+server.js` file:").
 - **Links:**
-    - Use descriptive link text (e.g., `[Refer to the Authentication Guide](mdc:authentication-guide.md)` instead of `[Click here]`).
+    - Use descriptive link text (e.g., `[Refer to the Authentication Guide](/api-reference/auth/introduction)` instead of `[Click here]`).
     - Use relative paths for internal links within the documentation.
     - Use full URLs for external links.
 
 ### 6.3 Mintlify Components & Features
+- **Frontmatter:** Every document MUST include frontmatter with at least `title` and `description`:
+  ```markdown
+  ---
+  title: "Authentication"
+  description: "Overview of authentication methods"
+  ---
+  ```
+
 - **Callouts/Alerts:** Use Mintlify's alert components (`<Note>`, `<Warning>`, `<Info>`, `<Tip>`) appropriately to highlight important information.
     ```markdown
     <Note>This feature is currently in beta.</Note>
     <Warning>Changing this setting can have unintended side effects.</Warning>
     ```
-- **Code Snippets & Tabs:** Use `<CodeGroup>` or language tabs for showing code examples in multiple languages or variations.
+- **Cards and CardGroups:** Use cards to create visual navigation or feature highlights:
+    ```markdown
+    <CardGroup cols={2}>
+      <Card title="Authentication" icon="lock" href="/api-reference/auth/introduction">
+        Learn about authentication methods
+      </Card>
+      <Card title="API Reference" icon="code" href="/api-reference/introduction">
+        Explore the API endpoints
+      </Card>
+    </CardGroup>
+    ```
+- **Code Snippets & Tabs:** Use `<CodeGroup>` for showing code examples in multiple languages or variations:
+    ```markdown
+    <CodeGroup>
+    ```bash cURL
+    curl -X POST https://api.example.com/v1/users \
+      -H "Authorization: Bearer {token}" \
+      -H "Content-Type: application/json" \
+      -d '{"name": "Example User"}'
+    ```
+
+    ```javascript Node.js
+    const response = await fetch('https://api.example.com/v1/users', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'Example User' }),
+    });
+    ```
+    </CodeGroup>
+    ```
 - **API Reference:**
-    *   **Primary Method (Mandatory):** The primary "API Reference" section/tab defined in the navigation structure (`mint.json` or `docs.json`) MUST use Mintlify's `openapi` field to automatically populate pages from the specification file (e.g., `"openapi": "/api-reference/openapi.json"`). This ensures the core reference is always synchronized with the generated spec.
+    *   **Primary Method (Mandatory):** The primary "API Reference" section/tab defined in the navigation structure (`mint.json` or `docs.json`) MUST use Mintlify's `openapi` field to automatically populate pages frocification file (e.g., `"openapi": "/api-reference/openapi.json"`). This ensures the core reference is always synchronized with the generated spec.
     *   **Manual Supplementation:** Manual MDX pages SHOULD only be used to provide *additional* context, guides, or tutorials *related* to specific API endpoints or schemas. To embed auto-generated details within a manual page, use the `openapi` frontmatter key:
         ```md
         ---
-        title: "Guide: Using the Digests API"
-        openapi: "GET /api/digests/{id}"
+        title: "WordPress Session Check"
+        description: "Automatically authenticate users with active WordPress sessions"
+        openapi: "POST /api/auth/check-wp-session"
         ---
 
-        This page provides extra context about retrieving digests...
+        ## Overview
 
-        {/* Mintlify automatically renders the OpenAPI details for GET /api/digests/{id} here */}
-
-        ### Further Examples
-        {/* Add manual examples or explanations here */}
+        This endpoint provides server-to-server communication...
         ```
-    *   **Schema Definitions:** OpenAPI schemas defined in the `/components/schemas` section of the spec can be rendered on separate pages using the `openapi-schema` frontmatter key (e.g., `openapi-schema: Digest`).
+    *   **Schema Definitions:** OpenAPI schemas defined in the `/components/schemas` section of the spec can be rendered on separate pages using the `openapi-schema` frontmatter key (e.g., `openapi-schema: User`).
     *   **Avoid Duplication:** Do NOT manually duplicate core endpoint details (parameters, request/response schemas) that are covered by the OpenAPI spec generation. Focus manual pages on usage examples, workflows, and conceptual explanations.
+- **Diagrams:** Use Mermaid diagrams to visually explain processes or architecture:
+    ```markdown
+    ```mermaid
+    sequenceDiagram
+        participant User
+        participant API
+        participant Database
+        
+        User->>API: Request data
+        API->>Database: Query data
+        Database-->>API: Return results
+        API-->>User: Send response
+    ```
+    ```
+- **Parameter Documentation:** Use Mintlify's parameter field components for clearly documenting API parameters:
+    ```markdown
+    <ParamField body="username" type="string" required>
+      The username for authentication
+    </ParamField>
+    
+    <ResponseField name="success" type="boolean" required>
+      Indicates whether the operation was successful
+    </ResponseField>
+    ```
 - **Images & Videos:**
     - Place images in a designated assets folder (e.g., `docs/assets/images/`).
-    - Use relative paths in Markdown image tags (`![Alt text](mdc:assets/images/screenshot.png)`).
+    - Use relative paths in Markdown image tags (`![Alt text](/assets/images/screenshot.png)`).
     - MUST provide descriptive `alt` text for all images.
     - Use Mintlify's `<img/>` component for advanced features like zoom.
 - **Search:** Write clear headings and use relevant keywords to improve Mintlify's search functionality.
@@ -108,17 +171,155 @@ This protocol defines the standards for creating, writing, and maintaining proje
 - **Synchronization:**
     - **Task Trigger:** When a task affecting user-facing functionality, API contracts, or core processes is completed (`✅`), a sub-task or checklist item MUST be included to update relevant documentation.
     - **Regular Audits:** Periodically review documentation sections for accuracy, completeness, and clarity.
+    - **Validation:** Use validation scripts to ensure documentation follows standards (see Section 9).
 - **Deprecation:** Clearly mark deprecated features or APIs within the documentation, providing migration paths if available. Update navigation to de-emphasize or remove deprecated sections.
 
 ## 8. Verification Checklist (For New/Updated Docs)
 - [ ] Does the content adhere to the defined Tone & Style?
 - [ ] Is the Markdown formatting correct (headings, lists, inline, code blocks with language)?
-- [ ] Are Mintlify components (Alerts, CodeGroups) used effectively?
+- [ ] Are Mintlify components (Alerts, CodeGroups, Cards) used effectively?
 - [ ] Are internal/external links working and descriptive?
 - [ ] Are images correctly linked, placed, and include `alt` text?
 - [ ] Is the content technically accurate and up-to-date?
-- [ ] Is the page correctly placed in the navigation structure (`mint.json`)?
+- [ ] Is the page correctly placed in the navigation structure (config file)?
+- [ ] Does the document include proper frontmatter (title, description)?
+- [ ] Does each page include an overview section explaining its purpose?
 - [ ] (If API Docs) Is the API reference accurate and complete?
-- [ ] (If API Docs) Is the primary reference generated via OpenAPI spec in `mint.json`?
+- [ ] (If API Docs) Is the primary reference generated via OpenAPI spec in the config file?
 - [ ] (If API Docs) Are manual MDX pages supplementing, not duplicating, the OpenAPI spec details?
 - [ ] Is the information discoverable via navigation and search?
+
+## 9. Documentation Validation
+
+Documentation should be validated both manually and automatically to ensure it adheres to these standards:
+
+### 9.1 Automated Validation
+Create scripts to validate documentation consistency and structure:
+
+```javascript
+// Example validation script for Mintlify docs
+const validateDocs = () => {
+  // Check frontmatter exists and has required fields
+  // Verify code blocks have language specifiers
+  // Ensure proper section structure (Overview, etc.)
+  // Validate links are working
+  // Check navigation structure in config file
+};
+```
+
+### 9.2 Manual Reviews
+Conduct regular reviews of documentation to check:
+- Accuracy of technical content
+- Clarity and readability
+- Completeness of information
+- Alignment with current product features
+
+## 10. Examples of Well-Structured Documentation
+
+### 10.1 API Endpoint Documentation
+
+```markdown
+---
+title: "User Authentication"
+description: "Authenticate users and retrieve access tokens"
+openapi: "POST /api/auth/login"
+---
+
+## Overview
+
+The authentication endpoint allows clients to obtain access tokens by providing valid credentials.
+
+<Note>
+All authentication endpoints require HTTPS.
+</Note>
+
+## Use Cases
+
+- **User Login:** Authenticate end-users in web or mobile applications
+- **Service Authentication:** Obtain tokens for server-to-server API access
+- **Token Refresh:** Update expired tokens without requiring re-authentication
+
+## Implementation Example
+
+```javascript
+async function login(username, password) {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ username, password })
+  });
+  
+  const data = await response.json();
+  
+  if (data.token) {
+    // Store token securely
+    localStorage.setItem('auth_token', data.token);
+    return true;
+  }
+  
+  return false;
+}
+```
+```
+
+### 10.2 Concept Documentation
+
+```markdown
+---
+title: "Authentication Overview"
+description: "Learn about the authentication mechanisms in our platform"
+---
+
+# Authentication Overview
+
+Our platform provides multiple authentication mechanisms to secure your data while ensuring a seamless user experience.
+
+## Authentication Methods
+
+<CardGroup cols={2}>
+  <Card title="Username/Password" icon="key" href="/api/auth/login">
+    Traditional username and password authentication
+  </Card>
+  <Card title="OAuth 2.0" icon="arrow-right-to-bracket" href="/api/auth/oauth">
+    Single sign-on with third-party providers
+  </Card>
+  <Card title="API Keys" icon="signature" href="/api/auth/api-keys">
+    Machine-to-machine authentication
+  </Card>
+  <Card title="JWT Tokens" icon="ticket" href="/api/auth/tokens">
+    JSON Web Token implementation details
+  </Card>
+</CardGroup>
+
+## Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant AuthServer
+    participant API
+    
+    User->>Client: Enter credentials
+    Client->>AuthServer: POST /auth/login
+    AuthServer->>AuthServer: Validate credentials
+    AuthServer->>Client: Return JWT token
+    Client->>API: Request with Authorization header
+    API->>API: Validate token
+    API->>Client: Return requested data
+```
+
+## Best Practices
+
+<Warning>
+Never store authentication tokens in client-side code or expose them in URLs.
+</Warning>
+
+- Use HTTPS for all authentication requests
+- Implement proper token storage mechanisms
+- Set appropriate token expiration times
+- Use refresh tokens for extended sessions
+- Implement rate limiting on authentication endpoints
+```

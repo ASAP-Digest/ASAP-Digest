@@ -1,0 +1,2736 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Hooks and Lifecycle Events Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes a standardized approach for implementing and utilizing hooks and lifecycle events within Better Auth in a headless WordPress/SvelteKit architecture. It ensures consistent hook implementation, type-safe event handling, and proper integration with the overall authentication flow. The protocol provides a comprehensive framework for extending Better Auth functionality at specific lifecycle points without modifying core authentication logic.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Top-level config and hook setup
+│ 2. WP-SK User Synchronization Protocol  │ // WP sync event hooks
+│ 3. Better Auth Session Management Proto │ // Session lifecycle hooks
+│ 4. JSDoc Type Definitions Protocol      │ // Type definitions for hooks
+│ 5. Better Auth Error Handling Protocol  │ // Error hooks
+│ 6. Better Auth Hooks Protocol (This)    │ // Hook implementation
+└─────────────────────────────────────────┘
+```
+
+## 3. Hook Registration and Structure
+
+### 3.1 Available Lifecycle Events
+
+Better Auth provides specific lifecycle hooks that can be registered in the `after` configuration object:
+
+```javascript
+/**
+ * @typedef {Object} BetterAuthHooks
+ * @property {function(User): Promise<void>} [onUserCreation] - Called after a user is created
+ * @property {function(Session): Promise<void>} [onSessionCreation] - Called after a session is created
+ * @property {function(Session): Promise<void>} [onSessionDeletion] - Called when a session is deleted
+ * @property {function(string, Object): Promise<void>} [onSuccessfulLogin] - Called after successful login
+ * @property {function(string, Object): Promise<void>} [onFailedLogin] - Called after failed login attempt
+ * @property {function(User, Object): Promise<void>} [onWpUserSync] - Custom hook for WP user synchronization
+ * @property {function(User, Object): Promise<void>} [onAccountLink] - Called after account linking
+ * @property {function(User, string): Promise<void>} [onPasswordReset] - Called after password reset
+ * @property {function(Error): Promise<void>} [onError] - Called when auth errors occur
+ */
+
+export const auth = betterAuth({
+  // Other configuration...
+  
+  /**
+   * Lifecycle hooks registration
+   * @type {BetterAuthHooks}
+   */
+  after: {
+    onUserCreation: async (user) => {
+      // Hook logic
+    },
+    onSessionCreation: async (session) => {
+      // Hook logic
+    },
+    onWpUserSync: async (user, wpUserData) => {
+      // WordPress sync logic
+    }
+    // Other hooks...
+  }
+});
+```
+
+### 3.2 Standard Hook Function Structure
+
+All hook functions MUST follow a consistent structure:
+
+1. Use async/await pattern for all hooks, even if not immediately using promises.
+2. Include comprehensive JSDoc type annotations and descriptions.
+3. Implement error handling within each hook function.
+4. Return void (not data modification).
+
+Example implementation structure:
+
+```javascript
+/**
+ * Hook called after user creation
+ * @param {import('./types').User} user - Newly created user
+ * @returns {Promise<void>}
+ */
+async function onUserCreationHook(user) {
+  try {
+    // 1. Log event for auditing/monitoring
+    console.log(`User created: ${user.id} (${user.email})`);
+    
+    // 2. Perform hook-specific operations
+    await performCustomLogic(user);
+    
+    // 3. No return value (hooks should not return data)
+  } catch (error) {
+    // 4. Error handling within the hook
+    console.error('Error in onUserCreation hook:', error);
+    
+    // 5. Optional: Custom error reporting
+    await reportError('onUserCreation', error, { userId: user.id });
+    
+    // 6. Don't re-throw (hooks should not disrupt the main flow)
+    // Unless explicitly designed to be blocking hooks
+  }
+}
+```
+
+## 4. Critical Hook Implementations
+
+### 4.1 User Creation Hook (Standard)
+
+```javascript
+/**
+ * @typedef {Object} User
+ * @property {string} id - User ID
+ * @property {string} email - User email
+ * @property {string} [displayName] - User display name
+ * @property {Date} createdAt - User creation date
+ * @property {Object} [metadata] - Additional user metadata
+ */
+
+/**
+ * Handles post-user creation tasks
+ * @param {User} user - Newly created user
+ * @returns {Promise<void>}
+ */
+async function onUserCreationHook(user) {
+  try {
+    // 1. Log for audit purposes
+    console.log(`New user created: ${user.id} (${user.email}) at ${new Date().toISOString()}`);
+    
+    // 2. Initialize user preferences
+    await db.execute(
+      `INSERT INTO ba_user_preferences (user_id, theme, notifications_enabled, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [user.id, 'system', true]
+    );
+    
+    // 3. Send welcome email (if not already handled by BA)
+    if (process.env.SEND_WELCOME_EMAIL === 'true') {
+      await emailService.sendWelcomeEmail(user.email, {
+        name: user.displayName || user.email.split('@')[0]
+      });
+    }
+    
+    // 4. Add to analytics
+    if (process.env.NODE_ENV === 'production') {
+      await analyticsService.trackEvent('user_created', {
+        userId: user.id,
+        timestamp: new Date()
+      });
+    }
+  } catch (error) {
+    console.error('Error in onUserCreation hook:', error);
+    // Log to monitoring system but don't disrupt flow
+  }
+}
+```
+
+### 4.2 Session Creation Hook (Standard)
+
+```javascript
+/**
+ * @typedef {Object} Session
+ * @property {string} id - Session ID
+ * @property {string} token - Session token
+ * @property {string} userId - User ID
+ * @property {Date} expiresAt - Expiration date
+ * @property {Date} createdAt - Creation date
+ */
+
+/**
+ * Handles post-session creation tasks
+ * @param {Session} session - Newly created session
+ * @returns {Promise<void>}
+ */
+async function onSessionCreationHook(session) {
+  try {
+    // 1. Log for security auditing
+    await db.execute(
+      `INSERT INTO ba_security_logs 
+       (event_type, user_id, ip_address, user_agent, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      ['session_created', session.userId, getRequestIp(), getRequestUserAgent()]
+    );
+    
+    // 2. Update user's last login timestamp
+    await db.execute(
+      `UPDATE ba_users
+       SET last_login = NOW()
+       WHERE id = ?`,
+      [session.userId]
+    );
+    
+    // 3. Clean up old sessions (optional)
+    if (process.env.AUTO_CLEAN_SESSIONS === 'true') {
+      const maxSessionsPerUser = parseInt(process.env.MAX_SESSIONS_PER_USER || '5', 10);
+      await cleanupOldSessions(session.userId, maxSessionsPerUser);
+    }
+  } catch (error) {
+    console.error('Error in onSessionCreation hook:', error);
+    // Log to monitoring system but don't disrupt flow
+  }
+}
+
+/**
+ * Cleans up old sessions, keeping only the most recent ones
+ * @param {string} userId - User ID
+ * @param {number} maxSessions - Maximum number of sessions to keep
+ * @returns {Promise<void>}
+ */
+async function cleanupOldSessions(userId, maxSessions) {
+  try {
+    // Get all sessions for the user ordered by creation date
+    const [rows] = await db.execute(
+      `SELECT id FROM ba_sessions
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1000`,
+      [userId]
+    );
+    
+    // If more than maxSessions, delete the oldest ones
+    if (rows.length > maxSessions) {
+      const sessionsToKeep = rows.slice(0, maxSessions).map(row => row.id);
+      
+      await db.execute(
+        `DELETE FROM ba_sessions
+         WHERE user_id = ? AND id NOT IN (?)`,
+        [userId, sessionsToKeep]
+      );
+      
+      console.log(`Cleaned up ${rows.length - maxSessions} old sessions for user ${userId}`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up old sessions:', error);
+  }
+}
+```
+
+### 4.3 WordPress User Sync Hook (WP Integration)
+
+```javascript
+/**
+ * @typedef {Object} WPUserData
+ * @property {string} wpUserId - WordPress user ID
+ * @property {string} email - User email
+ * @property {string} [username] - WordPress username
+ * @property {string} [displayName] - Display name
+ * @property {string} [firstName] - First name
+ * @property {string} [lastName] - Last name
+ * @property {string[]} [roles] - WordPress roles
+ * @property {Object} [meta] - WordPress user meta
+ */
+
+/**
+ * Synchronizes Better Auth user with WordPress user data
+ * @param {User} user - Better Auth user
+ * @param {WPUserData} wpUserData - WordPress user data
+ * @returns {Promise<void>}
+ */
+async function onWpUserSyncHook(user, wpUserData) {
+  try {
+    // 1. Map WordPress roles to application roles
+    const applicationRoles = mapWpRolesToAppRoles(wpUserData.roles || []);
+    
+    // 2. Update user data in Better Auth
+    await db.execute(
+      `UPDATE ba_users
+       SET 
+         display_name = ?,
+         first_name = ?,
+         last_name = ?,
+         roles = ?,
+         wp_sync_date = NOW()
+       WHERE id = ?`,
+      [
+        wpUserData.displayName || user.displayName || null,
+        wpUserData.firstName || null,
+        wpUserData.lastName || null,
+        JSON.stringify(applicationRoles),
+        user.id
+      ]
+    );
+    
+    // 3. Sync selected WordPress meta to user preferences
+    if (wpUserData.meta) {
+      await syncWpMetaToPreferences(user.id, wpUserData.meta);
+    }
+    
+    // 4. Log sync for auditing
+    console.log(`Synced WP user data for ${user.id} (WP ID: ${wpUserData.wpUserId})`);
+  } catch (error) {
+    console.error('Error in onWpUserSync hook:', error);
+    
+    // 5. Log detailed error for debugging
+    await db.execute(
+      `INSERT INTO ba_sync_error_logs 
+       (user_id, wp_user_id, error, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [user.id, wpUserData.wpUserId, error.message]
+    );
+  }
+}
+
+/**
+ * Maps WordPress roles to application roles
+ * @param {string[]} wpRoles - WordPress roles
+ * @returns {string[]} Application roles
+ */
+function mapWpRolesToAppRoles(wpRoles) {
+  const roleMapping = {
+    'administrator': 'admin',
+    'editor': 'editor',
+    'author': 'author',
+    'contributor': 'contributor',
+    'subscriber': 'user'
+  };
+  
+  // Map WP roles to app roles based on the mapping
+  const appRoles = wpRoles
+    .map(role => roleMapping[role] || null)
+    .filter(Boolean);
+  
+  // Always ensure users have at least the 'user' role
+  if (!appRoles.includes('user')) {
+    appRoles.push('user');
+  }
+  
+  return appRoles;
+}
+
+/**
+ * Syncs WordPress user meta to user preferences
+ * @param {string} userId - User ID
+ * @param {Object} wpMeta - WordPress user meta
+ * @returns {Promise<void>}
+ */
+async function syncWpMetaToPreferences(userId, wpMeta) {
+  // List of meta keys to sync
+  const metaKeysToSync = [
+    'billing_address',
+    'billing_country',
+    'billing_phone',
+    'notification_preferences'
+  ];
+  
+  // Filter meta to only include keys we want to sync
+  const filteredMeta = Object.fromEntries(
+    Object.entries(wpMeta)
+      .filter(([key]) => metaKeysToSync.includes(key))
+  );
+  
+  if (Object.keys(filteredMeta).length > 0) {
+    // Update or insert preferences
+    const [existingPrefs] = await db.execute(
+      `SELECT * FROM ba_user_preferences WHERE user_id = ?`,
+      [userId]
+    );
+    
+    if (existingPrefs.length > 0) {
+      // Update existing preferences
+      const currentPrefs = existingPrefs[0];
+      const updatedMeta = { ...currentPrefs.meta, ...filteredMeta };
+      
+      await db.execute(
+        `UPDATE ba_user_preferences
+         SET meta = ?, updated_at = NOW()
+         WHERE user_id = ?`,
+        [JSON.stringify(updatedMeta), userId]
+      );
+    } else {
+      // Insert new preferences
+      await db.execute(
+        `INSERT INTO ba_user_preferences
+         (user_id, meta, created_at)
+         VALUES (?, ?, NOW())`,
+        [userId, JSON.stringify(filteredMeta)]
+      );
+    }
+  }
+}
+```
+
+### 4.4 Authentication Event Hooks
+
+```javascript
+/**
+ * @typedef {Object} LoginContext
+ * @property {string} provider - Authentication provider (email, google, etc.)
+ * @property {string} ip - IP address
+ * @property {string} userAgent - User agent
+ * @property {Date} timestamp - Login attempt timestamp
+ */
+
+/**
+ * Handles successful login events
+ * @param {string} userId - User ID
+ * @param {LoginContext} context - Login context
+ * @returns {Promise<void>}
+ */
+async function onSuccessfulLoginHook(userId, context) {
+  try {
+    // 1. Log successful login
+    await db.execute(
+      `INSERT INTO ba_security_logs 
+       (event_type, user_id, ip_address, user_agent, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [
+        'login_success', 
+        userId, 
+        context.ip,
+        context.userAgent,
+        JSON.stringify({ provider: context.provider })
+      ]
+    );
+    
+    // 2. Reset failed login counter if tracking
+    await db.execute(
+      `UPDATE ba_users
+       SET failed_login_count = 0, last_login = NOW()
+       WHERE id = ?`,
+      [userId]
+    );
+    
+    // 3. Send login notification (if enabled)
+    const [userPrefs] = await db.execute(
+      `SELECT u.email, p.notifications_enabled
+       FROM ba_users u
+       LEFT JOIN ba_user_preferences p ON u.id = p.user_id
+       WHERE u.id = ?`,
+      [userId]
+    );
+    
+    if (userPrefs.length > 0 && userPrefs[0].notifications_enabled) {
+      await emailService.sendLoginNotification(
+        userPrefs[0].email,
+        {
+          ip: context.ip,
+          userAgent: context.userAgent,
+          timestamp: new Date().toISOString()
+        }
+      );
+    }
+  } catch (error) {
+    console.error('Error in onSuccessfulLogin hook:', error);
+  }
+}
+
+/**
+ * Handles failed login attempts
+ * @param {string} identifier - User identifier (email)
+ * @param {LoginContext} context - Login context
+ * @returns {Promise<void>}
+ */
+async function onFailedLoginHook(identifier, context) {
+  try {
+    // 1. Get user by email (if exists)
+    const [users] = await db.execute(
+      `SELECT id, failed_login_count FROM ba_users WHERE email = ?`,
+      [identifier]
+    );
+    
+    const userId = users.length > 0 ? users[0].id : null;
+    
+    // 2. Log failed login
+    await db.execute(
+      `INSERT INTO ba_security_logs 
+       (event_type, user_id, ip_address, user_agent, metadata, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [
+        'login_failure', 
+        userId, 
+        context.ip,
+        context.userAgent,
+        JSON.stringify({ 
+          provider: context.provider,
+          identifier_hash: crypto.createHash('sha256').update(identifier).digest('hex')
+        })
+      ]
+    );
+    
+    // 3. Increment failed login counter if user exists
+    if (userId) {
+      const newFailedCount = (users[0].failed_login_count || 0) + 1;
+      
+      await db.execute(
+        `UPDATE ba_users
+         SET failed_login_count = ?, last_failed_login = NOW()
+         WHERE id = ?`,
+        [newFailedCount, userId]
+      );
+      
+      // 4. Check threshold for account protection measures
+      if (newFailedCount >= 5) {
+        // Example: Send security alert
+        await emailService.sendSecurityAlert(
+          identifier,
+          {
+            alertType: 'multiple_failed_logins',
+            count: newFailedCount,
+            ip: context.ip,
+            timestamp: new Date().toISOString()
+          }
+        );
+        
+        // Optional: Temporarily lock account
+        if (newFailedCount >= 10) {
+          await db.execute(
+            `UPDATE ba_users
+             SET status = 'locked', locked_until = DATE_ADD(NOW(), INTERVAL 30 MINUTE)
+             WHERE id = ?`,
+            [userId]
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error in onFailedLogin hook:', error);
+  }
+}
+```
+
+### 4.5 Error Handling Hook
+
+```javascript
+/**
+ * @typedef {Object} AuthError
+ * @property {string} code - Error code
+ * @property {string} message - Error message
+ * @property {string} [component] - Component where error occurred
+ * @property {Object} [context] - Additional context
+ */
+
+/**
+ * Handles authentication errors
+ * @param {AuthError} error - Auth error
+ * @returns {Promise<void>}
+ */
+async function onErrorHook(error) {
+  try {
+    // 1. Log error to database for monitoring
+    await db.execute(
+      `INSERT INTO ba_error_logs 
+       (error_code, error_message, component, context, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [
+        error.code || 'unknown',
+        error.message,
+        error.component || 'auth',
+        JSON.stringify(error.context || {})
+      ]
+    );
+    
+    // 2. Alert on critical errors
+    const criticalErrorCodes = [
+      'database_connection_failed',
+      'token_generation_failed',
+      'encryption_failed'
+    ];
+    
+    if (criticalErrorCodes.includes(error.code)) {
+      // Send alert to administrators
+      await notificationService.sendAlert(
+        'critical_auth_error',
+        {
+          code: error.code,
+          message: error.message,
+          component: error.component,
+          timestamp: new Date().toISOString()
+        }
+      );
+    }
+  } catch (logError) {
+    // Fallback logging if database logging fails
+    console.error('Error logging auth error:', logError);
+    console.error('Original error:', error);
+  }
+}
+```
+
+## 5. Hook Registration Best Practices
+
+### 5.1 Recommended Hook Implementation Pattern
+
+```javascript
+// auth-hooks.js - Centralized hook definitions
+
+/**
+ * @typedef {import('./types').User} User
+ * @typedef {import('./types').Session} Session
+ * @typedef {import('./types').WPUserData} WPUserData
+ * @typedef {import('./types').LoginContext} LoginContext
+ * @typedef {import('./types').AuthError} AuthError
+ */
+
+// Import hook implementations
+import {
+  handleUserCreation,
+  handleSessionCreation,
+  handleWpUserSync,
+  handleSuccessfulLogin,
+  handleFailedLogin,
+  handleError
+} from './auth-hook-implementations';
+
+// Import database pool and email service
+import { db } from './database';
+import emailService from './email-service';
+
+/**
+ * @typedef {Object} AuthHooksContext
+ * @property {Object} db - Database connection
+ * @property {Object} emailService - Email service
+ * @property {Object} logger - Logging service
+ */
+
+/**
+ * Creates auth hook functions with dependency injection
+ * @param {AuthHooksContext} context - Context with dependencies
+ * @returns {Object} Auth hooks object
+ */
+export function createAuthHooks({ db, emailService, logger }) {
+  /**
+   * User creation hook with injected dependencies
+   * @param {User} user - Created user
+   * @returns {Promise<void>}
+   */
+  const onUserCreation = async (user) => {
+    try {
+      await handleUserCreation(user, { db, emailService, logger });
+    } catch (error) {
+      logger.error('Error in onUserCreation hook:', error);
+    }
+  };
+  
+  /**
+   * Session creation hook with injected dependencies
+   * @param {Session} session - Created session
+   * @returns {Promise<void>}
+   */
+  const onSessionCreation = async (session) => {
+    try {
+      await handleSessionCreation(session, { db, logger });
+    } catch (error) {
+      logger.error('Error in onSessionCreation hook:', error);
+    }
+  };
+  
+  /**
+   * WordPress user sync hook with injected dependencies
+   * @param {User} user - Better Auth user
+   * @param {WPUserData} wpUserData - WordPress user data
+   * @returns {Promise<void>}
+   */
+  const onWpUserSync = async (user, wpUserData) => {
+    try {
+      await handleWpUserSync(user, wpUserData, { db, logger });
+    } catch (error) {
+      logger.error('Error in onWpUserSync hook:', error);
+    }
+  };
+  
+  /**
+   * Successful login hook with injected dependencies
+   * @param {string} userId - User ID
+   * @param {LoginContext} context - Login context
+   * @returns {Promise<void>}
+   */
+  const onSuccessfulLogin = async (userId, context) => {
+    try {
+      await handleSuccessfulLogin(userId, context, { db, emailService, logger });
+    } catch (error) {
+      logger.error('Error in onSuccessfulLogin hook:', error);
+    }
+  };
+  
+  /**
+   * Failed login hook with injected dependencies
+   * @param {string} identifier - User identifier
+   * @param {LoginContext} context - Login context
+   * @returns {Promise<void>}
+   */
+  const onFailedLogin = async (identifier, context) => {
+    try {
+      await handleFailedLogin(identifier, context, { db, emailService, logger });
+    } catch (error) {
+      logger.error('Error in onFailedLogin hook:', error);
+    }
+  };
+  
+  /**
+   * Error hook with injected dependencies
+   * @param {AuthError} error - Auth error
+   * @returns {Promise<void>}
+   */
+  const onError = async (error) => {
+    try {
+      await handleError(error, { db, logger });
+    } catch (logError) {
+      logger.error('Error in onError hook:', logError);
+      logger.error('Original error:', error);
+    }
+  };
+  
+  // Return all hook functions
+  return {
+    onUserCreation,
+    onSessionCreation,
+    onWpUserSync,
+    onSuccessfulLogin,
+    onFailedLogin,
+    onError
+  };
+}
+```
+
+### 5.2 Integration in Better Auth Configuration
+
+```javascript
+// $lib/server/auth.js
+
+import { betterAuth } from 'better-auth';
+import { MysqlDialect } from 'kysely';
+import { createPool } from 'mysql2/promise';
+import { createAuthHooks } from './auth-hooks';
+import { createLogger } from './logger';
+import emailService from './email-service';
+
+// Database configuration
+const dbConfig = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
+};
+
+// Create database pool
+const pool = createPool(dbConfig);
+
+// Create database dialect
+const dialect = new MysqlDialect({
+  pool
+});
+
+// Create logger
+const logger = createLogger();
+
+// Create auth hooks with dependencies
+const authHooks = createAuthHooks({
+  db: pool,
+  emailService,
+  logger
+});
+
+// Configure Better Auth
+export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET,
+  
+  // Database configuration
+  database: {
+    dialect,
+    type: 'mysql'
+  },
+  
+  // Session configuration
+  sessionCookieName: 'better_auth_session',
+  sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // 30 days
+  
+  // Enable email and password authentication
+  emailAndPassword: {
+    passwordMinLength: 10,
+    passwordValidation: {
+      minLength: 10,
+      requireLowercase: true,
+      requireUppercase: true,
+      requireDigit: true,
+      requireSpecialChar: true
+    }
+  },
+  
+  // Server-to-server authentication (for WordPress)
+  serverToServer: {
+    enabled: true,
+    syncSecret: process.env.WP_SYNC_SECRET,
+    allowedSources: ['wordpress'],
+    syncFields: ['email', 'displayName', 'firstName', 'lastName', 'roles']
+  },
+  
+  // Register hooks
+  after: authHooks
+});
+```
+
+## 6. Custom Hook Creation for Specific Needs
+
+### 6.1 Creating Custom Hooks
+
+Sometimes you may need to add custom hooks for your specific application requirements:
+
+```javascript
+// Adding custom hooks to Better Auth
+
+/**
+ * @typedef {Object} BetterAuthWithCustomHooks
+ * @property {Object} after - After hooks object
+ * @property {Function} addCustomHook - Function to add a custom hook
+ */
+
+/**
+ * Extends Better Auth with custom hook capability
+ * @param {Object} auth - Better Auth instance
+ * @returns {BetterAuthWithCustomHooks} Extended auth instance
+ */
+export function extendAuthWithCustomHooks(auth) {
+  // Create a registry for custom hooks
+  const customHooks = new Map();
+  
+  /**
+   * Adds a custom hook to the auth instance
+   * @param {string} hookName - Custom hook name
+   * @param {Function} hookFn - Hook function
+   */
+  const addCustomHook = (hookName, hookFn) => {
+    if (typeof hookFn !== 'function') {
+      throw new Error(`Hook must be a function: ${hookName}`);
+    }
+    
+    customHooks.set(hookName, hookFn);
+  };
+  
+  /**
+   * Triggers a custom hook
+   * @param {string} hookName - Hook name
+   * @param  {...any} args - Hook arguments
+   * @returns {Promise<void>}
+   */
+  const triggerCustomHook = async (hookName, ...args) => {
+    const hookFn = customHooks.get(hookName);
+    
+    if (hookFn) {
+      try {
+        await hookFn(...args);
+      } catch (error) {
+        console.error(`Error in custom hook '${hookName}':`, error);
+      }
+    }
+  };
+  
+  // Add the custom hook triggering capability to the auth instance
+  auth.triggerCustomHook = triggerCustomHook;
+  
+  // Add the method to register custom hooks
+  auth.addCustomHook = addCustomHook;
+  
+  return auth;
+}
+
+// Usage example:
+const extendedAuth = extendAuthWithCustomHooks(auth);
+
+// Add a custom hook
+extendedAuth.addCustomHook('onUserProfileUpdate', async (userId, profileData) => {
+  // Custom logic when a user profile is updated
+});
+
+// Trigger a custom hook elsewhere in your code
+await extendedAuth.triggerCustomHook('onUserProfileUpdate', userId, profileData);
+```
+
+### 6.2 WordPress-Specific Custom Hooks
+
+For headless WordPress integration:
+
+```javascript
+/**
+ * @typedef {Object} WPRoleChangeData
+ * @property {string} wpUserId - WordPress user ID
+ * @property {string[]} oldRoles - Previous roles
+ * @property {string[]} newRoles - New roles
+ */
+
+/**
+ * Hook for WordPress role changes
+ * @param {WPRoleChangeData} roleData - Role change data
+ * @returns {Promise<void>}
+ */
+async function onWpRoleChangeHook(roleData) {
+  try {
+    // 1. Find the user by WordPress user ID
+    const [users] = await db.execute(
+      `SELECT u.id 
+       FROM ba_users u
+       JOIN ba_wp_user_map m ON u.id = m.ba_user_id
+       WHERE m.wp_user_id = ?`,
+      [roleData.wpUserId]
+    );
+    
+    if (users.length === 0) {
+      return;
+    }
+    
+    const userId = users[0].id;
+    
+    // 2. Map WordPress roles to application roles
+    const oldAppRoles = mapWpRolesToAppRoles(roleData.oldRoles);
+    const newAppRoles = mapWpRolesToAppRoles(roleData.newRoles);
+    
+    // 3. Update the user's roles in Better Auth
+    await db.execute(
+      `UPDATE ba_users
+       SET roles = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [JSON.stringify(newAppRoles), userId]
+    );
+    
+    // 4. Log the role change
+    await db.execute(
+      `INSERT INTO ba_role_changes
+       (user_id, old_roles, new_roles, source, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [
+        userId, 
+        JSON.stringify(oldAppRoles), 
+        JSON.stringify(newAppRoles),
+        'wordpress'
+      ]
+    );
+    
+    // 5. Check for privilege escalation or downgrade
+    if (
+      (oldAppRoles.includes('user') && newAppRoles.includes('admin')) ||
+      (oldAppRoles.includes('admin') && !newAppRoles.includes('admin'))
+    ) {
+      // Log security event for significant role changes
+      await db.execute(
+        `INSERT INTO ba_security_logs
+         (event_type, user_id, metadata, created_at)
+         VALUES (?, ?, ?, NOW())`,
+        [
+          'role_change_security', 
+          userId,
+          JSON.stringify({
+            oldRoles: oldAppRoles,
+            newRoles: newAppRoles,
+            source: 'wordpress'
+          })
+        ]
+      );
+    }
+  } catch (error) {
+    console.error('Error in onWpRoleChange hook:', error);
+  }
+}
+
+// Register the custom hook
+extendedAuth.addCustomHook('onWpRoleChange', onWpRoleChangeHook);
+```
+
+## 7. Hook Event Logging and Monitoring
+
+### 7.1 Standard Hook Logging Pattern
+
+All hooks should log their execution for audit purposes:
+
+```javascript
+/**
+ * @typedef {Object} HookExecutionLog
+ * @property {string} hookName - Hook name
+ * @property {string} status - Execution status
+ * @property {string} [error] - Error message if failed
+ * @property {string} timestamp - Execution timestamp
+ * @property {Object} metadata - Additional metadata
+ */
+
+/**
+ * Logs hook execution
+ * @param {string} hookName - Hook name
+ * @param {string} status - Execution status
+ * @param {Object} metadata - Additional metadata
+ * @param {Error} [error] - Error if any
+ * @returns {Promise<void>}
+ */
+async function logHookExecution(hookName, status, metadata, error = null) {
+  try {
+    await db.execute(
+      `INSERT INTO ba_hook_logs
+       (hook_name, status, metadata, error, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [
+        hookName,
+        status,
+        JSON.stringify(metadata || {}),
+        error ? error.message : null
+      ]
+    );
+  } catch (logError) {
+    console.error('Error logging hook execution:', logError);
+  }
+}
+
+/**
+ * Wraps a hook function with execution logging
+ * @param {string} hookName - Hook name
+ * @param {Function} hookFn - Hook function
+ * @returns {Function} Wrapped hook function
+ */
+function withHookLogging(hookName, hookFn) {
+  return async (...args) => {
+    const startTime = Date.now();
+    const metadata = {
+      args: args.map(arg => 
+        typeof arg === 'object' && arg !== null 
+          ? { type: arg.constructor.name } 
+          : { type: typeof arg }
+      ),
+      startTime
+    };
+    
+    try {
+      // Execute the hook
+      await hookFn(...args);
+      
+      // Log successful execution
+      const endTime = Date.now();
+      metadata.duration = endTime - startTime;
+      
+      await logHookExecution(hookName, 'success', metadata);
+    } catch (error) {
+      // Log failed execution
+      const endTime = Date.now();
+      metadata.duration = endTime - startTime;
+      
+      await logHookExecution(hookName, 'error', metadata, error);
+      
+      // Re-throw the error if needed
+      throw error;
+    }
+  };
+}
+
+// Usage example:
+const wrappedHook = withHookLogging('onUserCreation', onUserCreationHook);
+```
+
+### 7.2 Hook Performance Monitoring
+
+```javascript
+/**
+ * @typedef {Object} HookPerformanceMetrics
+ * @property {string} hookName - Hook name
+ * @property {number} count - Execution count
+ * @property {number} totalDuration - Total execution duration (ms)
+ * @property {number} avgDuration - Average execution duration (ms)
+ * @property {number} maxDuration - Maximum execution duration (ms)
+ * @property {number} errorCount - Error count
+ */
+
+/**
+ * Gets hook performance metrics
+ * @param {string} [hookName] - Specific hook to get metrics for
+ * @returns {Promise<HookPerformanceMetrics[]>} Hook performance metrics
+ */
+async function getHookPerformanceMetrics(hookName = null) {
+  try {
+    let query = `
+      SELECT 
+        hook_name,
+        COUNT(*) as count,
+        SUM(TIMESTAMPDIFF(MICROSECOND, created_at, created_at + INTERVAL JSON_EXTRACT(metadata, '$.duration') MILLISECOND) / 1000) as total_duration,
+        AVG(TIMESTAMPDIFF(MICROSECOND, created_at, created_at + INTERVAL JSON_EXTRACT(metadata, '$.duration') MILLISECOND) / 1000) as avg_duration,
+        MAX(TIMESTAMPDIFF(MICROSECOND, created_at, created_at + INTERVAL JSON_EXTRACT(metadata, '$.duration') MILLISECOND) / 1000) as max_duration,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count
+      FROM ba_hook_logs
+      WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 DAY)
+    `;
+    
+    if (hookName) {
+      query += ' AND hook_name = ?';
+    }
+    
+    query += ' GROUP BY hook_name';
+    
+    const [rows] = await db.execute(
+      query,
+      hookName ? [hookName] : []
+    );
+    
+    return rows;
+  } catch (error) {
+    console.error('Error getting hook performance metrics:', error);
+    return [];
+  }
+}
+```
+
+## 8. Advanced Hook Patterns
+
+### 8.1 Prioritized/Sequenced Hooks
+
+For cases where you need to run multiple handlers for a single hook with specific ordering:
+
+```javascript
+/**
+ * @typedef {Object} HookHandler
+ * @property {string} id - Handler ID
+ * @property {number} priority - Handler priority (lower runs first)
+ * @property {Function} handler - Handler function
+ */
+
+/**
+ * Creates a hook manager for prioritized hooks
+ * @returns {Object} Hook manager
+ */
+function createHookManager() {
+  // Map of hook name -> handlers
+  const hooks = new Map();
+  
+  /**
+   * Registers a handler for a hook
+   * @param {string} hookName - Hook name
+   * @param {Function} handler - Handler function
+   * @param {Object} options - Hook options
+   * @param {string} [options.id] - Handler ID (auto-generated if not provided)
+   * @param {number} [options.priority=10] - Handler priority (lower runs first)
+   * @returns {string} Handler ID
+   */
+  const register = (hookName, handler, options = {}) => {
+    const id = options.id || `handler_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const priority = options.priority || 10;
+    
+    if (!hooks.has(hookName)) {
+      hooks.set(hookName, []);
+    }
+    
+    hooks.get(hookName).push({
+      id,
+      priority,
+      handler
+    });
+    
+    // Sort handlers by priority
+    hooks.get(hookName).sort((a, b) => a.priority - b.priority);
+    
+    return id;
+  };
+  
+  /**
+   * Removes a handler from a hook
+   * @param {string} hookName - Hook name
+   * @param {string} handlerId - Handler ID
+   * @returns {boolean} Whether handler was removed
+   */
+  const remove = (hookName, handlerId) => {
+    if (!hooks.has(hookName)) {
+      return false;
+    }
+    
+    const handlers = hooks.get(hookName);
+    const initialLength = handlers.length;
+    
+    const filtered = handlers.filter(handler => handler.id !== handlerId);
+    
+    hooks.set(hookName, filtered);
+    
+    return filtered.length < initialLength;
+  };
+  
+  /**
+   * Runs all handlers for a hook
+   * @param {string} hookName - Hook name
+   * @param  {...any} args - Arguments to pass to handlers
+   * @returns {Promise<Array>} Array of handler results
+   */
+  const run = async (hookName, ...args) => {
+    if (!hooks.has(hookName)) {
+      return [];
+    }
+    
+    const handlers = hooks.get(hookName);
+    const results = [];
+    
+    for (const { handler } of handlers) {
+      try {
+        const result = await handler(...args);
+        results.push(result);
+      } catch (error) {
+        console.error(`Error running handler for hook '${hookName}':`, error);
+        results.push(null);
+      }
+    }
+    
+    return results;
+  };
+  
+  return {
+    register,
+    remove,
+    run
+  };
+}
+
+// Usage example:
+const hookManager = createHookManager();
+
+// Register handlers with priorities
+hookManager.register('onUserCreation', async (user) => {
+  console.log('Creating user preferences...');
+  // logic...
+}, { priority: 5 }); // Runs first
+
+hookManager.register('onUserCreation', async (user) => {
+  console.log('Sending welcome email...');
+  // logic...
+}, { priority: 10 }); // Runs second
+
+hookManager.register('onUserCreation', async (user) => {
+  console.log('Adding to marketing list...');
+  // logic...
+}, { priority: 15 }); // Runs third
+
+// Run the hook
+await hookManager.run('onUserCreation', user);
+```
+
+### 8.2 Conditional Hooks
+
+For hooks that should only run under certain conditions:
+
+```javascript
+/**
+ * Creates a conditional hook
+ * @param {Function} condition - Condition function
+ * @param {Function} hookFn - Hook function
+ * @returns {Function} Conditional hook function
+ */
+function createConditionalHook(condition, hookFn) {
+  return async (...args) => {
+    // Check the condition
+    const shouldRun = await condition(...args);
+    
+    // Only run the hook if the condition is met
+    if (shouldRun) {
+      return hookFn(...args);
+    }
+  };
+}
+
+// Usage example:
+const conditionalEmailHook = createConditionalHook(
+  // Condition: Only send emails in production
+  () => process.env.NODE_ENV === 'production',
+  
+  // Hook function: Send welcome email
+  async (user) => {
+    await emailService.sendWelcomeEmail(user.email);
+  }
+);
+
+// Or checking a user preference
+const conditionalNotificationHook = createConditionalHook(
+  // Condition: User has notifications enabled
+  async (user) => {
+    const [prefs] = await db.execute(
+      `SELECT notifications_enabled FROM ba_user_preferences WHERE user_id = ?`,
+      [user.id]
+    );
+    
+    return prefs.length > 0 ? prefs[0].notifications_enabled : false;
+  },
+  
+  // Hook function: Send notification
+  async (user, message) => {
+    await notificationService.sendNotification(user.id, message);
+  }
+);
+```
+
+## 9. Testing Hook Implementations
+
+### 9.1 Testing Hook Functions
+
+```javascript
+      // Verify error was logged
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error in onUserCreation hook:'),
+        expect.any(Error)
+      );
+    });
+  });
+  
+  describe('onWpUserSync', () => {
+    it('should map WordPress roles to application roles', async () => {
+      // Test user and WordPress data
+      const user = {
+        id: 'user-123',
+        email: 'test@example.com'
+      };
+      
+      const wpUserData = {
+        wpUserId: 'wp-456',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        roles: ['administrator', 'editor']
+      };
+      
+      // Call the hook
+      await onWpUserSyncHook(user, wpUserData, deps);
+      
+      // Verify roles were mapped and updated
+      expect(mockDb.execute).toHaveBeenCalledWith(
+        expect.stringMatching(/UPDATE ba_users/),
+        expect.arrayContaining([
+          expect.stringMatching(/admin.*editor|editor.*admin/) // Contains both admin and editor roles
+        ])
+      );
+    });
+    
+    it('should sync WordPress meta to user preferences', async () => {
+      // Test user and WordPress data with meta
+      const user = {
+        id: 'user-123',
+        email: 'test@example.com'
+      };
+      
+      const wpUserData = {
+        wpUserId: 'wp-456',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        roles: ['subscriber'],
+        meta: {
+          billing_address: '123 Main St',
+          billing_country: 'US',
+          notification_preferences: { email: true }
+        }
+      };
+      
+      // Mock existing preferences query result
+      mockDb.execute.mockImplementationOnce(() => [[], []]);
+      
+      // Call the hook
+      await onWpUserSyncHook(user, wpUserData, deps);
+      
+      // Verify meta was synced to preferences
+      expect(mockDb.execute).toHaveBeenCalledWith(
+        expect.stringMatching(/INSERT INTO ba_user_preferences/),
+        expect.arrayContaining([
+          user.id,
+          expect.stringMatching(/billing_address.*billing_country.*notification_preferences/)
+        ])
+      );
+    });
+  });
+});
+```
+
+### 9.2 Mocking Better Auth Hooks for Component Testing
+
+```javascript
+// Test utilities for mocking auth hooks in component tests
+
+/**
+ * Creates a mock Better Auth instance with hooks
+ * @param {Object} mockHooks - Hook implementation overrides
+ * @returns {Object} Mock Better Auth instance
+ */
+export function createMockAuth(mockHooks = {}) {
+  // Base mock hooks with tracking
+  const hookCalls = {
+    onUserCreation: [],
+    onSessionCreation: [],
+    onSessionDeletion: [],
+    onSuccessfulLogin: [],
+    onFailedLogin: [],
+    onWpUserSync: [],
+    onError: []
+  };
+  
+  // Default hook implementations that track calls
+  const defaultHooks = {
+    onUserCreation: jest.fn(user => {
+      hookCalls.onUserCreation.push({ user, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onSessionCreation: jest.fn(session => {
+      hookCalls.onSessionCreation.push({ session, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onSessionDeletion: jest.fn(session => {
+      hookCalls.onSessionDeletion.push({ session, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onSuccessfulLogin: jest.fn((userId, context) => {
+      hookCalls.onSuccessfulLogin.push({ userId, context, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onFailedLogin: jest.fn((identifier, context) => {
+      hookCalls.onFailedLogin.push({ identifier, context, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onWpUserSync: jest.fn((user, wpUserData) => {
+      hookCalls.onWpUserSync.push({ user, wpUserData, timestamp: new Date() });
+      return Promise.resolve();
+    }),
+    
+    onError: jest.fn(error => {
+      hookCalls.onError.push({ error, timestamp: new Date() });
+      return Promise.resolve();
+    })
+  };
+  
+  // Merge default hooks with provided overrides
+  const mergedHooks = { ...defaultHooks, ...mockHooks };
+  
+  // Create mock auth instance
+  const mockAuth = {
+    // Mock the hook execution
+    after: mergedHooks,
+    
+    // Helper to trigger a hook manually
+    triggerHook: (hookName, ...args) => {
+      if (hookName in mergedHooks) {
+        return mergedHooks[hookName](...args);
+      }
+      throw new Error(`Unknown hook: ${hookName}`);
+    },
+    
+    // Helper to access hook call history
+    getHookCalls: (hookName) => {
+      if (hookName in hookCalls) {
+        return hookCalls[hookName];
+      }
+      return [];
+    },
+    
+    // Helper to reset call history
+    resetHookCalls: () => {
+      Object.keys(hookCalls).forEach(key => {
+        hookCalls[key] = [];
+      });
+      
+      Object.values(mergedHooks).forEach(mock => {
+        if (typeof mock.mockClear === 'function') {
+          mock.mockClear();
+        }
+      });
+    }
+  };
+  
+  return mockAuth;
+}
+
+// Usage example in a component test
+describe('Registration Component', () => {
+  let mockAuth;
+  
+  beforeEach(() => {
+    // Create mock auth with custom hook behavior
+    mockAuth = createMockAuth({
+      onUserCreation: jest.fn().mockImplementation(user => {
+        // Custom implementation for testing
+        return Promise.resolve();
+      })
+    });
+    
+    // Mock the Better Auth module to use our mock
+    jest.mock('$lib/server/auth', () => ({
+      auth: mockAuth
+    }));
+  });
+  
+  afterEach(() => {
+    mockAuth.resetHookCalls();
+  });
+  
+  it('should trigger onUserCreation hook after registration', async () => {
+    // Create test user and render registration component
+    // ...test implementation...
+    
+    // Verify hook was called with expected user data
+    expect(mockAuth.after.onUserCreation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'test@example.com'
+      })
+    );
+    
+    // Alternatively, check call history
+    const userCreationCalls = mockAuth.getHookCalls('onUserCreation');
+    expect(userCreationCalls.length).toBe(1);
+    expect(userCreationCalls[0].user.email).toBe('test@example.com');
+  });
+});
+```
+
+### 9.3 Integration Testing for Hooks
+
+```javascript
+/**
+ * Integration test example for hooks using a test database
+ * 
+ * Note: This requires a test database and real dependencies
+ * configured specially for testing.
+ */
+
+import { createPool } from 'mysql2/promise';
+import { MysqlDialect } from 'kysely';
+import { betterAuth } from 'better-auth';
+import { createAuthHooks } from '../src/auth-hooks';
+import { emailService } from '../src/email-service';
+import { logger } from '../src/logger';
+
+describe('Auth Hooks Integration Tests', () => {
+  let db;
+  let auth;
+  let testUser;
+  
+  // Setup test database and auth instance
+  beforeAll(async () => {
+    // Create test database connection
+    db = createPool({
+      host: process.env.TEST_DB_HOST || 'localhost',
+      user: process.env.TEST_DB_USER || 'test',
+      password: process.env.TEST_DB_PASSWORD || 'test',
+      database: process.env.TEST_DB_NAME || 'better_auth_test'
+    });
+    
+    // Create database dialect
+    const dialect = new MysqlDialect({ pool: db });
+    
+    // Create auth hooks with real dependencies
+    const authHooks = createAuthHooks({
+      db,
+      emailService: {
+        // Mock email service for tests
+        sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+        sendLoginNotification: jest.fn().mockResolvedValue(true)
+      },
+      logger: {
+        // Real logger with added test capabilities
+        ...logger,
+        getLoggedMessages: () => [], // Add test helper
+        clearLogs: () => {}          // Add test helper
+      }
+    });
+    
+    // Create Better Auth instance
+    auth = betterAuth({
+      secret: 'test-secret',
+      database: {
+        dialect,
+        type: 'mysql'
+      },
+      emailAndPassword: {
+        // Simplify password requirements for tests
+        passwordMinLength: 6
+      },
+      after: authHooks
+    });
+    
+    // Clean up test database
+    await cleanupTestDatabase(db);
+  });
+  
+  // Clean up after all tests
+  afterAll(async () => {
+    await cleanupTestDatabase(db);
+    await db.end();
+  });
+  
+  // Reset state before each test
+  beforeEach(async () => {
+    // Reset email service mocks
+    emailService.sendWelcomeEmail.mockClear();
+    emailService.sendLoginNotification.mockClear();
+    
+    // Reset hooks call counts in our test database
+    await db.execute('TRUNCATE TABLE ba_hook_logs');
+  });
+  
+  describe('User Creation and Sync Flow', () => {
+    it('should create user, trigger hooks, and sync with WordPress', async () => {
+      // 1. Create a test user
+      const userData = {
+        email: `test-${Date.now()}@example.com`,
+        password: 'TestPassword123'
+      };
+      
+      // Use Better Auth to create the user
+      const user = await auth.emailAndPassword.register(userData);
+      
+      // 2. Verify user was created
+      expect(user).toBeDefined();
+      expect(user.id).toBeDefined();
+      expect(user.email).toBe(userData.email);
+      
+      // Store for later tests
+      testUser = user;
+      
+      // 3. Verify onUserCreation hook was called
+      const [hookLogs] = await db.execute(
+        `SELECT * FROM ba_hook_logs WHERE hook_name = 'onUserCreation' ORDER BY created_at DESC LIMIT 1`
+      );
+      
+      expect(hookLogs.length).toBe(1);
+      expect(JSON.parse(hookLogs[0].metadata)).toMatchObject({
+        args: [{ type: 'Object' }] // The user object
+      });
+      
+      // 4. Verify welcome email was triggered
+      expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        userData.email,
+        expect.any(Object)
+      );
+      
+      // 5. Verify user preferences were created
+      const [userPrefs] = await db.execute(
+        `SELECT * FROM ba_user_preferences WHERE user_id = ?`,
+        [user.id]
+      );
+      
+      expect(userPrefs.length).toBe(1);
+      expect(userPrefs[0].notifications_enabled).toBe(1); // Default to enabled
+      
+      // 6. Simulate WordPress user sync
+      const wpUserData = {
+        wpUserId: `wp-${Date.now()}`,
+        email: userData.email,
+        displayName: 'Test WordPress User',
+        roles: ['editor']
+      };
+      
+      // Manually trigger the hook (normally done by the WordPress sync endpoint)
+      await auth.after.onWpUserSync(user, wpUserData);
+      
+      // 7. Verify user was updated with WordPress data
+      const [updatedUser] = await db.execute(
+        `SELECT * FROM ba_users WHERE id = ?`,
+        [user.id]
+      );
+      
+      expect(updatedUser.length).toBe(1);
+      expect(updatedUser[0].display_name).toBe(wpUserData.displayName);
+      expect(JSON.parse(updatedUser[0].roles)).toContain('editor');
+      
+      // 8. Verify hook log was created for WordPress sync
+      const [wpSyncLogs] = await db.execute(
+        `SELECT * FROM ba_hook_logs WHERE hook_name = 'onWpUserSync' ORDER BY created_at DESC LIMIT 1`
+      );
+      
+      expect(wpSyncLogs.length).toBe(1);
+    });
+  });
+  
+  describe('Authentication Flow', () => {
+    it('should handle login, session creation, and logout', async () => {
+      // Skip if no test user from previous test
+      if (!testUser) {
+        console.warn('Skipping auth flow test - no test user available');
+        return;
+      }
+      
+      // 1. Login with test user
+      const loginResult = await auth.emailAndPassword.login({
+        email: testUser.email,
+        password: 'TestPassword123'
+      });
+      
+      expect(loginResult.success).toBe(true);
+      expect(loginResult.user.id).toBe(testUser.id);
+      
+      // 2. Verify onSuccessfulLogin hook was called
+      const [loginLogs] = await db.execute(
+        `SELECT * FROM ba_hook_logs WHERE hook_name = 'onSuccessfulLogin' ORDER BY created_at DESC LIMIT 1`
+      );
+      
+      expect(loginLogs.length).toBe(1);
+      
+      // 3. Verify onSessionCreation hook was called
+      const [sessionLogs] = await db.execute(
+        `SELECT * FROM ba_hook_logs WHERE hook_name = 'onSessionCreation' ORDER BY created_at DESC LIMIT 1`
+      );
+      
+      expect(sessionLogs.length).toBe(1);
+      
+      // 4. Verify security log was created
+      const [securityLogs] = await db.execute(
+        `SELECT * FROM ba_security_logs WHERE event_type = 'login_success' AND user_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [testUser.id]
+      );
+      
+      expect(securityLogs.length).toBe(1);
+      
+      // 5. Logout the user
+      // In a real app, this uses the session token from cookies
+      // For testing, we'll get the session directly
+      const [sessions] = await db.execute(
+        `SELECT * FROM ba_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`,
+        [testUser.id]
+      );
+      
+      expect(sessions.length).toBe(1);
+      
+      // Manual logout (normally done via auth.sessionManager.deleteSession)
+      await db.execute(
+        `DELETE FROM ba_sessions WHERE id = ?`,
+        [sessions[0].id]
+      );
+      
+      // Manually trigger the onSessionDeletion hook
+      await auth.after.onSessionDeletion({
+        id: sessions[0].id,
+        token: sessions[0].token,
+        userId: testUser.id
+      });
+      
+      // 6. Verify onSessionDeletion hook was called
+      const [deletionLogs] = await db.execute(
+        `SELECT * FROM ba_hook_logs WHERE hook_name = 'onSessionDeletion' ORDER BY created_at DESC LIMIT 1`
+      );
+      
+      expect(deletionLogs.length).toBe(1);
+    });
+  });
+});
+
+/**
+ * Helper to clean up test database
+ * @param {Object} db - Database connection
+ */
+async function cleanupTestDatabase(db) {
+  // List of tables to truncate (in reverse dependency order)
+  const tables = [
+    'ba_hook_logs',
+    'ba_security_logs',
+    'ba_error_logs',
+    'ba_role_changes',
+    'ba_sessions',
+    'ba_user_preferences',
+    'ba_users'
+  ];
+  
+  // Disable foreign key checks temporarily
+  await db.execute('SET FOREIGN_KEY_CHECKS = 0');
+  
+  // Truncate each table
+  for (const table of tables) {
+    await db.execute(`TRUNCATE TABLE ${table}`);
+  }
+  
+  // Re-enable foreign key checks
+  await db.execute('SET FOREIGN_KEY_CHECKS = 1');
+}
+```
+
+## 10. Real-World Implementation Examples
+
+### 10.1 Notification System Integration
+
+Integrate notification service with auth hooks:
+
+```javascript
+/**
+ * @typedef {Object} NotificationConfig
+ * @property {boolean} emailEnabled - Whether email notifications are enabled
+ * @property {boolean} pushEnabled - Whether push notifications are enabled
+ * @property {Object} templates - Notification templates
+ */
+
+/**
+ * Authentication notification service
+ * @param {NotificationConfig} config - Notification configuration
+ * @returns {Object} Notification service
+ */
+function createAuthNotificationService(config) {
+  /**
+   * Sends a notification based on auth event
+   * @param {string} userId - User ID
+   * @param {string} eventType - Event type
+   * @param {Object} eventData - Event data
+   * @returns {Promise<void>}
+   */
+  async function sendNotification(userId, eventType, eventData) {
+    try {
+      // Get user notification preferences
+      const [userPrefs] = await db.execute(
+        `SELECT email, display_name, p.notifications_enabled, p.notification_channels
+         FROM ba_users u
+         LEFT JOIN ba_user_preferences p ON u.id = p.user_id
+         WHERE u.id = ?`,
+        [userId]
+      );
+      
+      if (userPrefs.length === 0 || !userPrefs[0].notifications_enabled) {
+        return;
+      }
+      
+      const user = userPrefs[0];
+      const channels = JSON.parse(user.notification_channels || '{"email":true}');
+      
+      // Determine which channels to use
+      const useEmail = config.emailEnabled && channels.email;
+      const usePush = config.pushEnabled && channels.push;
+      
+      if (!useEmail && !usePush) {
+        return;
+      }
+      
+      // Get notification template for event type
+      const template = config.templates[eventType];
+      
+      if (!template) {
+        console.warn(`No notification template for event type: ${eventType}`);
+        return;
+      }
+      
+      // Send email notification
+      if (useEmail) {
+        await emailService.sendTemplatedEmail(
+          user.email,
+          template.emailSubject,
+          template.emailTemplate,
+          {
+            user: {
+              email: user.email,
+              displayName: user.display_name || user.email.split('@')[0]
+            },
+            ...eventData
+          }
+        );
+      }
+      
+      // Send push notification
+      if (usePush) {
+        await pushService.sendNotification(
+          userId,
+          template.pushTitle,
+          template.pushBody,
+          {
+            type: eventType,
+            data: eventData
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error sending auth notification:', error);
+    }
+  }
+  
+  return { sendNotification };
+}
+
+// Usage in auth hooks:
+const notificationService = createAuthNotificationService({
+  emailEnabled: true,
+  pushEnabled: true,
+  templates: {
+    newLogin: {
+      emailSubject: 'New Login Detected',
+      emailTemplate: 'auth/new-login',
+      pushTitle: 'New Login',
+      pushBody: 'New login to your account from {{location}}'
+    },
+    passwordChanged: {
+      emailSubject: 'Password Changed',
+      emailTemplate: 'auth/password-changed',
+      pushTitle: 'Password Changed',
+      pushBody: 'Your password was changed. If this wasn't you, please contact support.'
+    }
+  }
+});
+
+// In onSuccessfulLogin hook:
+async function onSuccessfulLoginHook(userId, context) {
+  // ... other login logic ...
+  
+  // Send login notification
+  await notificationService.sendNotification(userId, 'newLogin', {
+    timestamp: new Date().toISOString(),
+    ip: context.ip,
+    location: await getLocationFromIp(context.ip),
+    device: parseUserAgent(context.userAgent)
+  });
+}
+```
+
+### 10.2 Activity Logging and User History
+
+```javascript
+/**
+ * @typedef {Object} ActivityLogOptions
+ * @property {string[]} [includedEvents] - Events to include (all if not specified)
+ * @property {string[]} [excludedEvents] - Events to exclude
+ * @property {boolean} [detailedLogs=false] - Whether to include detailed data
+ */
+
+/**
+ * Creates an activity logging service for auth events
+ * @param {ActivityLogOptions} options - Logging options
+ * @returns {Object} Activity logging service
+ */
+function createActivityLoggingService(options = {}) {
+  const {
+    includedEvents = [],
+    excludedEvents = [],
+    detailedLogs = false
+  } = options;
+  
+  /**
+   * Determines if an event should be logged
+   * @param {string} eventType - Event type
+   * @returns {boolean} Whether to log the event
+   */
+  function shouldLogEvent(eventType) {
+    // If excluded, don't log
+    if (excludedEvents.includes(eventType)) {
+      return false;
+    }
+    
+    // If included list is empty, log all non-excluded events
+    if (includedEvents.length === 0) {
+      return true;
+    }
+    
+    // Otherwise, only log included events
+    return includedEvents.includes(eventType);
+  }
+  
+  /**
+   * Sanitizes event data to remove sensitive information
+   * @param {Object} eventData - Event data
+   * @returns {Object} Sanitized data
+   */
+  function sanitizeEventData(eventData) {
+    // Create shallow copy
+    const sanitized = { ...eventData };
+    
+    // Remove sensitive fields
+    const sensitiveFields = [
+      'password', 'token', 'secretKey', 'secret', 'authToken',
+      'refreshToken', 'accessToken', 'apiKey'
+    ];
+    
+    for (const field of sensitiveFields) {
+      if (field in sanitized) {
+        sanitized[field] = '[REDACTED]';
+      }
+    }
+    
+    return sanitized;
+  }
+  
+  /**
+   * Logs a user activity
+   * @param {string} userId - User ID
+   * @param {string} eventType - Event type
+   * @param {Object} eventData - Event data
+   * @returns {Promise<void>}
+   */
+  async function logActivity(userId, eventType, eventData = {}) {
+    try {
+      // Check if we should log this event
+      if (!shouldLogEvent(eventType)) {
+        return;
+      }
+      
+      // Prepare data for logging
+      const sanitizedData = sanitizeEventData(eventData);
+      const logData = detailedLogs ? sanitizedData : {};
+      
+      // Insert activity log
+      await db.execute(
+        `INSERT INTO ba_user_activity
+         (user_id, event_type, ip_address, location, device, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          userId,
+          eventType,
+          eventData.ip || null,
+          eventData.location || null,
+          eventData.device || null,
+          JSON.stringify(logData)
+        ]
+      );
+    } catch (error) {
+      console.error('Error logging user activity:', error);
+    }
+  }
+  
+  /**
+   * Gets user activity history
+   * @param {string} userId - User ID
+   * @param {Object} options - Query options
+   * @param {number} [options.limit=50] - Maximum number of entries
+   * @param {number} [options.offset=0] - Offset for pagination
+   * @param {string[]} [options.eventTypes] - Filter by event types
+   * @returns {Promise<Array>} Activity history
+   */
+  async function getUserActivityHistory(userId, options = {}) {
+    const {
+      limit = 50,
+      offset = 0,
+      eventTypes = []
+    } = options;
+    
+    try {
+      let query = `
+        SELECT 
+          id, event_type, ip_address, location, device, 
+          metadata, created_at
+        FROM ba_user_activity
+        WHERE user_id = ?
+      `;
+      
+      const params = [userId];
+      
+      // Add event type filter
+      if (eventTypes.length > 0) {
+        query += ' AND event_type IN (?)';
+        params.push(eventTypes);
+      }
+      
+      // Add order and pagination
+      query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+      
+      const [rows] = await db.execute(query, params);
+      
+      return rows.map(row => ({
+        ...row,
+        metadata: JSON.parse(row.metadata || '{}')
+      }));
+    } catch (error) {
+      console.error('Error getting user activity history:', error);
+      return [];
+    }
+  }
+  
+  return {
+    logActivity,
+    getUserActivityHistory
+  };
+}
+
+// Usage in auth hooks:
+const activityLogger = createActivityLoggingService({
+  excludedEvents: ['session_refresh'], // Too frequent/noisy
+  detailedLogs: process.env.NODE_ENV !== 'production' // Detailed in dev/staging only
+});
+
+// In onSuccessfulLogin hook:
+async function onSuccessfulLoginHook(userId, context) {
+  // ... other login logic ...
+  
+  // Log login activity
+  await activityLogger.logActivity(userId, 'login', {
+    ip: context.ip,
+    location: await getLocationFromIp(context.ip),
+    device: parseUserAgent(context.userAgent),
+    provider: context.provider
+  });
+}
+
+// Usage in API endpoint to get user history:
+app.get('/api/user/activity', async (req, res) => {
+  // Get authenticated user ID from session
+  const userId = req.user.id;
+  
+  // Get activity history
+  const activities = await activityLogger.getUserActivityHistory(userId, {
+    limit: req.query.limit ? parseInt(req.query.limit, 10) : 50,
+    offset: req.query.offset ? parseInt(req.query.offset, 10) : 0,
+    eventTypes: req.query.types ? req.query.types.split(',') : []
+  });
+  
+  res.json({ activities });
+});
+```
+
+### 10.3 WordPress Role Sync with Better Auth
+
+```javascript
+/**
+ * @typedef {Object} RoleMappingConfig
+ * @property {Object} wpToApp - WordPress to app role mapping
+ * @property {Object} appToWp - App to WordPress role mapping
+ * @property {string[]} defaultAppRoles - Default app roles for all users
+ */
+
+/**
+ * Creates a role synchronization service for WordPress and Better Auth
+ * @param {RoleMappingConfig} config - Role mapping configuration
+ * @returns {Object} Role sync service
+ */
+function createRoleSyncService(config) {
+  const {
+    wpToApp = {
+      'administrator': 'admin',
+      'editor': 'editor',
+      'author': 'author',
+      'contributor': 'contributor',
+      'subscriber': 'user'
+    },
+    appToWp = {
+      'admin': 'administrator',
+      'editor': 'editor',
+      'author': 'author',
+      'contributor': 'contributor',
+      'user': 'subscriber'
+    },
+    defaultAppRoles = ['user']
+  } = config;
+  
+  /**
+   * Maps WordPress roles to application roles
+   * @param {string[]} wpRoles - WordPress roles
+   * @returns {string[]} Application roles
+   */
+  function mapWpRolesToAppRoles(wpRoles) {
+    if (!wpRoles || !Array.isArray(wpRoles) || wpRoles.length === 0) {
+      return [...defaultAppRoles];
+    }
+    
+    // Map WP roles to app roles based on the mapping
+    const appRoles = wpRoles
+      .map(role => wpToApp[role] || null)
+      .filter(Boolean);
+    
+    // Add default roles
+    for (const defaultRole of defaultAppRoles) {
+      if (!appRoles.includes(defaultRole)) {
+        appRoles.push(defaultRole);
+      }
+    }
+    
+    return appRoles;
+  }
+  
+  /**
+   * Maps application roles to WordPress roles
+   * @param {string[]} appRoles - Application roles
+   * @returns {string[]} WordPress roles
+   */
+  function mapAppRolesToWpRoles(appRoles) {
+    if (!appRoles || !Array.isArray(appRoles) || appRoles.length === 0) {
+      return ['subscriber']; // Default WordPress role
+    }
+    
+    // Map app roles to WP roles based on the mapping
+    const wpRoles = appRoles
+      .map(role => appToWp[role] || null)
+      .filter(Boolean);
+    
+    // Ensure there's at least subscriber role
+    if (wpRoles.length === 0) {
+      wpRoles.push('subscriber');
+    }
+    
+    return wpRoles;
+  }
+  
+  /**
+   * Syncs WordPress roles to Better Auth
+   * @param {Object} user - Better Auth user
+   * @param {string[]} wpRoles - WordPress roles
+   * @returns {Promise<void>}
+   */
+  async function syncWpRolesToAuth(user, wpRoles) {
+    try {
+      // Map WordPress roles to app roles
+      const appRoles = mapWpRolesToAppRoles(wpRoles);
+      
+      // Update user roles in database
+      await db.execute(
+        `UPDATE ba_users
+         SET roles = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [JSON.stringify(appRoles), user.id]
+      );
+      
+      // Log role sync
+      console.log(`Synced roles for user ${user.id}: WP roles ${wpRoles.join(', ')} -> App roles ${appRoles.join(', ')}`);
+    } catch (error) {
+      console.error('Error syncing WordPress roles to auth:', error);
+    }
+  }
+  
+  /**
+   * Syncs Better Auth roles to WordPress
+   * @param {string} wpUserId - WordPress user ID
+   * @param {string[]} appRoles - Application roles
+   * @returns {Promise<void>}
+   */
+  async function syncAuthRolesToWp(wpUserId, appRoles) {
+    try {
+      // Map app roles to WordPress roles
+      const wpRoles = mapAppRolesToWpRoles(appRoles);
+      
+      // Make API request to WordPress to update roles
+      // This depends on your WordPress API setup
+      const response = await fetch(`${process.env.WP_API_URL}/wp-json/better-auth/v1/users/${wpUserId}/roles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Sync-Secret': process.env.WP_SYNC_SECRET
+        },
+        body: JSON.stringify({ roles: wpRoles })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update WordPress roles: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Log role sync
+      console.log(`Synced roles for WordPress user ${wpUserId}: App roles ${appRoles.join(', ')} -> WP roles ${wpRoles.join(', ')}`);
+      
+      return data;
+    } catch (error) {
+      console.error('Error syncing auth roles to WordPress:', error);
+    }
+  }
+  
+  return {
+    mapWpRolesToAppRoles,
+    mapAppRolesToWpRoles,
+    syncWpRolesToAuth,
+    syncAuthRolesToWp
+  };
+}
+
+// Usage in hooks:
+const roleSyncService = createRoleSyncService({
+  wpToApp: {
+    'administrator': 'admin',
+    'editor': 'editor',
+    'author': 'content_creator',
+    'shop_manager': 'store_admin',
+    'customer': 'customer',
+    'subscriber': 'user'
+  },
+  appToWp: {
+    'admin': 'administrator',
+    'editor': 'editor',
+    'content_creator': 'author',
+    'store_admin': 'shop_manager',
+    'customer': 'customer',
+    'user': 'subscriber'
+  },
+  defaultAppRoles: ['user']
+});
+
+// In onWpUserSync hook:
+async function onWpUserSyncHook(user, wpUserData) {
+  // ... other sync logic ...
+  
+  // Sync WordPress roles to Better Auth
+  if (wpUserData.roles && Array.isArray(wpUserData.roles)) {
+    await roleSyncService.syncWpRolesToAuth(user, wpUserData.roles);
+  }
+}
+
+// In API endpoint for updating user roles in Better Auth:
+app.put('/api/user/:id/roles', async (req, res) => {
+  // Verify admin privileges
+  if (!req.user.roles.includes('admin')) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+  
+  const userId = req.params.id;
+  const newRoles = req.body.roles;
+  
+  try {
+    // Update roles in Better Auth
+    await db.execute(
+      `UPDATE ba_users
+       SET roles = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [JSON.stringify(newRoles), userId]
+    );
+    
+    // Get WordPress user ID if linked
+    const [wpUserMap] = await db.execute(
+      `SELECT wp_user_id FROM ba_wp_user_map WHERE ba_user_id = ?`,
+      [userId]
+    );
+    
+    // Sync roles to WordPress if linked
+    if (wpUserMap.length > 0 && wpUserMap[0].wp_user_id) {
+      await roleSyncService.syncAuthRolesToWp(wpUserMap[0].wp_user_id, newRoles);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating user roles:', error);
+    res.status(500).json({ error: 'Failed to update roles' });
+  }
+});
+```
+
+## 11. Hook Orchestration and Interaction
+
+### 11.1 Hook Sequencing and Dependencies
+
+```javascript
+/**
+ * Orchestrates hook execution with dependencies
+ * @param {Object} hooks - Hook functions
+ * @param {Object} dependencies - Hook dependencies
+ * @returns {Function} Hook orchestrator
+ */
+function createHookOrchestrator(hooks, dependencies) {
+  /**
+   * @typedef {Object} HookExecutionOptions
+   * @property {boolean} [sequential=false] - Whether to run hooks sequentially
+   * @property {boolean} [stopOnError=false] - Whether to stop on first error
+   * @property {Function} [errorHandler] - Custom error handler
+   */
+  
+  /**
+   * Executes hooks with dependencies
+   * @param {string[]} hookNames - Names of hooks to execute
+   * @param {any[]} args - Arguments to pass to hooks
+   * @param {HookExecutionOptions} options - Execution options
+   * @returns {Promise<Object>} Execution results
+   */
+  async function executeHooks(hookNames, args = [], options = {}) {
+    const {
+      sequential = false,
+      stopOnError = false,
+      errorHandler = (error, hook) => console.error(`Error in hook ${hook}:`, error)
+    } = options;
+    
+    const results = {};
+    const errors = [];
+    
+    if (sequential) {
+      // Execute hooks sequentially
+      for (const hookName of hookNames) {
+        if (hookName in hooks) {
+          try {
+            results[hookName] = await hooks[hookName](...args, dependencies);
+          } catch (error) {
+            errors.push({ hook: hookName, error });
+            errorHandler(error, hookName);
+            
+            if (stopOnError) {
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      // Execute hooks in parallel
+      const hookPromises = hookNames
+        .filter(hookName => hookName in hooks)
+        .map(async hookName => {
+          try {
+            const result = await hooks[hookName](...args, dependencies);
+            results[hookName] = result;
+          } catch (error) {
+            errors.push({ hook: hookName, error });
+            errorHandler(error, hookName);
+          }
+        });
+      
+      await Promise.all(hookPromises);
+    }
+    
+    return { results, errors };
+  }
+  
+  return { executeHooks };
+}
+
+// Usage example:
+const hooks = {
+  validateUser: async (user) => {
+    // Validation logic
+    return { valid: true };
+  },
+  createPreferences: async (user, deps) => {
+    // Create user preferences
+    await deps.db.execute(
+      `INSERT INTO ba_user_preferences (user_id) VALUES (?)`,
+      [user.id]
+    );
+    return { created: true };
+  },
+  sendWelcomeEmail: async (user, deps) => {
+    // Send welcome email
+    await deps.emailService.sendWelcomeEmail(user.email);
+    return { sent: true };
+  }
+};
+
+const dependencies = {
+  db,
+  emailService,
+  logger
+};
+
+const orchestrator = createHookOrchestrator(hooks, dependencies);
+
+// Example usage in onUserCreation:
+async function enhancedOnUserCreationHook(user) {
+  try {
+    // Run validation first, then other hooks in parallel
+    const validationResult = await hooks.validateUser(user, dependencies);
+    
+    if (validationResult.valid) {
+      // Run remaining hooks in parallel
+      const { results, errors } = await orchestrator.executeHooks(
+        ['createPreferences', 'sendWelcomeEmail'],
+        [user]
+      );
+      
+      // Log results and errors
+      console.log('User creation hooks completed:', results);
+      
+      if (errors.length > 0) {
+        console.error('Some user creation hooks failed:', errors);
+      }
+    } else {
+      console.error('User validation failed:', validationResult);
+    }
+  } catch (error) {
+    console.error('Error in enhanced user creation hook:', error);
+  }
+}
+```
+
+### 11.2 Hook Execution Tracking for Complex Flows
+
+For complex authentication flows involving multiple hook executions, implement a tracking system to monitor the sequence and results:
+
+```javascript
+/**
+ * @typedef {Object} HookExecutionEvent
+ * @property {string} hookName - Name of the hook being executed
+ * @property {string} timestamp - ISO timestamp of execution
+ * @property {Object} context - Context data for the hook
+ * @property {string} result - Result status (success/error)
+ */
+
+const hookExecutionLog = [];
+
+/**
+ * Track hook execution for debugging and auditing
+ * @param {string} hookName - The name of the hook
+ * @param {Object} context - Context data
+ * @param {string} result - Execution result
+ */
+function trackHookExecution(hookName, context, result) {
+  // Sanitize context to remove sensitive data
+  const sanitizedContext = sanitizeContext(context);
+  
+  hookExecutionLog.push({
+    hookName,
+    timestamp: new Date().toISOString(),
+    context: sanitizedContext,
+    result
+  });
+  
+  // Optionally log to server for persistent tracking
+  if (process.env.NODE_ENV === 'development' || context.logLevel === 'debug') {
+    console.log(`Hook executed: ${hookName}`, {
+      context: sanitizedContext,
+      result
+    });
+  }
+}
+
+// Example usage within auth.after.onUserCreation
+auth.after.onUserCreation = async (user, context) => {
+  try {
+    // Custom logic implementation
+    trackHookExecution('onUserCreation', context, 'success');
+    return user;
+  } catch (error) {
+    trackHookExecution('onUserCreation', context, 'error');
+    throw error;
+  }
+};
+```
+
+### 11.3 Hook Implementation Coordination
+
+For larger projects with multiple developers, implement a hook coordination registry:
+
+```javascript
+// hooks-registry.js
+/**
+ * @type {Object.<string, Array.<function>>}
+ */
+const registeredHooks = {
+  onUserCreation: [],
+  onSessionCreation: [],
+  onWpUserSync: []
+};
+
+/**
+ * Register a hook handler
+ * @param {string} hookName - Name of the hook
+ * @param {function} handler - Handler function
+ * @param {number} [priority=10] - Execution priority (lower runs first)
+ */
+export function registerHookHandler(hookName, handler, priority = 10) {
+  if (!registeredHooks[hookName]) {
+    registeredHooks[hookName] = [];
+  }
+  
+  registeredHooks[hookName].push({
+    handler,
+    priority,
+    module: new Error().stack.split('\n')[2].trim() // Get caller info
+  });
+  
+  // Sort by priority
+  registeredHooks[hookName].sort((a, b) => a.priority - b.priority);
+}
+
+/**
+ * Get all registered handlers for a hook
+ * @param {string} hookName - Name of the hook
+ * @returns {Array.<function>} - Registered handlers sorted by priority
+ */
+export function getHookHandlers(hookName) {
+  return (registeredHooks[hookName] || []).map(h => h.handler);
+}
+
+// Example initialization
+export function initializeHooks(auth) {
+  // For each hook type, assign the combined handlers
+  Object.keys(registeredHooks).forEach(hookName => {
+    if (hookName.startsWith('on') && auth.after && typeof auth.after[hookName] === 'function') {
+      const handlers = getHookHandlers(hookName);
+      
+      auth.after[hookName] = async (...args) => {
+        let result = args[0]; // The initial value (e.g., user object)
+        
+        // Execute handlers in sequence, passing result through
+        for (const handler of handlers) {
+          result = await handler(result, ...args.slice(1));
+        }
+        
+        return result;
+      };
+    }
+  });
+}
+```
+
+## 12. Verification Checklist
+
+When implementing hooks and lifecycle events, verify the following:
+
+- [ ] Have all required hooks been implemented for each relevant auth flow?
+- [ ] Are hooks properly registered with the auth instance?
+- [ ] Do hook functions correctly handle async operations with proper awaiting?
+- [ ] Are hook functions properly documented with JSDoc comments?
+- [ ] Do hook implementations follow error handling best practices?
+- [ ] Are hook implementations isolated with clear single responsibilities?
+- [ ] Have hooks been tested with both success and failure scenarios?
+- [ ] Is there proper logging in place for hook execution?
+- [ ] Do hook implementations avoid modifying original objects directly?
+- [ ] Are hook implementations properly typed using JSDoc?
+- [ ] Do hooks properly handle session cookie management where needed?
+- [ ] Are hooks integrated with WordPress user sync logic when required?
+- [ ] Have performance considerations been addressed for intensive operations?
+- [ ] Is there proper user feedback mechanism for auth-related UI states?
+
+## 13. Error Handling and Troubleshooting
+
+### 13.1 Common Hook Implementation Errors
+
+| Error Pattern | Issue | Resolution |
+|---------------|-------|------------|
+| Missing `await` | Hook function returns too early | Ensure all async operations use `await` |
+| Mutating original objects | Side effects and race conditions | Return new object copies with changes |
+| Uncaught exceptions | Unexpected app crashes | Implement proper try/catch blocks |
+| Circular dependency | Import loops causing undefined refs | Restructure imports/exports |
+| Hook never executes | Registration timing issue | Verify hook registration timing |
+| Multiple conflicting hooks | Different modules setting same hook | Use hook coordination registry |
+| Session cookie not set | Missing cookie handling | Verify cookie headers are properly set |
+| WordPress sync fails | Network or configuration issues | Implement retry logic with backoff |
+
+### 13.2 Hook Debugging Process
+
+1. **Enable Debug Mode:**
+   ```javascript
+   // In $lib/server/auth.js
+   const auth = betterAuth({
+     // ...other options
+     debug: process.env.NODE_ENV !== 'production',
+     logErrors: true
+   });
+   ```
+
+2. **Add Instrumentation:**
+   ```javascript
+   // Track hook entry and exit
+   auth.after.onUserCreation = async (user, context) => {
+     console.log('→ onUserCreation hook START', { userId: user.id });
+     try {
+       // Implement hook logic
+       console.log('← onUserCreation hook END', { userId: user.id });
+       return user;
+     } catch (error) {
+       console.error('✖ onUserCreation hook ERROR', { userId: user.id, error });
+       throw error;
+     }
+   };
+   ```
+
+3. **Verify Hook Registration:**
+   ```javascript
+   // Debug hook registration
+   console.log('Better Auth hooks registered:', Object.keys(auth.after || {})
+     .filter(key => typeof auth.after[key] === 'function'));
+   ```
+
+4. **Test Hook in Isolation:**
+   ```javascript
+   // Create test helper
+   /**
+    * Test a Better Auth hook with mock data
+    * @param {string} hookName - Name of the hook to test
+    * @param {Object} mockData - Mock data to pass to the hook
+    * @returns {Promise<Object>} Result from hook execution
+    */
+   async function testHook(hookName, mockData) {
+     const hook = auth.after[hookName];
+     if (!hook || typeof hook !== 'function') {
+       throw new Error(`Hook '${hookName}' not registered`);
+     }
+     
+     try {
+       const result = await hook(mockData, { source: 'test' });
+       console.log(`Hook '${hookName}' executed successfully`, result);
+       return result;
+     } catch (error) {
+       console.error(`Hook '${hookName}' failed`, error);
+       throw error;
+     }
+   }
+   ```
+
+## 14. Integration with Other Protocols
+
+### 14.1 Integration with Better Auth Configuration Protocol
+
+Hooks must be defined after the Better Auth instance has been configured according to the Better Auth Configuration Protocol. Order of operations:
+
+1. Configure database and basic options per Configuration Protocol
+2. Register hooks and lifecycle events per this protocol
+3. Initialize route handlers per Route Handling Protocol
+
+### 14.2 Integration with WP-SK User Synchronization Protocol
+
+When implementing the WordPress user synchronization flow, the following hooks must be integrated:
+
+1. `onWpUserSync` - For handling incoming WordPress user data
+2. `onSessionCreation` - For setting proper session state after WP auth
+3. `onUserCreation` - For initializing new users synced from WordPress
+
+### 14.3 Integration with JSDoc Type Definitions Protocol
+
+All hook implementations must follow the type definitions established in the JSDoc Type Definitions Protocol:
+
+```javascript
+/**
+ * @typedef {import('$lib/types/better-auth').BetterAuthHooks} BetterAuthHooks
+ * @typedef {import('$lib/types/better-auth').UserCreateHookContext} UserCreateHookContext
+ */
+
+/**
+ * Handle user creation events
+ * @type {BetterAuthHooks['onUserCreation']}
+ */
+export const handleUserCreation = async (user, context) => {
+  // Implementation with proper type safety
+  return user;
+};
+```
+
+### 14.4 Integration with Error Handling Protocol
+
+All hook implementations must follow the Error Handling Protocol, which includes:
+
+1. Proper error categorization
+2. Consistent error message formatting
+3. Appropriate error logging
+4. Client-friendly error responses
+
+## 15. Implementation Policies
+
+### 15.1 Production Requirements
+
+1. **Error Isolation:** Hook failures should not crash the entire authentication flow unless absolutely necessary.
+2. **Performance Metrics:** Production hook implementations should include performance metrics tracking.
+3. **Logging:** Production environments should have redacted logging (no PII/sensitive data).
+4. **Retries:** Critical hooks should implement retry logic with exponential backoff for transient failures.
+
+### 15.2 Testing Requirements
+
+1. **Unit Tests:** Each hook implementation must have dedicated unit tests.
+2. **Integration Tests:** Authentication flows must have end-to-end tests covering hook interactions.
+3. **Failure Mode Tests:** Tests must verify correct behavior when hooks fail.
+4. **Performance Tests:** Hooks with intensive operations must have performance benchmarks.
+
+## 16. Maintenance and Updates
+
+### 16.1 Backwards Compatibility
+
+When updating hook implementations:
+
+1. Maintain the same function signature to prevent breaking changes
+2. If breaking changes are necessary, version the hook name (e.g., `onUserCreationV2`)
+3. Document all changes in CHANGELOG.md
+4. Provide migration guidance for developers
+
+### 16.2 Deprecation Process
+
+When deprecating hooks:
+
+1. Mark the hook as deprecated with a JSDoc `@deprecated` tag
+2. Log a warning when the deprecated hook is used
+3. Provide migration path to the new recommended approach
+4. Set a timeline for removal (minimum 2 minor versions)
+5. Document deprecation in CHANGELOG.md

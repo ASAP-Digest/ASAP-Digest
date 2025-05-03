@@ -1,0 +1,1017 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Security Best Practices Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines standard security practices and implementation patterns for Better Auth in a headless WordPress/SvelteKit architecture. It ensures consistent application of security measures to protect user data, prevent common attack vectors, and maintain compliance with security best practices. The protocol is designed for JavaScript/JSDoc implementations without requiring TypeScript, while still maintaining type safety.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints 
+│ 3. Better Auth Session Management Proto │ // Session management
+│ 4. Better Auth Error Handling Protocol  │ // Error handling
+│ 5. Better Auth Rate Limiting Protocol   │ // Rate limiting implementation
+│ 6. Better Auth Security (This)          │ // Security best practices
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Security Principles
+
+### 3.1 Secret Management
+
+1. **Secret Storage Requirements:**
+   - MUST store all secrets (auth, server-to-server, OAuth) in environment variables.
+   - MUST NOT hardcode secrets in source code.
+   - MUST load secrets from `.env` files that are excluded from version control via `.gitignore`.
+
+```javascript
+// CORRECT
+const authSecret = process.env.BETTER_AUTH_SECRET;
+const wpSyncSecret = process.env.WP_SYNC_SECRET;
+
+// INCORRECT
+// const authSecret = 'f8a9d2e7c6b3a5f8a9d2e7c6b3a5'; // Hardcoded secret
+```
+
+2. **Secret Generation:**
+   - MUST use cryptographically strong random values for secrets (32+ bytes).
+   - MUST use different secrets for each environment (development, staging, production).
+   - SHOULD use a secure tool or service for generating secrets.
+
+```javascript
+/**
+ * Example of secret generation script (for development only)
+ * NEVER run this in production code
+ * Store generated secrets in environment variables
+ */
+const crypto = require('crypto');
+const generateSecret = () => crypto.randomBytes(32).toString('hex');
+console.log(`Generated secret: ${generateSecret()}`);
+```
+
+### 3.2 Authentication Configuration
+
+1. **Session Security Settings:**
+   - MUST set reasonable `sessionExpiresIn` value (default: 30 days).
+   - MUST set appropriate cookie security options:
+
+```javascript
+export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET,
+  sessionExpiresIn: 30 * 24 * 60 * 60 * 1000, // 30 days
+  cookies: {
+    // Secure cookie settings
+    path: '/',
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    sameSite: 'lax', // Use 'strict' for highest security if no cross-site requests
+    secure: process.env.NODE_ENV === 'production', // Always true in production
+    httpOnly: true, // Prevents JavaScript access to cookies
+  }
+});
+```
+
+2. **Password Requirements:**
+   - MUST enforce strong password requirements:
+
+```javascript
+export const auth = betterAuth({
+  // Other config...
+  emailAndPassword: {
+    passwordMinLength: 10,
+    passwordMaxLength: 100,
+    passwordValidation: {
+      minLength: 10,
+      maxLength: 100,
+      requireLowercase: true,
+      requireUppercase: true,
+      requireDigit: true,
+      requireSpecialChar: true,
+    }
+  }
+});
+```
+
+### 3.3 API Security
+
+1. **CORS Configuration:**
+   - MUST implement strict CORS policies:
+   - MUST whitelist only necessary domains for cross-origin requests:
+
+```javascript
+export const auth = betterAuth({
+  // Other config...
+  cors: {
+    origin: ['https://your-frontend-domain.com'], // Explicit list, no wildcards
+    credentials: true, // Required for cookie-based auth
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Restrict to needed methods
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-WP-Sync-Secret'],
+    maxAge: 86400, // Cache preflight response for 24 hours
+  }
+});
+```
+
+2. **Server-to-Server Authentication:**
+   - MUST validate shared secrets for all server-to-server communications:
+
+```javascript
+/**
+ * Validates WordPress server-to-server request
+ * @param {Request} request - The incoming request
+ * @returns {boolean} True if request has valid secret
+ */
+function validateWpRequest(request) {
+  const wpSyncSecret = auth.options.serverToServer?.syncSecret;
+  const requestSecret = request.headers.get('x-wp-sync-secret');
+  
+  if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+    return false;
+  }
+  return true;
+}
+```
+
+### 3.4 Data Protection
+
+1. **Database Security:**
+   - MUST use parameterized queries for all database operations:
+
+```javascript
+/**
+ * @typedef {Object} UserCredentials
+ * @property {string} email - User email
+ * @property {string} password - Hashed password
+ */
+
+/**
+ * Safely gets user by email using parameterized query
+ * @param {string} email - User email
+ * @returns {Promise<UserCredentials|null>} User data or null
+ */
+async function getUserByEmail(email) {
+  try {
+    // Parameterized query prevents SQL injection
+    const [rows] = await connection.execute(
+      'SELECT id, email, password FROM ba_users WHERE email = ?', 
+      [email]
+    );
+    return rows[0] || null;
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
+    return null;
+  }
+}
+```
+
+2. **Sensitive Data Handling:**
+   - MUST sanitize all user inputs before storing or processing:
+   - MUST NOT log sensitive data:
+
+```javascript
+/**
+ * @typedef {Object} UserLoginAttempt
+ * @property {string} email - User email
+ * @property {string} ip - Request IP
+ * @property {boolean} success - Whether login succeeded
+ */
+
+/**
+ * Logs login attempt securely
+ * @param {UserLoginAttempt} attempt - Login attempt details
+ */
+function logLoginAttempt({ email, ip, success }) {
+  // CORRECT: Mask sensitive data
+  const maskedEmail = maskEmail(email);
+  
+  // Log safely without sensitive data
+  console.log(`Login attempt: ${maskedEmail} from ${ip} - ${success ? 'Success' : 'Failed'}`);
+  
+  // Store in database for audit purposes
+  storeLoginAudit({ 
+    email_hash: hashValue(email), // Store hash instead of cleartext
+    ip_hash: hashValue(ip),
+    success,
+    timestamp: new Date()
+  });
+}
+
+/**
+ * Masks an email address for logging
+ * @param {string} email - Email to mask
+ * @returns {string} Masked email
+ */
+function maskEmail(email) {
+  const [localPart, domain] = email.split('@');
+  const maskedLocal = localPart.substring(0, 2) + '***';
+  return `${maskedLocal}@${domain}`;
+}
+```
+
+### 3.5 Protection Against Common Attacks
+
+1. **CSRF Protection:**
+   - MUST implement CSRF protection for all state-changing operations:
+
+```javascript
+// SvelteKit route handler with CSRF protection
+export async function POST(event) {
+  const token = event.cookies.get('csrf_token');
+  const requestToken = event.request.headers.get('x-csrf-token');
+  
+  // Validate CSRF token
+  if (!token || !requestToken || token !== requestToken) {
+    return json({ success: false, error: 'csrf_failure' }, { status: 403 });
+  }
+  
+  // Proceed with authenticated operation...
+}
+```
+
+2. **XSS Protection:**
+   - MUST sanitize all user-generated content before rendering:
+
+```javascript
+/**
+ * Sanitizes user content to prevent XSS
+ * @param {string} input - User-provided content
+ * @returns {string} Sanitized content
+ */
+function sanitizeContent(input) {
+  if (!input) return '';
+  
+  // Basic sanitization - replace with a proper library like DOMPurify
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+```
+
+3. **Session Fixation Protection:**
+   - MUST regenerate session IDs after authentication state changes:
+
+```javascript
+/**
+ * Handles user login with session regeneration
+ * @param {Request} request - The request object
+ * @param {string} email - User email
+ * @param {string} password - User password
+ * @returns {Promise<Response>} Response with new session
+ */
+async function handleLogin(request, email, password) {
+  // Authenticate user
+  const user = await auth.emailAndPassword.login({ request, email, password });
+  
+  if (user) {
+    // Create new session with regenerated ID
+    const session = await auth.sessionManager.createSession({
+      userId: user.id,
+      // Force new session ID generation
+      regenerate: true
+    });
+    
+    // Set new session cookie
+    const cookieHeader = auth.sessionManager.createSessionCookie(session);
+    
+    return json({ 
+      success: true,
+      user: { id: user.id, email: user.email }
+    }, {
+      headers: {
+        'Set-Cookie': cookieHeader
+      }
+    });
+  }
+  
+  return json({ success: false, error: 'invalid_credentials' }, { status: 401 });
+}
+```
+
+## 4. Implementation Requirements
+
+### 4.1 Session Management Security
+
+1. **Session Storage:**
+   - MUST use secure storage for sessions:
+
+```javascript
+// MySQL adapter with table security
+const mysqlAdapter = {
+  // Other adapter methods...
+  
+  /**
+   * Gets session by token securely
+   * @param {string} token - Session token
+   * @returns {Promise<Object|null>} Session object or null
+   */
+  getSessionByToken: async (token) => {
+    if (!token || typeof token !== 'string') return null;
+    
+    try {
+      const [rows] = await connection.execute(
+        `SELECT * FROM ba_sessions 
+         WHERE token = ? 
+         AND expires_at > NOW()`, // Important: Check expiration
+        [token]
+      );
+      
+      return rows[0] || null;
+    } catch (error) {
+      console.error('Error fetching session:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Creates session securely
+   * @param {Object} session - Session data
+   * @returns {Promise<Object>} Created session
+   */
+  createSession: async (session) => {
+    const { userId, token, expiresAt } = session;
+    
+    try {
+      await connection.execute(
+        `INSERT INTO ba_sessions (user_id, token, expires_at, created_at) 
+         VALUES (?, ?, ?, NOW())`,
+        [userId, token, new Date(expiresAt)]
+      );
+      
+      return session;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw error;
+    }
+  }
+};
+```
+
+2. **Session Invalidation:**
+   - MUST provide mechanisms to invalidate sessions:
+
+```javascript
+/**
+ * @typedef {Object} SessionInvalidationOptions
+ * @property {string} [userId] - User ID to invalidate all sessions for
+ * @property {string} [token] - Specific session token to invalidate
+ * @property {string} [exceptToken] - Token to exclude from invalidation
+ */
+
+/**
+ * Invalidates user sessions
+ * @param {SessionInvalidationOptions} options - Invalidation options
+ * @returns {Promise<boolean>} Success status
+ */
+async function invalidateSessions(options) {
+  const { userId, token, exceptToken } = options;
+  
+  if (!userId && !token) return false;
+  
+  try {
+    let query = 'DELETE FROM ba_sessions WHERE ';
+    const params = [];
+    
+    if (userId) {
+      query += 'user_id = ?';
+      params.push(userId);
+      
+      if (exceptToken) {
+        query += ' AND token != ?';
+        params.push(exceptToken);
+      }
+    } else if (token) {
+      query += 'token = ?';
+      params.push(token);
+    }
+    
+    await connection.execute(query, params);
+    return true;
+  } catch (error) {
+    console.error('Error invalidating sessions:', error);
+    return false;
+  }
+}
+```
+
+### 4.2 Password Security
+
+1. **Password Hashing:**
+   - MUST use secure password hashing:
+
+```javascript
+/**
+ * Hashes a password securely using bcrypt
+ * @param {string} password - Plain password
+ * @returns {Promise<string>} Hashed password
+ */
+async function hashPassword(password) {
+  const bcrypt = await import('bcrypt');
+  const saltRounds = 12; // Recommended minimum
+  return bcrypt.hash(password, saltRounds);
+}
+
+/**
+ * Verifies a password against stored hash
+ * @param {string} password - Plain password
+ * @param {string} hashedPassword - Stored hash
+ * @returns {Promise<boolean>} Whether password matches
+ */
+async function verifyPassword(password, hashedPassword) {
+  const bcrypt = await import('bcrypt');
+  return bcrypt.compare(password, hashedPassword);
+}
+```
+
+2. **Password Reset Security:**
+   - MUST implement secure token generation for password resets:
+   - MUST enforce token expiration:
+
+```javascript
+/**
+ * @typedef {Object} ResetTokenOptions
+ * @property {string} userId - User ID
+ * @property {number} [expiresIn=3600000] - Expiration in ms (default: 1 hour)
+ */
+
+/**
+ * Generates secure password reset token
+ * @param {ResetTokenOptions} options - Token options
+ * @returns {Promise<string>} Reset token
+ */
+async function generateResetToken(options) {
+  const { userId, expiresIn = 3600000 } = options;
+  const crypto = await import('crypto');
+  
+  // Generate random token
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Store in database with expiration
+  const expiresAt = new Date(Date.now() + expiresIn);
+  
+  await connection.execute(
+    `INSERT INTO ba_reset_tokens (user_id, token, expires_at) 
+     VALUES (?, ?, ?)`,
+    [userId, token, expiresAt]
+  );
+  
+  return token;
+}
+
+/**
+ * Validates reset token
+ * @param {string} token - Reset token
+ * @returns {Promise<string|null>} User ID if valid, null otherwise
+ */
+async function validateResetToken(token) {
+  if (!token) return null;
+  
+  const [rows] = await connection.execute(
+    `SELECT user_id FROM ba_reset_tokens 
+     WHERE token = ? AND expires_at > NOW()
+     LIMIT 1`,
+    [token]
+  );
+  
+  if (!rows.length) return null;
+  
+  return rows[0].user_id;
+}
+```
+
+### 4.3 Logging for Security Auditing
+
+1. **Security Event Logging:**
+   - MUST log security-relevant events:
+   - MUST NOT log sensitive data:
+
+```javascript
+/**
+ * @typedef {Object} SecurityEvent
+ * @property {string} type - Event type (login, logout, reset, etc.)
+ * @property {string} [userId] - User ID (if authenticated)
+ * @property {string} ip - IP address
+ * @property {string} userAgent - User agent string
+ * @property {Object} [metadata] - Additional metadata
+ */
+
+/**
+ * Logs security event securely
+ * @param {SecurityEvent} event - Security event details
+ */
+async function logSecurityEvent(event) {
+  const { type, userId, ip, userAgent, metadata } = event;
+  
+  // Sanitize metadata to prevent sensitive data logging
+  const safeMetadata = metadata ? sanitizeMetadata(metadata) : null;
+  
+  // Log to structured storage
+  await connection.execute(
+    `INSERT INTO ba_security_logs 
+     (event_type, user_id, ip_address, user_agent, metadata, created_at) 
+     VALUES (?, ?, ?, ?, ?, NOW())`,
+    [type, userId || null, ip, userAgent, JSON.stringify(safeMetadata)]
+  );
+}
+
+/**
+ * Sanitizes metadata to remove sensitive information
+ * @param {Object} metadata - Event metadata
+ * @returns {Object} Sanitized metadata
+ */
+function sanitizeMetadata(metadata) {
+  // Create a copy to avoid modifying original
+  const safe = { ...metadata };
+  
+  // Fields to remove or mask
+  const sensitiveFields = ['password', 'token', 'secret', 'authToken', 'cookie'];
+  
+  // Remove or mask sensitive fields
+  sensitiveFields.forEach(field => {
+    if (field in safe) {
+      safe[field] = '[REDACTED]';
+    }
+  });
+  
+  return safe;
+}
+```
+
+## 5. OAuth Integration Security
+
+1. **OAuth Provider Configuration:**
+   - MUST secure OAuth client secrets:
+   - MUST validate OAuth state parameter:
+
+```javascript
+export const auth = betterAuth({
+  // Other config...
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackUrl: `${process.env.APP_URL}/api/auth/callback/google`,
+      // These scopes determine what user data your app can access
+      scope: 'openid email profile'
+    }
+  }
+});
+
+/**
+ * Validates OAuth state parameter to prevent CSRF
+ * @param {Request} request - The request object
+ * @param {string} state - State from callback
+ * @returns {boolean} Whether state is valid
+ */
+function validateOAuthState(request, state) {
+  const storedState = request.cookies.get('oauth_state');
+  
+  if (!storedState || !state || storedState !== state) {
+    return false;
+  }
+  
+  return true;
+}
+```
+
+2. **OAuth Callback Security:**
+   - MUST verify OAuth callbacks securely:
+
+```javascript
+/**
+ * Handles OAuth callback securely
+ * @param {Request} request - The request object
+ * @param {URL} url - URL object with callback parameters
+ * @returns {Promise<Response>} Response with session
+ */
+async function handleOAuthCallback(request, url) {
+  // Extract parameters
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  const provider = url.pathname.split('/').pop();
+  
+  // Validate state parameter (CSRF protection)
+  if (!validateOAuthState(request, state)) {
+    return json({ success: false, error: 'invalid_state' }, { status: 403 });
+  }
+  
+  try {
+    // Exchange code for tokens and retrieve user profile
+    const result = await auth.socialProviders[provider].callback({
+      request,
+      params: { code, state }
+    });
+    
+    if (result.user) {
+      // Create session
+      const session = await auth.sessionManager.createSession({
+        userId: result.user.id,
+        // Important: always regenerate session ID
+        regenerate: true
+      });
+      
+      // Set new session cookie
+      const cookieHeader = auth.sessionManager.createSessionCookie(session);
+      
+      return json({ 
+        success: true,
+        user: { id: result.user.id, email: result.user.email }
+      }, {
+        headers: {
+          'Set-Cookie': cookieHeader
+        }
+      });
+    }
+    
+    return json({ success: false, error: 'oauth_failed' }, { status: 401 });
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    return json({ success: false, error: 'oauth_error' }, { status: 500 });
+  }
+}
+```
+
+## 6. Server-to-Server Communication Security
+
+1. **Headless WP <-> SvelteKit Communication:**
+   - MUST secure all server-to-server communications:
+
+```javascript
+/**
+ * @typedef {Object} WPSyncOptions
+ * @property {string} syncSecret - The shared secret
+ * @property {string[]} allowedSources - Allowed sources
+ */
+
+/**
+ * Configure server-to-server security
+ */
+export const auth = betterAuth({
+  // Other config...
+  serverToServer: {
+    enabled: true,
+    syncSecret: process.env.WP_SYNC_SECRET,
+    allowedSources: ['wordpress'],
+    syncFields: ['email', 'displayName', 'firstName', 'lastName', 'roles'],
+  }
+});
+
+/**
+ * SvelteKit API endpoint for WordPress user sync
+ * @param {import('@sveltejs/kit').RequestEvent} event - Request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  // Validate secret
+  const wpSyncSecret = auth.options.serverToServer?.syncSecret;
+  const requestSecret = event.request.headers.get('x-wp-sync-secret');
+  
+  if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+    // Log failed attempt for security auditing
+    await logSecurityEvent({
+      type: 'wp_sync_unauthorized',
+      ip: getClientIP(event.request),
+      userAgent: event.request.headers.get('user-agent') || 'unknown'
+    });
+    
+    return json({ success: false, error: 'invalid_secret' }, { status: 401 });
+  }
+  
+  // Process WordPress user data
+  // ...
+}
+```
+
+2. **IP Allowlisting:**
+   - SHOULD implement IP allowlisting for critical endpoints:
+
+```javascript
+/**
+ * @typedef {Object} IPAllowlistOptions
+ * @property {string[]} allowedIPs - List of allowed IP addresses
+ * @property {string[]} allowedCIDRs - List of allowed CIDR ranges
+ */
+
+/**
+ * Validates request IP against allowlist
+ * @param {Request} request - The request object
+ * @param {IPAllowlistOptions} options - Allowlist options
+ * @returns {boolean} Whether IP is allowed
+ */
+function validateIPAllowlist(request, options) {
+  const { allowedIPs = [], allowedCIDRs = [] } = options;
+  
+  // Get client IP (implementation depends on your setup)
+  const clientIP = getClientIP(request);
+  
+  // Check direct IP match
+  if (allowedIPs.includes(clientIP)) {
+    return true;
+  }
+  
+  // Check CIDR ranges
+  for (const cidr of allowedCIDRs) {
+    if (isIPInCIDR(clientIP, cidr)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * WordPress sync endpoint with IP allowlisting
+ */
+export async function POST(event) {
+  // IP allowlist check (before secret validation)
+  const ipOptions = {
+    allowedIPs: process.env.WP_SYNC_ALLOWED_IPS?.split(',') || [],
+    allowedCIDRs: process.env.WP_SYNC_ALLOWED_CIDRS?.split(',') || []
+  };
+  
+  if (!validateIPAllowlist(event.request, ipOptions)) {
+    await logSecurityEvent({
+      type: 'wp_sync_ip_blocked',
+      ip: getClientIP(event.request),
+      userAgent: event.request.headers.get('user-agent') || 'unknown'
+    });
+    
+    // 404 instead of 403 to avoid revealing endpoint existence
+    return new Response('Not Found', { status: 404 });
+  }
+  
+  // Continue with secret validation and processing
+  // ...
+}
+```
+
+## 7. Security Update and Monitoring
+
+1. **Dependency Security Management:**
+   - MUST regularly update dependencies:
+   - MUST implement vulnerability scanning:
+
+```javascript
+/**
+ * Example npm scripts to add to package.json
+ */
+{
+  "scripts": {
+    // Other scripts...
+    "security:audit": "npm audit",
+    "security:outdated": "npm outdated",
+    "security:fix": "npm audit fix"
+  }
+}
+```
+
+2. **Security Monitoring:**
+   - SHOULD implement security-relevant event monitoring:
+
+```javascript
+/**
+ * @typedef {Object} SecurityAnomalyOptions
+ * @property {number} loginFailureThreshold - Threshold for login failures
+ * @property {number} timeWindowMs - Time window in milliseconds
+ */
+
+/**
+ * Checks for security anomalies
+ * @param {string} email - User email
+ * @param {SecurityAnomalyOptions} options - Anomaly detection options
+ * @returns {Promise<boolean>} Whether anomaly detected
+ */
+async function checkLoginAnomalies(email, options = {}) {
+  const { loginFailureThreshold = 5, timeWindowMs = 3600000 } = options;
+  
+  try {
+    // Check for multiple failed login attempts
+    const [rows] = await connection.execute(
+      `SELECT COUNT(*) as count 
+       FROM ba_security_logs 
+       WHERE event_type = 'login_failure' 
+       AND JSON_EXTRACT(metadata, '$.email') = ? 
+       AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)`,
+      [email, timeWindowMs / 1000]
+    );
+    
+    return rows[0].count >= loginFailureThreshold;
+  } catch (error) {
+    console.error('Error checking login anomalies:', error);
+    return false;
+  }
+}
+```
+
+## 8. Verification & Testing
+
+1. **Security Testing Methods:**
+   - MUST implement security testing for authentication flows:
+
+```javascript
+/**
+ * Security testing actions to perform regularly
+ */
+const securityTests = [
+  // Test CSRF protection
+  async () => {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        newPassword: 'Test123!@#',
+        confirmPassword: 'Test123!@#'
+      }),
+      // Intentionally omit CSRF token
+    });
+    
+    // Should reject with 403
+    return response.status === 403;
+  },
+  
+  // Test password policy
+  async () => {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: 'test@example.com',
+        password: 'weak', // Intentionally weak password
+      })
+    });
+    
+    const data = await response.json();
+    // Should reject with password policy error
+    return !data.success && data.error === 'password_policy';
+  },
+  
+  // Additional tests...
+];
+
+/**
+ * Run security tests
+ */
+async function runSecurityTests() {
+  for (const [index, test] of securityTests.entries()) {
+    try {
+      const passed = await test();
+      console.log(`Security test ${index + 1}: ${passed ? 'PASSED' : 'FAILED'}`);
+    } catch (error) {
+      console.error(`Security test ${index + 1} error:`, error);
+    }
+  }
+}
+```
+
+2. **Automated Security Scanning:**
+   - SHOULD implement automated security scanning in CI/CD pipeline:
+
+```javascript
+/**
+ * Example GitHub Action workflow for security scanning
+ * Add to .github/workflows/security-scan.yml
+ */
+/*
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        
+      - name: Run security linting
+        run: |
+          npm install -g eslint eslint-plugin-security
+          npx eslint . --ext .js --config .eslintrc.js
+        
+      # Add additional security scanners as needed
+*/
+```
+
+## 9. Implementation Checklist
+
+**Core Security Setup:**
+- [ ] Secrets stored in environment variables
+- [ ] Different secrets for each environment
+- [ ] Strong password requirements configured
+- [ ] Strict CORS policy implemented
+- [ ] Server-to-server authentication with shared secrets
+- [ ] Session cookie security options properly set
+
+**Database Security:**
+- [ ] Parameterized queries used for all operations
+- [ ] Input validation and sanitization in place
+- [ ] Sensitive data properly handled and masked
+- [ ] Password hashing using strong algorithm (bcrypt)
+
+**Session Management:**
+- [ ] Session regeneration after authentication changes
+- [ ] Session expiration properly enforced
+- [ ] Secure storage for sessions
+- [ ] Session invalidation mechanism implemented
+
+**Attack Protection:**
+- [ ] CSRF protection for state-changing operations
+- [ ] XSS protection for user-generated content
+- [ ] Rate limiting for authentication endpoints
+- [ ] IP allowlisting for critical endpoints
+
+**OAuth & WP Integration:**
+- [ ] OAuth state parameter validation
+- [ ] OAuth callback security measures
+- [ ] Secure WP <-> SvelteKit communication
+- [ ] Validation of sync requests
+
+**Monitoring & Maintenance:**
+- [ ] Security event logging implemented
+- [ ] Regular dependency updates process
+- [ ] Vulnerability scanning setup
+- [ ] Security testing methods defined
+
+## 10. Security Response Plan
+
+1. **Security Incident Response Plan:**
+   - MUST have a defined process for security incidents:
+   - MUST include session invalidation capabilities:
+   - MUST include data breach notification procedures:
+
+```javascript
+/**
+ * Security incident response actions
+ * @param {string} incidentType - Type of security incident
+ */
+async function handleSecurityIncident(incidentType) {
+  switch (incidentType) {
+    case 'unauthorized_access':
+      // Invalidate affected sessions
+      // Notify administrators
+      // Log details for forensics
+      break;
+      
+    case 'data_breach':
+      // Invalidate all sessions
+      // Reset affected users' passwords
+      // Prepare notification for affected users
+      // Log details for forensics
+      break;
+      
+    case 'api_compromise':
+      // Rotate all API keys and secrets
+      // Invalidate all sessions
+      // Implement additional monitoring
+      break;
+      
+    default:
+      // General response actions
+  }
+  
+  // Document incident in secure log
+  await logSecurityEvent({
+    type: 'security_incident',
+    metadata: {
+      incidentType,
+      responseActions: []
+    }
+  });
+}
+```
+
+## 11. References and Resources
+
+- Better Auth Security Documentation: https://www.better-auth.com/docs/reference/security
+- Better Auth Session Management: https://www.better-auth.com/docs/concepts/session-management
+- OWASP Web Security Testing Guide: https://owasp.org/www-project-web-security-testing-guide/
+- NIST Password Guidelines: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-63b.pdf

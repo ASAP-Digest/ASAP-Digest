@@ -1,0 +1,534 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# JSDoc Type Definitions for Better Auth Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes standardized JSDoc type definitions for Better Auth in JavaScript-based headless WordPress/SvelteKit applications. It provides a comprehensive type system without requiring TypeScript, ensuring consistency, code quality, and developer experience while working with Better Auth entities, functions, and integrations.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. WP-SK User Synchronization Protocol  │ // User data transfer
+│ 4. JSDoc Type Definitions (This)        │ // Type safety without TypeScript
+│ 5. jsdoc-complex-parameter-typing       │ // General JSDoc typing standards
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Type Definitions
+
+### 3.1 Basic Entities
+
+```javascript
+/**
+ * @typedef {Object} BetterAuthUser
+ * @property {string} id - Unique user identifier
+ * @property {string} email - User's email address
+ * @property {string} [username] - Optional username
+ * @property {string} [display_name] - User's display name
+ * @property {Date|string} created_at - Creation timestamp
+ * @property {Date|string} updated_at - Last update timestamp
+ * @property {Object} [metadata] - Additional user metadata
+ * @property {string} [metadata.firstName] - First name
+ * @property {string} [metadata.lastName] - Last name
+ * @property {string[]} [metadata.roles] - User roles
+ * @property {Object} [metadata.wp_sync] - WordPress sync metadata
+ * @property {string} [metadata.wp_sync.wp_user_id] - WordPress user ID
+ * @property {string} [metadata.wp_sync.synced_at] - Last sync timestamp
+ */
+
+/**
+ * @typedef {Object} BetterAuthSession
+ * @property {string} token - Session token
+ * @property {string} userId - User ID associated with session
+ * @property {Date|string} expiresAt - Expiration timestamp
+ * @property {string} [refreshToken] - Token for refreshing the session
+ * @property {Date|string} [refreshTokenExpiresAt] - Refresh token expiration
+ */
+
+/**
+ * @typedef {Object} BetterAuthAccount
+ * @property {string} id - Unique account identifier
+ * @property {string} userId - User ID associated with account
+ * @property {string} provider - Authentication provider name
+ * @property {string} providerAccountId - ID from the provider
+ * @property {Date|string} created_at - Creation timestamp
+ * @property {Object} [providerData] - Additional provider-specific data
+ */
+
+/**
+ * @typedef {Object} WordPressUserData
+ * @property {string} wpUserId - WordPress user ID
+ * @property {string} email - User email
+ * @property {string} username - Username
+ * @property {string} [displayName] - Display name
+ * @property {string} [firstName] - First name
+ * @property {string} [lastName] - Last name
+ * @property {string[]} [roles] - WordPress roles
+ */
+
+/**
+ * @typedef {Object} WordPressUserMap
+ * @property {number} id - Mapping ID
+ * @property {string} wp_user_id - WordPress user ID
+ * @property {string} ba_user_id - Better Auth user ID
+ * @property {Date|string} created_at - Creation timestamp
+ * @property {Date|string} updated_at - Last update timestamp
+ */
+```
+
+### 3.2 Configuration Types
+
+```javascript
+/**
+ * @typedef {Object} DatabaseConfig
+ * @property {Object} dialect - Kysely dialect instance
+ * @property {string} type - Database type (e.g., "mysql")
+ */
+
+/**
+ * @typedef {Object} AdapterFunctions
+ * @property {function(string): Promise<BetterAuthUser|null>} getUserById - Get user by ID
+ * @property {function(string): Promise<BetterAuthUser|null>} getUserByEmail - Get user by email
+ * @property {function(string): Promise<BetterAuthSession|null>} getSessionByToken - Get session
+ * @property {function(string): Promise<boolean>} createSession - Create new session
+ * @property {function(string): Promise<boolean>} deleteSession - Delete session
+ * @property {function(string): Promise<BetterAuthUser|null>} getUserByWpId - Get user by WordPress ID
+ * @property {function(Object): Promise<BetterAuthUser>} createUser - Create new user
+ * @property {function(string, Object): Promise<BetterAuthUser>} updateUser - Update user
+ * @property {function(Object): Promise<BetterAuthAccount>} createAccount - Create account
+ * @property {function(string, string): Promise<WordPressUserMap>} linkAccount - Link WP account
+ */
+
+/**
+ * @typedef {Object} ServerToServerConfig
+ * @property {boolean} enabled - Whether S2S auth is enabled
+ * @property {string} syncSecret - Secret for validating S2S requests
+ * @property {string[]} allowedSources - Allowed source systems
+ * @property {string[]} syncFields - Fields to sync from source
+ */
+
+/**
+ * @typedef {Object} CorsConfig
+ * @property {string|string[]} origin - Allowed origins
+ * @property {boolean} credentials - Allow credentials
+ * @property {string[]} allowedHeaders - Allowed headers
+ */
+
+/**
+ * @typedef {Object} BetterAuthOptions
+ * @property {string} secret - Auth secret
+ * @property {string} [sessionCookieName] - Cookie name
+ * @property {number} [sessionExpiresIn] - Session expiration in ms
+ * @property {DatabaseConfig} database - Database configuration
+ * @property {AdapterFunctions} adapter - Adapter functions
+ * @property {CorsConfig} [cors] - CORS configuration
+ * @property {Object} [after] - Lifecycle hooks
+ * @property {function(BetterAuthUser): Promise<void>} [after.onUserCreation] - User creation hook
+ * @property {function(BetterAuthSession): Promise<void>} [after.onSessionCreation] - Session creation
+ * @property {function(BetterAuthUser, WordPressUserData): Promise<void>} [after.onWpUserSync] - WP sync
+ * @property {ServerToServerConfig} [serverToServer] - S2S configuration
+ */
+
+/**
+ * @typedef {Object} BetterAuth
+ * @property {Object} sessionManager - Session management functions
+ * @property {function(Request): Promise<BetterAuthSession|null>} sessionManager.getSession - Get session
+ * @property {function(string): Promise<BetterAuthSession>} sessionManager.createSession - Create session
+ * @property {function(string): Promise<BetterAuthSession|null>} sessionManager.refreshSession - Refresh
+ * @property {function(string): Promise<boolean>} sessionManager.deleteSession - Delete session
+ * @property {AdapterFunctions} adapter - Database adapter functions
+ * @property {BetterAuthOptions} options - Configuration options
+ */
+```
+
+### 3.3 Response Types
+
+```javascript
+/**
+ * @typedef {Object} AuthSuccessResponse
+ * @property {boolean} success - Always true for success
+ * @property {Object} user - User data
+ * @property {string} user.id - User ID
+ * @property {string} user.email - User email
+ * @property {string} [user.displayName] - User display name
+ */
+
+/**
+ * @typedef {Object} AuthErrorResponse
+ * @property {boolean} success - Always false for errors
+ * @property {string} error - Error code
+ * @property {string} [message] - Optional error message
+ */
+
+/**
+ * @typedef {Object} SessionResponse
+ * @property {boolean} authenticated - Whether user is authenticated
+ * @property {Object} [user] - User data if authenticated
+ * @property {string} user.id - User ID
+ * @property {string} user.email - User email
+ * @property {string} [user.displayName] - User display name
+ * @property {string} [error] - Error code if there was an error
+ */
+
+/**
+ * @typedef {Object} RefreshResponse
+ * @property {boolean} success - Whether refresh succeeded
+ * @property {string} [token] - New access token
+ * @property {string|Date} [expiresAt] - Token expiration
+ * @property {string} [error] - Error code if failed
+ */
+```
+
+### 3.4 WordPress API Types
+
+```javascript
+/**
+ * @typedef {Object} WPActiveSessionsRequest
+ * @property {string} requestSource - Source of the request (e.g., "sk-server")
+ * @property {number} timestamp - Request timestamp
+ */
+
+/**
+ * @typedef {Object} WPActiveSessionsResponse
+ * @property {boolean} success - Whether request succeeded
+ * @property {WordPressUserData[]} [activeSessions] - Active WordPress sessions
+ * @property {string} [error] - Error code if failed
+ */
+```
+
+## 4. Implementation Guidelines
+
+### 4.1 File Organization
+
+Create a dedicated types file for shared Better Auth types:
+
+```javascript
+// File: app/src/lib/types/better-auth.js
+
+/**
+ * @file Type definitions for Better Auth integration
+ */
+
+/**
+ * @typedef {Object} BetterAuthUser
+ * ...
+ */
+
+// Export for use in JSDoc references
+export {};
+```
+
+### 4.2 Usage in API Endpoints
+
+```javascript
+// File: app/src/routes/api/auth/check-wp-session/+server.js
+
+import { json } from '@sveltejs/kit';
+import { auth } from '$lib/server/auth';
+
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ * @typedef {import('$lib/types/better-auth').WordPressUserData} WordPressUserData
+ * @typedef {import('$lib/types/better-auth').AuthSuccessResponse} AuthSuccessResponse
+ * @typedef {import('$lib/types/better-auth').AuthErrorResponse} AuthErrorResponse
+ */
+
+/**
+ * WordPress session check endpoint
+ * @param {RequestEvent} event SvelteKit request event
+ * @returns {Promise<Response>} JSON response with AuthSuccessResponse or AuthErrorResponse
+ */
+export async function POST(event) {
+    // Implementation
+}
+```
+
+### 4.3 Usage in Component Files
+
+```javascript
+// File: app/src/components/AuthStatus.svelte
+
+<script>
+  import { onMount } from 'svelte';
+  
+  /**
+   * @typedef {import('$lib/types/better-auth').SessionResponse} SessionResponse
+   */
+  
+  /** @type {SessionResponse|null} */
+  let sessionData = null;
+  
+  /**
+   * Fetch current user session
+   * @returns {Promise<void>}
+   */
+  async function fetchSession() {
+    try {
+      const response = await fetch('/api/auth/session');
+      /** @type {SessionResponse} */
+      const data = await response.json();
+      sessionData = data;
+    } catch (error) {
+      console.error('Failed to fetch session', error);
+    }
+  }
+  
+  onMount(fetchSession);
+</script>
+
+<div>
+  {#if sessionData?.authenticated}
+    <p>Logged in as: {sessionData.user.displayName || sessionData.user.email}</p>
+  {:else}
+    <p>Not logged in</p>
+  {/if}
+</div>
+```
+
+### 4.4 Usage in Auth Utilities
+
+```javascript
+// File: app/src/lib/server/auth-utils.js
+
+import { auth } from './auth';
+import { db } from './db';
+
+/**
+ * @typedef {import('$lib/types/better-auth').WordPressUserData} WordPressUserData
+ * @typedef {import('$lib/types/better-auth').BetterAuthSession} BetterAuthSession
+ */
+
+/**
+ * Synchronize WordPress user with Better Auth and create session
+ * @param {WordPressUserData} wpUserData WordPress user data
+ * @returns {Promise<BetterAuthSession|null>} Session or null on failure
+ */
+export async function syncWordPressUserAndCreateSession(wpUserData) {
+    // Implementation
+}
+```
+
+## 5. Type Safety Implementation
+
+### 5.1 Parameter Type Checks
+
+Always add explicit type annotations for function parameters:
+
+```javascript
+/**
+ * @param {WordPressUserData} wpUserData
+ */
+function processUser(wpUserData) {
+    // Safe - Type errors will be caught by IDE/linter
+    const email = wpUserData.email;
+    const roles = wpUserData.roles || [];
+}
+```
+
+### 5.2 Return Type Checks
+
+Always annotate function return types:
+
+```javascript
+/**
+ * @returns {Promise<AuthSuccessResponse|AuthErrorResponse>}
+ */
+async function processLogin() {
+    // Implementation
+}
+```
+
+### 5.3 Variable Type Annotations
+
+Use JSDoc type annotations for variables:
+
+```javascript
+/** @type {BetterAuthUser|null} */
+let currentUser = null;
+
+/** @type {BetterAuthOptions} */
+const authOptions = {
+    // Options
+};
+```
+
+### 5.4 Type Guards
+
+Implement type guards for runtime safety:
+
+```javascript
+/**
+ * Type guard for AuthSuccessResponse
+ * @param {any} response - Response to check
+ * @returns {response is AuthSuccessResponse} True if response is AuthSuccessResponse
+ */
+function isAuthSuccess(response) {
+    return response?.success === true && !!response.user?.id;
+}
+
+// Usage
+if (isAuthSuccess(response)) {
+    // TypeScript/JSDoc aware IDEs know response.user exists here
+    console.log(response.user.id);
+}
+```
+
+## 6. Common Issues & Solutions
+
+### 6.1 Complex Generic Types
+
+For complex generic types that JSDoc handles less elegantly than TypeScript, use utility types:
+
+```javascript
+/**
+ * @template T
+ * @typedef {Object} AsyncResult
+ * @property {boolean} success - Whether operation was successful
+ * @property {T} [data] - Data if successful
+ * @property {string} [error] - Error message if unsuccessful
+ */
+
+/**
+ * @returns {Promise<AsyncResult<BetterAuthUser>>}
+ */
+async function getUser() {
+    // Implementation
+}
+```
+
+### 6.2 Function Types
+
+Define function types for callbacks and handler functions:
+
+```javascript
+/**
+ * @callback UserTransformer
+ * @param {BetterAuthUser} user - User to transform
+ * @returns {Object} Transformed user data
+ */
+
+/**
+ * @param {BetterAuthUser} user
+ * @param {UserTransformer} transformer
+ * @returns {Object}
+ */
+function transformUser(user, transformer) {
+    return transformer(user);
+}
+```
+
+### 6.3 Union Types
+
+Use union types to represent multiple possible values:
+
+```javascript
+/**
+ * @typedef {Object} BasicUserInfo
+ * @property {string} email - User email
+ */
+
+/**
+ * @typedef {Object} DetailedUserInfo
+ * @property {string} email - User email
+ * @property {string} name - User name
+ * @property {string[]} roles - User roles
+ */
+
+/**
+ * @param {boolean} detailed - Whether to get detailed info
+ * @returns {Promise<BasicUserInfo|DetailedUserInfo>}
+ */
+async function getUserInfo(detailed) {
+    // Implementation
+}
+```
+
+## 7. VSCode Integration
+
+### 7.1 JSDoc Configuration
+
+Create a `jsconfig.json` file in the project root:
+
+```json
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "es2020",
+    "baseUrl": ".",
+    "paths": {
+      "$lib/*": ["src/lib/*"],
+      "$app/*": [".svelte-kit/dev/runtime/app/*"]
+    }
+  },
+  "include": ["src/**/*.js", "src/**/*.svelte"],
+  "exclude": ["node_modules", "build", ".svelte-kit"]
+}
+```
+
+### 7.2 Required Extensions
+
+Recommend the following VSCode extensions:
+
+- ESLint: For linting
+- Svelte for VS Code: For Svelte file support
+- IntelliJ CSS: For CSS support
+- ESLint JSDoc: For JSDoc validation
+
+## 8. Verification & Testing
+
+### 8.1 Type Checking with JSDoc
+
+Run JSDoc type checking using TypeScript compiler:
+
+```bash
+npx tsc --allowJs --checkJs --noEmit src/**/*.js
+```
+
+### 8.2 Integration with ESLint
+
+Add JSDoc validation rules to ESLint:
+
+```json
+{
+  "plugins": ["jsdoc"],
+  "rules": {
+    "jsdoc/require-param": "error",
+    "jsdoc/require-param-type": "error",
+    "jsdoc/require-returns": "error",
+    "jsdoc/require-returns-type": "error"
+  }
+}
+```
+
+## 9. Migration from TypeScript
+
+For projects transitioning from TypeScript to JavaScript + JSDoc:
+
+1. Convert `.ts` files to `.js` files.
+2. Convert TypeScript interfaces/types to JSDoc `@typedef`.
+3. Replace TypeScript annotations with JSDoc annotations.
+4. Add JSDoc configuration to enable type checking.
+5. Ensure all functions have JSDoc comments.
+
+## 10. Checklist for Implementation
+
+- [ ] Create dedicated type definition files in `$lib/types/`.
+- [ ] Annotate all Better Auth utilities with JSDoc types.
+- [ ] Add type annotations to API routes handling Better Auth.
+- [ ] Add type annotations to components using Better Auth.
+- [ ] Configure JSDoc type checking in `jsconfig.json`.
+- [ ] Add JSDoc validation to ESLint configuration.
+- [ ] Create and use type guards for runtime type checking.
+- [ ] Test type checking with TypeScript compiler.

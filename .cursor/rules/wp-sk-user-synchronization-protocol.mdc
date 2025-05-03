@@ -1,0 +1,383 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# WordPress-SvelteKit User Synchronization Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard approach for synchronizing user data between WordPress and SvelteKit using Better Auth. It addresses server-to-server communication, user identity mapping, session creation, and maintaining consistent user state across both systems, while ensuring type safety with JavaScript and JSDoc.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints for WP communication
+│ 3. WP-SK User Synchronization (This)    │ // User data transfer & mapping
+│ 4. JSDoc Type Definitions Protocol      │ // Type safety without TypeScript
+│ 5. Server-to-Server Authentication      │ // Request verification
+│ 6. Better Auth Error Handling Protocol  │ // Standardized error handling
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Components
+
+### 3.1 Database Schema
+
+Two essential tables facilitate WordPress user mapping:
+
+```sql
+-- Better Auth User Table (standard Better Auth table)
+CREATE TABLE IF NOT EXISTS ba_users (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  username VARCHAR(255),
+  display_name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  metadata JSON DEFAULT NULL
+);
+
+-- WordPress User Mapping Table (custom for WP integration)
+CREATE TABLE IF NOT EXISTS ba_wp_user_map (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  wp_user_id BIGINT UNSIGNED NOT NULL,
+  ba_user_id VARCHAR(36) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_wp_user (wp_user_id),
+  UNIQUE KEY unique_ba_user (ba_user_id),
+  FOREIGN KEY (ba_user_id) REFERENCES ba_users(id) ON DELETE CASCADE
+);
+```
+
+### 3.2 User Synchronization Function
+
+```javascript
+/**
+ * @typedef {Object} WPUserData
+ * @property {string} wpUserId - WordPress user ID
+ * @property {string} email - User email
+ * @property {string} username - Username
+ * @property {string} [displayName] - Display name
+ * @property {string} [firstName] - First name
+ * @property {string} [lastName] - Last name
+ * @property {string[]} [roles] - WordPress roles
+ */
+
+/**
+ * @typedef {Object} Session
+ * @property {string} token - Session token
+ * @property {string} userId - Better Auth user ID
+ * @property {Date} expiresAt - Expiration date
+ */
+
+/**
+ * Synchronizes a WordPress user with Better Auth and creates a session
+ * 
+ * @param {WPUserData} wpUserData - WordPress user data
+ * @returns {Promise<Session|null>} Session object or null on failure
+ */
+export async function syncWordPressUserAndCreateSession(wpUserData) {
+    // Safety check for required fields
+    if (!wpUserData?.wpUserId || !wpUserData?.email) {
+        console.error('[syncWordPressUser] Missing required user data');
+        return null;
+    }
+
+    try {
+        // 1. Check if user exists in the ba_wp_user_map table
+        const userMap = await db.selectFrom('ba_wp_user_map')
+            .select(['ba_user_id'])
+            .where('wp_user_id', '=', wpUserData.wpUserId)
+            .executeTakeFirst();
+
+        let baUserId;
+
+        // 2. If user doesn't exist, create new Better Auth user
+        if (!userMap) {
+            console.log(`[syncWordPressUser] Creating new user for WP User ID ${wpUserData.wpUserId}`);
+            
+            // Create the user in Better Auth
+            const newUser = await db.insertInto('ba_users')
+                .values({
+                    email: wpUserData.email,
+                    username: wpUserData.username,
+                    display_name: wpUserData.displayName || wpUserData.username,
+                    metadata: JSON.stringify({
+                        firstName: wpUserData.firstName || '',
+                        lastName: wpUserData.lastName || '',
+                        roles: wpUserData.roles || [],
+                        wp_sync: {
+                            synced_at: new Date().toISOString(),
+                            wp_user_id: wpUserData.wpUserId
+                        }
+                    })
+                })
+                .returning('id')
+                .executeTakeFirstOrThrow();
+            
+            baUserId = newUser.id;
+            
+            // Create mapping between WP and BA users
+            await db.insertInto('ba_wp_user_map')
+                .values({
+                    wp_user_id: wpUserData.wpUserId,
+                    ba_user_id: baUserId
+                })
+                .execute();
+            
+            console.log(`[syncWordPressUser] Created new Better Auth user ID ${baUserId}`);
+        } 
+        // 3. If user exists, update user data
+        else {
+            baUserId = userMap.ba_user_id;
+            console.log(`[syncWordPressUser] Updating existing user ${baUserId}`);
+            
+            // Update user data in Better Auth
+            await db.updateTable('ba_users')
+                .set({
+                    email: wpUserData.email,
+                    display_name: wpUserData.displayName || wpUserData.username,
+                    // Update metadata
+                    metadata: JSON.stringify({
+                        firstName: wpUserData.firstName || '',
+                        lastName: wpUserData.lastName || '',
+                        roles: wpUserData.roles || [],
+                        wp_sync: {
+                            synced_at: new Date().toISOString(),
+                            wp_user_id: wpUserData.wpUserId
+                        }
+                    })
+                })
+                .where('id', '=', baUserId)
+                .execute();
+        }
+
+        // 4. Create a session for the user using Better Auth SessionManager
+        const session = await auth.sessionManager.createSession(baUserId);
+        console.log(`[syncWordPressUser] Created new session for user ID ${baUserId}`);
+        
+        // 5. Optional: Run custom hook if defined
+        if (typeof auth.options.after?.onWpUserSync === 'function') {
+            await auth.options.after.onWpUserSync(
+                { id: baUserId, email: wpUserData.email },
+                wpUserData
+            );
+        }
+        
+        return session;
+
+    } catch (error) {
+        console.error(`[syncWordPressUser] Error syncing user: ${error.message}`);
+        return null;
+    }
+}
+```
+
+### 3.3 WordPress Implementation
+
+```php
+/**
+ * WordPress Active Sessions Controller for Better Auth integration
+ */
+class Active_Sessions_Controller extends ASAP_Digest_REST_Base {
+    /**
+     * Register routes
+     */
+    public function register_routes() {
+        register_rest_route(
+            'asap/v1',
+            '/get-active-sessions',
+            array(
+                'methods'             => 'POST',
+                'callback'            => array($this, 'get_active_sessions'),
+                'permission_callback' => array($this, 'validate_server_request'),
+            )
+        );
+    }
+    
+    /**
+     * Validate shared secret from request header
+     * 
+     * @param WP_REST_Request $request Request object
+     * @return bool Request is valid
+     */
+    public function validate_server_request($request) {
+        // Get secret from WP configuration
+        $sync_secret = defined('BETTER_AUTH_SECRET') ? BETTER_AUTH_SECRET : '';
+        
+        // Validate header matches configuration
+        $request_secret = $request->get_header('x-asap-sync-secret');
+        if (empty($request_secret) || $request_secret !== $sync_secret) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Query database for active sessions
+     * 
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Active sessions response
+     */
+    public function get_active_sessions($request) {
+        global $wpdb;
+        
+        // Query for active sessions in the database
+        $active_user_ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT user_id FROM {$wpdb->usermeta} 
+                WHERE meta_key = %s AND meta_value LIKE %s",
+                'session_tokens',
+                '%'
+            )
+        );
+        
+        if (empty($active_user_ids)) {
+            return rest_ensure_response(array(
+                'success' => false,
+                'error' => 'no_active_wp_sessions'
+            ));
+        }
+        
+        // Get configured auto-sync roles
+        $auto_sync_roles = get_option('asap_better_auth_auto_sync_roles', array('administrator'));
+        
+        // Get user data for active sessions
+        $active_sessions = array();
+        foreach ($active_user_ids as $user_id) {
+            $user = get_userdata($user_id);
+            if (!$user) continue;
+            
+            // Check if user should be synced based on role settings
+            $should_sync = false;
+            foreach ($user->roles as $role) {
+                if (in_array($role, $auto_sync_roles)) {
+                    $should_sync = true;
+                    break;
+                }
+            }
+            
+            if (!$should_sync) continue;
+            
+            // Add user to active sessions list
+            $active_sessions[] = array(
+                'wpUserId'    => $user_id,
+                'username'    => $user->user_login,
+                'email'       => $user->user_email,
+                'displayName' => $user->display_name,
+                'firstName'   => get_user_meta($user_id, 'first_name', true),
+                'lastName'    => get_user_meta($user_id, 'last_name', true),
+                'roles'       => $user->roles
+            );
+        }
+        
+        return rest_ensure_response(array(
+            'success' => true,
+            'activeSessions' => $active_sessions
+        ));
+    }
+}
+```
+
+## 4. Communication Flow
+
+1. **WordPress to SvelteKit:**
+   - User logs into WordPress.
+   - SvelteKit app is loaded in browser.
+   - SvelteKit client code detects no active Better Auth session.
+   - SvelteKit client triggers server-side check (`/api/auth/check-wp-session`).
+   - SvelteKit server makes request to WordPress API (`/wp-json/asap/v1/get-active-sessions`).
+   - WordPress validates request and returns active user sessions.
+   - SvelteKit syncs user data, creates Better Auth session, and sets cookie.
+   - Client receives successful response, invalidates UI, and shows logged-in state.
+
+2. **SvelteKit to WordPress:**
+   - Not typically required for session sync (one-way flow).
+   - If needed (e.g., for user creation), implement a similar pattern in reverse.
+
+## 5. Error Handling & Edge Cases
+
+- **No Active WordPress Sessions:**
+  - Return appropriate error; client maintains logged-out state.
+  
+- **Invalid Sync Secret:**
+  - Return 401 Unauthorized; log security warning.
+  
+- **User Sync Failure:**
+  - Log detailed error, return error status to client.
+  - Consider implementing retry mechanism for transient failures.
+  
+- **Multiple Active Sessions:**
+  - Default behavior: Use first session found.
+  - Advanced option: Allow configuration of priority rules.
+  
+- **Role Changes:**
+  - On subsequent logins, update user roles in Better Auth.
+  - If user role changes result in sync disqualification, consider revoking Better Auth session.
+
+## 6. Security Considerations
+
+- **Shared Secret Management:**
+  - MUST use environment variables for secrets.
+  - Secrets MUST be identical on WordPress and SvelteKit.
+  - Consider secret rotation mechanism for production.
+  
+- **HTTPS Required:**
+  - All communications MUST use HTTPS.
+  
+- **Rate Limiting:**
+  - Implement rate limiting on WordPress endpoint.
+  
+- **IP Restrictions:**
+  - Consider restricting WordPress endpoint to known SvelteKit server IPs.
+  
+- **Data Minimization:**
+  - Transfer only necessary user fields.
+
+## 7. Performance Optimization
+
+- **Caching:**
+  - Consider caching WordPress responses briefly (1-5 seconds).
+  - Use timeout for WordPress API calls (8-10 seconds max).
+  
+- **Batch Processing:**
+  - When syncing multiple users, use batched requests.
+  
+- **Connection Pooling:**
+  - Ensure MySQL connection pooling is configured.
+
+## 8. Testing & Verification
+
+- **Integration Test Cases:**
+  - Test successful WordPress login → SvelteKit auto-login.
+  - Test WordPress logout → SvelteKit session handling.
+  - Test expired WordPress session handling.
+  - Test invalid/missing secret handling.
+  
+- **Security Tests:**
+  - Test CORS configuration.
+  - Test with invalid/missing authentication.
+  
+- **Performance Tests:**
+  - Measure time for complete auto-login flow.
+  - Test under load conditions.
+
+## 9. Implementation Checklist
+
+- [ ] Create database tables (ba_users, ba_wp_user_map).
+- [ ] Configure Better Auth with custom adapter functions.
+- [ ] Implement WordPress Active Sessions Controller.
+- [ ] Implement SvelteKit endpoints (check-wp-session).
+- [ ] Implement syncWordPressUserAndCreateSession function.
+- [ ] Configure environment variables on both systems.
+- [ ] Test WordPress → SvelteKit sync flow.
+- [ ] Implement error handling and logging.
+- [ ] Add security headers and CORS configuration.
+- [ ] Document the implementation in project README.

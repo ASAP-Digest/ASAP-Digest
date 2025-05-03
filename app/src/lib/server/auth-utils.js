@@ -3,16 +3,9 @@
  * @created 05.01.25 | 09:45 PM PDT // Placeholder timestamp
  */
 
-import { 
-    getUserByWpIdFn, 
-    createUserFn, 
-    createAccountFn,
-    createSessionFn 
-} from '$lib/server/adapter-functions.js'; // Import adapter functions directly
+import { auth } from '$lib/server/auth.js'; // Import the configured Better Auth instance
 import crypto from 'node:crypto';
 import { Kysely } from 'kysely'; // Add Kysely import for JSDoc
-// Remove direct import of auth instance as adapter functions are used directly
-// import { auth } from '$lib/server/auth.js'; 
 import { error } from '@sveltejs/kit'; // For potential error responses
 import { log as appLog } from '$lib/utils/log.js'; // Rename imported log
 
@@ -79,7 +72,8 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 
 		// F.2 - BA User Lookup
 		log(`Attempting to find existing BA user for WP User ID: ${wpUserIdNum}`);
-		let baUser = await getUserByWpIdFn(wpUserIdNum); // Use imported function
+		// Type assertion needed as Better Auth type is not exported and structural typing fails inference
+		let baUser = await /** @type {any} */ (auth).adapter.getUserByWpId(wpUserIdNum); // Use Better Auth adapter
 
 		if (baUser && typeof baUser === 'object' && baUser.id) {
 			// F.3 - Handle Existing User
@@ -100,7 +94,8 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 					username: username || email.split('@')[0], 
 					name: name || username || `WP User ${wpUserIdNum}`, 
 				};
-				const newUser = await createUserFn(newUserInput); // Use imported function
+				// Type assertion needed as Better Auth type is not exported and structural typing fails inference
+				const newUser = await /** @type {any} */ (auth).adapter.createUser(newUserInput); // Use Better Auth adapter
 				if (!newUser?.id) {
 					log(`User creation failed or did not return ID. Input: ${JSON.stringify(newUserInput)}`, 'error');
 					throw new Error('User creation failed or did not return ID.');
@@ -109,7 +104,8 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 
 				// F.4.b - BA Account Creation (Crucial!)
 				log(`Attempting to create BA account record (ba_accounts) linking ${newUser.id} to provider 'wordpress' with ID ${wpUserIdNum}`);
-				await createAccountFn({ // Use imported function
+				// Type assertion needed as Better Auth type is not exported and structural typing fails inference
+				await /** @type {any} */ (auth).adapter.createAccount({ // Use Better Auth adapter
 					userId: newUser.id,
 					provider: 'wordpress', 
 					providerAccountId: String(wpUserIdNum) 
@@ -132,9 +128,10 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 			return null;
 		}
 		log(`Attempting to create BA session (ba_sessions) for BA User ID: ${baUser.id}`);
-		// Use imported createSessionFn
+		// Use Better Auth adapter
 		// Pass the required userId argument
-		const session = await createSessionFn({ userId: String(baUser.id) }); 
+		// Type assertion needed as Better Auth type is not exported and structural typing fails inference
+		const session = await /** @type {any} */ (auth).adapter.createSession({ userId: String(baUser.id) }); 
 
 		if (!session || typeof session !== 'object' || !session.token) {
 			 log(`Session creation failed or did not return valid session object. Result: ${JSON.stringify(session)}`, 'error');

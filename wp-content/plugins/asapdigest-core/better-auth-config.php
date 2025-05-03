@@ -988,6 +988,14 @@ function asap_render_better_auth_settings() {
         );
         $status_content .= '</div>';
         
+        // Add Server-to-Server Auto Login status
+        $status_content .= '<div class="status-item">';
+        $status_content .= ASAP_Digest_Admin_UI::create_status_indicator(
+            $shared_secret ? 'good' : 'error',
+            'S2S Auto Login: ' . ($shared_secret ? 'Configured' : 'Not Configured')
+        );
+        $status_content .= '</div>';
+        
         // Check base URL
         $base_url = asap_get_better_auth_base_url();
         $status_content .= '<div class="status-item">';
@@ -1233,6 +1241,18 @@ function asap_render_better_auth_settings() {
         </style>';
 
         $config_content .= '</div>'; // Close asap-form
+
+        // Add documentation about the auto-login feature
+        $config_content .= '<div class="asap-section-info" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #0073aa;">';
+        $config_content .= '<h3 style="margin-top: 0; color: #0073aa;">Server-to-Server Auto Login</h3>';
+        $config_content .= '<p>Auto Login v6 uses direct server-to-server communication to automatically log WordPress users into SvelteKit.</p>';
+        $config_content .= '<ul style="margin-left: 20px; list-style-type: disc;">';
+        $config_content .= '<li>Users with <strong>selected roles above</strong> will automatically sync to SvelteKit</li>';
+        $config_content .= '<li>No browser redirects or cookie sharing required</li>';
+        $config_content .= '<li>The shared secret "<code>BETTER_AUTH_SECRET</code>" must be properly configured</li>';
+        $config_content .= '<li>Active WordPress sessions are detected automatically</li>';
+        $config_content .= '</ul>';
+        $config_content .= '</div>';
 
         // Add sync button
         $config_content .= '<div class="asap-form-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid hsl(var(--asap-card-border));">';

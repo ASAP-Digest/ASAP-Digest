@@ -1,0 +1,1205 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Rate Limiting Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes a comprehensive approach for implementing rate limiting in Better Auth applications within a headless WordPress/SvelteKit architecture. It defines strategies to protect authentication endpoints from abuse, brute force attacks, and potential denial of service, while maintaining legitimate user access. Proper rate limiting is crucial for security, performance, and user experience in authentication systems.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. Better Auth Session Management Proto │ // Session handling
+│ 4. Better Auth Email Configuration Proto│ // Email handling
+│ 5. Better Auth Error Handling Protocol  │ // Error handling
+│ 6. Rate Limiting Protocol (This)        │ // Rate limiting
+└─────────────────────────────────────────┘
+```
+
+## 3. Rate Limiting Types & Strategies
+
+### 3.1 Types of Rate Limits
+
+```javascript
+/**
+ * @typedef {Object} RateLimitConfig
+ * @property {number} maxAttempts - Maximum number of attempts within window
+ * @property {number} windowSizeSeconds - Time window in seconds
+ * @property {boolean} [blockOnLimit=true] - Whether to block requests when limit reached
+ * @property {number} [blockDurationSeconds] - Duration of block in seconds
+ * @property {string} [keyPrefix] - Prefix for rate limit storage keys
+ */
+
+/**
+ * @typedef {Object} RateLimitResult
+ * @property {boolean} allowed - Whether the request is allowed
+ * @property {number} [remaining] - Remaining attempts
+ * @property {number} [retryAfter] - Seconds until retry is allowed
+ * @property {boolean} [blocked] - Whether the key is blocked
+ * @property {number} [blockedUntil] - Timestamp when block expires
+ */
+```
+
+### 3.2 Endpoint-Specific Rate Limit Configurations
+
+```javascript
+/**
+ * Default rate limit configurations by endpoint
+ */
+const defaultRateLimits = {
+  // Login attempts - more strict
+  login: {
+    maxAttempts: 5,
+    windowSizeSeconds: 300, // 5 minutes
+    blockOnLimit: true,
+    blockDurationSeconds: 900, // 15 minutes after 5 failed attempts
+    keyPrefix: 'ratelimit:login'
+  },
+  
+  // Registration - slightly more permissive
+  register: {
+    maxAttempts: 3,
+    windowSizeSeconds: 3600, // 1 hour
+    blockOnLimit: true,
+    blockDurationSeconds: 86400, // 24 hours after 3 attempts
+    keyPrefix: 'ratelimit:register'
+  },
+  
+  // Password reset requests
+  passwordReset: {
+    maxAttempts: 3,
+    windowSizeSeconds: 3600, // 1 hour
+    blockOnLimit: true,
+    blockDurationSeconds: 3600, // 1 hour after 3 attempts
+    keyPrefix: 'ratelimit:pwreset'
+  },
+  
+  // Email verification
+  verifyEmail: {
+    maxAttempts: 10,
+    windowSizeSeconds: 3600, // 1 hour
+    blockOnLimit: true,
+    blockDurationSeconds: 1800, // 30 minutes after 10 attempts
+    keyPrefix: 'ratelimit:verify'
+  },
+  
+  // Magic link requests
+  magicLink: {
+    maxAttempts: 3,
+    windowSizeSeconds: 1800, // 30 minutes
+    blockOnLimit: true,
+    blockDurationSeconds: 1800, // 30 minutes after 3 attempts
+    keyPrefix: 'ratelimit:magiclink'
+  },
+  
+  // General API (for any authenticated endpoints)
+  api: {
+    maxAttempts: 60,
+    windowSizeSeconds: 60, // 1 minute
+    blockOnLimit: true,
+    blockDurationSeconds: 300, // 5 minutes after exceeding
+    keyPrefix: 'ratelimit:api'
+  }
+};
+```
+
+## 4. Rate Limit Storage Implementations
+
+### 4.1 Memory Storage (Development/Small Applications)
+
+```javascript
+/**
+ * In-memory rate limit storage implementation
+ */
+class MemoryRateLimitStorage {
+  constructor() {
+    this.storage = new Map();
+    this.blocks = new Map();
+    
+    // Optional cleanup interval to prevent memory leaks
+    setInterval(() => this.cleanup(), 60 * 60 * 1000); // Cleanup every hour
+  }
+  
+  /**
+   * Increment attempt count for a key
+   * @param {string} key - Rate limit key
+   * @param {number} windowSizeSeconds - Window size in seconds
+   * @returns {Promise<{ count: number, firstAttempt: number }>} Updated attempt data
+   */
+  async increment(key, windowSizeSeconds) {
+    const now = Date.now();
+    const windowSize = windowSizeSeconds * 1000;
+    
+    // Check if key exists
+    if (!this.storage.has(key)) {
+      const data = { count: 1, firstAttempt: now };
+      this.storage.set(key, data);
+      return data;
+    }
+    
+    // Get current data
+    const data = this.storage.get(key);
+    
+    // Reset if window has passed
+    if (now - data.firstAttempt > windowSize) {
+      const newData = { count: 1, firstAttempt: now };
+      this.storage.set(key, newData);
+      return newData;
+    }
+    
+    // Increment count
+    data.count += 1;
+    this.storage.set(key, data);
+    
+    return data;
+  }
+  
+  /**
+   * Check if a key is blocked
+   * @param {string} key - Rate limit key
+   * @returns {Promise<boolean>} Whether key is blocked
+   */
+  async isBlocked(key) {
+    const now = Date.now();
+    const block = this.blocks.get(key);
+    
+    if (!block) return false;
+    
+    if (now < block.expiry) {
+      return true;
+    } else {
+      // Remove expired block
+      this.blocks.delete(key);
+      return false;
+    }
+  }
+  
+  /**
+   * Get block expiry time
+   * @param {string} key - Rate limit key
+   * @returns {Promise<number|null>} Expiry timestamp or null if not blocked
+   */
+  async getBlockExpiry(key) {
+    const block = this.blocks.get(key);
+    return block ? block.expiry : null;
+  }
+  
+  /**
+   * Block a key
+   * @param {string} key - Rate limit key
+   * @param {number} durationSeconds - Block duration in seconds
+   * @returns {Promise<void>}
+   */
+  async block(key, durationSeconds) {
+    const now = Date.now();
+    const expiry = now + (durationSeconds * 1000);
+    
+    this.blocks.set(key, { expiry });
+  }
+  
+  /**
+   * Remove a block from a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async unblock(key) {
+    this.blocks.delete(key);
+  }
+  
+  /**
+   * Reset attempts for a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async reset(key) {
+    this.storage.delete(key);
+    this.blocks.delete(key);
+  }
+  
+  /**
+   * Clean up expired entries
+   * @private
+   */
+  cleanup() {
+    const now = Date.now();
+    
+    // Clear expired blocks
+    for (const [key, block] of this.blocks.entries()) {
+      if (now >= block.expiry) {
+        this.blocks.delete(key);
+      }
+    }
+    
+    // Optionally clear very old attempt records
+    // This is mostly to prevent memory leaks in long-running processes
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    for (const [key, data] of this.storage.entries()) {
+      if (now - data.firstAttempt > twentyFourHours) {
+        this.storage.delete(key);
+      }
+    }
+  }
+}
+```
+
+### 4.2 Database Storage (Production Ready)
+
+```javascript
+/**
+ * Database rate limit storage implementation using Kysely
+ */
+class DatabaseRateLimitStorage {
+  /**
+   * Create database storage
+   * @param {Kysely<Database>} db - Kysely database instance
+   */
+  constructor(db) {
+    this.db = db;
+  }
+  
+  /**
+   * Increment attempt count for a key
+   * @param {string} key - Rate limit key
+   * @param {number} windowSizeSeconds - Window size in seconds
+   * @returns {Promise<{ count: number, firstAttempt: number }>} Updated attempt data
+   */
+  async increment(key, windowSizeSeconds) {
+    const now = Date.now();
+    const windowStart = new Date(now - (windowSizeSeconds * 1000));
+    
+    // Try to find existing record within window
+    const existingRecord = await this.db
+      .selectFrom('ba_rate_limits')
+      .where('key', '=', key)
+      .where('first_attempt', '>', windowStart)
+      .select(['id', 'count', 'first_attempt'])
+      .executeTakeFirst();
+    
+    if (!existingRecord) {
+      // Create new record
+      const firstAttempt = now;
+      
+      await this.db
+        .insertInto('ba_rate_limits')
+        .values({
+          id: crypto.randomUUID(),
+          key,
+          count: 1,
+          first_attempt: new Date(firstAttempt)
+        })
+        .execute();
+      
+      return { count: 1, firstAttempt };
+    } else {
+      // Update existing record
+      const newCount = existingRecord.count + 1;
+      
+      await this.db
+        .updateTable('ba_rate_limits')
+        .set({ count: newCount, updated_at: new Date() })
+        .where('id', '=', existingRecord.id)
+        .execute();
+      
+      return {
+        count: newCount,
+        firstAttempt: existingRecord.first_attempt.getTime()
+      };
+    }
+  }
+  
+  /**
+   * Check if a key is blocked
+   * @param {string} key - Rate limit key
+   * @returns {Promise<boolean>} Whether key is blocked
+   */
+  async isBlocked(key) {
+    const now = new Date();
+    
+    const block = await this.db
+      .selectFrom('ba_rate_limit_blocks')
+      .where('key', '=', key)
+      .where('expires_at', '>', now)
+      .executeTakeFirst();
+    
+    return !!block;
+  }
+  
+  /**
+   * Get block expiry time
+   * @param {string} key - Rate limit key
+   * @returns {Promise<number|null>} Expiry timestamp or null if not blocked
+   */
+  async getBlockExpiry(key) {
+    const block = await this.db
+      .selectFrom('ba_rate_limit_blocks')
+      .where('key', '=', key)
+      .select('expires_at')
+      .executeTakeFirst();
+    
+    return block ? block.expires_at.getTime() : null;
+  }
+  
+  /**
+   * Block a key
+   * @param {string} key - Rate limit key
+   * @param {number} durationSeconds - Block duration in seconds
+   * @returns {Promise<void>}
+   */
+  async block(key, durationSeconds) {
+    const now = new Date();
+    const expiry = new Date(now.getTime() + (durationSeconds * 1000));
+    
+    // Check if block exists
+    const existingBlock = await this.db
+      .selectFrom('ba_rate_limit_blocks')
+      .where('key', '=', key)
+      .executeTakeFirst();
+    
+    if (existingBlock) {
+      // Update existing block
+      await this.db
+        .updateTable('ba_rate_limit_blocks')
+        .set({ expires_at: expiry, updated_at: now })
+        .where('id', '=', existingBlock.id)
+        .execute();
+    } else {
+      // Create new block
+      await this.db
+        .insertInto('ba_rate_limit_blocks')
+        .values({
+          id: crypto.randomUUID(),
+          key,
+          expires_at: expiry,
+          created_at: now
+        })
+        .execute();
+    }
+  }
+  
+  /**
+   * Remove a block from a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async unblock(key) {
+    await this.db
+      .deleteFrom('ba_rate_limit_blocks')
+      .where('key', '=', key)
+      .execute();
+  }
+  
+  /**
+   * Reset attempts for a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async reset(key) {
+    await this.db
+      .deleteFrom('ba_rate_limits')
+      .where('key', '=', key)
+      .execute();
+    
+    await this.db
+      .deleteFrom('ba_rate_limit_blocks')
+      .where('key', '=', key)
+      .execute();
+  }
+}
+```
+
+### 4.3 Redis Storage (Distributed Applications)
+
+```javascript
+/**
+ * Redis rate limit storage implementation
+ */
+class RedisRateLimitStorage {
+  /**
+   * Create Redis storage
+   * @param {Object} redisClient - Redis client instance
+   */
+  constructor(redisClient) {
+    this.redis = redisClient;
+  }
+  
+  /**
+   * Increment attempt count for a key
+   * @param {string} key - Rate limit key
+   * @param {number} windowSizeSeconds - Window size in seconds
+   * @returns {Promise<{ count: number, firstAttempt: number }>} Updated attempt data
+   */
+  async increment(key, windowSizeSeconds) {
+    const now = Date.now();
+    
+    // Check if key exists
+    const data = await this.redis.hGetAll(`attempts:${key}`);
+    
+    if (!data.count) {
+      // Create new record
+      await this.redis.hSet(`attempts:${key}`, {
+        count: 1,
+        firstAttempt: now
+      });
+      
+      // Set expiry for automatic cleanup
+      await this.redis.expire(`attempts:${key}`, windowSizeSeconds * 2);
+      
+      return { count: 1, firstAttempt: now };
+    }
+    
+    // Check if window has passed
+    const firstAttempt = parseInt(data.firstAttempt, 10);
+    if (now - firstAttempt > windowSizeSeconds * 1000) {
+      // Reset for new window
+      await this.redis.hSet(`attempts:${key}`, {
+        count: 1,
+        firstAttempt: now
+      });
+      
+      // Set expiry for automatic cleanup
+      await this.redis.expire(`attempts:${key}`, windowSizeSeconds * 2);
+      
+      return { count: 1, firstAttempt: now };
+    }
+    
+    // Increment count
+    const newCount = parseInt(data.count, 10) + 1;
+    await this.redis.hSet(`attempts:${key}`, {
+      count: newCount,
+      firstAttempt
+    });
+    
+    // Refresh expiry
+    await this.redis.expire(`attempts:${key}`, windowSizeSeconds * 2);
+    
+    return { count: newCount, firstAttempt };
+  }
+  
+  /**
+   * Check if a key is blocked
+   * @param {string} key - Rate limit key
+   * @returns {Promise<boolean>} Whether key is blocked
+   */
+  async isBlocked(key) {
+    const blockKey = `block:${key}`;
+    const exists = await this.redis.exists(blockKey);
+    return exists === 1;
+  }
+  
+  /**
+   * Get block expiry time
+   * @param {string} key - Rate limit key
+   * @returns {Promise<number|null>} Expiry timestamp or null if not blocked
+   */
+  async getBlockExpiry(key) {
+    const blockKey = `block:${key}`;
+    
+    // Check if key exists
+    const exists = await this.redis.exists(blockKey);
+    if (exists !== 1) return null;
+    
+    // Get expiry time
+    const ttl = await this.redis.ttl(blockKey);
+    if (ttl < 0) return null;
+    
+    return Date.now() + (ttl * 1000);
+  }
+  
+  /**
+   * Block a key
+   * @param {string} key - Rate limit key
+   * @param {number} durationSeconds - Block duration in seconds
+   * @returns {Promise<void>}
+   */
+  async block(key, durationSeconds) {
+    const blockKey = `block:${key}`;
+    await this.redis.set(blockKey, 1);
+    await this.redis.expire(blockKey, durationSeconds);
+  }
+  
+  /**
+   * Remove a block from a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async unblock(key) {
+    const blockKey = `block:${key}`;
+    await this.redis.del(blockKey);
+  }
+  
+  /**
+   * Reset attempts for a key
+   * @param {string} key - Rate limit key
+   * @returns {Promise<void>}
+   */
+  async reset(key) {
+    await this.redis.del(`attempts:${key}`);
+    await this.redis.del(`block:${key}`);
+  }
+}
+```
+
+## 5. Rate Limiter Core Implementation
+
+### 5.1 Rate Limiter Factory
+
+```javascript
+/**
+ * Rate limiter factory
+ * @param {Object} options - Rate limiter options
+ * @param {Object} options.storage - Storage implementation
+ * @param {Object} [options.limits] - Rate limit configurations
+ * @returns {Object} Rate limiter instance
+ */
+function createRateLimiter(options) {
+  const storage = options.storage;
+  const limits = options.limits || defaultRateLimits;
+  
+  return {
+    /**
+     * Check and increment rate limit
+     * @param {string} limitType - Type of rate limit (e.g., 'login', 'register')
+     * @param {string} identifier - Identifier (e.g., IP address, email)
+     * @returns {Promise<RateLimitResult>} Rate limit result
+     */
+    async check: async (limitType, identifier) => {
+      const limitConfig = limits[limitType];
+      
+      if (!limitConfig) {
+        throw new Error(`Rate limit configuration for '${limitType}' not found`);
+      }
+      
+      const {
+        maxAttempts,
+        windowSizeSeconds,
+        blockOnLimit,
+        blockDurationSeconds,
+        keyPrefix
+      } = limitConfig;
+      
+      // Create key
+      const key = `${keyPrefix}:${identifier}`;
+      
+      // Check if already blocked
+      const isBlocked = await storage.isBlocked(key);
+      
+      if (isBlocked) {
+        const blockedUntil = await storage.getBlockExpiry(key);
+        const retryAfter = blockedUntil
+          ? Math.ceil((blockedUntil - Date.now()) / 1000)
+          : blockDurationSeconds;
+        
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfter,
+          blocked: true,
+          blockedUntil
+        };
+      }
+      
+      // Increment attempts
+      const { count } = await storage.increment(key, windowSizeSeconds);
+      
+      // Check if limit exceeded
+      if (count > maxAttempts) {
+        // Block if configured
+        if (blockOnLimit) {
+          await storage.block(key, blockDurationSeconds);
+          
+          return {
+            allowed: false,
+            remaining: 0,
+            retryAfter: blockDurationSeconds,
+            blocked: true,
+            blockedUntil: Date.now() + (blockDurationSeconds * 1000)
+          };
+        }
+        
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfter: windowSizeSeconds,
+          blocked: false
+        };
+      }
+      
+      // Under limit
+      return {
+        allowed: true,
+        remaining: maxAttempts - count,
+        blocked: false
+      };
+    },
+    
+    /**
+     * Reset rate limit
+     * @param {string} limitType - Type of rate limit
+     * @param {string} identifier - Identifier
+     * @returns {Promise<void>}
+     */
+    reset: async (limitType, identifier) => {
+      const limitConfig = limits[limitType];
+      
+      if (!limitConfig) {
+        throw new Error(`Rate limit configuration for '${limitType}' not found`);
+      }
+      
+      const key = `${limitConfig.keyPrefix}:${identifier}`;
+      await storage.reset(key);
+    },
+    
+    /**
+     * Unblock an identifier
+     * @param {string} limitType - Type of rate limit
+     * @param {string} identifier - Identifier
+     * @returns {Promise<void>}
+     */
+    unblock: async (limitType, identifier) => {
+      const limitConfig = limits[limitType];
+      
+      if (!limitConfig) {
+        throw new Error(`Rate limit configuration for '${limitType}' not found`);
+      }
+      
+      const key = `${limitConfig.keyPrefix}:${identifier}`;
+      await storage.unblock(key);
+    }
+  };
+}
+```
+
+## 6. SvelteKit Integration
+
+### 6.1 Middleware Implementation
+
+```javascript
+/**
+ * Create rate limit middleware for SvelteKit
+ * @param {Object} rateLimiter - Rate limiter instance
+ * @returns {Function} SvelteKit middleware
+ */
+function createRateLimitMiddleware(rateLimiter) {
+  /**
+   * Rate limit middleware
+   * @param {Object} options - Middleware options
+   * @param {string} options.limitType - Type of rate limit to apply
+   * @param {Function} [options.identifierFn] - Function to extract identifier (defaults to IP address)
+   * @param {Function} [options.onRateLimited] - Function to call when rate limited
+   * @returns {Function} SvelteKit handle
+   */
+  return (options) => {
+    const {
+      limitType,
+      identifierFn = (event) => event.getClientAddress(),
+      onRateLimited
+    } = options;
+    
+    /**
+     * @param {import('@sveltejs/kit').RequestEvent} event
+     */
+    return async (event) => {
+      // Extract identifier
+      const identifier = identifierFn(event);
+      
+      // Skip rate limiting if identifier cannot be determined
+      if (!identifier) {
+        console.warn('Rate limiting skipped: Unable to determine identifier');
+        return;
+      }
+      
+      // Check rate limit
+      const result = await rateLimiter.check(limitType, identifier);
+      
+      // Set headers
+      event.setHeaders({
+        'X-RateLimit-Limit': String(defaultRateLimits[limitType].maxAttempts),
+        'X-RateLimit-Remaining': String(result.remaining || 0)
+      });
+      
+      if (!result.allowed) {
+        event.setHeaders({
+          'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + (result.retryAfter || 0)),
+          'Retry-After': String(result.retryAfter || 60)
+        });
+        
+        // Call onRateLimited handler if provided
+        if (onRateLimited) {
+          return onRateLimited(event, result);
+        }
+        
+        // Default response
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: result.blocked
+              ? `Too many requests. Try again in ${Math.ceil(result.retryAfter / 60)} minutes.`
+              : 'Too many requests. Try again later.'
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-RateLimit-Limit': String(defaultRateLimits[limitType].maxAttempts),
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': String(Math.floor(Date.now() / 1000) + (result.retryAfter || 0)),
+              'Retry-After': String(result.retryAfter || 60)
+            }
+          }
+        );
+      }
+    };
+  };
+}
+```
+
+### 6.2 API Route Integration
+
+```javascript
+/**
+ * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
+ */
+
+/**
+ * Integration example: Login endpoint with rate limiting
+ * @param {RequestEvent} event - SvelteKit request event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function POST(event) {
+  // Apply rate limiting
+  const rateLimitResult = await applyRateLimit(event, {
+    limitType: 'login',
+    identifierFn: (event) => {
+      // Use email as identifier if available, otherwise use IP
+      try {
+        const body = JSON.parse(event.request.body || '{}');
+        return body.email || event.getClientAddress();
+      } catch (e) {
+        return event.getClientAddress();
+      }
+    }
+  });
+  
+  // Return early if rate limited
+  if (rateLimitResult) {
+    return rateLimitResult;
+  }
+  
+  try {
+    // Normal login processing...
+    const { email, password } = await event.request.json();
+    
+    // Validate input
+    if (!email || !password) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Email and password are required'
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Authenticate user with Better Auth
+    const result = await auth.emailAndPassword.login(email, password);
+    
+    if (!result.success) {
+      // Increment failed login count for rate limiting
+      // This won't block immediately but counts toward the limit
+      await rateLimiter.check('login', email);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: result.error || 'Authentication failed'
+        }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // On success, reset rate limit for this email
+    await rateLimiter.reset('login', email);
+    
+    // Create session cookie
+    const cookieHeader = `better_auth_session=${result.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        user: result.user
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': cookieHeader
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'An unexpected error occurred'
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
+
+/**
+ * Apply rate limiting middleware to an event
+ * @param {RequestEvent} event - SvelteKit request event
+ * @param {Object} options - Rate limit options
+ * @returns {Promise<Response|null>} Response if rate limited, null otherwise
+ */
+async function applyRateLimit(event, options) {
+  const middleware = createRateLimitMiddleware(rateLimiter)(options);
+  return await middleware(event);
+}
+```
+
+## 7. Database Schema (For Database Storage)
+
+```sql
+-- Rate limits table
+CREATE TABLE ba_rate_limits (
+  id VARCHAR(36) PRIMARY KEY,
+  key VARCHAR(255) NOT NULL,
+  count INT NOT NULL DEFAULT 1,
+  first_attempt TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_rate_limits_key (key),
+  INDEX idx_rate_limits_first_attempt (first_attempt)
+);
+
+-- Rate limit blocks table
+CREATE TABLE ba_rate_limit_blocks (
+  id VARCHAR(36) PRIMARY KEY,
+  key VARCHAR(255) NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_rate_limit_blocks_key (key),
+  INDEX idx_rate_limit_blocks_expires_at (expires_at)
+);
+```
+
+## 8. Better Auth Integration
+
+```javascript
+import { betterAuth } from 'better-auth';
+import { createRateLimiter } from './rate-limiter';
+import { DatabaseRateLimitStorage } from './rate-limit-storage';
+
+/**
+ * Initialize Better Auth with rate limiting
+ * @param {Object} db - Database instance
+ * @returns {Object} Better Auth instance with rate limiter
+ */
+function initAuthWithRateLimiting(db) {
+  // Create rate limiter with database storage
+  const rateLimitStorage = new DatabaseRateLimitStorage(db);
+  const rateLimiter = createRateLimiter({
+    storage: rateLimitStorage,
+    limits: {
+      // Custom rate limits (optional)
+      login: {
+        maxAttempts: process.env.RATE_LIMIT_LOGIN_MAX || 5,
+        windowSizeSeconds: process.env.RATE_LIMIT_LOGIN_WINDOW || 300,
+        blockOnLimit: true,
+        blockDurationSeconds: process.env.RATE_LIMIT_LOGIN_BLOCK || 900,
+        keyPrefix: 'ratelimit:login'
+      },
+      // ... other custom limits
+    }
+  });
+  
+  // Initialize Better Auth
+  const auth = betterAuth({
+    // ... other configurations
+    
+    // Attach rate limiter to auth instance
+    rateLimit: rateLimiter
+  });
+  
+  // Return both auth and rate limiter
+  return { auth, rateLimiter };
+}
+```
+
+## 9. Advanced Security Features
+
+### 9.1 IP Address Classification
+
+```javascript
+/**
+ * IP classification for risk-based rate limiting
+ * @param {string} ip - IP address
+ * @returns {Promise<string>} Risk classification ('low', 'medium', 'high')
+ */
+async function classifyIpRisk(ip) {
+  // Simple risk classification based on previous activity
+  const suspiciousIpCount = await db
+    .selectFrom('ba_rate_limit_blocks')
+    .where('key', 'like', `ratelimit:login:${ip}%`)
+    .select(db.fn.count('id').as('count'))
+    .executeTakeFirst();
+  
+  const count = parseInt(suspiciousIpCount?.count || '0', 10);
+  
+  if (count >= 5) {
+    return 'high';
+  } else if (count >= 2) {
+    return 'medium';
+  } else {
+    return 'low';
+  }
+}
+
+/**
+ * Get dynamic rate limits based on risk classification
+ * @param {string} limitType - Limit type
+ * @param {string} riskLevel - Risk level ('low', 'medium', 'high')
+ * @returns {RateLimitConfig} Rate limit configuration
+ */
+function getDynamicRateLimits(limitType, riskLevel) {
+  const baseConfig = defaultRateLimits[limitType];
+  
+  switch (riskLevel) {
+    case 'high':
+      return {
+        ...baseConfig,
+        maxAttempts: Math.floor(baseConfig.maxAttempts / 2),
+        windowSizeSeconds: baseConfig.windowSizeSeconds * 2,
+        blockDurationSeconds: baseConfig.blockDurationSeconds * 2
+      };
+    case 'medium':
+      return {
+        ...baseConfig,
+        maxAttempts: Math.floor(baseConfig.maxAttempts * 0.75)
+      };
+    default:
+      return baseConfig;
+  }
+}
+```
+
+### 9.2 Suspicious Activity Detection
+
+```javascript
+/**
+ * Check for distributed attacks from multiple IPs
+ * @param {string} email - Email address
+ * @returns {Promise<boolean>} Whether suspicious activity is detected
+ */
+async function detectDistributedAttack(email) {
+  const window = 60 * 60 * 1000; // 1 hour
+  const threshold = 3; // Different IPs
+  
+  // Get unique IPs that attempted to access this email in the window
+  const uniqueIps = await db
+    .selectFrom('ba_login_attempts')
+    .where('email', '=', email)
+    .where('created_at', '>', new Date(Date.now() - window))
+    .select('ip_address')
+    .groupBy('ip_address')
+    .execute();
+  
+  return uniqueIps.length >= threshold;
+}
+
+/**
+ * Log login attempt for security analysis
+ * @param {string} email - Email address
+ * @param {string} ip - IP address
+ * @param {boolean} success - Whether login was successful
+ * @param {Object} [metadata] - Additional metadata
+ * @returns {Promise<void>}
+ */
+async function logLoginAttempt(email, ip, success, metadata = {}) {
+  await db
+    .insertInto('ba_login_attempts')
+    .values({
+      id: crypto.randomUUID(),
+      email,
+      ip_address: ip,
+      success,
+      metadata: JSON.stringify(metadata),
+      created_at: new Date()
+    })
+    .execute();
+}
+```
+
+## 10. Monitoring & Alerting
+
+```javascript
+/**
+ * Rate limit monitoring service
+ */
+class RateLimitMonitoring {
+  /**
+   * Create monitoring service
+   * @param {Object} db - Database instance
+   * @param {Object} options - Options
+   */
+  constructor(db, options = {}) {
+    this.db = db;
+    this.alertThreshold = options.alertThreshold || 10;
+    this.notificationService = options.notificationService;
+  }
+  
+  /**
+   * Check for rate limit abuse
+   * @returns {Promise<void>}
+   */
+  async checkForAbuse() {
+    // Get recent blocks
+    const recentBlocks = await this.db
+      .selectFrom('ba_rate_limit_blocks')
+      .where('created_at', '>', new Date(Date.now() - 30 * 60 * 1000)) // Last 30 minutes
+      .select(['key'])
+      .execute();
+    
+    // Group by limit type
+    const blocksByType = recentBlocks.reduce((acc, block) => {
+      const [prefix] = block.key.split(':');
+      acc[prefix] = (acc[prefix] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Check for thresholds
+    for (const [type, count] of Object.entries(blocksByType)) {
+      if (count >= this.alertThreshold) {
+        await this.sendAlert(type, count);
+      }
+    }
+  }
+  
+  /**
+   * Send alert about rate limit abuse
+   * @param {string} limitType - Limit type
+   * @param {number} count - Number of blocks
+   * @returns {Promise<void>}
+   */
+  async sendAlert(limitType, count) {
+    if (!this.notificationService) return;
+    
+    await this.notificationService.sendAlert({
+      title: 'Rate Limit Abuse Detected',
+      message: `${count} rate limit blocks for ${limitType} in the last 30 minutes.`,
+      severity: count >= this.alertThreshold * 2 ? 'high' : 'medium',
+      timestamp: new Date()
+    });
+  }
+}
+```
+
+## 11. Error Handling Integration
+
+```javascript
+/**
+ * Handle rate limit errors
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Object} context - Error context
+ * @returns {BetterAuthError} Error object
+ */
+function handleRateLimitError(code, message, context = {}) {
+  // Import from Better Auth Error Handling Protocol
+  return handleError(code, message, 'ratelimit', context);
+}
+```
+
+## 12. Testing & Verification
+
+### 12.1 Unit Testing
+
+```javascript
+/**
+ * Test rate limiter functionality
+ */
+async function testRateLimiter() {
+  // Create in-memory rate limiter for testing
+  const storage = new MemoryRateLimitStorage();
+  const rateLimiter = createRateLimiter({ storage });
+  
+  // Test login rate limiting
+  const testEmail = 'test@example.com';
+  
+  // Should allow up to maxAttempts (5)
+  for (let i = 0; i < 5; i++) {
+    const result = await rateLimiter.check('login', testEmail);
+    console.assert(result.allowed, `Attempt ${i+1} should be allowed`);
+    console.assert(result.remaining === 5 - i - 1, `Remaining should be ${5 - i - 1}`);
+  }
+  
+  // Next attempt should be blocked
+  const blockedResult = await rateLimiter.check('login', testEmail);
+  console.assert(!blockedResult.allowed, 'Should be blocked after 5 attempts');
+  console.assert(blockedResult.blocked, 'Should set blocked flag');
+  console.assert(blockedResult.retryAfter > 0, 'Should include retry time');
+  
+  // Reset rate limit
+  await rateLimiter.reset('login', testEmail);
+  
+  // Should be allowed again
+  const resetResult = await rateLimiter.check('login', testEmail);
+  console.assert(resetResult.allowed, 'Should be allowed after reset');
+}
+```
+
+### 12.2 Implementation Checklist
+
+- [ ] Choose and implement appropriate storage mechanism
+- [ ] Configure rate limits for all sensitive endpoints
+- [ ] Integrate rate limiting middleware with authentication routes
+- [ ] Add support for risk-based limiting (production)
+- [ ] Implement monitoring and alerting
+- [ ] Set up proper error handling
+- [ ] Test rate limiting functionality
+- [ ] Verify that legitimate users are not impacted
+- [ ] Document rate limit policies for end users
+
+## 13. Troubleshooting Common Issues
+
+1. **False Positives:**
+   - Allow for manual unblocking of legitimate users.
+   - Implement IP/user whitelisting for known trusted sources.
+   - Consider adjusting thresholds based on observed usage patterns.
+
+2. **Distributed Attacks:**
+   - Implement email-based rate limiting in addition to IP-based.
+   - Add monitoring for distributed login attempts.
+   - Consider implementing CAPTCHAs for suspicious activity.
+
+3. **Performance Impact:**
+   - Use Redis for high-traffic applications.
+   - Benchmark rate limiting implementation.
+   - Consider caching results for short periods.
+
+4. **Shared IP Issues:**
+   - Implement progressive rate limiting based on risk profiles.
+   - Consider additional authentication factors for shared environments.
+   - Allow higher limits for enterprise/NAT environments.

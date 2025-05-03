@@ -1,0 +1,2054 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Testing and Verification Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes a comprehensive framework for testing and verifying Better Auth implementations in headless WordPress/SvelteKit applications. It defines standardized testing approaches for authentication flows, specifies required test coverage, establishes mocking strategies, and ensures security aspects are properly verified. Following this protocol ensures that authentication mechanisms are robust, secure, and functioning correctly before deployment.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth setup
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. Better Auth Client Side Integration  │ // Frontend integration 
+│ 4. Better Auth Hooks and Lifecycle      │ // Auth events
+│ 5. WP-SK User Synchronization Protocol  │ // User data transfer
+│ 6. Better Auth Error Handling Protocol  │ // Error handling
+│ 7. Testing & Verification Protocol (This)│ // Testing methodology
+└─────────────────────────────────────────┘
+```
+
+## 3. Test Environment Setup
+
+### 3.1 Development Environment Configuration
+
+```javascript
+// .env.test
+DATABASE_URL="mysql://test_user:test_password@localhost:3306/auth_test_db"
+BETTER_AUTH_SECRET="test-auth-secret-key-DO-NOT-USE-IN-PRODUCTION"
+WP_SYNC_SECRET="test-wp-sync-secret-DO-NOT-USE-IN-PRODUCTION"
+TEST_USER_EMAIL="test@example.com"
+TEST_USER_PASSWORD="TestPassword123!"
+SKIP_WP_TESTS="false" // Set to "true" to skip WordPress integration tests
+```
+
+### 3.2 Test Database Setup
+
+```javascript
+/**
+ * Set up test database for auth testing
+ * @returns {Promise<void>} Promise that resolves when setup is complete
+ */
+async function setupTestDatabase() {
+  const { createPool } = await import('mysql2/promise');
+  const { MysqlDialect } = await import('kysely');
+  
+  const pool = createPool({
+    host: 'localhost',
+    user: 'test_user',
+    password: 'test_password',
+    database: 'auth_test_db'
+  });
+  
+  const db = new Kysely({
+    dialect: new MysqlDialect({ pool })
+  });
+  
+  // Reset auth tables
+  await db.schema.dropTable('ba_users').ifExists().execute();
+  await db.schema.dropTable('ba_sessions').ifExists().execute();
+  await db.schema.dropTable('ba_accounts').ifExists().execute();
+  await db.schema.dropTable('ba_wp_user_map').ifExists().execute();
+  
+  // Create tables based on schema
+  await db.schema
+    .createTable('ba_users')
+    .addColumn('id', 'varchar(36)', col => col.primaryKey().notNull())
+    .addColumn('email', 'varchar(255)', col => col.unique().notNull())
+    .addColumn('password', 'varchar(255)', col => col.notNull())
+    .addColumn('created_at', 'timestamp', col => col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull())
+    .execute();
+  
+  // Additional table creation statements...
+  
+  // Seed with test user
+  await db.insertInto('ba_users').values({
+    id: 'test-user-id',
+    email: process.env.TEST_USER_EMAIL,
+    password: await hashPassword(process.env.TEST_USER_PASSWORD)
+  }).execute();
+}
+
+/**
+ * Clean up test database after tests
+ */
+async function cleanupTestDatabase() {
+  // Database cleanup logic
+}
+```
+
+### 3.3 Mock WordPress API Setup
+
+```javascript
+/**
+ * Create mock WordPress API for testing
+ * @returns {Object} Server and routes
+ */
+function createMockWordPressApi() {
+  const express = require('express');
+  const app = express();
+  
+  app.post('/wp-json/ba/v1/check-session', (req, res) => {
+    const authHeader = req.headers['x-wp-nonce'];
+    
+    if (!authHeader || authHeader !== 'test-nonce') {
+      return res.status(401).json({ error: 'Invalid nonce' });
+    }
+    
+    // Return test user data
+    return res.json({
+      success: true,
+      activeSessions: [{
+        wpUserId: 'wp-test-user-id',
+        email: process.env.TEST_USER_EMAIL,
+        username: 'testuser',
+        displayName: 'Test User',
+        firstName: 'Test',
+        lastName: 'User',
+        roles: ['subscriber']
+      }]
+    });
+  });
+  
+  const server = app.listen(3099);
+  
+  return { app, server };
+}
+```
+
+## 4. Unit Testing Authentication Functions
+
+### 4.1 Auth Utility Functions
+
+```javascript
+// test/auth-utils.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { 
+  validateEmail, 
+  validatePassword, 
+  hashPassword,
+  comparePassword,
+  generateToken,
+  verifyToken
+} from '$lib/server/auth-utils.js';
+
+describe('Auth utility functions', () => {
+  describe('validateEmail', () => {
+    it('should accept valid email formats', () => {
+      expect(validateEmail('user@example.com')).toBe(true);
+      expect(validateEmail('user.name+tag@example.co.uk')).toBe(true);
+    });
+    
+    it('should reject invalid email formats', () => {
+      expect(validateEmail('user@')).toBe(false);
+      expect(validateEmail('user@example')).toBe(false);
+      expect(validateEmail('userexample.com')).toBe(false);
+    });
+  });
+  
+  describe('validatePassword', () => {
+    it('should accept valid passwords', () => {
+      expect(validatePassword('StrongP@ss123')).toBe(true);
+    });
+    
+    it('should reject weak passwords', () => {
+      expect(validatePassword('password')).toBe(false);
+      expect(validatePassword('12345678')).toBe(false);
+      expect(validatePassword('short')).toBe(false);
+    });
+  });
+  
+  describe('hashPassword and comparePassword', () => {
+    it('should hash and correctly verify passwords', async () => {
+      const password = 'SecurePassword123!';
+      const hash = await hashPassword(password);
+      
+      expect(hash).not.toBe(password); // Ensure it's hashed
+      expect(await comparePassword(password, hash)).toBe(true);
+      expect(await comparePassword('WrongPassword', hash)).toBe(false);
+    });
+  });
+  
+  describe('Token generation and verification', () => {
+    it('should generate and verify JWT tokens', async () => {
+      const payload = { userId: 'test-user', role: 'subscriber' };
+      const token = await generateToken(payload);
+      
+      const verified = await verifyToken(token);
+      expect(verified.userId).toBe(payload.userId);
+      expect(verified.role).toBe(payload.role);
+    });
+    
+    it('should reject tampered tokens', async () => {
+      const payload = { userId: 'test-user' };
+      const token = await generateToken(payload);
+      
+      // Tamper with the token
+      const parts = token.split('.');
+      parts[1] = parts[1].replace('test-user', 'admin-user');
+      const tamperedToken = parts.join('.');
+      
+      await expect(verifyToken(tamperedToken)).rejects.toThrow();
+    });
+  });
+});
+```
+
+### 4.2 Auth Database Adapter Functions
+
+```javascript
+// test/auth-adapter.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { 
+  getUserByEmail,
+  getUserById,
+  createUser,
+  deleteUser,
+  getUserByWpId,
+  linkWpUser
+} from '$lib/server/auth-adapter.js';
+
+describe('Auth adapter functions', () => {
+  beforeEach(async () => {
+    await setupTestDatabase();
+  });
+  
+  afterEach(async () => {
+    await cleanupTestDatabase();
+  });
+  
+  describe('User management', () => {
+    it('should create and retrieve users', async () => {
+      const userData = {
+        email: 'new@example.com',
+        password: 'hashedPasswordMock',
+        displayName: 'New User'
+      };
+      
+      const userId = await createUser(userData);
+      expect(userId).toBeTruthy();
+      
+      const user = await getUserById(userId);
+      expect(user).toBeDefined();
+      expect(user.email).toBe(userData.email);
+      
+      const userByEmail = await getUserByEmail(userData.email);
+      expect(userByEmail.id).toBe(userId);
+    });
+    
+    it('should handle non-existent users gracefully', async () => {
+      const nonExistentUser = await getUserById('non-existent-id');
+      expect(nonExistentUser).toBeNull();
+      
+      const nonExistentEmail = await getUserByEmail('nonexistent@example.com');
+      expect(nonExistentEmail).toBeNull();
+    });
+  });
+  
+  describe('WordPress user mapping', () => {
+    it('should link and retrieve WordPress users', async () => {
+      // Create a test user first
+      const userData = {
+        email: 'wp-test@example.com',
+        password: 'hashedPasswordMock'
+      };
+      
+      const userId = await createUser(userData);
+      const wpUserId = 'wp-user-123';
+      
+      // Link WordPress user
+      await linkWpUser(wpUserId, userId);
+      
+      // Retrieve by WordPress ID
+      const user = await getUserByWpId(wpUserId);
+      expect(user).toBeDefined();
+      expect(user.id).toBe(userId);
+      expect(user.email).toBe(userData.email);
+    });
+  });
+});
+```
+
+## 5. Integration Testing Authentication Endpoints
+
+### 5.1 Route Handler Testing
+
+```javascript
+// test/auth-routes.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { app } from '../src/server.js';
+import supertest from 'supertest';
+
+const request = supertest(app);
+
+describe('Auth route handlers', () => {
+  beforeEach(async () => {
+    await setupTestDatabase();
+  });
+  
+  afterEach(async () => {
+    await cleanupTestDatabase();
+  });
+  
+  describe('POST /api/auth/login', () => {
+    it('should authenticate valid credentials', async () => {
+      const response = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.email).toBe(process.env.TEST_USER_EMAIL);
+      
+      // Check for auth cookie
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie'][0]).toContain('better_auth_session=');
+    });
+    
+    it('should reject invalid credentials', async () => {
+      const response = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: 'WrongPassword'
+        });
+      
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBeDefined();
+    });
+  });
+  
+  describe('GET /api/auth/session', () => {
+    it('should return session data for authenticated requests', async () => {
+      // Log in first to get the auth cookie
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const authCookie = loginResponse.headers['set-cookie'];
+      
+      // Use cookie to check session
+      const sessionResponse = await request
+        .get('/api/auth/session')
+        .set('Cookie', authCookie);
+      
+      expect(sessionResponse.status).toBe(200);
+      expect(sessionResponse.body.authenticated).toBe(true);
+      expect(sessionResponse.body.user).toBeDefined();
+      expect(sessionResponse.body.user.email).toBe(process.env.TEST_USER_EMAIL);
+    });
+    
+    it('should reject unauthenticated requests', async () => {
+      const response = await request.get('/api/auth/session');
+      
+      expect(response.status).toBe(200); // Not an error, just not authenticated
+      expect(response.body.authenticated).toBe(false);
+    });
+  });
+  
+  describe('DELETE /api/auth/session', () => {
+    it('should log out and clear auth cookie', async () => {
+      // Log in first
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const authCookie = loginResponse.headers['set-cookie'];
+      
+      // Log out
+      const logoutResponse = await request
+        .delete('/api/auth/session')
+        .set('Cookie', authCookie);
+      
+      expect(logoutResponse.status).toBe(200);
+      expect(logoutResponse.body.success).toBe(true);
+      
+      // Check that cookie is cleared
+      expect(logoutResponse.headers['set-cookie'][0]).toContain('better_auth_session=;');
+      expect(logoutResponse.headers['set-cookie'][0]).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+    });
+  });
+});
+```
+
+### 5.2 WordPress Sync Endpoint Testing
+
+```javascript
+// test/wp-sync.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { createMockWordPressApi } from './utils/mock-wp-api.js';
+import { app } from '../src/server.js';
+import supertest from 'supertest';
+
+const request = supertest(app);
+
+describe('WordPress user sync', () => {
+  let mockWpApi;
+  
+  beforeEach(async () => {
+    await setupTestDatabase();
+    mockWpApi = createMockWordPressApi();
+  });
+  
+  afterEach(async () => {
+    await cleanupTestDatabase();
+    if (mockWpApi?.server) {
+      await new Promise(resolve => mockWpApi.server.close(resolve));
+    }
+  });
+  
+  describe('POST /api/auth/check-wp-session', () => {
+    it('should create session from WordPress user data', async () => {
+      const response = await request
+        .post('/api/auth/check-wp-session')
+        .set('x-wp-sync-secret', process.env.WP_SYNC_SECRET)
+        .send({
+          activeSessions: [{
+            wpUserId: 'wp-test-user-id',
+            email: 'wp-user@example.com',
+            username: 'wpuser',
+            displayName: 'WordPress User',
+            firstName: 'WordPress',
+            lastName: 'User',
+            roles: ['subscriber']
+          }]
+        });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.email).toBe('wp-user@example.com');
+      
+      // Check for auth cookie
+      expect(response.headers['set-cookie']).toBeDefined();
+      expect(response.headers['set-cookie'][0]).toContain('better_auth_session=');
+    });
+    
+    it('should reject requests without proper secret', async () => {
+      const response = await request
+        .post('/api/auth/check-wp-session')
+        .set('x-wp-sync-secret', 'wrong-secret')
+        .send({
+          activeSessions: [{
+            wpUserId: 'wp-test-user-id',
+            email: 'wp-user@example.com'
+          }]
+        });
+      
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('invalid_secret');
+    });
+    
+    it('should handle empty session data gracefully', async () => {
+      const response = await request
+        .post('/api/auth/check-wp-session')
+        .set('x-wp-sync-secret', process.env.WP_SYNC_SECRET)
+        .send({
+          activeSessions: []
+        });
+      
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('no_active_wp_sessions');
+    });
+  });
+});
+```
+
+## 6. Frontend Authentication Testing
+
+### 6.1 Client-Side Functions and Stores
+
+```javascript
+// test/client-auth.test.js
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { useAuth, logout, login, register } from '$lib/auth-client.js';
+import { get } from 'svelte/store';
+
+// Mock fetch API
+global.fetch = vi.fn();
+
+describe('Client-side auth functions', () => {
+  beforeEach(() => {
+    fetch.mockClear();
+  });
+  
+  describe('login function', () => {
+    it('should handle successful login', async () => {
+      // Setup mock response
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          user: { 
+            id: 'test-id',
+            email: 'test@example.com',
+            displayName: 'Test User'
+          }
+        })
+      });
+      
+      const result = await login('test@example.com', 'password123');
+      
+      // Check fetch was called with correct args
+      expect(fetch).toHaveBeenCalledWith('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: 'test@example.com', 
+          password: 'password123' 
+        }),
+        credentials: 'include'
+      });
+      
+      // Check result
+      expect(result.success).toBe(true);
+      expect(result.user.email).toBe('test@example.com');
+      
+      // Check auth store was updated
+      const authStore = useAuth();
+      const authState = get(authStore);
+      expect(authState.authenticated).toBe(true);
+      expect(authState.user.id).toBe('test-id');
+    });
+    
+    it('should handle failed login', async () => {
+      // Setup mock response
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          success: false,
+          error: 'invalid_credentials'
+        })
+      });
+      
+      await expect(login('wrong@example.com', 'wrongpass')).rejects.toThrow();
+      
+      // Check auth store remains unauthenticated
+      const authStore = useAuth();
+      const authState = get(authStore);
+      expect(authState.authenticated).toBe(false);
+      expect(authState.user).toBeNull();
+    });
+  });
+  
+  describe('logout function', () => {
+    it('should clear authentication state', async () => {
+      // Mock initial authenticated state
+      const authStore = useAuth();
+      authStore.set({
+        authenticated: true,
+        user: { id: 'test-id', email: 'test@example.com' }
+      });
+      
+      // Setup mock response
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true
+        })
+      });
+      
+      await logout();
+      
+      // Check fetch was called correctly
+      expect(fetch).toHaveBeenCalledWith('/api/auth/session', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      // Check auth store was updated
+      const authState = get(authStore);
+      expect(authState.authenticated).toBe(false);
+      expect(authState.user).toBeNull();
+    });
+  });
+  
+  describe('register function', () => {
+    it('should register and authenticate new user', async () => {
+      // Setup mock response
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          user: { 
+            id: 'new-id',
+            email: 'new@example.com',
+            displayName: 'New User'
+          }
+        })
+      });
+      
+      const result = await register('new@example.com', 'Password123!', 'New User');
+      
+      // Check fetch was called with correct args
+      expect(fetch).toHaveBeenCalledWith('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: 'new@example.com', 
+          password: 'Password123!',
+          displayName: 'New User'
+        }),
+        credentials: 'include'
+      });
+      
+      // Check result
+      expect(result.success).toBe(true);
+      
+      // Check auth store was updated
+      const authStore = useAuth();
+      const authState = get(authStore);
+      expect(authState.authenticated).toBe(true);
+      expect(authState.user.email).toBe('new@example.com');
+    });
+  });
+});
+```
+
+### 6.2 UI Component Testing
+
+```javascript
+// test/auth-components.test.js
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import LoginForm from '$lib/components/LoginForm.svelte';
+import { useAuth } from '$lib/auth-client.js';
+import { get } from 'svelte/store';
+
+// Mock auth functions
+vi.mock('$lib/auth-client.js', () => {
+  const authStore = writable({ authenticated: false, user: null });
+  
+  return {
+    useAuth: () => authStore,
+    login: vi.fn(),
+    logout: vi.fn(),
+    register: vi.fn()
+  };
+});
+
+describe('Auth components', () => {
+  describe('LoginForm', () => {
+    beforeEach(() => {
+      // Reset mocks
+      vi.mocked(login).mockReset();
+    });
+    
+    it('should render login form fields', () => {
+      render(LoginForm);
+      
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    });
+    
+    it('should validate inputs before submission', async () => {
+      render(LoginForm);
+      
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
+      const submitButton = screen.getByRole('button', { name: /log in/i });
+      
+      // Submit with empty fields
+      await fireEvent.click(submitButton);
+      
+      // Check validation messages
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+      
+      // Enter invalid email
+      await fireEvent.input(emailInput, { target: { value: 'not-an-email' } });
+      await fireEvent.click(submitButton);
+      
+      // Check validation message
+      expect(screen.getByText(/invalid email format/i)).toBeInTheDocument();
+      
+      // Login function should not be called
+      expect(login).not.toHaveBeenCalled();
+    });
+    
+    it('should call login function with form values', async () => {
+      // Mock successful login
+      vi.mocked(login).mockResolvedValueOnce({ 
+        success: true, 
+        user: { id: 'test-id', email: 'test@example.com' } 
+      });
+      
+      render(LoginForm);
+      
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
+      const submitButton = screen.getByRole('button', { name: /log in/i });
+      
+      // Fill form with valid values
+      await fireEvent.input(emailInput, { target: { value: 'test@example.com' } });
+      await fireEvent.input(passwordInput, { target: { value: 'Password123!' } });
+      
+      // Submit form
+      await fireEvent.click(submitButton);
+      
+      // Check login was called with correct values
+      expect(login).toHaveBeenCalledWith('test@example.com', 'Password123!');
+      
+      // Wait for success message
+      await waitFor(() => {
+        expect(screen.getByText(/login successful/i)).toBeInTheDocument();
+      });
+    });
+    
+    it('should display error messages on login failure', async () => {
+      // Mock failed login
+      vi.mocked(login).mockRejectedValueOnce(new Error('invalid_credentials'));
+      
+      render(LoginForm);
+      
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
+      const submitButton = screen.getByRole('button', { name: /log in/i });
+      
+      // Fill form with valid values
+      await fireEvent.input(emailInput, { target: { value: 'test@example.com' } });
+      await fireEvent.input(passwordInput, { target: { value: 'WrongPassword' } });
+      
+      // Submit form
+      await fireEvent.click(submitButton);
+      
+      // Wait for error message
+      await waitFor(() => {
+        expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
+      });
+    });
+  });
+});
+```
+
+## 7. End-to-End Testing
+
+### 7.1 Setup with Playwright
+
+```javascript
+// playwright.config.js
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  use: {
+    baseURL: 'http://localhost:5173',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'auth-flows',
+      testMatch: /auth.*\.spec\.js/,
+    },
+    {
+      name: 'protected-routes',
+      testMatch: /protected.*\.spec\.js/,
+    }
+  ],
+  // Local server setup to run before tests
+  webServer: {
+    command: 'pnpm run dev',
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### 7.2 Authentication E2E Tests
+
+```javascript
+// e2e/auth-flows.spec.js
+import { test, expect } from '@playwright/test';
+
+test.describe('Authentication flows', () => {
+  test.beforeEach(async ({ page }) => {
+    // Clear cookies before each test
+    await page.context().clearCookies();
+  });
+  
+  test('Login flow', async ({ page }) => {
+    // Navigate to login page
+    await page.goto('/login');
+    
+    // Fill login form
+    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL);
+    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD);
+    
+    // Submit form
+    await page.click('button[type="submit"]');
+    
+    // Check redirect to dashboard after login
+    await expect(page).toHaveURL(/\/dashboard/);
+    
+    // Verify logged in state
+    await expect(page.locator('[data-testid="user-menu"]')).toBeVisible();
+    await expect(page.locator('[data-testid="user-email"]')).toContainText(process.env.TEST_USER_EMAIL);
+  });
+  
+  test('Registration flow', async ({ page }) => {
+    // Generate unique email for test
+    const uniqueEmail = `test-${Date.now()}@example.com`;
+    
+    // Navigate to registration page
+    await page.goto('/register');
+    
+    // Fill registration form
+    await page.fill('input[name="email"]', uniqueEmail);
+    await page.fill('input[name="password"]', 'StrongPass123!');
+    await page.fill('input[name="confirmPassword"]', 'StrongPass123!');
+    await page.fill('input[name="displayName"]', 'Test User');
+    
+    // Submit form
+    await page.click('button[type="submit"]');
+    
+    // Check redirect to dashboard after registration
+    await expect(page).toHaveURL(/\/dashboard/);
+    
+    // Verify logged in state
+    await expect(page.locator('[data-testid="user-menu"]')).toBeVisible();
+    await expect(page.locator('[data-testid="user-email"]')).toContainText(uniqueEmail);
+  });
+  
+  test('Logout flow', async ({ page }) => {
+    // Login first
+    await page.goto('/login');
+    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL);
+    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD);
+    await page.click('button[type="submit"]');
+    
+    // Verify logged in
+    await expect(page).toHaveURL(/\/dashboard/);
+    
+    // Click on user menu to show logout
+    await page.click('[data-testid="user-menu"]');
+    
+    // Click logout button
+    await page.click('[data-testid="logout-button"]');
+    
+    // Check redirect to home/login after logout
+    await expect(page).toHaveURL(/\/(login|$)/);
+    
+    // Try to access dashboard again (should redirect to login)
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login/);
+  });
+  
+  test('Protected route access', async ({ page }) => {
+    // Try to access protected page without login
+    await page.goto('/dashboard');
+    
+    // Should be redirected to login
+    await expect(page).toHaveURL(/\/login/);
+    
+    // Login
+    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL);
+    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD);
+    await page.click('button[type="submit"]');
+    
+    // Should now have access to dashboard
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator('h1')).toContainText(/dashboard/i);
+  });
+});
+```
+
+### 7.3 WordPress Integration E2E Tests
+
+```javascript
+// e2e/wordpress-auth.spec.js
+import { test, expect } from '@playwright/test';
+
+test.describe('WordPress integration', () => {
+  test.skip(process.env.SKIP_WP_TESTS === 'true', 'Skipping WordPress integration tests');
+  
+  test.beforeEach(async ({ page }) => {
+    // Clear cookies before each test
+    await page.context().clearCookies();
+  });
+  
+  test('Auto-login from WordPress cookie', async ({ page }) => {
+    // Setup: Set a mock WordPress auth cookie
+    await page.context().addCookies([
+      {
+        name: 'wordpress_logged_in_test',
+        value: 'test-wp-cookie-value',
+        domain: 'localhost',
+        path: '/',
+      }
+    ]);
+    
+    // Mock WordPress API by intercepting the request
+    await page.route('**/api/auth/check-wp-session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          user: {
+            id: 'wp-test-user',
+            email: 'wp-user@example.com',
+            displayName: 'WP Test User'
+          }
+        }),
+        headers: {
+          'Set-Cookie': 'better_auth_session=test-session-token; Path=/; HttpOnly; SameSite=Lax',
+        }
+      });
+    });
+    
+    // Visit the site
+    await page.goto('/');
+    
+    // Wait for the auto-login process to complete
+    await expect(page.locator('[data-testid="user-menu"]')).toBeVisible({ timeout: 5000 });
+    
+    // Verify logged in state
+    await expect(page.locator('[data-testid="user-email"]')).toContainText('wp-user@example.com');
+    
+    // Try protected route
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator('h1')).toContainText(/dashboard/i);
+  });
+});
+```
+
+## 8. Security Testing
+
+### 8.1 Authentication Security Tests
+
+```javascript
+// test/auth-security.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { app } from '../src/server.js';
+import supertest from 'supertest';
+
+const request = supertest(app);
+
+describe('Authentication security', () => {
+  beforeEach(async () => {
+    await setupTestDatabase();
+  });
+  
+  afterEach(async () => {
+    await cleanupTestDatabase();
+  });
+  
+  describe('Rate limiting', () => {
+    it('should limit repeated login attempts', async () => {
+      const maxAttempts = 5;
+      const loginPayload = {
+        email: 'nonexistent@example.com',
+        password: 'WrongPassword'
+      };
+      
+      // Make multiple failed login attempts
+      for (let i = 0; i < maxAttempts; i++) {
+        await request
+          .post('/api/auth/login')
+          .send(loginPayload);
+      }
+      
+      // Next attempt should be rate limited
+      const response = await request
+        .post('/api/auth/login')
+        .send(loginPayload);
+      
+      expect(response.status).toBe(429);
+      expect(response.body.error).toContain('rate limit');
+    });
+  });
+  
+  describe('CSRF protection', () => {
+    it('should reject requests without CSRF token when required', async () => {
+      // First get authenticated with a valid session
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const authCookie = loginResponse.headers['set-cookie'];
+      
+      // Try to make a state-changing request without CSRF token
+      const response = await request
+        .post('/api/auth/update-profile')
+        .set('Cookie', authCookie)
+        .send({
+          displayName: 'Updated Name'
+        });
+      
+      // Should be rejected
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('CSRF');
+    });
+  });
+  
+  describe('Password security', () => {
+    it('should reject weak passwords', async () => {
+      const response = await request
+        .post('/api/auth/register')
+        .send({
+          email: 'new-user@example.com',
+          password: 'password', // Common weak password
+          displayName: 'New User'
+        });
+      
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('password');
+    });
+    
+    it('should not return password hash in user data', async () => {
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const authCookie = loginResponse.headers['set-cookie'];
+      
+      const userResponse = await request
+        .get('/api/auth/session')
+        .set('Cookie', authCookie);
+      
+      expect(userResponse.body.user).not.toHaveProperty('password');
+      expect(userResponse.body.user).not.toHaveProperty('passwordHash');
+    });
+  });
+  
+  describe('Session security', () => {
+    it('should set secure HttpOnly cookies', async () => {
+      const response = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const cookieHeader = response.headers['set-cookie'][0];
+      
+      expect(cookieHeader).toContain('better_auth_session=');
+      expect(cookieHeader).toContain('HttpOnly');
+      
+      // In test environment, Secure flag might not be set
+      if (process.env.NODE_ENV === 'production') {
+        expect(cookieHeader).toContain('Secure');
+      }
+      
+      expect(cookieHeader).toContain('SameSite=Lax');
+    });
+    
+    it('should rotate session token after sensitive actions', async () => {
+      // Log in to get initial session token
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const initialCookie = loginResponse.headers['set-cookie'][0];
+      const initialSessionToken = initialCookie.match(/better_auth_session=([^;]+)/)[1];
+      
+      // Perform password change (sensitive action)
+      const passwordChangeResponse = await request
+        .post('/api/auth/change-password')
+        .set('Cookie', loginResponse.headers['set-cookie'])
+        .send({
+          currentPassword: process.env.TEST_USER_PASSWORD,
+          newPassword: 'NewSecurePassword123!'
+        });
+      
+      // Check for session rotation
+      expect(passwordChangeResponse.headers['set-cookie']).toBeDefined();
+      const newCookie = passwordChangeResponse.headers['set-cookie'][0];
+      const newSessionToken = newCookie.match(/better_auth_session=([^;]+)/)[1];
+      
+      // Tokens should be different (session rotation)
+      expect(newSessionToken).not.toBe(initialSessionToken);
+      
+      // Old token should be invalidated
+      const oldTokenResponse = await request
+        .get('/api/auth/session')
+        .set('Cookie', initialCookie);
+      
+      expect(oldTokenResponse.body.authenticated).toBe(false);
+    });
+  });
+});
+```
+
+### 8.2 JWT Token Security
+
+```javascript
+// test/jwt-security.test.js
+import { describe, it, expect } from 'vitest';
+import jwt from 'jsonwebtoken';
+import { generateToken, verifyToken } from '$lib/server/auth-utils.js';
+
+describe('JWT token security', () => {
+  describe('Token generation', () => {
+    it('should generate tokens with secure algorithm', async () => {
+      const payload = { userId: 'test-user' };
+      const token = await generateToken(payload);
+      
+      // Decode token without verification to check header
+      const decoded = jwt.decode(token, { complete: true });
+      
+      // Check algorithm - should be at least HS256 or better
+      expect(decoded.header.alg).toMatch(/^(HS256|HS384|HS512|RS256|RS384|RS512)$/);
+    });
+    
+    it('should set appropriate token expiration', async () => {
+      const payload = { userId: 'test-user' };
+      const token = await generateToken(payload);
+      
+      // Decode token to check claims
+      const decoded = jwt.decode(token);
+      
+      // Verify expiration exists
+      expect(decoded).toHaveProperty('exp');
+      
+      // Verify it's in the future (not expired)
+      const expiryDate = new Date(decoded.exp * 1000);
+      expect(expiryDate).toBeInstanceOf(Date);
+      expect(expiryDate > new Date()).toBe(true);
+      
+      // Verify it's not too far in the future (max 30 days)
+      const maxExpiry = new Date();
+      maxExpiry.setDate(maxExpiry.getDate() + 31);
+      expect(expiryDate < maxExpiry).toBe(true);
+    });
+  });
+  
+  describe('Token verification', () => {
+    it('should reject expired tokens', async () => {
+      // Create token with expiration 1 second in the past
+      const expiredToken = jwt.sign(
+        { userId: 'test-user' }, 
+        process.env.BETTER_AUTH_SECRET,
+        { 
+          expiresIn: '-1s',
+          algorithm: 'HS256'
+        }
+      );
+      
+      // Attempt to verify
+      await expect(verifyToken(expiredToken)).rejects.toThrow();
+    });
+    
+    it('should reject tokens with invalid signature', async () => {
+      // Create token signed with different secret
+      const invalidToken = jwt.sign(
+        { userId: 'test-user' }, 
+        'wrong-secret',
+        { 
+          expiresIn: '15m',
+          algorithm: 'HS256'
+        }
+      );
+      
+      // Attempt to verify
+      await expect(verifyToken(invalidToken)).rejects.toThrow();
+    });
+    
+    it('should reject tampered tokens', async () => {
+      const payload = { userId: 'test-user', role: 'user' };
+      const token = await generateToken(payload);
+      
+      // Decode token
+      const parts = token.split('.');
+      
+      // Tamper with payload (try to elevate role to 'admin')
+      const decodedPayload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      decodedPayload.role = 'admin';
+      
+      // Encode tampered payload
+      parts[1] = Buffer.from(JSON.stringify(decodedPayload)).toString('base64').replace(/=/g, '');
+      
+      // Reconstruct token (signature will now be invalid)
+      const tamperedToken = parts.join('.');
+      
+      // Attempt to verify
+      await expect(verifyToken(tamperedToken)).rejects.toThrow();
+    });
+  });
+});
+```
+
+## 9. Testing Coverage Requirements
+
+### 9.1 Minimum Coverage Standards
+
+```text
+- Unit testing coverage: Minimum 80% (functions, statements)
+- Integration testing coverage: Minimum 70% (endpoints, services)
+- E2E testing coverage: All critical user flows (login, registration, logout, password reset)
+- Security testing: All endpoints must have security tests for:
+  - Authentication requirements
+  - Authorization checks
+  - Input validation
+  - Rate limiting (where applicable)
+  - Safe error handling
+```
+
+### 9.2 Coverage Tracking
+
+```javascript
+// jest.config.js or vitest.config.js
+export default {
+  // ... other config
+  coverage: {
+    provider: 'v8',
+    reporter: ['text', 'json', 'html'],
+    lines: 80,
+    functions: 80,
+    branches: 70,
+    statements: 80,
+    exclude: [
+      'node_modules/',
+      'test/',
+      'e2e/',
+      '**/*.d.ts'
+    ],
+    include: [
+      'src/lib/server/auth-*.js',
+      'src/routes/api/auth/**/*.js',
+      'src/lib/auth-client.js'
+    ],
+    // Generate separate authentication coverage report
+    reportOnSave: true,
+    reportsDirectory: './coverage/better-auth'
+  }
+};
+```
+
+## 10. CI/CD Integration 
+
+### 10.1 GitHub Actions Workflow
+
+```yaml
+# .github/workflows/better-auth-tests.yml (continued)
+      - 'src/lib/components/auth/**'
+
+jobs:
+  unit-integration:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: auth_test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Setup test database
+        run: |
+          mysql -h 127.0.0.1 -u root -proot -e "
+          CREATE DATABASE IF NOT EXISTS auth_test_db;
+          GRANT ALL PRIVILEGES ON auth_test_db.* TO 'test_user'@'%';
+          FLUSH PRIVILEGES;"
+      - name: Create .env.test file
+        run: |
+          echo "DATABASE_URL=mysql://test_user:test_password@localhost:3306/auth_test_db" > .env.test
+          echo "BETTER_AUTH_SECRET=test-secret-key-for-ci" >> .env.test
+          echo "WP_SYNC_SECRET=test-wp-sync-secret-for-ci" >> .env.test
+          echo "TEST_USER_EMAIL=test@example.com" >> .env.test
+          echo "TEST_USER_PASSWORD=TestPassword123!" >> .env.test
+          echo "SKIP_WP_TESTS=true" >> .env.test
+      - name: Run unit and integration tests
+        run: pnpm test
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/better-auth
+      - name: Check coverage thresholds
+        run: |
+          coverage_percent=$(jq '.total.lines.pct' coverage/better-auth/coverage-summary.json)
+          if (( $(echo "$coverage_percent < 80" | bc -l) )); then
+            echo "Coverage below threshold: $coverage_percent%"
+            exit 1
+          fi
+
+  e2e:
+    needs: unit-integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: auth_test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+      - name: Setup test database and environment
+        run: |
+          mysql -h 127.0.0.1 -u root -proot -e "
+          CREATE DATABASE IF NOT EXISTS auth_test_db;
+          GRANT ALL PRIVILEGES ON auth_test_db.* TO 'test_user'@'%';
+          FLUSH PRIVILEGES;"
+          
+          echo "DATABASE_URL=mysql://test_user:test_password@localhost:3306/auth_test_db" > .env.test
+          echo "BETTER_AUTH_SECRET=test-secret-key-for-ci" >> .env.test
+          echo "WP_SYNC_SECRET=test-wp-sync-secret-for-ci" >> .env.test
+          echo "TEST_USER_EMAIL=test@example.com" >> .env.test
+          echo "TEST_USER_PASSWORD=TestPassword123!" >> .env.test
+          echo "SKIP_WP_TESTS=true" >> .env.test
+      - name: Run E2E tests
+        run: pnpm test:e2e
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+```
+
+### 10.2 Test Automation Principles
+
+When integrating Better Auth tests into CI/CD pipelines, the following principles should be followed:
+
+1. **Test Isolation:** Authentication tests must run in isolated environments with dedicated test databases.
+2. **Database Seeding:** Test databases must be automatically created and seeded with test data.
+3. **Secrets Management:** Test secrets must not be hardcoded in workflows but passed as environment variables.
+4. **Failure Thresholds:** CI pipelines must fail if coverage drops below defined thresholds.
+5. **Test Artifacts:** Test reports and coverage reports must be saved as artifacts.
+6. **Branch Protection:** Authentication-related branches should require passing tests.
+7. **Progressive Testing:** Run faster unit tests first, then integration tests, and finally E2E tests.
+8. **Environment Isolation:** Different branches should use different test database schemas.
+
+### 10.3 Pre-Deploy Validation
+
+Before deploying authentication changes to production:
+
+```yaml
+# .github/workflows/auth-pre-deploy.yml
+name: Auth Pre-Deploy Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/lib/server/auth-**.js'
+      - 'src/routes/api/auth/**'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run security audit
+        run: pnpm audit --audit-level moderate
+      - name: Run SAST scan
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript
+          queries: security-extended
+      - name: Check for sensitive information
+        run: |
+          ! grep -r "SECRET\|PASSWORD\|KEY" --include="*.js" --exclude-dir=node_modules .
+      - name: Validate security headers
+        run: |
+          grep -r "Content-Security-Policy\|X-XSS-Protection\|X-Content-Type-Options" src/routes/api/auth
+```
+
+## 11. Performance Testing
+
+### 11.1 Response Time Testing
+
+```javascript
+// test/auth-performance.test.js
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { app } from '../src/server.js';
+import supertest from 'supertest';
+
+const request = supertest(app);
+
+describe('Auth Performance', () => {
+  beforeEach(async () => {
+    await setupTestDatabase();
+  });
+  
+  afterEach(async () => {
+    await cleanupTestDatabase();
+  });
+  
+  describe('Response time', () => {
+    it('login should respond within acceptable time (< 300ms)', async () => {
+      const startTime = performance.now();
+      
+      await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const endTime = performance.now();
+      const responseTime = endTime - startTime;
+      
+      expect(responseTime).toBeLessThan(300); // Should be less than 300ms
+    });
+    
+    it('session check should respond within acceptable time (< 100ms)', async () => {
+      // First login to get session
+      const loginResponse = await request
+        .post('/api/auth/login')
+        .send({
+          email: process.env.TEST_USER_EMAIL,
+          password: process.env.TEST_USER_PASSWORD
+        });
+      
+      const authCookie = loginResponse.headers['set-cookie'];
+      
+      // Measure session check performance
+      const startTime = performance.now();
+      
+      await request
+        .get('/api/auth/session')
+        .set('Cookie', authCookie);
+      
+      const endTime = performance.now();
+      const responseTime = endTime - startTime;
+      
+      expect(responseTime).toBeLessThan(100); // Should be less than 100ms
+    });
+  });
+});
+```
+
+### 11.2 Load Testing Setup
+
+Using k6 for load testing authentication endpoints:
+
+```javascript
+// load-tests/auth-load.js
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+import { Counter } from 'k6/metrics';
+
+// Custom metrics
+const successfulLogins = new Counter('successful_logins');
+const failedLogins = new Counter('failed_logins');
+
+export const options = {
+  // Common scenarios
+  scenarios: {
+    // Smoke test: 1 user
+    smoke: {
+      executor: 'constant-vus',
+      vus: 1,
+      duration: '1m',
+      gracefulStop: '30s',
+      exec: 'smoke',
+    },
+    // Load test: ramp up to 50 virtual users
+    load: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '30s', target: 10 },
+        { duration: '1m', target: 20 },
+        { duration: '2m', target: 50 },
+        { duration: '1m', target: 0 },
+      ],
+      gracefulStop: '30s',
+      exec: 'load',
+    },
+    // Stress test: ramp up to 200 virtual users
+    stress: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '1m', target: 50 },
+        { duration: '2m', target: 100 },
+        { duration: '2m', target: 200 },
+        { duration: '1m', target: 0 },
+      ],
+      gracefulStop: '30s',
+      exec: 'stress',
+    },
+  },
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% of requests must be below 500ms
+    http_req_failed: ['rate<0.01'], // Error rate must be less than 1%
+    successful_logins: ['count>100'], // At least 100 successful logins
+  },
+};
+
+// Base URL
+const BASE_URL = 'http://localhost:5173/api/auth';
+
+// User pool for testing (would be larger in real tests)
+const users = [
+  { email: 'test1@example.com', password: 'TestPassword1!' },
+  { email: 'test2@example.com', password: 'TestPassword2!' },
+  { email: 'test3@example.com', password: 'TestPassword3!' },
+  // Add more test users as needed
+];
+
+// Smoke test - basic functionality check
+export function smoke() {
+  const user = users[0];
+  
+  // 1. Login request
+  const loginRes = http.post(`${BASE_URL}/login`, JSON.stringify({
+    email: user.email,
+    password: user.password,
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  
+  // Check login success
+  const loginSuccess = check(loginRes, {
+    'login status is 200': (r) => r.status === 200,
+    'login success': (r) => r.json('success') === true,
+    'has user data': (r) => r.json('user') !== undefined,
+    'has auth cookie': (r) => r.cookies['better_auth_session'] !== undefined,
+  });
+  
+  if (loginSuccess) {
+    successfulLogins.add(1);
+    
+    // 2. Session check
+    const sessionRes = http.get(`${BASE_URL}/session`, {
+      cookies: { better_auth_session: loginRes.cookies['better_auth_session'][0].value },
+    });
+    
+    check(sessionRes, {
+      'session check status is 200': (r) => r.status === 200,
+      'session is authenticated': (r) => r.json('authenticated') === true,
+    });
+    
+    // 3. Logout
+    const logoutRes = http.del(`${BASE_URL}/session`, null, {
+      cookies: { better_auth_session: loginRes.cookies['better_auth_session'][0].value },
+    });
+    
+    check(logoutRes, {
+      'logout status is 200': (r) => r.status === 200,
+      'logout success': (r) => r.json('success') === true,
+    });
+  } else {
+    failedLogins.add(1);
+  }
+  
+  // Wait between iterations
+  sleep(1);
+}
+
+// Load test - simulate typical usage
+export function load() {
+  // Select random user from pool
+  const user = users[Math.floor(Math.random() * users.length)];
+  
+  // Login
+  const loginRes = http.post(`${BASE_URL}/login`, JSON.stringify({
+    email: user.email,
+    password: user.password,
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+  
+  if (loginRes.status === 200) {
+    successfulLogins.add(1);
+    
+    // Get session cookie
+    const sessionToken = loginRes.cookies['better_auth_session'][0].value;
+    
+    // Perform authenticated actions
+    const actions = ['session', 'profile', 'settings'];
+    const randomAction = actions[Math.floor(Math.random() * actions.length)];
+    
+    http.get(`${BASE_URL}/${randomAction}`, {
+      cookies: { better_auth_session: sessionToken },
+    });
+    
+    // 50% chance to logout
+    if (Math.random() > 0.5) {
+      http.del(`${BASE_URL}/session`, null, {
+        cookies: { better_auth_session: sessionToken },
+      });
+    }
+  } else {
+    failedLogins.add(1);
+  }
+  
+  // Random sleep between 1-5 seconds to simulate user behavior
+  sleep(1 + Math.random() * 4);
+}
+
+// Stress test - push system limits
+export function stress() {
+  // Similar to load test but with higher frequency
+  load();
+  sleep(0.5); // Shorter sleep times to increase request rate
+}
+```
+
+### 11.3 Performance Requirements
+
+```text
+1. Authentication Response Times:
+   - Login endpoint: < 300ms (p95)
+   - Session check endpoint: < 100ms (p95)
+   - Logout endpoint: < 100ms (p95)
+   - WP sync endpoint: < 500ms (p95)
+
+2. Load Handling:
+   - Must handle 50 concurrent users with < 1% error rate
+   - Must handle 10 logins per second with < 500ms response time
+
+3. Memory Usage:
+   - Authentication processes should not cause memory leaks
+   - Peak memory usage should not exceed 256MB for auth-related processes
+
+4. Database Connection Efficiency:
+   - Connection pool should be properly configured
+   - Database queries should complete in < 50ms
+```
+
+## 12. Documentation Testing
+
+### 12.1 JSDoc Validation
+
+```javascript
+// scripts/validate-jsdoc.js
+const jsdoc2md = require('jsdoc-to-markdown');
+const fs = require('fs');
+const path = require('path');
+const glob = require('glob');
+
+// Find all authentication related files
+const authFiles = glob.sync('src/{lib/server/auth-*.js,routes/api/auth/**/*.js,lib/auth-client.js}');
+
+// Process each file
+authFiles.forEach(filePath => {
+  try {
+    // Generate documentation
+    const docs = jsdoc2md.getTemplateDataSync({ files: filePath });
+    
+    // Validate essentials for each documented item
+    const issues = [];
+    
+    docs.forEach(item => {
+      // Check for description
+      if (!item.description && item.kind !== 'module') {
+        issues.push(`${item.name || 'Unnamed item'}: Missing description`);
+      }
+      
+      // Check params if it's a function
+      if (item.kind === 'function') {
+        // Check for function return documentation
+        if (!item.returns || item.returns.length === 0) {
+          issues.push(`${item.name}: Missing @returns documentation`);
+        }
+        
+        // Check each parameter
+        if (item.params) {
+          item.params.forEach(param => {
+            if (!param.description) {
+              issues.push(`${item.name}: Parameter ${param.name} missing description`);
+            }
+            if (!param.type) {
+              issues.push(`${item.name}: Parameter ${param.name} missing type`);
+            }
+          });
+        }
+      }
+      
+      // Check typedef properties
+      if (item.kind === 'typedef' && item.properties) {
+        item.properties.forEach(prop => {
+          if (!prop.description) {
+            issues.push(`${item.name}: Property ${prop.name} missing description`);
+          }
+          if (!prop.type) {
+            issues.push(`${item.name}: Property ${prop.name} missing type`);
+          }
+        });
+      }
+    });
+    
+    // Report issues
+    if (issues.length > 0) {
+      console.error(`JSDoc issues in ${filePath}:`);
+      issues.forEach(issue => console.error(`- ${issue}`));
+      console.error('');
+    } else {
+      console.log(`✓ ${filePath}: JSDoc validation passed`);
+    }
+  } catch (error) {
+    console.error(`Error processing ${filePath}:`, error);
+  }
+});
+```
+
+### 12.2 Testing Against Examples
+
+```javascript
+// test/documentation-examples.test.js
+import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Import the actual implementation
+import { login, logout, register, useAuth } from '$lib/auth-client.js';
+
+describe('Documentation examples', () => {
+  // Read the README.md or documentation files
+  const readmePath = path.resolve(__dirname, '../README.md');
+  const docsContent = fs.readFileSync(readmePath, 'utf8');
+  
+  // Test that code examples in documentation work with the actual implementation
+  describe('Client-side authentication examples', () => {
+    it('login example from documentation should be valid', () => {
+      // Extract login example from docs
+      const loginExample = docsContent.match(/```javascript\s*\/\/ Login example([\s\S]*?)```/)?.[1]?.trim();
+      
+      if (!loginExample) {
+        throw new Error('Login example not found in documentation');
+      }
+      
+      // Validate that the example code references the correct function
+      expect(loginExample).toContain('login(');
+      
+      // Check parameter structure
+      expect(loginExample).toMatch(/login\s*\(\s*(['"][\w@.]+['"])\s*,\s*(['"][\w!@#$%^&*()]+['"])/);
+      
+      // Verify the function signature matches the example usage
+      expect(login.length).toBeGreaterThanOrEqual(2); // At least email and password params
+    });
+    
+    it('logout example from documentation should be valid', () => {
+      // Extract logout example from docs
+      const logoutExample = docsContent.match(/```javascript\s*\/\/ Logout example([\s\S]*?)```/)?.[1]?.trim();
+      
+      if (!logoutExample) {
+        throw new Error('Logout example not found in documentation');
+      }
+      
+      // Validate that the example code references the correct function
+      expect(logoutExample).toContain('logout(');
+      
+      // Verify the function signature matches the example usage
+      expect(typeof logout).toBe('function');
+    });
+    
+    it('auth store example from documentation should be valid', () => {
+      // Extract auth store example from docs
+      const storeExample = docsContent.match(/```javascript\s*\/\/ Auth store example([\s\S]*?)```/)?.[1]?.trim();
+      
+      if (!storeExample) {
+        throw new Error('Auth store example not found in documentation');
+      }
+      
+      // Validate that the example code references the correct function/store
+      expect(storeExample).toContain('useAuth(');
+      
+      // Verify the function returns a store
+      const authStore = useAuth();
+      expect(authStore.subscribe).toBeTypeOf('function');
+    });
+  });
+});
+```
+
+## 13. Implementation Checklist
+
+### 13.1 Pre-Development Verification
+
+Before implementing Better Auth in a new project, verify:
+
+```text
+1. Environment Configuration:
+   - [ ] MySQL database with required tables exists or will be created by adapter
+   - [ ] BETTER_AUTH_SECRET and WP_SYNC_SECRET are set in environment variables
+   - [ ] CORS is properly configured for cross-origin requests
+   - [ ] Rate limiting is configured for protection against brute force attacks
+
+2. Directory Structure:
+   - [ ] `/src/lib/server/auth.js` exists for auth configuration
+   - [ ] `/src/lib/server/auth-utils.js` exists for helper functions
+   - [ ] `/src/lib/server/auth-adapter.js` exists for database operations
+   - [ ] `/src/routes/api/auth/[...auth]` exists for auth endpoints
+   - [ ] `/src/routes/api/auth/check-wp-session` exists for WP integration
+   - [ ] `/src/lib/auth-client.js` exists for frontend integration
+   - [ ] `/src/lib/components/auth/` directory exists for auth components
+
+3. Type Definitions:
+   - [ ] JSDoc types defined for auth objects, params, and returns
+   - [ ] Type safety enforced through JSDoc annotations
+```
+
+### 13.2 Implementation Validation
+
+After implementing Better Auth, verify:
+
+```text
+1. Core Authentication Features:
+   - [ ] Email/password login works
+   - [ ] User registration works
+   - [ ] Session management works
+   - [ ] Logout functionality works
+   - [ ] WordPress cross-authentication works
+
+2. Security Measures:
+   - [ ] Password hashing is properly implemented
+   - [ ] Session tokens are securely stored as HttpOnly cookies
+   - [ ] Rate limiting prevents brute force attacks
+   - [ ] CSRF protection is implemented for state-changing operations
+   - [ ] Sensitive operations rotate session tokens
+
+3. Error Handling:
+   - [ ] Invalid credentials return proper error responses
+   - [ ] Expired sessions are detected and handled
+   - [ ] Database errors are caught and handled
+   - [ ] Error messages do not expose sensitive details
+   - [ ] Input validation provides helpful error messages
+
+4. Testing Coverage:
+   - [ ] Unit tests cover all authentication functions
+   - [ ] Integration tests verify endpoint behavior
+   - [ ] End-to-end tests cover critical user flows
+   - [ ] Security tests verify protection measures
+   - [ ] Performance tests confirm acceptable response times
+
+5. Documentation:
+   - [ ] JSDoc comments are complete and accurate
+   - [ ] README includes setup and usage instructions
+   - [ ] Code examples are provided for common operations
+   - [ ] API endpoints are documented
+```
+
+## 14. Common Issues & Troubleshooting
+
+### 14.1 Troubleshooting Guide
+
+| Issue | Symptoms | Potential Cause | Solution |
+|-------|----------|----------------|----------|
+| Session Not Persisting | Login succeeds but stays logged out on refresh | Cookie missing/invalid | Check cookie settings (HttpOnly, Path, SameSite) |
+| | | | Verify session is created in database |
+| WordPress Sync Failure | "invalid_secret" error | Mismatched secrets | Ensure WP_SYNC_SECRET matches in both systems |
+| | "no_active_wp_sessions" | No WP cookie or session | Check WordPress logged-in status |
+| Database Connection Errors | "DB_CONNECTION_ERROR" | Invalid connection params | Verify database URL/credentials |
+| | | | Check database server is running |
+| Registration Fails | "USER_ALREADY_EXISTS" | Email already in use | Implement duplicate email check UI |
+| Endpoints Not Found | 404 errors on auth routes | Route configuration | Verify SvelteKit route setup with [...auth] |
+| Missing Auth Cookie | No cookie set after login | Incorrect cookie options | Check cookie settings and domain |
+| | | | Verify CORS settings if cross-origin |
+| Slow Response Times | Response takes >500ms | Inefficient DB queries | Implement query optimization |
+| | | | Ensure proper connection pooling |
+| CORS Errors | "Access-Control-Allow-Origin" | Incorrect CORS config | Add client domain to CORS allowed origins |
+
+### 14.2 Test Isolation Debugging
+
+When tests are failing and it's hard to isolate the cause:
+
+```javascript
+// debug-test.js - Run a single test with debugging
+import { expect, test } from 'vitest';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/test-db.js';
+import { app } from '../src/server.js';
+import supertest from 'supertest';
+
+// Full request logging
+const request = supertest.agent(app);
+const originalRequest = request.request;
+request.request = function(method, path) {
+  console.log(`\n----- REQUEST: ${method.toUpperCase()} ${path} -----`);
+  const req = originalRequest.call(this, method, path);
+  
+  const originalEnd = req.end;
+  req.end = function(fn) {
+    return originalEnd.call(this, (err, res) => {
+      console.log(`----- RESPONSE: ${res?.status} ${res?.statusText} -----`);
+      console.log('Headers:', res?.headers);
+      console.log('Body:', res?.body);
+      console.log('------------------------------\n');
+      fn(err, res);
+    });
+  };
+  
+  return req;
+};
+
+// Run a single test in isolation
+test.only('should authenticate valid credentials', async () => {
+  await setupTestDatabase();
+  
+  try {
+    console.log('Starting focused test...');
+    
+    const response = await request
+      .post('/api/auth/login')
+      .send({
+        email: process.env.TEST_USER_EMAIL || 'test@example.com',
+        password: process.env.TEST_USER_PASSWORD || 'TestPassword123!'
+      });
+    
+    console.log('Login response received with status:', response.status);
+    
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.user).toBeDefined();
+    expect(response.body.user.email).toBe(process.env.TEST_USER_EMAIL || 'test@example.com');
+    
+    // Check for auth cookie
+    console.log('Checking for auth cookie...');
+    console.log('Set-Cookie headers:', response.headers['set-cookie']);
+    
+    expect(response.headers['set-cookie']).toBeDefined();
+    expect(response.headers['set-cookie'][0]).toContain('better_auth_session=');
+  } finally {
+    await cleanupTestDatabase();
+  }
+});
+```
+
+## 15. Integration with Other Protocols
+
+### 15.1 Integration with Better Auth Configuration Protocol
+
+This Testing and Verification Protocol complements the Better Auth Configuration Protocol by validating that authentication configurations are correctly implemented. When implementing tests, developers should:
+
+1. Ensure test configurations align with the patterns defined in the Configuration Protocol
+2. Verify configuration options through both unit and integration tests
+3. Test different configuration options to ensure flexibility and robustness
+4. Maintain consistent naming and structure conventions
+
+### 15.2 Integration with Better Auth Route Handling Protocol
+
+This protocol works with the Route Handling Protocol to ensure that API endpoints are correctly implemented and tested. The integration points include:
+
+1. Testing route handlers defined in the Route Handling Protocol
+2. Verifying endpoint behavior for authentication flows
+3. Ensuring request/response patterns match the documented protocol
+4. Testing both success and error paths for each endpoint
+
+### 15.3 Integration with Better Auth Client Side Integration Protocol
+
+This protocol validates the client-side components and stores defined in the Client Side Integration Protocol by:
+
+1. Testing client-side authentication functions and stores
+2. Verifying UI components for login, registration, and user profile
+3. Testing interactions between frontend and backend auth systems
+4. Ensuring consistent user experience across auth flows
+
+### 15.4 Integration with WP-SK User Synchronization Protocol
+
+This protocol ensures that WordPress user synchronization works correctly by:
+
+1. Testing the WordPress-SvelteKit user sync endpoint
+2. Verifying proper handling of WordPress user data
+3. Testing the creation and linking of user accounts between systems
+4. Ensuring session creation after successful WordPress authentication
+
+### 15.5 Integration with Better Auth Error Handling Protocol
+
+This protocol validates that error handling conforms to the Error Handling Protocol by:
+
+1. Testing error scenarios for each authentication endpoint
+2. Verifying error response formats match defined standards
+3. Ensuring appropriate status codes and error messages
+4. Testing client-side error handling mechanisms
+
+## 16. Conclusion and Resources
+
+This protocol establishes comprehensive test standards for Better Auth implementations. Following these test practices ensures that authentication is secure, reliable, and performs well under varying conditions.
+
+Developers should utilize the following resources for additional guidance:
+
+1. Better Auth Documentation: https://www.better-auth.com/docs
+2. SvelteKit Testing Guide: https://kit.svelte.dev/docs/testing
+3. MySQL Performance Optimization: https://dev.mysql.com/doc/refman/8.0/en/optimization.html
+4. Web Authentication Security Best Practices: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+5. Frontend Testing Patterns: https://testing-library.com/docs/svelte-testing-library/intro

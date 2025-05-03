@@ -62,6 +62,26 @@ We continuously work to enhance your experience. Upcoming features include:
 
 ---
 
+## Technical Documentation
+
+### Auto Login Implementation
+
+ASAP Digest features a seamless authentication experience that automatically logs WordPress users into the SvelteKit application. Our V6 implementation uses a true server-to-server communication pattern that eliminates cookie dependencies and enhances reliability.
+
+Key features of our auto-login system:
+- **Server-to-server architecture**: No reliance on cookies or client-side auth sharing
+- **Shared secret authentication**: Secure communication between WordPress and SvelteKit
+- **Comprehensive logging**: Detailed logs for debugging and monitoring
+- **Production-ready design**: Built for reliability and security at scale
+
+For detailed documentation:
+- [Auto Login V6 Overview](md-docs/auto-login/auto-login-v6.md): Comprehensive guide to the implementation
+- [Auto Login API Reference](md-docs/auto-login/auto-login-api.md): Technical API details
+- [Auto Login Developer Guide](md-docs/auto-login/auto-login-developer-guide.md): Practical guidance
+- [V6 Upgrade Summary](md-docs/auto-login/v6-auto-login-upgrade-summary.md): Implementation changes
+
+---
+
 ## Summary
 
 **ASAP Digest** is designed to efficiently deliver fast, personalized daily insights in both text and audio formats. Whether you are using the free version or upgrading to one of our membership tiers—**Spark**, **Pulse**, or **Bolt**—our focus is on providing clear, reliable content that keeps you informed with minimal fuss.

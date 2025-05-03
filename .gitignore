@@ -4,6 +4,7 @@
 !app/
 !md-docs/
 !docs/
+!scripts/
 /index.php
 /.vscode/
 
@@ -31,6 +32,7 @@ wp-content/uploads/*
 /md-docs/ASAP_DIGEST_ROADMAP_LLM_5.md
 /md-docs/ASAP_DIGEST_ROADMAP_LLM_6.md
 /md-docs/ASAP_DIGEST_ROADMAP_LLM_7.md
+/md-docs/auto-login/*
 app/src/lib/components/ui/README.md
 /md-docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
 class-environment-config.php
@@ -39,6 +41,14 @@ class-environment-config.php
 app/cert/
 
 
+# SvelteKit specific
+/app/.svelte-kit/
+/app/build/
+/app/node_modules/
+/app/.vercel
+/app/.netlify
+/app/.output/
+/app/.cloudflare/
 
 # Playwright
 node_modules/
@@ -64,6 +74,7 @@ app/playwright/.cache/
 !.cursor/
 .cursor/*
 !.cursor/rules/
+!.cursorrules
 
 # ignore OS generated files
 ehthumbs.db
@@ -77,6 +88,7 @@ Thumbs.db
 *.komodoproject
 .idea/
 asapdigest.code-workspace
+⚡️_asapdigest.code-workspace
 
 # ignore system files
 .DS_Store
@@ -119,6 +131,7 @@ wp-config-local.php
 
 # track cursor rules
 !.cursor/rules
+!.cursor/rules/*
 
 # track these files, if they exist
 !.gitignore
@@ -132,6 +145,8 @@ wp-config-local.php
 !composer.json
 !wp-config-sample.php
 !retrofit-roadmap-ids.js
+!watch-roadmap.js
+!generate-todotxt.js
 
 # track favicon files, if they exist
 !android-chrome-*.png
@@ -168,6 +183,7 @@ wp-content/themes/asapdigest/screenshot.png
 
 ## Generated docs
 /docs-generated/
+/app/src/lib/api/docs/
 
 ## Security
 .env.local
@@ -200,3 +216,29 @@ dump.rdb
 # Development database dumps
 *.sqlite
 *.sql.gz
+
+# Generated API documentation
+/app/src/routes/api-docs/
+/docs/api-reference/openapi.json
+/docs/api-reference/auto-generated/
+
+# Temporary backup files
+*_backup
+*_bak
+*.backup
+*.bak
+
+# Log directories
+/app/logs/
+/logs/
+
+# Generated type definitions
+/app/src/lib/types/generated/
+
+# CDN cached assets
+/app/cdn-cache/
+
+# Debug files
+*.debug
+*.debug.js
+debug.log

@@ -1,0 +1,1058 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Session Management Protocol v1.0
+
+## 1. Purpose
+
+This protocol establishes the standards for secure session management within Better Auth implementations for headless WordPress/SvelteKit architectures. It addresses session creation, storage, validation, renewal, expiration, and cross-domain handling to ensure security, performance, and a seamless user experience across the headless architecture.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Auth instance configuration
+│ 2. Better Auth Route Handling Protocol  │ // API endpoints
+│ 3. WP-SK User Synchronization Protocol  │ // User data transfer
+│ 4. JSDoc Type Definitions Protocol      │ // Type safety
+│ 5. Better Auth Error Handling Protocol  │ // Error handling
+│ 6. MySQL Adapter Implementation Protocol│ // Database adapter
+│ 7. Session Management Protocol (This)   │ // Session handling
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Session Management Principles
+
+### 3.1 Security Requirements
+
+1. **Token Generation:** Session tokens MUST be cryptographically secure random strings.
+2. **Cookie Settings:** Session cookies MUST use HttpOnly, SameSite=Lax, and Secure flags (in production).
+3. **Storage:** Session data in the database MUST NOT include sensitive user information.
+4. **Expiration:** Sessions MUST have explicit expiration timestamps.
+5. **Validation:** Every request requiring authentication MUST validate the session token.
+6. **Revocation:** Provide mechanisms to immediately revoke sessions.
+
+### 3.2 Performance Considerations
+
+1. **Database Impact:** Minimize database queries for session validation.
+2. **Session Duration:** Balance security and user experience with appropriate session length (default: 30 days).
+3. **Token Size:** Keep tokens reasonably sized for network efficiency.
+
+### 3.3 Cross-Domain Requirements
+
+1. **CORS Configuration:** Define appropriate CORS headers for cross-domain session handling.
+2. **Subdomain Support:** Support shared sessions across subdomains if needed.
+3. **WordPress Integration:** Handle sessions between WordPress and SvelteKit.
+
+## 4. Session Lifecycle Management
+
+### 4.1 Session Creation
+
+```javascript
+/**
+ * Create a new session for a user
+ * @param {string} userId - User ID
+ * @param {Object} [options] - Session options
+ * @param {number} [options.expiresIn] - Session duration in milliseconds
+ * @returns {Promise<Object>} Created session
+ */
+async function createUserSession(userId, options = {}) {
+  // Generate a secure random token
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Calculate expiration timestamp
+  const expiresIn = options.expiresIn || 30 * 24 * 60 * 60 * 1000; // 30 days default
+  const expiresAt = new Date(Date.now() + expiresIn);
+  
+  // Create session in database
+  const session = await auth.adapter.createSession({
+    userId,
+    token,
+    expiresAt
+  });
+  
+  // Trigger lifecycle hooks
+  const user = await auth.adapter.getUserById(userId);
+  if (auth.options.after?.onSessionCreation && user) {
+    await auth.options.after.onSessionCreation(session, user);
+  }
+  
+  return session;
+}
+```
+
+### 4.2 Session Validation
+
+```javascript
+/**
+ * Validate a session token
+ * @param {Request} request - HTTP request
+ * @returns {Promise<Object|null>} Session if valid, null otherwise
+ */
+async function getSession(request) {
+  // Extract token from cookie
+  const cookies = parseCookies(request.headers.get('cookie') || '');
+  const token = cookies[auth.options.sessionCookieName];
+  
+  if (!token) {
+    return null;
+  }
+  
+  // Validate token against database
+  const session = await auth.adapter.getSessionByToken(token);
+  
+  // Check if session exists and is not expired
+  if (!session || new Date(session.expires_at) < new Date()) {
+    return null;
+  }
+  
+  return session;
+}
+
+/**
+ * Validate session and get user
+ * @param {Request} request - HTTP request
+ * @returns {Promise<Object|null>} User if session valid, null otherwise
+ */
+async function getUserFromSession(request) {
+  const session = await getSession(request);
+  
+  if (!session) {
+    return null;
+  }
+  
+  // Get user from session
+  const user = await auth.adapter.getUserById(session.user_id);
+  
+  return user;
+}
+```
+
+### 4.3 Session Expiration & Renewal
+
+```javascript
+/**
+ * Renew a session by creating a new token and expiration
+ * @param {string} oldToken - Current session token
+ * @returns {Promise<Object|null>} New session if successful, null otherwise
+ */
+async function refreshSession(oldToken) {
+  // Get current session
+  const currentSession = await auth.adapter.getSessionByToken(oldToken);
+  
+  if (!currentSession) {
+    return null;
+  }
+  
+  // Delete old session
+  await auth.adapter.deleteSession(oldToken);
+  
+  // Create new session for the same user
+  return await createUserSession(currentSession.user_id);
+}
+
+/**
+ * Check if session needs renewal (optional sliding window approach)
+ * @param {Object} session - Session object
+ * @param {number} renewThreshold - Threshold in milliseconds for renewal
+ * @returns {boolean} True if session needs renewal
+ */
+function shouldRenewSession(session, renewThreshold = 7 * 24 * 60 * 60 * 1000) {
+  const expiresAt = new Date(session.expires_at);
+  const renewalPoint = new Date(expiresAt.getTime() - renewThreshold);
+  
+  return new Date() > renewalPoint;
+}
+```
+
+### 4.4 Session Termination
+
+```javascript
+/**
+ * End the current session (logout)
+ * @param {Request} request - HTTP request
+ * @returns {Promise<boolean>} Success status
+ */
+async function endSession(request) {
+  // Extract token from cookie
+  const cookies = parseCookies(request.headers.get('cookie') || '');
+  const token = cookies[auth.options.sessionCookieName];
+  
+  if (!token) {
+    return false;
+  }
+  
+  // Delete session from database
+  return await auth.adapter.deleteSession(token);
+}
+
+/**
+ * End all sessions for a user (force logout everywhere)
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} Success status
+ */
+async function endAllUserSessions(userId) {
+  return await auth.adapter.deleteAllUserSessions(userId);
+}
+```
+
+## 5. Cookie Management
+
+### 5.1 Cookie Creation
+
+```javascript
+/**
+ * Create session cookie header
+ * @param {string} token - Session token
+ * @param {Object} [options] - Cookie options
+ * @param {number} [options.maxAge] - Cookie max age in seconds
+ * @param {boolean} [options.secure] - Whether cookie should be secure
+ * @param {string} [options.domain] - Cookie domain
+ * @returns {string} Cookie header value
+ */
+function createSessionCookie(token, options = {}) {
+  const maxAge = options.maxAge || 30 * 24 * 60 * 60; // 30 days default
+  const secure = options.secure ?? (process.env.NODE_ENV === 'production');
+  const domain = options.domain || undefined;
+  
+  let cookie = `${auth.options.sessionCookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  
+  if (secure) {
+    cookie += '; Secure';
+  }
+  
+  if (domain) {
+    cookie += `; Domain=${domain}`;
+  }
+  
+  return cookie;
+}
+
+/**
+ * Clear session cookie header
+ * @param {Object} [options] - Cookie options
+ * @param {string} [options.domain] - Cookie domain
+ * @returns {string} Cookie header value
+ */
+function clearSessionCookie(options = {}) {
+  const domain = options.domain || undefined;
+  let cookie = `${auth.options.sessionCookieName}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  
+  if (domain) {
+    cookie += `; Domain=${domain}`;
+  }
+  
+  return cookie;
+}
+```
+
+### 5.2 Cookie Parsing
+
+```javascript
+/**
+ * Parse cookies from cookie header
+ * @param {string} cookieHeader - Cookie header string
+ * @returns {Object} Object with cookie key-value pairs
+ */
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  
+  if (!cookieHeader) {
+    return cookies;
+  }
+  
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, ...rest] = cookie.split('=');
+    const value = rest.join('=').trim();
+    const key = name.trim();
+    
+    if (key && value) {
+      cookies[key] = decodeURIComponent(value);
+    }
+  });
+  
+  return cookies;
+}
+```
+
+## 6. SvelteKit Hooks Integration
+
+### 6.1 Request Handling
+
+```javascript
+/**
+ * SvelteKit handle hook for authentication
+ * @param {Object} input - Hook input
+ * @param {Object} input.event - SvelteKit event
+ * @param {Function} input.resolve - SvelteKit resolve function
+ * @returns {Promise<Response>} Response object
+ */
+export async function handle({ event, resolve }) {
+  // Get session
+  const session = await auth.sessionManager.getSession(event.request);
+  
+  if (session) {
+    // Get user from session
+    const user = await auth.adapter.getUserById(session.userId);
+    
+    if (user) {
+      // Add user and session to event.locals
+      event.locals.user = {
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name || user.username,
+        emailVerified: !!user.email_verified
+      };
+      
+      event.locals.session = {
+        id: session.id,
+        expiresAt: session.expiresAt
+      };
+      
+      // Handle session renewal if needed
+      if (shouldRenewSession(session)) {
+        const newSession = await refreshSession(session.token);
+        
+        if (newSession) {
+          // Generate response with new session cookie
+          const response = await resolve(event);
+          
+          return new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers),
+            headers: {
+              ...Object.fromEntries(response.headers),
+              'Set-Cookie': createSessionCookie(newSession.token)
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  return resolve(event);
+}
+```
+
+### 6.2 Protected Routes
+
+```javascript
+/**
+ * Create a guard for protected routes
+ * @param {Object} [options] - Guard options
+ * @param {string} [options.redirectTo] - Redirect URL for unauthenticated users
+ * @returns {Function} Route guard function
+ */
+export function createAuthGuard(options = {}) {
+  const redirectTo = options.redirectTo || '/login';
+  
+  /**
+   * @param {import('@sveltejs/kit').RequestEvent} event
+   */
+  return async (event) => {
+    // Check if user is authenticated
+    if (!event.locals.user) {
+      // Redirect to login page
+      return Response.redirect(new URL(redirectTo, event.url.origin).href);
+    }
+  };
+}
+```
+
+### 6.3 Server-Side Page Data
+
+```javascript
+/**
+ * Load function for pages requiring auth data
+ * @param {import('@sveltejs/kit').RequestEvent} event
+ */
+export async function load(event) {
+  // Return user from locals if authenticated
+  return {
+    user: event.locals.user || null
+  };
+}
+```
+
+## 7. Cross-Domain Session Handling
+
+### 7.1 CORS Configuration
+
+```javascript
+/**
+ * CORS configuration for Better Auth
+ */
+const corsConfig = {
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    process.env.WORDPRESS_URL || 'http://localhost:8000'
+  ],
+  credentials: true,
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-WP-Sync-Secret'
+  ],
+  exposedHeaders: [
+    'Set-Cookie'
+  ],
+  maxAge: 86400 // 24 hours
+};
+```
+
+### 7.2 WordPress Integration
+
+```javascript
+/**
+ * Handle WordPress session check
+ * @param {import('@sveltejs/kit').RequestEvent} event
+ * @returns {Promise<Response>} JSON response
+ */
+export async function handleWordPressSessionCheck(event) {
+  // Validate WordPress sync secret
+  const wpSyncSecret = auth.options.serverToServer?.syncSecret;
+  const requestSecret = event.request.headers.get('x-wp-sync-secret');
+  
+  if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'invalid_secret'
+      }),
+      {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+  
+  try {
+    // Get WordPress user data from request
+    const { activeSessions } = await event.request.json();
+    
+    if (!activeSessions?.length) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'no_active_wp_sessions'
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    // Get WordPress user data from first session
+    const wpUserData = activeSessions[0];
+    
+    // Find or create user
+    let user = await auth.adapter.getUserByWpId(wpUserData.wpUserId);
+    
+    if (!user) {
+      // Create new user if not found
+      user = await auth.adapter.createUser({
+        email: wpUserData.email,
+        username: wpUserData.username,
+        display_name: wpUserData.displayName,
+        first_name: wpUserData.firstName,
+        last_name: wpUserData.lastName,
+        email_verified: true // Trust WordPress email verification
+      });
+      
+      // Link WordPress user
+      await auth.adapter.linkWpUser(wpUserData.wpUserId, user.id);
+      
+      // Trigger user creation hook
+      if (auth.options.after?.onUserCreation) {
+        await auth.options.after.onUserCreation(user);
+      }
+    }
+    
+    // Create session
+    const session = await createUserSession(user.id);
+    
+    // Create session cookie
+    const cookieHeader = createSessionCookie(session.token);
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.display_name || user.username
+        }
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': cookieHeader
+        }
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: 'wp_request_error',
+        message: error instanceof Error ? error.message : String(error)
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+}
+```
+
+## 8. Client-Side Session Management
+
+### 8.1 Auth Store
+
+```javascript
+// src/lib/stores/auth.js
+import { writable, derived } from 'svelte/store';
+
+/**
+ * Create auth store for client-side state
+ */
+function createAuthStore() {
+  const { subscribe, set, update } = writable({
+    user: null,
+    authenticated: false,
+    loading: true
+  });
+  
+  return {
+    subscribe,
+    
+    /**
+     * Initialize store with user data
+     * @param {Object|null} user - User data or null
+     */
+    initialize: (user) => {
+      set({
+        user,
+        authenticated: !!user,
+        loading: false
+      });
+    },
+    
+    /**
+     * Update user data
+     * @param {Object} userData - User data
+     */
+    setUser: (userData) => {
+      update(state => ({
+        ...state,
+        user: userData,
+        authenticated: !!userData
+      }));
+    },
+    
+    /**
+     * Clear user data on logout
+     */
+    clearUser: () => {
+      update(state => ({
+        ...state,
+        user: null,
+        authenticated: false
+      }));
+    },
+    
+    /**
+     * Set loading state
+     * @param {boolean} isLoading - Loading state
+     */
+    setLoading: (isLoading) => {
+      update(state => ({
+        ...state,
+        loading: isLoading
+      }));
+    }
+  };
+}
+
+export const auth = createAuthStore();
+
+// Derived stores for specific states
+export const isAuthenticated = derived(auth, $auth => $auth.authenticated);
+export const user = derived(auth, $auth => $auth.user);
+export const isLoading = derived(auth, $auth => $auth.loading);
+```
+
+### 8.2 Session API Client
+
+```javascript
+// src/lib/api/auth.js
+
+/**
+ * Check current session status
+ * @returns {Promise<Object>} Session data with user if authenticated
+ */
+export async function checkSession() {
+  const response = await fetch('/api/auth/session', {
+    credentials: 'include'
+  });
+  
+  return await response.json();
+}
+
+/**
+ * Logout current user
+ * @returns {Promise<Object>} Logout response
+ */
+export async function logout() {
+  const response = await fetch('/api/auth/session', {
+    method: 'DELETE',
+    credentials: 'include'
+  });
+  
+  return await response.json();
+}
+
+/**
+ * Login with email and password
+ * @param {string} email - User email
+ * @param {string} password - User password
+ * @returns {Promise<Object>} Login response
+ */
+export async function login(email, password) {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password }),
+    credentials: 'include'
+  });
+  
+  return await response.json();
+}
+
+/**
+ * Register new user
+ * @param {Object} userData - User registration data
+ * @param {string} userData.email - User email
+ * @param {string} userData.password - User password
+ * @param {string} [userData.username] - Username
+ * @returns {Promise<Object>} Registration response
+ */
+export async function register(userData) {
+  const response = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(userData),
+    credentials: 'include'
+  });
+  
+  return await response.json();
+}
+```
+
+### 8.3 Application Root Initialization
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+  import { onMount } from 'svelte';
+  import { auth } from '$lib/stores/auth';
+  import { checkSession } from '$lib/api/auth';
+  import { page } from '$app/stores';
+  
+  // Initialize with server-rendered data if available
+  const { user: initialUser } = $props();
+  
+  $: {
+    if (initialUser) {
+      auth.initialize(initialUser);
+    }
+  }
+  
+  // Check session status on client-side navigation
+  onMount(async () => {
+    if (!initialUser) {
+      auth.setLoading(true);
+      const { authenticated, user } = await checkSession();
+      auth.initialize(authenticated ? user : null);
+    }
+  });
+</script>
+
+<slot />
+```
+
+### 8.4 Auth Context Reactivity
+
+```javascript
+// src/lib/hooks/useAuth.js
+import { derived } from 'svelte/store';
+import { auth, isAuthenticated, isLoading } from '$lib/stores/auth';
+import { goto } from '$app/navigation';
+import { logout } from '$lib/api/auth';
+
+/**
+ * Create auth context hook for components
+ * @returns {Object} Auth context utilities
+ */
+export function useAuth() {
+  // Logout handler
+  const handleLogout = async () => {
+    auth.setLoading(true);
+    await logout();
+    auth.clearUser();
+    goto('/login');
+  };
+  
+  // Redirect to login if not authenticated
+  const requireAuth = (redirectTo = '/login') => {
+    const unsubscribe = derived(
+      [isAuthenticated, isLoading],
+      ([$isAuthenticated, $isLoading]) => ({ $isAuthenticated, $isLoading })
+    ).subscribe(({ $isAuthenticated, $isLoading }) => {
+      if (!$isLoading && !$isAuthenticated) {
+        goto(redirectTo);
+      }
+    });
+    
+    return unsubscribe;
+  };
+  
+  return {
+    auth,
+    isAuthenticated,
+    isLoading,
+    logout: handleLogout,
+    requireAuth
+  };
+}
+```
+
+## 9. Session Security Best Practices
+
+### 9.1 CSRF Protection
+
+```javascript
+/**
+ * Generate CSRF token for forms
+ * @returns {string} CSRF token
+ */
+function generateCsrfToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * Store CSRF token in session
+ * @param {string} sessionId - Session ID
+ * @param {string} token - CSRF token
+ */
+async function storeCsrfToken(sessionId, token) {
+  // Store in session metadata or dedicated table
+  await db
+    .insertInto('ba_csrf_tokens')
+    .values({
+      id: crypto.randomUUID(),
+      session_id: sessionId,
+      token,
+      created_at: new Date()
+    })
+    .execute();
+}
+
+/**
+ * Validate CSRF token
+ * @param {string} sessionId - Session ID
+ * @param {string} token - CSRF token to validate
+ * @returns {Promise<boolean>} Validation result
+ */
+async function validateCsrfToken(sessionId, token) {
+  // Look up token in database
+  const storedToken = await db
+    .selectFrom('ba_csrf_tokens')
+    .where('session_id', '=', sessionId)
+    .where('token', '=', token)
+    .where('created_at', '>', new Date(Date.now() - 24 * 60 * 60 * 1000)) // 24 hour validity
+    .executeTakeFirst();
+  
+  return !!storedToken;
+}
+```
+
+### 9.2 XSS Protection
+
+1. **HttpOnly Cookies:** All session cookies MUST use the HttpOnly flag to prevent JavaScript access.
+2. **Content Security Policy:** Implement a strict Content Security Policy to mitigate XSS risks.
+
+```javascript
+/**
+ * Set Content Security Policy headers
+ * @param {Response} response - Response object
+ * @returns {Response} Response with CSP headers
+ */
+function setSecurityHeaders(response) {
+  const headers = new Headers(response.headers);
+  
+  // Add CSP header
+  headers.set('Content-Security-Policy', `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    connect-src 'self' ${process.env.API_URL || ''};
+    font-src 'self';
+    object-src 'none';
+    frame-ancestors 'self';
+    form-action 'self';
+    base-uri 'self';
+  `.replace(/\s+/g, ' ').trim());
+  
+  // Add other security headers
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('X-XSS-Protection', '1; mode=block');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+```
+
+### 9.3 Session Hardening
+
+1. **IP Binding (Optional):** Tie sessions to IP addresses to prevent session hijacking.
+
+```javascript
+/**
+ * Create IP-bound session
+ * @param {string} userId - User ID
+ * @param {string} ipAddress - Client IP address
+ * @returns {Promise<Object>} Created session
+ */
+async function createIpBoundSession(userId, ipAddress) {
+  // Generate token with IP binding
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Store IP with session
+  await db
+    .insertInto('ba_sessions')
+    .values({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      token,
+      ip_address: ipAddress,
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    })
+    .execute();
+  
+  return {
+    userId,
+    token,
+    ipAddress,
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  };
+}
+
+/**
+ * Validate IP-bound session
+ * @param {string} token - Session token
+ * @param {string} ipAddress - Client IP address
+ * @returns {Promise<Object|null>} Session if valid, null otherwise
+ */
+async function validateIpBoundSession(token, ipAddress) {
+  // Get session with IP check
+  const session = await db
+    .selectFrom('ba_sessions')
+    .where('token', '=', token)
+    .where('ip_address', '=', ipAddress)
+    .where('expires_at', '>', new Date())
+    .executeTakeFirst();
+  
+  return session || null;
+}
+```
+
+2. **Token Rotation:** Implement token rotation on privilege changes.
+
+```javascript
+/**
+ * Rotate session token after privilege change
+ * @param {string} userId - User ID
+ * @param {string} currentToken - Current session token
+ * @returns {Promise<Object>} New session
+ */
+async function rotateSessionToken(userId, currentToken) {
+  // Delete current session
+  await auth.adapter.deleteSession(currentToken);
+  
+  // Create new session
+  return await createUserSession(userId);
+}
+```
+
+## 10. Session Monitoring & Audit
+
+### 10.1 Session Logging
+
+```javascript
+/**
+ * Log session event
+ * @param {string} event - Event type (create, delete, refresh)
+ * @param {string} sessionId - Session ID
+ * @param {Object} metadata - Additional metadata
+ */
+async function logSessionEvent(event, sessionId, metadata = {}) {
+  await db
+    .insertInto('ba_session_logs')
+    .values({
+      id: crypto.randomUUID(),
+      event,
+      session_id: sessionId,
+      metadata: JSON.stringify(metadata),
+      created_at: new Date()
+    })
+    .execute();
+}
+```
+
+### 10.2 Active Session Management
+
+```javascript
+/**
+ * Get all active sessions for a user
+ * @param {string} userId - User ID
+ * @returns {Promise<Array<Object>>} List of active sessions
+ */
+async function getUserActiveSessions(userId) {
+  const sessions = await db
+    .selectFrom('ba_sessions')
+    .where('user_id', '=', userId)
+    .where('expires_at', '>', new Date())
+    .selectAll()
+    .execute();
+  
+  return sessions.map(session => ({
+    id: session.id,
+    createdAt: session.created_at,
+    expiresAt: session.expires_at,
+    // Add device/browser info if available
+    userAgent: session.user_agent,
+    ipAddress: session.ip_address
+  }));
+}
+
+/**
+ * Terminate a specific session by ID
+ * @param {string} sessionId - Session ID
+ * @param {string} userId - User ID (for verification)
+ * @returns {Promise<boolean>} Success status
+ */
+async function terminateSession(sessionId, userId) {
+  // Verify the session belongs to this user
+  const session = await db
+    .selectFrom('ba_sessions')
+    .where('id', '=', sessionId)
+    .where('user_id', '=', userId)
+    .executeTakeFirst();
+  
+  if (!session) {
+    return false;
+  }
+  
+  // Delete the session
+  await db
+    .deleteFrom('ba_sessions')
+    .where('id', '=', sessionId)
+    .execute();
+  
+  // Log the event
+  await logSessionEvent('terminate', sessionId, {
+    userId,
+    reason: 'user_requested'
+  });
+  
+  return true;
+}
+```
+
+## 11. Error Handling Integration
+
+```javascript
+/**
+ * Handle session errors
+ * @param {string} code - Error code
+ * @param {string} message - Error message
+ * @param {Object} context - Error context
+ * @returns {BetterAuthError} Error object
+ */
+function handleSessionError(code, message, context = {}) {
+  // Import from Better Auth Error Handling Protocol
+  return handleError(code, message, 'session', context);
+}
+```
+
+## 12. Testing & Verification
+
+### 12.1 Session Flow Testing
+
+This section outlines tests to verify session management functionality.
+
+1. **Session Creation Test:** Verify a session is created with the correct fields and expiration.
+2. **Session Validation Test:** Verify a valid session token returns the correct session.
+3. **Session Expiration Test:** Verify expired sessions are rejected.
+4. **Session Renewal Test:** Verify session renewal creates a new valid session.
+5. **Logout Test:** Verify session deletion on logout.
+6. **Multiple Device Test:** Verify sessions work correctly across multiple devices.
+7. **Cross-Domain Test:** Verify sessions work correctly across domains.
+
+### 12.2 Security Testing
+
+1. **CSRF Protection Test:** Verify CSRF token validation.
+2. **XSS Protection Test:** Verify HttpOnly cookies are not accessible via JavaScript.
+3. **Session Fixation Test:** Verify session tokens are regenerated after authentication.
+4. **Cookie Security Test:** Verify cookie flags (HttpOnly, SameSite=Lax, Secure).
+
+## 13. Implementation Checklist
+
+- [ ] Configure Better Auth with appropriate session settings
+- [ ] Implement database schema for sessions
+- [ ] Create adapter functions for session management
+- [ ] Implement SvelteKit hooks for session handling
+- [ ] Set up cookie management with proper security flags
+- [ ] Implement session renewal logic
+- [ ] Add CSRF protection for authenticated routes
+- [ ] Set up security headers for XSS protection
+- [ ] Create client-side auth store for reactivity
+- [ ] Implement session audit logging
+- [ ] Configure cross-domain session handling
+- [ ] Test all session flows and security measures
+
+## 14. Common Pitfalls & Solutions
+
+1. **Missing SameSite Flag:** Always set SameSite=Lax (or Strict if appropriate) on cookies to prevent CSRF attacks.
+2. **Excessive Session Duration:** Balance security and user experience with appropriate session length.
+3. **Missing HttpOnly Flag:** Always set HttpOnly flag on session cookies to prevent client-side access.
+4. **Insecure Session Storage:** Never store sensitive information in the session object.
+5. **Missing Secure Flag:** Always set Secure flag in production environments.
+6. **Verbose Error Messages:** Avoid revealing sensitive details in error messages.
+7. **Session Fixation:** Always generate new session IDs after authentication.
+8. **CORS Misconfiguration:** Carefully configure CORS settings for cross-domain scenarios.
