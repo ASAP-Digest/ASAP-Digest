@@ -94,6 +94,30 @@
   onMount(() => {
     if (!browser) return; // Only run client-side
 
+    // Check if we have a stored auto-login success flag
+    try {
+      const storedAutoLoginSuccess = sessionStorage.getItem('auto_login_success');
+      const fallbackAttempted = sessionStorage.getItem('fallback_auth_attempted');
+      
+      if (storedAutoLoginSuccess) {
+        const loginData = JSON.parse(storedAutoLoginSuccess);
+        // Only use if it's recent (within the last 5 seconds)
+        if (loginData && (Date.now() - loginData.timestamp) < 5000) {
+          toasts.show(
+            `Welcome back, ${loginData.displayName || loginData.email}!`,
+            'success'
+          );
+          // Also invalidate all to ensure UI is updated with user data
+          invalidateAll();
+        }
+        // Clear the flag so it doesn't show again
+        sessionStorage.removeItem('auto_login_success');
+      }
+    } catch (e) {
+      // Ignore any errors with sessionStorage
+      console.error('[Layout] Error checking sessionStorage:', e);
+    }
+
     // --- V6 Auto Login Logic ---
     const startTime = Date.now();
     log("[Layout V6] Checking for existing Better Auth session...", "info"); 
@@ -101,6 +125,22 @@
         log("[Layout V6] Active Better Auth session found. Auto-login flow stopped.", "info");
         log(`[Layout V6] User already logged in as: ${$page.data.user?.email || 'Unknown'}`, "info");
     } else {
+        // Only check if we're in a potential reload loop for page refreshes
+        // but always allow server-to-server retry logic to continue
+        const lastReload = sessionStorage.getItem('last_reload_time');
+        const currentTime = Date.now();
+        const recentlyReloaded = lastReload && (currentTime - parseInt(lastReload) < 3000);
+        
+        // Check if we've already attempted fallback authentication recently AND we recently reloaded
+        const fallbackAttempted = sessionStorage.getItem('fallback_auth_attempted');
+        if (fallbackAttempted && recentlyReloaded) {
+          // We've already tried the fallback mechanism after a recent page reload
+          // Just avoid triggering another page reload but still allow S2S retries
+          log("[Layout V6] Fallback auth was recently attempted after page reload. Will allow S2S retries but prevent additional page reloads.", "warn");
+          // Do NOT return here - the return statement would block the server-to-server retries
+          // We only want to prevent page refreshes, not server-to-server communication
+        }
+        
         log("[Layout V6] No active Better Auth session. Triggering server-to-server check...", "info");
         
         // Define the SK backend endpoint URL
@@ -111,59 +151,81 @@
         // This will continuously retry in the background until successful
         const checkWpSession = async () => {
           try {
-                log(`[Layout V6] Sending fetch request to ${checkWpSessionUrl}...`, "debug");
-                // This is a true server-to-server check that doesn't rely on cookies
-                const startFetchTime = Date.now();
-            const response = await fetch(checkWpSessionUrl, {
+            log('[Layout V6] Checking for WordPress session...', 'debug');
+            
+            // Try to get existing session from Better Auth first
+            // This is a fast check and doesn't require a server request
+            if ($page.data.user) {
+              log('[Layout V6] Existing Better Auth session found, using that', 'info');
+              return true;
+            }
+            
+            log('[Layout V6] No active Better Auth session. Triggering server-to-server check...', 'info');
+            log('[Layout V6] Using endpoint: /api/auth/check-wp-session', 'debug');
+            
+            // Make the API call to check for WordPress sessions & auto-login
+            const response = await fetch('/api/auth/check-wp-session', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                        'X-CSRF-Protection': 'none' // Add header to bypass CSRF validation
+                'X-Requested-With': 'XMLHttpRequest',
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
               },
-              body: JSON.stringify({ 
-                        clientTimestamp: Date.now(),
-                    }),
+              body: JSON.stringify({ timestamp: Date.now() })
             });
-                const fetchDurationMs = Date.now() - startFetchTime;
-                log(`[Layout V6] Server response received in ${fetchDurationMs}ms with status: ${response.status}`, "debug");
-
+            
             if (!response.ok) {
-                    log(`[Layout V6] Server returned error status: ${response.status} ${response.statusText}`, "error");
-                    // Will retry again after retryIntervalMs
-                    return false;
+              const text = await response.text();
+              log(`[Layout V6] Server returned ${response.status}: ${text}`, 'warn');
+              return false;
             }
-
+            
             const data = await response.json();
-                log(`[Layout V6] Server response parsed successfully: ${JSON.stringify(data)}`, "debug");
-
-            // Verify the response contains a valid user object
+            
             if (data.success && data.user) {
-                    log(`[Layout V6] Auto-login successful! User: ${data.user.email}`, "info");
-                    
-                    if (data.created) {
-                        log(`[Layout V6] A new Better Auth user was created during sync`, "info");
-            } else {
-                        log(`[Layout V6] Existing Better Auth user was used`, "info");
-                    }
-                    
-                    // Update the UI reactively without refreshing the page
-                    log(`[Layout V6] Updating UI via SvelteKit invalidation...`, "info");
-                    invalidateAll(); // This tells SvelteKit to re-fetch all data
-                    
-                    // Auto-login successful, return true to stop retry loop
-                    return true;
-                } else {
-                    // Handle error case
-                    log(`[Layout V6] Auto-login failed: ${data.error || 'Unknown error'}`, "error");
-                    if (data.details) {
-                        log(`[Layout V6] Error details: ${data.details}`, "debug");
-                    }
-                    // Will retry again after retryIntervalMs
-                    return false;
+              log(`[Layout V6] Auto-login successful! User: ${data.user.email}`, 'info');
+              
+              if (data.created) {
+                log('[Layout V6] New Better Auth user was created', 'info');
+              } else {
+                log('[Layout V6] Existing Better Auth user was used', 'info');
+              }
+              
+              // Check for warning flags
+              if (data.warning) {
+                log(`[Layout V6] Warning from server: ${data.warning}`, 'warn');
+              }
+              
+              // Check for noRefresh flag
+              const preventRefresh = data.noRefresh === true;
+              
+              if (preventRefresh) {
+                log('[Layout V6] Server indicated no refresh needed, setting auth data for UI update.', 'warn');
+                // Use invalidateAll in browser only - don't use goto which causes refresh
+                if (browser) {
+                  setTimeout(() => {
+                    invalidateAll();
+                  }, 100); // Small delay to ensure cookie is processed
                 }
+              } else {
+                // If server didn't specify noRefresh, use invalidateAll
+                log('[Layout V6] Auto-login completed, refreshing data...', 'info');
+                if (browser) {
+                  invalidateAll();
+                }
+              }
+              
+              // Always return true to indicate success
+              return true;
+              
+            } else {
+              // If no WordPress session or auto-login failed
+              log('[Layout V6] No active WordPress session or auto-login failed', 'debug');
+              return false;
+            }
           } catch (err) {
             // Handle unexpected errors
-            log(`[Layout V6] Error during auto-login check: ${err.message}`, "error");
+            log(`[Layout V6] Error during auto-login check: ${err.message}`, 'error');
             // Will retry again after retryIntervalMs
             return false;
           }
@@ -188,6 +250,7 @@
             // If first attempt successful, we're done
             if (success) {
                 log(`[Layout V6] Auto-login successful on first attempt`, "info");
+                sessionStorage.removeItem('fallback_auth_attempted'); // Clear this flag to ensure future retries work
                 return;
             }
             
@@ -205,6 +268,7 @@
                 // If successful, clear the interval
                 if (success) {
                     log(`[Layout V6] Auto-login successful after ${retryCount} retries, stopping further attempts`, "info");
+                    sessionStorage.removeItem('fallback_auth_attempted'); // Clear this flag to ensure future retries work
                     if (autoLoginIntervalId) clearInterval(autoLoginIntervalId);
                 }
             }, retryIntervalMs);

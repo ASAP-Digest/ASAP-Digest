@@ -12,6 +12,8 @@ import {
     BETTER_AUTH_SECRET,
     BETTER_AUTH_URL
 } from '$env/static/private'; // Restored import
+import { createPool } from 'mysql2/promise';
+import { log } from '$lib/utils/log';
 
 /**
  * @typedef {Object} RequiredEnvVars
@@ -632,7 +634,17 @@ async function getNonce() {
 // This instance handles standard authentication flows (email/pass, social, OTP etc.)
 // via the generic [...auth] endpoint and the svelteKitHandler.
 // It uses the Kysely dialect and the custom adapter defined above.
-const auth = betterAuth({
+
+/**
+ * Better Auth instance configured for this application.
+ * 
+ * Note: We're using a fallback/type assertion pattern here because the betterAuth() function 
+ * returns a type that doesn't match our BetterAuth interface exactly, but has the properties 
+ * we need at runtime. This follows section 5.1 of the type-definition-management-protocol.
+ * 
+ * @type {any}
+ */
+const authResult = betterAuth({
     secret: BETTER_AUTH_SECRET, 
     sessionCookieName: 'better_auth_session',
     sessionExpiresIn: 30 * 24 * 60 * 60 * 1000,
@@ -641,10 +653,44 @@ const auth = betterAuth({
     after: { onUserCreation: onUserCreationHook, onSessionCreation: onSessionCreationHook }
 });
 
+/**
+ * Type guard to verify if an object has the expected Better Auth structure
+ * @param {any} obj Object to test
+ * @returns {boolean} Whether the object has the expected structure
+ */
+function isBetterAuth(obj) {
+    return obj && 
+           typeof obj === 'object' &&
+           'adapter' in obj && 
+           'sessionManager' in obj &&
+           obj.adapter && 
+           obj.sessionManager;
+}
+
+/**
+ * Enhanced Better Auth instance with type assertion for compatibility
+ * Type assertion needed as direct typing fails due to structure differences
+ * @type {import('$lib/types/better-auth').BetterAuth}
+ */
+const auth = /** @type {import('$lib/types/better-auth').BetterAuth} */ (
+    isBetterAuth(authResult) ? authResult : {
+        // Fallback to avoid runtime errors if the structure is unexpected
+        sessionManager: {
+            getSession: async () => null,
+            createSession: async () => { throw new Error('Auth not properly initialized'); },
+            refreshSession: async () => null,
+            deleteSession: async () => false
+        },
+        adapter: adapter,
+        options: {
+            secret: BETTER_AUTH_SECRET,
+            sessionCookieName: 'better_auth_session'
+        },
+        handler: async (request) => new Response('Auth system not properly initialized', { status: 500 })
+    }
+);
+
 // --- Exports ---
-// Export the main 'auth' instance for the standard auth handler ([...auth].js)
-// Export individual adapter functions needed by the custom WP sync endpoint (/wp-user-sync.js)
-// Export pool and utility functions.
 export {
     auth, 
     getUserByEmailFn,

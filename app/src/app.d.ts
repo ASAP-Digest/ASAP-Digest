@@ -77,17 +77,29 @@ declare global {
 	}
 
 	namespace App {
-		// interface Error {}
+		interface User {
+			id: string;
+			email: string;
+			displayName?: string;
+			avatarUrl?: string;
+			roles?: string[];
+			plan?: string;
+			updatedAt?: string;
+		}
+
+		// Locals contain server-side data available to all requests
 		interface Locals {
 			user?: User;
-			session?: Session;
+			session?: {
+				userId: string;
+				token: string;
+				expiresAt: string;
+			};
 		}
-		interface PageData {
-			// Ensure session and user are optional here as they depend on load function context
-			session?: Session | null;
-			user?: User | null;
-		}
-		// interface PageState {}
+
+		// interface Error {}
+		// interface Superforms {}
+		// interface PageData {}
 		// interface Platform {}
 	}
 }

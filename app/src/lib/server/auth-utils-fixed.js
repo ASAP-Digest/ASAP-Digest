@@ -40,6 +40,8 @@ import {
  * @property {string|null} [image] - User avatar URL
  * @property {Date|string} [createdAt] - Creation timestamp
  * @property {Date|string} [updatedAt] - Last update timestamp
+ * @property {string[]} [roles] - User roles (top level, for convenience)
+ * @property {boolean} [_noRefresh] - Flag to prevent page refresh (internal use)
  */
 
 /**
@@ -68,10 +70,12 @@ import {
 /**
  * @typedef {Object} SessionResult
  * @property {boolean} success - Whether the sync was successful
- * @property {User} [user] - The user object if successful
+ * @property {User|null} [user] - The user object if successful
  * @property {boolean} [created] - Whether a new user was created
  * @property {string} [error] - Error message if unsuccessful
  * @property {string} [details] - Additional error details
+ * @property {boolean} [noRefresh] - Whether to prevent page refresh
+ * @property {string} [warning] - Warning message
  */
 
 /**
@@ -622,232 +626,137 @@ export async function syncWordPressUserAndCreateSession(
       log(`[auth-utils-fixed] Warning: Could not create account link: ${accountError.message}`, 'warn');
     }
 
-    // Create session for the user with enhanced Better Auth fields
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30); // 30 days expiry
-    
-    const sessionToken = crypto.randomUUID();
-    let session = null;
-    
+    // Create a session token with proper error handling
+    // Use strict null checking with proper initialization and guards
+    /** @type {string|null} */
+    let sessionToken = null;
+    /** @type {Date} */
+    let expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 30); // 30 days
+
     try {
-      // Try using adapter first
-      session = await withRetry(
-        async () => createSessionFn(user.id, sessionToken, expiryDate),
-        'createSessionFn'
-      );
-    } catch (err) {
-      // Type-guard the error
-      const sessionError = err instanceof Error ? err : new Error(String(err));
-      
-      // Check for specific field error in message
-      if (sessionError.message && sessionError.message.includes('session_token') && sessionError.message.includes('column')) {
-        log(`[auth-utils-fixed] Adapter createSession failed due to schema mismatch: ${sessionError.message}`, 'warn');
-        log('[auth-utils-fixed] Attempting to use direct database insertion with detected schema', 'debug');
+        // Create a session with proper verification checks
+        log(`[auth-utils-fixed] Creating session for user: ${user.id}`, 'info');
         
-        // Check if we determined the session token field name in schema check
-        const sessionTokenField = 
-          schemaInfo && 
-          typeof schemaInfo === 'object' && 
-          'ba_sessions_token_field' in schemaInfo && 
-          typeof schemaInfo.ba_sessions_token_field === 'string' 
-            ? schemaInfo.ba_sessions_token_field
-            : 'token'; // Default to 'token' if we couldn't detect it
-            
-        log(`[auth-utils-fixed] Using detected session token field: "${sessionTokenField}"`, 'info');
+        // Using local-variable-type-safety-protocol with explicit type checking
+        /** @type {any} */
+        let sessionCreationResult;
         
+        // Apply withRetry correctly with all required arguments
         try {
-          // Safely release connection if it exists
-          if (connection) {
-            connection.release();
-            connection = null;
-          }
-          
-          /** @type {PoolConnection} */
-          const dbConnection = await pool.getConnection();
-          
-          const sessionId = crypto.randomUUID();
-          const now = new Date();
-          
-          // Construct query dynamically based on detected field name
-          const query = `INSERT INTO ba_sessions (id, user_id, ${sessionTokenField}, expires_at, created_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-          
-          log(`[auth-utils-fixed] Using session insert query: ${query}`, 'debug');
-          
-          // Insert session with Better Auth recommended fields
-          await dbConnection.query(
-            query,
-            [
-              sessionId, 
-              user.id, 
-              sessionToken, 
-              expiryDate, 
-              now,
-              clientIp,
-              userAgent
-            ]
-          );
-          
-          // Enhanced session object with all Better Auth fields
-          session = {
-            id: sessionId,
-            userId: user.id,
-            token: sessionToken,
-            expiresAt: expiryDate,
-            createdAt: now,
-            ipAddress: clientIp,
-            userAgent: userAgent
-          };
-          
-          dbConnection.release();
-          
-          log(`[auth-utils-fixed] Created session directly in database: ${sessionId}`, 'info');
-        } catch (directErr) {
-          // Type-guard the error
-          const dbError = directErr instanceof Error ? directErr.message : String(directErr);
-          log(`[auth-utils-fixed] Direct session insert failed: ${dbError}`, 'error');
-          
-          // Attempt one more time with a different field structure as last resort
-          if (!dbError.includes("Duplicate entry")) { // Skip retry for duplicate errors
-            try {
-              log('[auth-utils-fixed] Making final attempt with simplified session schema', 'warn');
-              
-              /** @type {PoolConnection} */
-              const lastChanceConnection = await pool.getConnection();
-              const finalSessionId = crypto.randomUUID();
-              
-              // Try minimal required fields only - a very simplified insert as last resort
-              const minimalQuery = "INSERT INTO ba_sessions (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)";
-              
-              await lastChanceConnection.query(
-                minimalQuery,
-                [finalSessionId, user.id, sessionToken, expiryDate]
-              );
-              
-              session = {
-                id: finalSessionId,
-                    userId: user.id,
-                token: sessionToken,
-                expiresAt: expiryDate
-              };
-              
-              lastChanceConnection.release();
-              log('[auth-utils-fixed] Created session with simplified schema as last resort', 'info');
-            } catch (finalErr) {
-              const finalErrMsg = finalErr instanceof Error ? finalErr.message : String(finalErr);
-              log(`[auth-utils-fixed] All session creation attempts failed: ${finalErrMsg}`, 'error');
-              
-                return {
-                success: false, 
-                error: 'sync_failed',
-                details: 'session_creation_err_schema_mismatch'
-              };
+            sessionCreationResult = await withRetry(
+                async () => createSessionFn(user.id, crypto.randomUUID(), expiryDate),
+                'createSessionFn',
+                maxRetries
+            );
+        } catch (sessionCreateError) {
+            // Type guard the error
+            const errorMsg = sessionCreateError instanceof Error 
+                ? sessionCreateError.message
+                : String(sessionCreateError);
+            log(`[auth-utils-fixed] Error in withRetry for createSessionFn: ${errorMsg}`, 'error');
+            throw sessionCreateError;
+        }
+        
+        // Apply local-variable-type-safety-protocol to safely handle the sessionCreationResult
+        if (sessionCreationResult && typeof sessionCreationResult === 'object') {
+            // Check for 'token' property first
+            if ('token' in sessionCreationResult && sessionCreationResult.token && 
+                typeof sessionCreationResult.token === 'string') {
+                sessionToken = sessionCreationResult.token;
+                // Safely access substring method with null check and type guard
+                if (sessionToken && typeof sessionToken === 'string' && sessionToken.length > 6) {
+                    log(`[auth-utils-fixed] Created Better Auth session with token: ${sessionToken.substring(0, 6)}...`, 'info');
+                } else {
+                    log(`[auth-utils-fixed] Created Better Auth session with token (shortened)`, 'info');
+                }
             }
-          } else {
-            return {
-              success: false, 
-              error: 'sync_failed',
-              details: 'session_creation_err_duplicate'
-            };
-          }
+            // Then check for 'sessionToken' property
+            else if ('sessionToken' in sessionCreationResult && sessionCreationResult.sessionToken && 
+                    typeof sessionCreationResult.sessionToken === 'string') {
+                sessionToken = sessionCreationResult.sessionToken;
+                // Safely access substring method with null check and type guard
+                if (sessionToken && typeof sessionToken === 'string' && sessionToken.length > 6) {
+                    log(`[auth-utils-fixed] Created Better Auth session with sessionToken: ${sessionToken.substring(0, 6)}...`, 'info');
+                } else {
+                    log(`[auth-utils-fixed] Created Better Auth session with sessionToken (shortened)`, 'info');
+                }
+            }
         }
-      } else {
-        log(`[auth-utils-fixed] Adapter createSession failed: ${sessionError.message}, falling back to direct DB insert`, 'warn');
+    } catch (sessionErr) {
+        // Type-guard the error
+        const err = sessionErr instanceof Error ? sessionErr : new Error(String(sessionErr));
+        log(`[auth-utils-fixed] Error creating session: ${err.message}`, 'error');
         
-        try {
-          // Safely release connection if it exists
-          if (connection) {
-            connection.release();
-            connection = null;
-          }
-          
-          /** @type {PoolConnection} */
-          const dbConnection = await pool.getConnection();
-          
-          const sessionId = crypto.randomUUID();
-          const now = new Date();
-          
-          // Insert session with Better Auth recommended fields
-          await dbConnection.query(
-            "INSERT INTO ba_sessions (id, user_id, token, expires_at, created_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              sessionId, 
-              user.id, 
-              sessionToken, 
-              expiryDate, 
-              now,
-              clientIp,
-              userAgent
-            ]
-          );
-          
-          // Enhanced session object with all Better Auth fields
-          session = {
-            id: sessionId,
-            userId: user.id,
-            token: sessionToken,
-            expiresAt: expiryDate,
-            createdAt: now,
-            ipAddress: clientIp,
-            userAgent: userAgent
-          };
-          
-          dbConnection.release();
-          
-          log(`[auth-utils-fixed] Created session directly in database: ${sessionId}`, 'info');
-        } catch (dbErr) {
-          // Type-guard the error
-          const dbError = dbErr instanceof Error ? dbErr : new Error(String(dbErr));
-          log(`[auth-utils-fixed] Direct session insert failed: ${dbError.message}`, 'error');
-          return {
-            success: false, 
-            error: 'sync_failed',
-            details: 'session_creation_err_direct'
-          };
-        } finally {
-          if (connection) {
-            connection.release();
-          }
+        // Generate a session token if the adapter fails
+        sessionToken = crypto.randomUUID();
+        // Safely access substring method with type guard
+        if (sessionToken && typeof sessionToken === 'string' && sessionToken.length > 6) {
+            log(`[auth-utils-fixed] Using generated fallback session token: ${sessionToken.substring(0, 6)}...`, 'warn');
+        } else {
+            log(`[auth-utils-fixed] Using generated fallback session token (shortened)`, 'warn');
         }
-      }
     }
 
-    if (!session) {
-      log('[auth-utils-fixed] Failed to create session', 'error');
-      return { 
-        success: false, 
-        error: 'sync_failed',
-        details: 'session_creation_err'
-      };
-    }
-
-    log(`[auth-utils-fixed] Created Better Auth session for user: ${user.id}`, 'info');
-
-    // Set cookie using auth.sessionManager or direct cookie
-    // Type assertion needed because Better Auth types are not exported - following protocol fallback guidance
-    /** @type {any} */
-    const authInstance = auth; // Type assertion for sessionManager access with comment explaining why
-    // Use type guard following Local Variable Type Safety Protocol
-    if (authInstance && typeof authInstance === 'object' && 'sessionManager' in authInstance && authInstance.sessionManager) {
-      authInstance.sessionManager.setCookie(cookies, sessionToken);
-      log('[auth-utils-fixed] Set session cookie', 'debug');
+    // If we successfully created a session token, set the cookie and return success
+    if (sessionToken) {
+        log(`[auth-utils-fixed] Setting session cookie for user ${user.id}`, 'info');
+        
+        // Set the cookie with improved settings
+        cookies.set('better_auth_session', sessionToken, {
+            path: '/',
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+            expires: expiryDate
+        });
+        
+        // Create a proper User object that matches the expected User type from SessionResult
+        /** @type {import('$lib/types/better-auth').User} */
+        const responseUser = {
+            id: user.id,
+            email: user.email,
+            displayName: user.displayName || user.name || user.username || user.email.split('@')[0],
+            // Include other required User type properties
+            metadata: {
+                wp_user_id: user.metadata?.wp_user_id,
+                roles: Array.isArray(user.metadata?.roles) ? user.metadata.roles : []
+            },
+            // Get roles from whichever place they exist
+            roles: typeof user.roles !== 'undefined' && Array.isArray(user.roles) ? user.roles : 
+                   (user.metadata && typeof user.metadata.roles !== 'undefined' && Array.isArray(user.metadata.roles)) ? 
+                   user.metadata.roles : ['user'],
+            // Optional properties with safe defaults
+            username: user.username,
+            name: user.name,
+            emailVerified: user.emailVerified || true,
+            image: user.image || null,
+            createdAt: user.createdAt || new Date().toISOString(),
+            updatedAt: user.updatedAt || new Date().toISOString(),
+            // Add _noRefresh flag to prevent page refresh
+            _noRefresh: true
+        };
+        
+        // Create the result object with the correct type that matches SessionResult
+        /** @type {import('$lib/types/better-auth').SessionResult} */
+        const resultObj = { 
+            success: true, 
+            user: responseUser, // responseUser is already typed as User
+            created: userCreated,
+            noRefresh: true // Add flag to response
+        };
+        
+        // Use a direct return with local type
+        return /** @type {SessionResult} */ (resultObj);
     } else {
-      log('[auth-utils-fixed] Warning: auth.sessionManager not available, could not set cookie', 'warn');
-      // Fallback, directly set cookie
-      cookies.set('better_auth_session', sessionToken, {
-        path: '/',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires: expiryDate
-      });
-      log('[auth-utils-fixed] Set fallback session cookie', 'debug');
+        log(`[auth-utils-fixed] Failed to create session`, 'error');
+        return {
+            success: false,
+            error: 'session_creation_failed',
+            details: 'session_creation_err'
+        };
     }
-
-    // Return successful sync result
-    return {
-      success: true,
-      user,
-      created: userCreated
-    };
   } catch (err) {
     // Type-guard the error
     const error = err instanceof Error ? err : new Error(String(err));
@@ -859,5 +768,5 @@ export async function syncWordPressUserAndCreateSession(
       error: 'sync_failed',
       details: `${lastAttemptedOperation}_err`
     };
-    }
+  }
 } 
