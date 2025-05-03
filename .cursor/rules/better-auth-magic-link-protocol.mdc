@@ -1,0 +1,185 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Magic Link Protocol v1.0
+
+## 1. Purpose
+
+This protocol provides a standardized pattern for implementing passwordless Magic Link authentication using Better Auth in a headless WordPress/SvelteKit application with JS/JSDoc. It covers configuration, the request flow, email sending, link verification, session creation, and security considerations.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Where Magic Link config is added
+│ 2. Better Auth Route Handling Protocol  │ // Verification route implementation
+│ 3. Better Auth Client Side Integration  │ // Initiating Magic Link request
+│ 4. Better Auth Email Configuration Proto│ // Sending the Magic Link email
+│ 5. Better Auth Security Best Practices  │ // Token security, expiration
+│ 6. Better Auth Error Handling Protocol  │ // Handling Magic Link errors
+│ 7. Magic Link Protocol (This)           │ // Specific Magic Link steps
+│ 8. JSDoc Type Definitions Protocol      │ // Typing related functions/options
+└─────────────────────────────────────────┘
+```
+
+## 3. Better Auth Server-Side Configuration
+
+1.  **Enable Magic Link:** Configure the `magicLink` options within the `betterAuth({...})` configuration object in `$lib/server/auth.js`.
+    ```javascript
+    // In $lib/server/auth.js
+    import { betterAuth } from 'better-auth';
+    // ... other imports (dialect, adapter, hooks, emailService) ...
+    import { emailService } from './path/to/email-service'; // Ensure Email Service is configured
+
+    export const auth = betterAuth({
+        // ... core config (secret, database, adapter, after) ...
+
+        magicLink: {
+            enabled: true, // REQUIRED: Enable the feature
+            // Optional: Specify the route for requesting the link
+            requestRoute: '/api/auth/magic-link/request',
+            // Optional: Specify the route for verifying the link
+            verifyRoute: '/api/auth/magic-link/verify',
+            // Optional: Token expiration time in milliseconds (default: 15 minutes)
+            tokenExpiresIn: 15 * 60 * 1000,
+            // REQUIRED: Function to send the magic link email
+            sendMagicLinkEmail: async (email, token) => {
+                // Use the configured email service
+                try {
+                    const result = await emailService.sendMagicLinkEmail({ to: email, token });
+                    if (!result.success) {
+                        console.error(`Failed to send magic link to ${email}: ${result.error}`);
+                        // Consider logging error via error handling protocol
+                    }
+                    // Return void or a simple success/failure object if needed by BA version
+                } catch (error) {
+                    console.error(`Error sending magic link email to ${email}:`, error);
+                    // Consider logging error via error handling protocol
+                }
+            }
+        },
+
+        // Ensure email service is configured and passed if needed elsewhere
+        // ... other options ...
+    });
+    ```
+2.  **Email Service:** Ensure the `EmailService` (from `better-auth-email-configuration-protocol.mdc`) is properly configured and capable of sending the `magicLinkLogin` template. The `sendMagicLinkEmail` function MUST be implemented as shown above, using your configured `emailService`.
+
+## 4. SvelteKit Route Handling
+
+1.  **Request Endpoint (`/api/auth/magic-link/request` or default):**
+    *   This endpoint is typically handled **automatically** by the standard `[...auth]` handler (`src/routes/api/auth/[...auth]/+server.js`) when `magicLink.enabled` is true.
+    *   **Action:** When a POST request containing an `email` is sent to this endpoint, Better Auth generates a secure, short-lived token, stores it (often linked to the email/user), and calls the configured `sendMagicLinkEmail` function.
+2.  **Verification Endpoint (`/api/auth/magic-link/verify` or default):**
+    *   This endpoint is also typically handled **automatically** by the standard `[...auth]` handler.
+    *   **Action:** When a user clicks the link in their email (e.g., `https://your-sk-app.com/api/auth/magic-link/verify?token=...&email=...`), this endpoint receives the request. Better Auth validates the token (checks existence, expiration, matches email), finds or creates the user associated with the email, creates a new session for that user, sets the session cookie, and usually redirects the user to a specified page (e.g., dashboard).
+
+## 5. Client-Side Integration
+
+1.  **Request Magic Link Form:** Create a form/component where users can enter their email address to request a magic link.
+    ```svelte
+    <!-- Example: RequestMagicLinkForm.svelte -->
+    <script>
+      import { authClient } from '$lib/auth-client'; // Assuming you have a client helper
+      import Button from '$lib/components/ui/button/button.svelte';
+      import Input from '$lib/components/ui/input/input.svelte';
+      import Alert from '$lib/components/ui/alert/alert.svelte';
+
+      let email = $state('');
+      let loading = $state(false);
+      let message = $state('');
+      let error = $state('');
+
+      async function requestLink() {
+          if (!email) {
+              error = 'Please enter your email address.';
+              return;
+          }
+          loading = true;
+          message = '';
+          error = '';
+
+          try {
+              // Use the configured requestRoute or BA default
+              const response = await fetch('/api/auth/magic-link/request', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email })
+              });
+
+              if (response.ok) {
+                  message = 'Check your email for a login link!';
+              } else {
+                  const data = await response.json();
+                  error = data.error?.message || 'Failed to send login link. Please try again.';
+              }
+          } catch (err) {
+              error = 'An unexpected error occurred.';
+              console.error(err);
+          } finally {
+              loading = false;
+          }
+      }
+    </script>
+
+    <form class="space-y-4" on:submit|preventDefault={requestLink}>
+      {#if message}
+        <Alert variant="success">{message}</Alert>
+      {/if}
+      {#if error}
+        <Alert variant="destructive">{error}</Alert>
+      {/if}
+
+      <div class="space-y-2">
+        <label for="email" class="text-sm font-medium">Email Address</label>
+        <Input
+          type="email"
+          id="email"
+          bind:value={email}
+          disabled={loading}
+          placeholder="your@email.com"
+          required
+        />
+      </div>
+
+      <Button type="submit" disabled={loading} class="w-full">
+        {loading ? 'Sending...' : 'Send Login Link'}
+      </Button>
+    </form>
+    ```
+2.  **User Experience:** Inform the user to check their email after requesting the link. The link itself handles the login and redirection via the verification endpoint. No further client-side action is typically needed after the user clicks the link, as the server handles session creation and redirection.
+
+## 6. Testing
+
+1.  **Email Sending:** Use the `test` email provider (configured via `better-auth-email-configuration-protocol.mdc`) during testing to capture outgoing magic link emails. Verify the link format and token presence in the captured email content.
+2.  **Token Validation:** Write integration tests that:
+    *   Simulate a POST request to the magic link request endpoint.
+    *   Extract the token from the (mocked/captured) email.
+    *   Simulate a GET request to the verification endpoint with the token and email.
+    *   Assert that a session cookie is set in the response and the user is redirected appropriately.
+3.  **Expiration:** Test that expired tokens are correctly rejected by the verification endpoint.
+4.  **Invalid Tokens:** Test that invalid or tampered tokens are rejected.
+(Refer to `better-auth-testing-and-verification-protocol.mdc`).
+
+## 7. Security Considerations
+
+1.  **Token Security:** Magic link tokens MUST be short-lived (e.g., 15 minutes default) and single-use (Better Auth typically handles this by deleting the token upon successful verification).
+2.  **Email Security:** Ensure the email sending service is secure and reputable to prevent interception of magic links. Use HTTPS for all links.
+3.  **Rate Limiting:** Apply strict rate limiting (using `better-auth-rate-limiting-protocol.mdc`) to the magic link request endpoint (`/api/auth/magic-link/request`) to prevent email flooding / abuse. Base limiting on IP address and potentially email address.
+4.  **User Enumeration:** Be aware that the request endpoint might implicitly confirm if an email address is registered. Consider returning a generic success message ("If an account exists, an email has been sent") regardless of whether the email was found, to mitigate this. Better Auth might have options for this behavior.
+
+## 8. Verification Checklist
+
+-   [ ] `magicLink.enabled` set to `true` in `betterAuth` config?
+-   [ ] `magicLink.sendMagicLinkEmail` function implemented using the configured email service?
+-   [ ] Email service configured with a `magicLinkLogin` template?
+-   [ ] Magic Link request endpoint (`/api/auth/magic-link/request`) handled (usually by `[...auth]`)?
+-   [ ] Magic Link verification endpoint (`/api/auth/magic-link/verify`) handled (usually by `[...auth]`)?
+-   [ ] Client-side form correctly POSTs email to the request endpoint?
+-   [ ] Rate limiting applied to the request endpoint?
+-   [ ] Testing verifies token generation, email content, link verification, session creation, and expiration?
+-   [ ] Security considerations (token lifetime, email security, user enumeration) addressed?

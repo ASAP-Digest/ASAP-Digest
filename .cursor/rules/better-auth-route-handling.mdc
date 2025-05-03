@@ -45,6 +45,14 @@ export const PUT = handler;
 export const DELETE = handler;
 export const PATCH = handler;
 export const OPTIONS = handler;
+
+// NOTE: This standard handler typically also processes OAuth callbacks
+// (e.g., /api/auth/callback/google) and Magic Link verification
+// (e.g., /api/auth/magic-link/verify) automatically based on the
+// configuration provided in better-auth-config.mdc. Refer to
+// better-auth-oauth-provider-protocol.mdc and
+// better-auth-magic-link-protocol.mdc for details on configuring
+// those features.
 ```
 
 ## 2. WordPress Server-to-Server Authentication Endpoint
@@ -56,7 +64,7 @@ export const OPTIONS = handler;
 ```javascript
 import { json } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
-import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils';
+import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils'; // Ensure this utility exists and is correctly implemented
 
 /**
  * @typedef {import('@sveltejs/kit').RequestEvent} RequestEvent
@@ -104,6 +112,11 @@ export async function POST(event) {
         /** @type {WPUserData} */
         const wpUserData = activeSessions[0];
         
+        // Verify required fields from WP
+        if (!wpUserData || !wpUserData.wpUserId || !wpUserData.email) {
+             return json({ success: false, error: 'missing_wp_user_data' }, { status: 400 });
+        }
+
         // Verify user exists or create new user
         const session = await syncWordPressUserAndCreateSession(wpUserData);
         
@@ -128,7 +141,8 @@ export async function POST(event) {
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        return json({ success: false, error: 'wp_request_error', message: errorMessage });
+        console.error("Error in check-wp-session:", errorMessage, error); // Log the error server-side
+        return json({ success: false, error: 'wp_request_error', message: errorMessage }, { status: 500 });
     }
 }
 ```
@@ -162,20 +176,26 @@ export async function GET(event) {
         const user = await auth.adapter.getUserById(session.userId);
         
         if (!user) {
+            // Session exists but user doesn't - potential data inconsistency
+            console.warn(`Session found for non-existent user ID: ${session.userId}`);
+            // Optionally delete the invalid session
+            // await auth.adapter.deleteSession(session.token);
             return json({ authenticated: false });
         }
         
+        // Return filtered user data - avoid sending sensitive fields
         return json({
             authenticated: true,
             user: {
                 id: user.id,
                 email: user.email,
                 displayName: user.display_name || user.username
-                // Add other user fields as needed
+                // Add other safe user fields as needed
             }
         });
     } catch (error) {
-        return json({ authenticated: false, error: 'session_check_failed' });
+        console.error("Error checking session:", error);
+        return json({ authenticated: false, error: 'session_check_failed' }, { status: 500 });
     }
 }
 
@@ -197,11 +217,12 @@ export async function DELETE(event) {
         // Clear session cookie
         return json({ success: true }, {
             headers: {
-                'Set-Cookie': 'better_auth_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                'Set-Cookie': 'better_auth_session=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
             }
         });
     } catch (error) {
-        return json({ success: false, error: 'logout_failed' });
+        console.error("Error during logout:", error);
+        return json({ success: false, error: 'logout_failed' }, { status: 500 });
     }
 }
 ```
@@ -210,6 +231,7 @@ export async function DELETE(event) {
    - Place in `app/src/routes/api/auth/refresh/+server.js`
    - Handles refresh token operations
    - Replaces expired access tokens
+   - **Note:** Requires refresh token strategy to be configured in Better Auth & adapter.
 
 ```javascript
 import { json } from '@sveltejs/kit';
@@ -226,14 +248,18 @@ import { auth } from '$lib/server/auth';
  */
 export async function POST(event) {
     try {
+        // Ensure refresh tokens are enabled and configured in Better Auth
+        if (!auth.options.refreshToken?.enabled) {
+            return json({ success: false, error: 'refresh_not_enabled' }, { status: 501 });
+        }
+
         const { refreshToken } = await event.request.json();
         
         if (!refreshToken) {
             return json({ success: false, error: 'missing_refresh_token' }, { status: 400 });
         }
         
-        // Implement token refresh logic using your adapter
-        // This is a simplified example
+        // Implement token refresh logic using your adapter and session manager
         const newSession = await auth.sessionManager.refreshSession(refreshToken);
         
         if (!newSession) {
@@ -245,7 +271,7 @@ export async function POST(event) {
         
         return json({ 
             success: true,
-            token: newSession.token,
+            token: newSession.token, // Typically only session token is returned, not refresh token
             expiresAt: newSession.expiresAt
         }, {
             headers: {
@@ -253,7 +279,8 @@ export async function POST(event) {
             }
         });
     } catch (error) {
-        return json({ success: false, error: 'refresh_failed' });
+        console.error("Error refreshing token:", error);
+        return json({ success: false, error: 'refresh_failed' }, { status: 500 });
     }
 }
 ```
@@ -267,13 +294,13 @@ export async function POST(event) {
 
 - **Server-to-Server Handler:**
   - Requires `x-wp-sync-secret` header matching the configured secret.
-  - Request body must contain WordPress user data.
+  - Request body must contain WordPress user data (`activeSessions` array with user objects).
 
 - **Session Management Handler:**
-  - Requires valid session cookie for GET and DELETE operations.
+  - Requires valid session cookie (`better_auth_session`) for GET and DELETE operations.
 
 - **Token Refresh Handler:**
-  - Requires `refreshToken` in the request body.
+  - Requires `refreshToken` in the JSON request body.
 
 ## 6. Common Issues to Avoid
 
@@ -283,7 +310,8 @@ export async function POST(event) {
 - **Insecure Secrets:** Don't hardcode the WordPress sync secret; load from environment variables.
 - **Missing CORS Headers:** Ensure CORS headers are properly set if frontend is on a different domain.
 - **Inconsistent Cookie Settings:** Make sure cookie settings (path, SameSite, etc.) match between endpoints.
-- **Incomplete User Sync Function:** Ensure `syncWordPressUserAndCreateSession` properly handles all user fields.
+- **Incomplete User Sync Function:** Ensure `syncWordPressUserAndCreateSession` properly handles all user fields and potential errors.
+- **Error Handling:** Implement robust error handling in all endpoints.
 
 ## 7. Version Compatibility
 
@@ -293,8 +321,8 @@ export async function POST(event) {
 
 ## 8. Error Prevention & Verification
 
-- **Request Validation:** Always validate incoming data and headers.
-- **Error Handling:** Use try/catch blocks to handle errors gracefully.
-- **Response Structure:** Maintain consistent response structure across endpoints.
-- **Security Checks:** Verify secrets, tokens, and user permissions.
-- **Test Authentication Flow:** Test the full flow from WordPress login to SvelteKit session creation.
+- **Request Validation:** Always validate incoming data and headers (secrets, required fields).
+- **Error Handling:** Use try/catch blocks to handle errors gracefully and return appropriate responses (see `better-auth-error-handling-protocol.mdc`).
+- **Response Structure:** Maintain consistent JSON response structure across endpoints.
+- **Security Checks:** Verify secrets, tokens, and user permissions rigorously.
+- **Test Authentication Flow:** Test the full flow from WordPress login to SvelteKit session creation, including error cases.

@@ -1,0 +1,120 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth Plugin Integration Protocol v1.0
+
+## 1. Purpose
+
+This protocol provides general guidelines for discovering, configuring, and integrating Better Auth plugins within a headless WordPress/SvelteKit application using JS/JSDoc. It aims to establish a consistent pattern for leveraging extended functionality offered by the Better Auth ecosystem.
+
+**Note:** This protocol is general due to the variability of plugins. Always refer to the specific plugin's documentation for detailed instructions.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Where plugin config often resides
+│ 2. Better Auth Implementation Protocol  │ // Overall structure
+│ 3. Better Auth Plugin Integration (This)│ // Specific plugin steps
+│ 4. Specific Plugin Documentation        │ // REQUIRED external reference
+│ 5. JSDoc Type Definitions Protocol      │ // Typing plugin options/returns
+│ 6. Tooling Setup Guide                  │ // Installing plugin packages
+└─────────────────────────────────────────┘
+```
+
+## 3. Plugin Discovery & Selection
+
+1.  **Identify Need:** Determine the specific functionality required (e.g., 2FA, specific OAuth provider, advanced rate limiting).
+2.  **Consult BA Resources:** Check official Better Auth documentation, community forums, or repositories for available plugins addressing the need.
+3.  **Evaluate Plugin:** Review the plugin's documentation for:
+    *   Compatibility with your Better Auth version and stack (Headless WP/SK, JS/JSDoc).
+    *   Features and configuration options.
+    *   Maintenance status and community support.
+    *   Security implications.
+
+## 4. Installation
+
+1.  **Package Manager:** Install the plugin package using the project's package manager (pnpm).
+    ```bash
+    # Example: Install a hypothetical 'better-auth-plugin-2fa'
+    pnpm add -D better-auth-plugin-2fa
+    ```
+2.  **Verify Installation:** Ensure the package is listed in `package.json` and `node_modules`.
+
+## 5. Configuration (General Pattern)
+
+1.  **Locate Configuration Point:** Plugin configuration is typically added within the main `betterAuth({...})` configuration object, often under a dedicated key specific to the plugin or a general `plugins` key. Refer to the specific plugin's documentation.
+2.  **Import Plugin:** Import the plugin's initialization function or configuration object.
+    ```javascript
+    // Example: Import hypothetical 2FA plugin
+    import { createTwoFactorAuthPlugin } from 'better-auth-plugin-2fa';
+    ```
+3.  **Instantiate/Configure Plugin:** Call the plugin's initialization function with its required options (often including secrets loaded via environment variables).
+    ```javascript
+    // Example: Configure hypothetical 2FA plugin
+    const twoFactorPlugin = createTwoFactorAuthPlugin({
+        issuerName: process.env.APP_NAME || 'My App',
+        // Other plugin-specific options...
+    });
+    ```
+4.  **Integrate into `betterAuth` Config:** Add the configured plugin instance to the appropriate location within the `betterAuth` options object.
+    ```javascript
+    // In $lib/server/auth.js
+    import { betterAuth } from 'better-auth';
+    // ... other imports (dialect, adapter, hooks) ...
+    import { createTwoFactorAuthPlugin } from 'better-auth-plugin-2fa';
+
+    // Configure plugin
+    const twoFactorPlugin = createTwoFactorAuthPlugin({ /* ... options ... */ });
+
+    export const auth = betterAuth({
+        // ... core config (secret, database, adapter, after) ...
+
+        // Example: Plugin configuration under a 'plugins' key
+        plugins: [
+            twoFactorPlugin
+            // Add other configured plugins here
+        ]
+
+        // OR: Plugin configuration might be under a specific top-level key
+        // twoFactor: { /* plugin options directly */ } // Check plugin docs
+    });
+    ```
+5.  **Environment Variables:** Add any new required environment variables for the plugin (e.g., API keys, secrets) to your `.env` files and documentation.
+
+## 6. Implementation & Usage
+
+1.  **API Endpoints:** Plugins might expose new API endpoints or modify existing ones. Implement necessary route handlers in SvelteKit, following `better-auth-route-handling.mdc` and the plugin's documentation.
+2.  **Client-Side Integration:** Update client-side stores, services, and components (`better-auth-client-side-integration-protocol.mdc`) to interact with the plugin's features (e.g., displaying a 2FA prompt, handling new OAuth buttons).
+3.  **Hooks:** Plugins might leverage existing BA hooks or introduce their own. Integrate necessary logic following `better-auth-hooks-and-lifecycle-events-protocol.mdc`.
+4.  **Type Safety:** Use JSDoc (`@typedef`, `@param`, `@returns`) to type plugin options, function arguments, and return values based on the plugin's documentation.
+
+## 7. Testing
+
+1.  **Unit Tests:** Write unit tests for any new utility functions or simple integration points related to the plugin.
+2.  **Integration Tests:** Write integration tests for the new API endpoints or modified auth flows introduced by the plugin. Mock external services if necessary. (Refer to `better-auth-testing-and-verification-protocol.mdc`).
+3.  **End-to-End Tests:** Consider E2E tests to verify the complete user flow involving the plugin.
+
+## 8. Documentation
+
+1.  **Internal Documentation:** Document the plugin's purpose, configuration choices, and integration points within the project's technical documentation.
+2.  **Environment Variables:** Ensure all environment variables required by the plugin are documented.
+3.  **Protocol Updates:** Update relevant Better Auth protocols (e.g., `config`, `routes`, `client-side`) to reference the plugin's usage where applicable.
+
+## 9. Verification Checklist
+
+-   [ ] Plugin selected based on documented need and evaluation?
+-   [ ] Plugin package installed successfully?
+-   [ ] Plugin configuration added correctly to `betterAuth` options object (per plugin docs)?
+-   [ ] All required environment variables added and documented?
+-   [ ] Necessary API endpoints implemented/updated?
+-   [ ] Client-side components/logic updated?
+-   [ ] Type safety maintained using JSDoc?
+-   [ ] Unit/Integration tests written for plugin functionality?
+-   [ ] Internal documentation updated?
+-   [ ] Relevant core protocols updated to mention plugin integration?
+-   [ ] Plugin functions as expected according to its documentation?

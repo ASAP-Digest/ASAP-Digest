@@ -43,6 +43,8 @@ import {
     onSessionCreationHook,
     onWpUserSyncHook
 } from './path/to/hooks';
+// Example: Import a hypothetical plugin
+// import { createTwoFactorAuthPlugin } from 'better-auth-plugin-2fa';
 
 // Configuration constants
 const authSecret = process.env.BETTER_AUTH_SECRET;
@@ -67,6 +69,9 @@ const adapter = {
     createAccount: createAccountFn,
     linkAccount: linkAccountFn
 };
+
+// Example: Configure a plugin
+// const twoFactorPlugin = createTwoFactorAuthPlugin({ /* ... options ... */ });
 
 export const auth = betterAuth({
     // --- Top-Level Options ---
@@ -103,7 +108,14 @@ export const auth = betterAuth({
         syncSecret: wpSyncSecret,
         allowedSources: ['wordpress'],
         syncFields: ['email', 'displayName', 'firstName', 'lastName', 'roles'],
-    }
+    },
+
+    // --- Plugin Configuration ---
+    // Add configured plugin instances here, typically in an array
+    // or under specific keys as defined by the plugin and the
+    // better-auth-plugin-integration-protocol.mdc.
+    // Example:
+    // plugins: [ twoFactorPlugin ],
 });
 ```
 
@@ -189,6 +201,7 @@ When configuring `betterAuth` for a headless WordPress/SvelteKit project:
 -   [ ] Are custom lifecycle hooks implemented for WP user synchronization?
 -   [ ] Are there any unexpected keys at the top level?
 -   [ ] Does the server start without the "No database configuration provided. Using memory adapter..." warning?
+-   [ ] (If applicable) Is plugin configuration added according to plugin docs?
 
 ## 7. Error Handling
 -   If server startup fails due to configuration errors related to `betterAuth`, the `universal-error-resolution-protocol.mdc` MUST be triggered.
@@ -201,3 +214,4 @@ The `auth` instance returned by `betterAuth()` and exported from `$lib/server/au
 -   **`sessionManager`**: An object containing methods for handling session cookies and tokens.
 -   **`adapter`**: The adapter object provided during configuration.
 -   **`options`**: The configuration options passed to `betterAuth()`.
+-   **(Plugin Properties)**: Additional properties/methods exposed by integrated plugins.

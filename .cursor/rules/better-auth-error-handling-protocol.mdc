@@ -87,6 +87,17 @@ Standardized error codes by category:
    - `RATE_LIMIT_EXCEEDED`: 701 - Rate limit exceeded
    - `RATE_LIMIT_CONFIG_ERROR`: 702 - Rate limit configuration error
 
+8. **OAuth Errors (8xx):**
+   - `OAUTH_INVALID_STATE`: 801 - Invalid or missing state parameter (CSRF)
+   - `OAUTH_PROVIDER_ERROR`: 802 - Error response from OAuth provider
+   - `OAUTH_CALLBACK_ERROR`: 803 - Error during token exchange or profile fetch
+   - `OAUTH_ACCOUNT_LINK_FAILED`: 804 - Failed to link OAuth account to user
+
+9. **Magic Link Errors (9xx):**
+   - `MAGICLINK_INVALID_TOKEN`: 901 - Invalid, expired, or used token
+   - `MAGICLINK_EMAIL_SEND_FAILED`: 902 - Failed to send magic link email
+   - `MAGICLINK_REQUEST_FAILED`: 903 - Error during magic link request processing
+
 ## 4. Error Handler Implementation
 
 ### 4.1 Configuration Errors
@@ -316,6 +327,14 @@ const userFriendlyMessages = {
   // WordPress integration errors
   'WP_SYNC_ERROR': 'Unable to sync with WordPress. Please try again later.',
   
+  // OAuth errors
+  'OAUTH_PROVIDER_ERROR': 'There was an issue communicating with the login provider.',
+  'OAUTH_INVALID_STATE': 'Invalid login attempt. Please try again.',
+
+  // Magic Link errors
+  'MAGICLINK_INVALID_TOKEN': 'The login link is invalid or has expired.',
+  'MAGICLINK_EMAIL_SEND_FAILED': 'Could not send login link email. Please try again.',
+
   // Generic fallback
   'DEFAULT': 'An unexpected error occurred. Please try again later.'
 };
@@ -403,6 +422,8 @@ function handleAuthFailure(code, event) {
       }
     );
   }
+  // Default handling for other API errors
+  return handleApiError(event, code, getUserFriendlyMessage(code));
 }
 ```
 
@@ -488,7 +509,7 @@ function triggerUERP(error) {
 ## 9. Verification Checklist
 
 - [ ] All Better Auth routes implement consistent error handling
-- [ ] Error codes are properly categorized and documented
+- [ ] Error codes are properly categorized and documented (including OAuth, Magic Link)
 - [ ] User-facing error messages are clear and helpful
 - [ ] Sensitive information is properly sanitized from error logs
 - [ ] Error logging is implemented for all components
@@ -530,11 +551,10 @@ export async function POST(event) {
       const result = await auth.authenticateWithCredentials(requestData.email, requestData.password);
       
       if (!result.success) {
-        return handleApiError(
-          event,
+        // Use handleAuthFailure for specific auth errors
+        return handleAuthFailure(
           'AUTH_INVALID_CREDENTIALS',
-          getUserFriendlyMessage('AUTH_INVALID_CREDENTIALS'),
-          401
+          event
         );
       }
       
@@ -555,7 +575,7 @@ export async function POST(event) {
         }
       );
     } catch (error) {
-      // Handle unexpected errors
+      // Handle unexpected internal auth errors
       return handleApiError(
         event,
         'AUTH_INTERNAL_ERROR',
@@ -565,7 +585,7 @@ export async function POST(event) {
       );
     }
   } catch (error) {
-    // Handle unexpected request errors
+    // Handle unexpected request processing errors
     return handleApiError(
       event,
       'SK_ROUTE_ERROR',
@@ -582,7 +602,7 @@ export async function POST(event) {
 ```javascript
 /**
  * WordPress session check endpoint 
- * @param {RequestEvent} event SvelteKit request event
+ * @param {import('@sveltejs/kit').RequestEvent} event SvelteKit request event
  * @returns {Promise<Response>} JSON response
  */
 export async function POST(event) {
@@ -601,6 +621,7 @@ export async function POST(event) {
       const requestSecret = event.request.headers.get('x-wp-sync-secret');
       
       if (!wpSyncSecret || !requestSecret || wpSyncSecret !== requestSecret) {
+        // Use handleApiError for consistent response format
         return handleApiError(
           event,
           'WP_SECRET_MISMATCH',
@@ -655,6 +676,7 @@ export async function POST(event) {
             }
           });
         } else {
+          // Use handleApiError for consistency
           return handleApiError(
             event,
             'WP_SYNC_ERROR',

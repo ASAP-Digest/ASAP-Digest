@@ -1,0 +1,152 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Better Auth OAuth Provider Protocol v1.0
+
+## 1. Purpose
+
+This protocol provides a standardized pattern for configuring and integrating specific OAuth providers (e.g., Google, GitHub, Facebook) with Better Auth in a headless WordPress/SvelteKit application using JS/JSDoc. It covers obtaining credentials, configuring Better Auth options, handling callback routes, and client-side integration.
+
+**Note:** This protocol provides a general template. Specific details (scopes, API endpoints) vary by provider. Always consult the official documentation for the chosen OAuth provider.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Better Auth Configuration Protocol   │ // Where OAuth config is added
+│ 2. Better Auth Route Handling Protocol  │ // Callback route implementation
+│ 3. Better Auth Client Side Integration  │ // Initiating OAuth flow
+│ 4. Better Auth Security Best Practices  │ // State param validation, secrets
+│ 5. Better Auth Error Handling Protocol  │ // Handling OAuth errors
+│ 6. OAuth Provider Protocol (This)       │ // Specific provider steps
+│ 7. JSDoc Type Definitions Protocol      │ // Typing OAuth responses/options
+│ 8. Tooling Setup Guide                  │ // Installing related packages (rare)
+└─────────────────────────────────────────┘
+```
+
+## 3. Pre-requisites: Provider Setup
+
+1.  **Create Developer Application:** Register a new application with the chosen OAuth provider (e.g., Google Cloud Console, GitHub Developer Settings).
+2.  **Obtain Credentials:** Securely record the **Client ID** and **Client Secret** provided by the OAuth provider.
+3.  **Configure Redirect URI / Callback URL:** Configure the allowed redirect URI in the provider's application settings. This MUST match the callback URL handled by your SvelteKit application (e.g., `https://your-sk-app.com/api/auth/callback/[provider]`). Use `http://localhost:5173/api/auth/callback/[provider]` for local development. Ensure consistency across environments.
+4.  **Define Scopes:** Determine the necessary permission scopes required from the provider (e.g., `openid`, `email`, `profile`). Request only the minimum required scopes.
+
+## 4. Better Auth Server-Side Configuration
+
+1.  **Environment Variables:** Add the Client ID and Client Secret to your `.env` files (ensure `.gitignore` excludes them).
+    ```plaintext
+    # .env Example for Google OAuth
+    GOOGLE_CLIENT_ID=your_google_client_id_here
+    GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+    # Required for callback URL construction
+    APP_URL=http://localhost:5173
+    ```
+2.  **Update `betterAuth` Config:** Add the provider configuration under the `socialProviders` key in `$lib/server/auth.js`.
+    ```javascript
+    // In $lib/server/auth.js
+    import { betterAuth } from 'better-auth';
+    // ... other imports ...
+
+    export const auth = betterAuth({
+        // ... core config (secret, database, adapter, after) ...
+
+        socialProviders: {
+            // Example: Google Configuration
+            google: {
+                // MUST match key used in client-side initiation & callback route
+                clientId: process.env.GOOGLE_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                // The URL your SvelteKit app will handle the callback at
+                callbackUrl: `${process.env.APP_URL}/api/auth/callback/google`,
+                // Request specific data from the provider
+                scope: 'openid email profile' // Common scopes
+            },
+            // Example: GitHub Configuration (Add similarly)
+            // github: {
+            //     clientId: process.env.GITHUB_CLIENT_ID,
+            //     clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            //     callbackUrl: `${process.env.APP_URL}/api/auth/callback/github`,
+            //     scope: 'read:user user:email'
+            // },
+            // Add other providers as needed
+        }
+    });
+    ```
+
+## 5. SvelteKit Callback Route Handling
+
+1.  **Callback Endpoint:** The standard `[...auth]` handler defined in `better-auth-route-handling.mdc` (`src/routes/api/auth/[...auth]/+server.js`) typically handles OAuth callbacks automatically *if* the provider key in the config (`google`, `github`) matches the path segment (`/api/auth/callback/google`).
+2.  **Verification:** Better Auth's `svelteKitHandler` internally handles:
+    *   Validating the `state` parameter (CSRF protection - requires cookie setup, often handled automatically).
+    *   Exchanging the authorization `code` for access/refresh tokens with the provider.
+    *   Fetching the user's profile from the provider.
+    *   Calling the adapter's `getUserByEmail` or `createUser` and `linkAccount` functions.
+    *   Creating a new Better Auth session for the user.
+    *   Redirecting the user (typically back to the frontend, often configurable).
+3.  **Custom Logic (Optional):** If specific actions are needed after successful OAuth login (beyond standard user creation/linking), use the `after.onSuccessfulLogin` hook (see `better-auth-hooks-and-lifecycle-events-protocol.mdc`).
+
+## 6. Client-Side Integration
+
+1.  **Initiate OAuth Flow:** Add buttons or links in your frontend components to start the OAuth flow for each configured provider. The link should point to the Better Auth endpoint corresponding to the provider key.
+    ```svelte
+    <!-- Example: Login Button Component -->
+    <script>
+      // Base URL might come from config or env
+      const baseURL = '/api/auth';
+    </script>
+
+    <a href="{baseURL}/login/google" class="oauth-button google">
+      Sign in with Google
+    </a>
+    <a href="{baseURL}/login/github" class="oauth-button github">
+      Sign in with GitHub
+    </a>
+    ```
+    *Explanation:* Clicking these links navigates the user to a Better Auth managed endpoint (e.g., `/api/auth/login/google`). Better Auth then redirects the user to the actual OAuth provider (Google) for authorization. After authorization, the provider redirects back to the `callbackUrl` configured in Step 4.2.
+
+2.  **Update Client State:** The client-side auth store (`better-auth-client-side-integration-protocol.mdc`) should automatically reflect the new logged-in state upon successful callback and session creation, typically handled by redirecting back to the app and the `+layout.js` re-checking the session.
+
+## 7. Testing
+
+1.  **Mocking:** Integration testing requires mocking the OAuth provider's responses during the callback phase. Tools like `msw` (Mock Service Worker) or custom mocks can be used.
+2.  **Flow Verification:** Test the entire flow:
+    *   Clicking the client-side login button.
+    *   Successful redirect to the (mocked) provider.
+    *   Successful redirect back to the SvelteKit callback endpoint.
+    *   Validation of `state` parameter.
+    *   Successful session creation and cookie setting.
+    *   Correct user creation or linking in the database.
+    *   Client-side state update reflecting the logged-in user.
+3.  **Error Handling:** Test scenarios like:
+    *   User denying authorization at the provider.
+    *   Invalid `state` parameter during callback.
+    *   Network errors during token exchange.
+    *   Provider returning an error.
+    (Refer to `better-auth-testing-and-verification-protocol.mdc`).
+
+## 8. Security Considerations
+
+1.  **State Parameter:** MUST ensure the `state` parameter is used and validated correctly to prevent CSRF attacks during the OAuth flow. Better Auth typically handles this if configured correctly.
+2.  **Secret Storage:** Client Secrets MUST be stored securely as environment variables on the server, never exposed client-side.
+3.  **Callback URL:** Ensure the Callback URL configured with the provider exactly matches the one handled by your application and is restricted to HTTPS in production.
+4.  **Scope Minimization:** Only request the minimum necessary scopes from the OAuth provider.
+
+## 9. Verification Checklist
+
+-   [ ] Developer application created with the OAuth provider?
+-   [ ] Client ID & Secret obtained and stored securely in `.env`?
+-   [ ] Callback URL configured correctly with provider and matches server config?
+-   [ ] Minimum necessary scopes defined?
+-   [ ] Provider configured correctly under `socialProviders` in `betterAuth` options?
+-   [ ] Environment variables (`GOOGLE_CLIENT_ID`, etc.) are loaded correctly?
+-   [ ] SvelteKit callback route (`/api/auth/callback/[provider]`) is handled (usually by `[...auth]` handler)?
+-   [ ] Client-side login links point to the correct Better Auth endpoints (`/api/auth/login/[provider]`)?
+-   [ ] State parameter validation is implicitly handled by Better Auth or explicitly verified?
+-   [ ] Successful OAuth login creates/links user and establishes a session?
+-   [ ] Client-side auth state updates correctly after successful login?
+-   [ ] Testing includes mocking provider responses and verifying the full flow?
+-   [ ] Error handling for OAuth failures is implemented?

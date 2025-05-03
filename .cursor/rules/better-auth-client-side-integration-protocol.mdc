@@ -3,7 +3,14 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Better Auth Client Side Integration Protocol v1.0
+---
+description: Defines standardized patterns for integrating Better Auth on the client side within a headless WordPress/SvelteKit application.
+globs: ["app/src/lib/stores/authStore.js", "app/src/lib/services/authService.js", "app/src/routes/+layout.js", "app/src/lib/components/AuthProvider.svelte", "app/src/routes/(protected)/+layout.js", "app/src/lib/components/auth/LoginForm.svelte", "app/src/lib/components/auth/RegisterForm.svelte"]
+alwaysApply: true
+---
+# Better Auth Client Side Integration Protocol v1.1
+
+*(Self-correction: v1.1 - Added client-side initiation for OAuth and Magic Link)*
 
 ## 1. Purpose
 
@@ -28,8 +35,8 @@ This protocol establishes standardized patterns for integrating Better Auth on t
 
 ### 3.1 Client Side Store Setup
 
-1. **Auth Store Definition:**
-   - MUST create a centralized auth store for state management:
+1.  **Auth Store Definition:**
+    *   MUST create a centralized auth store for state management:
 
 ```javascript
 // $lib/stores/authStore.js
@@ -116,8 +123,8 @@ export const isLoading = derived(authStore, $auth => $auth.loading);
 export const authError = derived(authStore, $auth => $auth.error);
 ```
 
-2. **Auth Service Definition:**
-   - MUST implement core auth service methods:
+2.  **Auth Service Definition:**
+    *   MUST implement core auth service methods:
 
 ```javascript
 // $lib/services/authService.js
@@ -195,7 +202,7 @@ const authService = {
     try {
       authStore.setLoading(true);
       
-      const response = await fetch('/api/auth/email/login', {
+          const response = await fetch('/api/auth/email/login', { // Assuming default BA path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
@@ -204,15 +211,13 @@ const authService = {
       
       const data = await response.json();
       
-      if (data.success && data.user) {
+          if (response.ok && data.user) { // Check response.ok and user presence
         authStore.setUser(data.user);
         return { success: true, user: data.user };
       } else {
-        authStore.setError(data.error || 'Login failed');
-        return { 
-          success: false, 
-          error: data.error || 'Login failed' 
-        };
+            const errorMessage = data.error?.message || 'Login failed';
+            authStore.setError(errorMessage);
+            return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -237,7 +242,7 @@ const authService = {
     try {
       authStore.setLoading(true);
       
-      const response = await fetch('/api/auth/email/register', {
+          const response = await fetch('/api/auth/email/register', { // Assuming default BA path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -246,15 +251,13 @@ const authService = {
       
       const responseData = await response.json();
       
-      if (responseData.success && responseData.user) {
+          if (response.ok && responseData.user) { // Check response.ok and user presence
         authStore.setUser(responseData.user);
         return { success: true, user: responseData.user };
       } else {
-        authStore.setError(responseData.error || 'Registration failed');
-        return { 
-          success: false, 
-          error: responseData.error || 'Registration failed'
-        };
+             const errorMessage = responseData.error?.message || 'Registration failed';
+            authStore.setError(errorMessage);
+            return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -285,15 +288,13 @@ const authService = {
       
       const data = await response.json();
       
-      if (data.success) {
+          if (response.ok) { // Check response.ok
         authStore.reset();
         return { success: true };
       } else {
-        authStore.setError(data.error || 'Logout failed');
-        return { 
-          success: false, 
-          error: data.error || 'Logout failed' 
-        };
+             const errorMessage = data.error?.message || 'Logout failed';
+            authStore.setError(errorMessage);
+            return { success: false, error: errorMessage };
       }
     } catch (error) {
       console.error('Logout error:', error);
@@ -316,7 +317,7 @@ const authService = {
     }
     
     try {
-      const response = await fetch('/api/auth/password/forgot', {
+          const response = await fetch('/api/auth/password/forgot', { // Assuming default BA path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -325,8 +326,8 @@ const authService = {
       const data = await response.json();
       
       return {
-        success: data.success,
-        error: data.error || null
+            success: response.ok, // Check response.ok
+            error: data.error?.message || (response.ok ? null : 'Failed to request password reset')
       };
     } catch (error) {
       console.error('Password reset request error:', error);
@@ -346,7 +347,7 @@ const authService = {
     }
     
     try {
-      const response = await fetch('/api/auth/password/reset', {
+          const response = await fetch('/api/auth/password/reset', { // Assuming default BA path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -356,15 +357,49 @@ const authService = {
       const responseData = await response.json();
       
       return {
-        success: responseData.success,
-        error: responseData.error || null
+            success: response.ok, // Check response.ok
+            error: responseData.error?.message || (response.ok ? null : 'Failed to reset password')
       };
     } catch (error) {
       console.error('Password reset error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Password reset failed';
       return { success: false, error: errorMessage };
     }
-  }
+      },
+
+      /**
+       * Initiates OAuth login flow
+       * @param {string} provider - OAuth provider name (e.g., 'google', 'github')
+       */
+      initiateOAuth: (provider) => {
+        if (!browser) return;
+        // Redirect to the Better Auth managed login endpoint for the provider
+        window.location.href = `/api/auth/login/${provider}`; // Use configured BA path
+      },
+
+      /**
+       * Requests a magic link for the given email
+       * @param {string} email - User email
+       * @returns {Promise<{success: boolean, error?: string}>} Result object
+       */
+      requestMagicLink: async (email) => {
+        if (!browser) {
+          return { success: false, error: 'Cannot request magic link during SSR' };
+        }
+        try {
+          const response = await fetch('/api/auth/magic-link/request', { // Use configured BA path
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const data = await response.json();
+          // Return success based on response status, include error message if present
+          return { success: response.ok, error: data.error?.message };
+        } catch (error) {
+          console.error('Magic link request error:', error);
+          return { success: false, error: 'Failed to request magic link' };
+        }
+      },
 };
 
 export default authService;
@@ -372,13 +407,14 @@ export default authService;
 
 ### 3.2 Auth Initialization
 
-1. **App-wide Auth Initialization:**
-   - MUST initialize auth state at the application level:
+1.  **App-wide Auth Initialization:**
+    *   MUST initialize auth state at the application level:
 
 ```javascript
 // src/routes/+layout.js
 
 import authService from '$lib/services/authService';
+    import { browser } from '$app/environment'; // Correct import
 
 /**
  * SvelteKit load function to initialize authentication
@@ -388,8 +424,10 @@ import authService from '$lib/services/authService';
 export async function load() {
   // Only attempt to initialize auth client-side
   // This doesn't block SSR/return any props
-  if (typeof window !== 'undefined') {
+      if (browser) { // Use imported browser check
     // Initialize auth (non-blocking)
+        // Use await if you need to wait for init before rendering,
+        // otherwise run it without await for faster initial load.
     authService.initAuth();
   }
   
@@ -397,8 +435,8 @@ export async function load() {
 }
 ```
 
-2. **Auth Context Component:**
-   - SHOULD create an auth context component:
+2.  **Auth Context Component:**
+    *   SHOULD create an auth context component:
 
 ```svelte
 <!-- src/lib/components/AuthProvider.svelte -->
@@ -406,23 +444,25 @@ export async function load() {
   import { onMount } from 'svelte';
   import { authStore } from '$lib/stores/authStore';
   import authService from '$lib/services/authService';
-  import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+      import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte'; // Ensure path is correct
   
   // Optional: destructure from props to customize behavior
   let { 
     loadingComponent = LoadingSpinner,
     showLoading = true,
-    autoInit = true,
+        autoInit = true, // Controls if initAuth is called here or in +layout.js
     children
   } = $props();
   
-  // Auto-init auth if configured
+      // Auto-init auth if configured and not handled in +layout.js
   onMount(() => {
-    if (autoInit) {
+        // Ensure authService is defined before calling methods
+        if (authService && autoInit) {
       authService.initAuth();
     }
   });
   
+      // Reactive subscription to loading state
   $: loading = $authStore.loading;
 </script>
 
@@ -437,231 +477,224 @@ export async function load() {
 
 ### 3.3 Protected Route Implementation
 
-1. **Route Guards:**
-   - MUST implement route protection:
+1.  **Route Guards:**
+    *   MUST implement route protection:
 
 ```javascript
-// src/routes/(protected)/+layout.js
+    // src/routes/(protected)/+layout.server.js // Use .server.js for server-side load
 
 import { redirect } from '@sveltejs/kit';
-import authService from '$lib/services/authService';
+    // Import configured auth instance from server-side
+    import { auth } from '$lib/server/auth';
 
-/**
- * SvelteKit load function for protected routes
- * @param {import('@sveltejs/kit').LoadEvent} event - Load event
- * @returns {Promise<{user: import('$lib/stores/authStore').User}>} User data
- */
-export async function load({ fetch, url }) {
-  // Check authentication status
-  const response = await fetch('/api/auth/session');
-  const data = await response.json();
-  
-  if (!data.authenticated || !data.user) {
+    /**
+     * SvelteKit server load function for protected routes
+     * @param {import('@sveltejs/kit').ServerLoadEvent} event - Load event
+     * @returns {Promise<{user: import('$lib/stores/authStore').User}|void>} User data or throws redirect
+     */
+    export async function load({ request, url }) {
+      // Check authentication status using server-side session validation
+      const session = await auth.sessionManager.getSession(request); // Use configured instance
+
+      if (!session) {
     // Save intended destination for redirecting back after login
-    const returnTo = encodeURIComponent(url.pathname);
-    
-    // Redirect to login with returnTo parameter
+          const returnTo = encodeURIComponent(url.pathname + url.search); // Include query params
+          throw redirect(303, `/login?returnTo=${returnTo}`); // Redirect if no session
+      }
+
+      // Get user details from session
+      const user = await auth.adapter.getUserById(session.userId); // Use configured instance
+
+      if (!user) {
+          // If session exists but user doesn't (edge case), treat as unauthenticated
+          const returnTo = encodeURIComponent(url.pathname + url.search);
     throw redirect(303, `/login?returnTo=${returnTo}`);
   }
   
   // Pass the user data to the page/layout
+      // Filter sensitive data before sending to client
+      const clientUser = {
+          id: user.id,
+          email: user.email,
+          displayName: user.display_name || user.username || user.email,
+          roles: user.roles || [] // Assuming roles are stored
+          // DO NOT pass password hash or other sensitive fields
+      };
+
   return {
-    user: data.user
+          user: clientUser
   };
 }
 ```
 
-2. **Protected Layout Component:**
-   - SHOULD implement protected layout component:
+2.  **Protected Layout Component:**
+    *   SHOULD implement protected layout component:
 
 ```svelte
 <!-- src/routes/(protected)/+layout.svelte -->
 <script>
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  import { isAuthenticated, user } from '$lib/stores/authStore';
-  import authService from '$lib/services/authService';
+      import { isAuthenticated, user, authStore } from '$lib/stores/authStore'; // Use correct store import
+      // No need for authService here if load handles redirection
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   
   // Get user data from load function
   let { data } = $props();
   
-  // If we're in the browser, immediately set the user in the store
-  // This synchronizes SSR-loaded data with client-side store
+      // Initialize the client-side store with server-loaded data
   onMount(() => {
-    if (browser && data.user) {
-      authService.authStore.setUser(data.user);
-    }
-  });
-  
-  // If client-side navigation shows user is not authenticated, redirect
-  $: if (browser && $isAuthenticated === false && $page.url.pathname !== '/login') {
-    goto(`/login?returnTo=${encodeURIComponent($page.url.pathname)}`);
-  }
+        if (browser && data?.user) {
+          authStore.setUser(data.user);
+        } else if (browser && !data?.user) {
+          // If server load didn't provide a user (shouldn't happen due to guard),
+          // force reset client store and redirect just in case.
+          authStore.reset();
+          goto(`/login?returnTo=${encodeURIComponent($page.url.pathname + $page.url.search)}`);
+        }
+      });
+
+      // Optional: Client-side check for extra safety or dynamic updates
+      // The server load function is the primary guard.
+      // $: if (browser && $isAuthenticated === false && !$authStore.loading) {
+      //   goto(`/login?returnTo=${encodeURIComponent($page.url.pathname + $page.url.search)}`);
+      // }
 </script>
 
+    {#if data?.user}
+      <!-- Render content only if user data is available from server load -->
 <slot />
+    {:else}
+      <!-- Optional: Show loading or redirect notice -->
+      <p>Loading user data...</p>
+    {/if}
 ```
 
 ### 3.4 Login Component Implementation
 
-1. **Login Form Component:**
-   - MUST implement login form:
+1.  **Login Form Component:**
+    *   MUST implement login form:
 
 ```svelte
 <!-- src/lib/components/auth/LoginForm.svelte -->
 <script>
   import { page } from '$app/stores';
+      import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
-  import authService from '$lib/services/authService';
+      import authService from '$lib/services/authService'; // Import authService
   import Button from '$lib/components/ui/button/button.svelte';
   import Input from '$lib/components/ui/input/input.svelte';
-  import Alert from '$lib/components/ui/alert/alert.svelte';
-  
-  /** @type {{onSuccess?: Function}} */
-  let { onSuccess } = $props();
+      import Alert from '$lib/components/ui/alert/alert.svelte'; // Example alert component
   
   let email = $state('');
   let password = $state('');
   let loading = $state(false);
   let error = $state('');
   
-  // Login function
-  async function handleLogin() {
-    if (!email || !password) {
-      error = 'Please enter email and password';
-      return;
-    }
+      async function handleSubmit() {
+        if (!browser) return; // Prevent submission during SSR
     
     loading = true;
     error = '';
     
     const result = await authService.login({ email, password });
     
-    if (result.success) {
-      // Get return URL from query parameter
+        if (result.success && result.user) {
+          // Successful login
       const returnTo = $page.url.searchParams.get('returnTo') || '/dashboard';
-      
-      if (onSuccess) {
-        onSuccess(result.user);
-      } else {
-        // Default behavior - redirect
         goto(returnTo);
-      }
     } else {
-      error = result.error || 'Login failed. Please try again.';
+          // Failed login
+          error = result.error || 'Login failed. Please check your credentials.';
     }
     
     loading = false;
   }
+
+      function handleOAuth(provider) {
+          if (!browser) return;
+          loading = true; // Show loading state
+          authService.initiateOAuth(provider);
+          // Redirect happens via window.location.href in initiateOAuth
+      }
+
 </script>
 
-<form class="space-y-4" on:submit|preventDefault={handleLogin}>
+    <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
   {#if error}
     <Alert variant="destructive">{error}</Alert>
   {/if}
   
   <div class="space-y-2">
     <label for="email" class="text-sm font-medium">Email</label>
-    <Input 
-      type="email" 
-      id="email" 
-      bind:value={email} 
-      disabled={loading} 
-      placeholder="your@email.com" 
-      required
-    />
+        <Input type="email" id="email" bind:value={email} required disabled={loading} />
   </div>
   
   <div class="space-y-2">
-    <div class="flex justify-between">
       <label for="password" class="text-sm font-medium">Password</label>
-      <a href="/forgot-password" class="text-sm text-[hsl(var(--link))]">
-        Forgot password?
-      </a>
-    </div>
-    <Input 
-      type="password" 
-      id="password" 
-      bind:value={password} 
-      disabled={loading} 
-      required
-    />
+        <Input type="password" id="password" bind:value={password} required disabled={loading} />
   </div>
   
-  <Button type="submit" disabled={loading} class="w-full">
-    {loading ? 'Logging in...' : 'Log in'}
+      <Button type="submit" class="w-full" disabled={loading}>
+        {loading ? 'Logging in...' : 'Log In'}
   </Button>
   
-  <div class="text-center text-sm">
-    Don't have an account?
-    <a href="/register" class="text-[hsl(var(--link))]">
-      Sign up
-    </a>
+      <div class="my-4 text-center text-sm text-muted-foreground">OR</div>
+
+      <div class="space-y-2">
+          <Button variant="outline" class="w-full" on:click={() => handleOAuth('google')} disabled={loading}>
+              <!-- Add Icon component --> Sign in with Google
+          </Button>
+          <Button variant="outline" class="w-full" on:click={() => handleOAuth('github')} disabled={loading}>
+              <!-- Add Icon component --> Sign in with GitHub
+          </Button>
+      </div>
+
+      <div class="mt-4 text-center text-sm">
+        <a href="/forgot-password" class="underline">Forgot password?</a>
+      </div>
+      <div class="mt-2 text-center text-sm">
+        Don't have an account? <a href="/register" class="underline">Sign up</a>
   </div>
 </form>
 ```
 
-### 3.5 Registration Component
+### 3.5 Registration Component Implementation
 
-1. **Registration Form Component:**
-   - MUST implement registration form:
+1.  **Register Form Component:**
+    *   MUST implement registration form:
 
 ```svelte
 <!-- src/lib/components/auth/RegisterForm.svelte -->
 <script>
+      import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import authService from '$lib/services/authService';
+      import authService from '$lib/services/authService'; // Import authService
   import Button from '$lib/components/ui/button/button.svelte';
   import Input from '$lib/components/ui/input/input.svelte';
   import Alert from '$lib/components/ui/alert/alert.svelte';
   
-  /** @type {{onSuccess?: Function}} */
-  let { onSuccess } = $props();
-  
   let email = $state('');
-  let displayName = $state('');
   let password = $state('');
-  let confirmPassword = $state('');
+      let displayName = $state(''); // Optional
   let loading = $state(false);
   let error = $state('');
   
-  // Validate passwords
-  $: passwordsMatch = password === confirmPassword;
-  
-  // Registration function
-  async function handleRegister() {
-    if (!email || !password || !confirmPassword) {
-      error = 'Please complete all required fields';
-      return;
-    }
-    
-    if (!passwordsMatch) {
-      error = 'Passwords do not match';
-      return;
-    }
+      async function handleSubmit() {
+        if (!browser) return;
     
     loading = true;
     error = '';
     
-    const registrationData = {
-      email,
-      password,
-      displayName: displayName || undefined
-    };
-    
+        const registrationData = { email, password, displayName };
     const result = await authService.register(registrationData);
     
-    if (result.success) {
-      if (onSuccess) {
-        onSuccess(result.user);
+        if (result.success && result.user) {
+          // Successful registration & login
+          goto('/dashboard'); // Redirect to dashboard or welcome page
       } else {
-        // Default behavior - redirect to dashboard
-        goto('/dashboard');
-      }
-    } else {
+          // Failed registration
       error = result.error || 'Registration failed. Please try again.';
     }
     
@@ -669,1696 +702,47 @@ export async function load({ fetch, url }) {
   }
 </script>
 
-<form class="space-y-4" on:submit|preventDefault={handleRegister}>
+    <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
   {#if error}
     <Alert variant="destructive">{error}</Alert>
   {/if}
   
   <div class="space-y-2">
-    <label for="email" class="text-sm font-medium">Email</label>
-    <Input 
-      type="email" 
-      id="email" 
-      bind:value={email} 
-      disabled={loading} 
-      placeholder="your@email.com" 
-      required
-    />
+        <label for="displayName" class="text-sm font-medium">Display Name (Optional)</label>
+        <Input type="text" id="displayName" bind:value={displayName} disabled={loading} />
   </div>
   
   <div class="space-y-2">
-    <label for="display-name" class="text-sm font-medium">
-      Display Name (optional)
-    </label>
-    <Input 
-      type="text" 
-      id="display-name" 
-      bind:value={displayName} 
-      disabled={loading} 
-      placeholder="Your Name"
-    />
+        <label for="email" class="text-sm font-medium">Email</label>
+        <Input type="email" id="email" bind:value={email} required disabled={loading} />
   </div>
   
   <div class="space-y-2">
     <label for="password" class="text-sm font-medium">Password</label>
-    <Input 
-      type="password" 
-      id="password" 
-      bind:value={password} 
-      disabled={loading} 
-      required
-    />
+        <Input type="password" id="password" bind:value={password} required disabled={loading} />
+        <!-- Add password strength indicator if needed -->
   </div>
   
-  <div class="space-y-2">
-    <label for="confirm-password" class="text-sm font-medium">
-      Confirm Password
-    </label>
-    <Input 
-      type="password" 
-      id="confirm-password"
-      bind:value={confirmPassword}
-      disabled={loading}
-      required
-      class={!passwordsMatch && confirmPassword ? 'border-[hsl(var(--functional-error))]' : ''}
-    />
-    {#if !passwordsMatch && confirmPassword}
-      <p class="text-sm text-[hsl(var(--functional-error))]">
-        Passwords do not match
-      </p>
-    {/if}
-  </div>
-  
-  <Button type="submit" disabled={loading} class="w-full">
-    {loading ? 'Creating account...' : 'Create account'}
+      <Button type="submit" class="w-full" disabled={loading}>
+        {loading ? 'Registering...' : 'Register'}
   </Button>
   
-  <div class="text-center text-sm">
-    Already have an account?
-    <a href="/login" class="text-[hsl(var(--link))]">
-      Log in
-    </a>
+       <div class="mt-4 text-center text-sm">
+        Already have an account? <a href="/login" class="underline">Log in</a>
   </div>
 </form>
 ```
 
-### 3.6 Logout Implementation
-
-1. **Logout Component:**
-   - MUST implement logout functionality:
-
-```svelte
-<!-- src/lib/components/auth/LogoutButton.svelte -->
-<script>
-  import { goto } from '$app/navigation';
-  import authService from '$lib/services/authService';
-  import Button from '$lib/components/ui/button/button.svelte';
-  
-  /**
-   * @typedef {Object} LogoutButtonProps
-   * @property {string} [variant='default'] - Button variant
-   * @property {string} [redirectUrl='/login'] - URL to redirect to after logout
-   * @property {Function} [onSuccess] - Callback on successful logout
-   */
-  
-  /** @type {LogoutButtonProps} */
-  let { 
-    variant = 'default',
-    redirectUrl = '/login',
-    onSuccess,
-    children
-  } = $props();
-  
-  let loading = $state(false);
-  
-  async function handleLogout() {
-    loading = true;
-    
-    const result = await authService.logout();
-    
-    if (result.success) {
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        // Default behavior - redirect
-        goto(redirectUrl);
-      }
-    } else {
-      console.error('Logout failed:', result.error);
-      // Show error toast or notification
-    }
-    
-    loading = false;
-  }
-</script>
-
-<Button 
-  {variant} 
-  onclick={handleLogout} 
-  disabled={loading}
->
-  {#if loading}
-    Logging out...
-  {:else if children}
-    {@render children()}
-  {:else}
-    Logout
-  {/if}
-</Button>
-```
-
-### 3.7 Authenticated API Requests
-
-1. **Authenticated Fetch Helper:**
-   - MUST implement helper for authenticated API requests:
-
-```javascript
-// src/lib/utils/fetchWithAuth.js
-
-/**
- * @typedef {Object} FetchOptions
- * @property {string} [method='GET'] - HTTP method
- * @property {Object} [body] - Request body (will be JSON stringified)
- * @property {HeadersInit} [headers] - Additional headers
- * @property {boolean} [credentials=true] - Whether to include credentials
- * @property {boolean} [json=true] - Whether to parse response as JSON
- */
-
-/**
- * Fetch helper with authentication
- * @param {string} url - Request URL
- * @param {FetchOptions} options - Fetch options
- * @returns {Promise<any>} Response data
- */
-export default async function fetchWithAuth(url, options = {}) {
-  const {
-    method = 'GET',
-    body,
-    headers = {},
-    credentials = true,
-    json = true
-  } = options;
-  
-  // Build fetch options
-  const fetchOptions = {
-    method,
-    headers: {
-      // Default headers
-      'Content-Type': 'application/json',
-      // Merge with custom headers
-      ...headers
-    }
-  };
-  
-  // Include credentials for cookies
-  if (credentials) {
-    fetchOptions.credentials = 'include';
-  }
-  
-  // Add body for non-GET requests
-  if (body && method !== 'GET') {
-    fetchOptions.body = JSON.stringify(body);
-  }
-  
-  // Make the request
-  const response = await fetch(url, fetchOptions);
-  
-  // Handle JSON responses
-  if (json) {
-    const data = await response.json();
-    
-    // If response is not ok, throw an error with the response data
-    if (!response.ok) {
-      const error = new Error(data.error || 'API request failed');
-      error.status = response.status;
-      error.data = data;
-      throw error;
-    }
-    
-    return data;
-  }
-  
-  // For non-JSON responses
-  if (!response.ok) {
-    const error = new Error('API request failed');
-    error.status = response.status;
-    throw error;
-  }
-  
-  return response;
-}
-```
-
-2. **API Service with Authentication:**
-   - SHOULD implement API service for authenticated requests:
-
-```javascript
-// src/lib/services/apiService.js
-
-import fetchWithAuth from '$lib/utils/fetchWithAuth';
-
-/**
- * API service for authenticated requests
- */
-const apiService = {
-  /**
-   * Get user profile
-   * @returns {Promise<Object>} User profile data
-   */
-  getUserProfile: async () => {
-    return await fetchWithAuth('/api/user/profile');
-  },
-  
-  /**
-   * Update user profile
-   * @param {Object} profileData - Profile data to update
-   * @returns {Promise<Object>} Updated profile data
-   */
-  updateUserProfile: async (profileData) => {
-    return await fetchWithAuth('/api/user/profile', {
-      method: 'PUT',
-      body: profileData
-    });
-  },
-  
-  /**
-   * Change user password
-   * @param {{currentPassword: string, newPassword: string}} passwords - Password data
-   * @returns {Promise<Object>} Response data
-   */
-  changePassword: async (passwords) => {
-    return await fetchWithAuth('/api/auth/password/change', {
-      method: 'POST',
-      body: passwords
-    });
-  },
-  
-  /**
-   * Generic authenticated GET request
-   * @param {string} endpoint - API endpoint
-   * @returns {Promise<any>} Response data
-   */
-  get: async (endpoint) => {
-    return await fetchWithAuth(endpoint);
-  },
-  
-  /**
-   * Generic authenticated POST request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
-   * @returns {Promise<any>} Response data
-   */
-  post: async (endpoint, data) => {
-    return await fetchWithAuth(endpoint, {
-      method: 'POST',
-      body: data
-    });
-  },
-  
-  /**
-   * Generic authenticated PUT request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} data - Request data
-   * @returns {Promise<any>} Response data
-   */
-  put: async (endpoint, data) => {
-    return await fetchWithAuth(endpoint, {
-      method: 'PUT',
-      body: data
-    });
-  },
-  
-  /**
-   * Generic authenticated DELETE request
-   * @param {string} endpoint - API endpoint
-   * @returns {Promise<any>} Response data
-   */
-  delete: async (endpoint) => {
-    return await fetchWithAuth(endpoint, {
-      method: 'DELETE'
-    });
-  }
-};
-
-export default apiService;
-```
-
-### 3.8 WordPress <-> SvelteKit Auto Login
-
-1. **Auto Login Component:**
-   - MUST implement auto login status check:
-
-```svelte
-<!-- src/lib/components/auth/WpAutoLogin.svelte -->
-<script>
-  import { onMount } from 'svelte';
-  import { authStore } from '$lib/stores/authStore';
-  import { goto } from '$app/navigation';
-  
-  /** @type {{redirectUrl?: string, autoRedirect?: boolean, onStatusChange?: Function}} */
-  let { 
-    redirectUrl = '/dashboard',
-    autoRedirect = true,
-    onStatusChange,
-    children
-  } = $props();
-  
-  let status = $state('checking');
-  let error = $state('');
-  
-  // Check WordPress session status and attempt auto-login
-  async function checkWpSessionStatus() {
-    try {
-      status = 'checking';
-      
-      // Call the WordPress session check endpoint
-      const response = await fetch('/api/auth/check-wp-session', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        status = 'authenticated';
-        
-        // Update auth store with user data
-        authStore.setUser(data.user);
-        
-        // Callback if provided
-        if (onStatusChange) {
-          onStatusChange(status, data.user);
-        }
-        
-        // Redirect if configured
-        if (autoRedirect) {
-          goto(redirectUrl);
-        }
-      } else {
-        status = 'unauthenticated';
-        
-        if (data.error === 'no_active_wp_sessions') {
-          error = 'No active WordPress session found';
-        } else if (data.error === 'wp_request_error') {
-          error = 'Error connecting to WordPress';
-        } else if (data.error === 'sk_sync_failed') {
-          error = 'User synchronization failed';
-        } else {
-          error = data.error || 'Authentication failed';
-        }
-        
-        // Callback if provided
-        if (onStatusChange) {
-          onStatusChange(status, null, error);
-        }
-      }
-    } catch (err) {
-      status = 'error';
-      error = err instanceof Error ? err.message : 'Unknown error';
-      
-      // Callback if provided
-      if (onStatusChange) {
-        onStatusChange(status, null, error);
-      }
-    }
-  }
-  
-  onMount(() => {
-    checkWpSessionStatus();
-  });
-</script>
-
-{#if children}
-  {@render children({ status, error })}
-{:else}
-  <div>
-    {#if status === 'checking'}
-      <p>Checking authentication status...</p>
-    {:else if status === 'authenticated'}
-      <p>Successfully authenticated with WordPress!</p>
-      {#if autoRedirect}
-        <p>Redirecting to dashboard...</p>
-      {/if}
-    {:else if status === 'unauthenticated'}
-      <p>Not authenticated with WordPress.</p>
-      <p class="text-[hsl(var(--functional-error))]">{error}</p>
-    {:else if status === 'error'}
-      <p>Error checking authentication status.</p>
-      <p class="text-[hsl(var(--functional-error))]">{error}</p>
-    {/if}
-  </div>
-{/if}
-```
-
-2. **Auto Login Page Implementation:**
-   - SHOULD implement auto login page:
-
-```svelte
-<!-- src/routes/auto-login/+page.svelte -->
-<script>
-  import { page } from '$app/stores';
-  import WpAutoLogin from '$lib/components/auth/WpAutoLogin.svelte';
-  import Button from '$lib/components/ui/button/button.svelte';
-  
-  // Get redirect URL from query parameter or use default
-  $: redirectUrl = $page.url.searchParams.get('redirectTo') || '/dashboard';
-  
-  // Function to handle auto login status change
-  function handleStatusChange(status, user, error) {
-    console.log('Auto login status:', status);
-    // Add additional logic if needed
-  }
-</script>
-
-<div class="flex items-center justify-center min-h-screen">
-  <div class="w-full max-w-md p-6 bg-[hsl(var(--surface-2))] rounded-md shadow-md">
-    <h1 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] mb-6 text-center">
-      WordPress Auto Login
-    </h1>
-    
-    <WpAutoLogin 
-      {redirectUrl} 
-      autoRedirect={true}
-      onStatusChange={handleStatusChange}
-    >
-      {({ status, error }) => (
-        <div class="space-y-4">
-          {#if status === 'checking'}
-            <div class="text-center py-4">
-              <div class="animate-spin h-8 w-8 border-4 border-[hsl(var(--brand))] border-t-transparent rounded-full mx-auto mb-2"></div>
-              <p>Checking WordPress authentication...</p>
-            </div>
-          {:else if status === 'authenticated'}
-            <div class="p-4 bg-[hsl(var(--functional-success)/0.1)] text-[hsl(var(--functional-success))] rounded-md text-center">
-              <p>Successfully authenticated!</p>
-              <p class="text-sm mt-1">Redirecting to your dashboard...</p>
-            </div>
-          {:else if status === 'unauthenticated' || status === 'error'}
-            <div class="p-4 bg-[hsl(var(--functional-error)/0.1)] text-[hsl(var(--functional-error))] rounded-md">
-              <p>{status === 'error' ? 'Authentication error' : 'Not authenticated with WordPress'}</p>
-              <p class="text-sm mt-1">{error}</p>
-            </div>
-            
-            <div class="flex flex-col space-y-2">
-              <Button href="/login" variant="secondary" class="w-full">
-                Sign in manually
-              </Button>
-              <Button href="/register" variant="outline" class="w-full">
-                Create an account
-              </Button>
-              <Button href="/" variant="ghost" class="w-full">
-                Return to home
-              </Button>
-            </div>
-          {/if}
-        </div>
-      )}
-    </WpAutoLogin>
-  </div>
-</div>
-```
-
-## 4. Social Authentication Integration
-
-### 4.1 Social Login Component
-
-1. **Social Login Buttons:**
-   - MUST implement social login for configured providers:
-
-```svelte
-<!-- src/lib/components/auth/SocialLogins.svelte -->
-<script>
-  import Button from '$lib/components/ui/button/button.svelte';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { GoogleIcon, GithubIcon, DiscordIcon } from '$lib/utils/lucide-compat.js';
-  
-  /**
-   * @typedef {Object} SocialLoginProps
-   * @property {string[]} [providers=['google', 'github', 'discord']] - Social providers to show
-   * @property {string} [returnTo] - URL to redirect to after login
-   */
-  
-  /** @type {SocialLoginProps} */
-  let { 
-    providers = ['google', 'github', 'discord'],
-    returnTo = '/dashboard'
-  } = $props();
-  
-  // Providers configuration
-  const providersConfig = {
-    google: {
-      name: 'Google',
-      icon: GoogleIcon,
-      color: 'bg-white text-black border border-gray-300 hover:bg-gray-100'
-    },
-    github: {
-      name: 'GitHub',
-      icon: GithubIcon,
-      color: 'bg-[#333] text-white hover:bg-[#24292e]'
-    },
-    discord: {
-      name: 'Discord',
-      icon: DiscordIcon,
-      color: 'bg-[#5865F2] text-white hover:bg-[#4752C4]'
-    }
-  };
-  
-  // Filter to only configured providers
-  const availableProviders = providers.filter(
-    provider => provider in providersConfig
-  );
-  
-  // Generate OAuth URL with returnTo
-  function getOAuthUrl(provider) {
-    const params = new URLSearchParams();
-    if (returnTo) {
-      params.append('returnTo', returnTo);
-    }
-    
-    return `/api/auth/${provider}?${params.toString()}`;
-  }
-</script>
-
-<div class="space-y-3">
-  {#each availableProviders as provider}
-    {#if provider in providersConfig}
-      <a href={getOAuthUrl(provider)} class="block w-full">
-        <Button 
-          variant="outline" 
-          class="w-full {providersConfig[provider].color}"
-        >
-          <Icon icon={providersConfig[provider].icon} class="mr-2 h-4 w-4" />
-          Continue with {providersConfig[provider].name}
-        </Button>
-      </a>
-    {/if}
-  {/each}
-</div>
-```
-
-### 4.2 Social Auth Callback Page
-
-1. **OAuth Callback Page:**
-   - MUST implement OAuth callback page:
-
-```svelte
-<!-- src/routes/auth/callback/[provider]/+page.svelte -->
-<script>
-  import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
-  import { authStore } from '$lib/stores/authStore';
-  
-  // Get provider from route parameter
-  $: provider = $page.params.provider;
-  // Get return URL from query parameter or use default
-  $: returnTo = $page.url.searchParams.get('returnTo') || '/dashboard';
-  
-  let loading = $state(true);
-  let error = $state('');
-  
-  async function handleCallback() {
-    try {
-      loading = true;
-      
-      // Exchange the authorization code for tokens/user data
-      const response = await fetch(`/api/auth/callback/${provider}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          code: $page.url.searchParams.get('code'),
-          state: $page.url.searchParams.get('state')
-        }),
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.user) {
-        // Update auth store with user data
-        authStore.setUser(data.user);
-        
-        // Redirect to the return URL
-        goto(returnTo);
-      } else {
-        error = data.error || 'Authentication failed';
-        loading = false;
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Authentication failed';
-      loading = false;
-    }
-  }
-  
-  onMount(() => {
-    handleCallback();
-  });
-</script>
-
-<div class="flex items-center justify-center min-h-screen">
-  <div class="w-full max-w-md p-6 bg-[hsl(var(--surface-2))] rounded-md shadow-md">
-    <h1 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] mb-6 text-center">
-      {#if loading}
-        Completing {provider} authentication...
-      {:else if error}
-        Authentication Error
-      {:else}
-        Authentication Complete
-      {/if}
-    </h1>
-    
-    {#if loading}
-      <div class="text-center py-4">
-        <div class="animate-spin h-8 w-8 border-4 border-[hsl(var(--brand))] border-t-transparent rounded-full mx-auto mb-2"></div>
-        <p>Please wait...</p>
-      </div>
-    {:else if error}
-      <div class="p-4 bg-[hsl(var(--functional-error)/0.1)] text-[hsl(var(--functional-error))] rounded-md">
-        <p>Failed to authenticate with {provider}</p>
-        <p class="text-sm mt-1">{error}</p>
-      </div>
-      
-      <div class="mt-4 flex flex-col space-y-2">
-        <Button href="/login" variant="secondary" class="w-full">
-          Try Again
-        </Button>
-        <Button href="/" variant="ghost" class="w-full">
-          Return to Home
-        </Button>
-      </div>
-    {/if}
-  </div>
-</div>
-```
-
-## 5. Auth State Hooks
-
-1. **Custom Auth Hooks:**
-   - SHOULD implement custom hooks for auth state:
-
-```javascript
-// src/lib/hooks/useAuth.js
-
-import { derived } from 'svelte/store';
-import { authStore, user, isAuthenticated, isLoading, authError } from '$lib/stores/authStore';
-import authService from '$lib/services/authService';
-
-/**
- * Custom auth hook to provide auth state and methods
- * @returns {Object} Auth state and methods
- */
-export function useAuth() {
-  // Derive additional auth states
-  const hasAuth = derived(authStore, $state => $state.initialized && !$state.loading);
-  
-  const isAdmin = derived(user, $user => {
-    if (!$user) return false;
-    return $user.roles?.includes('admin') || false;
-  });
-  
-  const userInitials = derived(user, $user => {
-    if (!$user) return '';
-    if ($user.displayName) {
-      const parts = $user.displayName.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      }
-      return parts[0][0].toUpperCase();
-    }
-    return $user.email[0].toUpperCase();
-  });
-  
-  // Return combined auth state and methods
-  return {
-    // State
-    store: authStore,
-    user,
-    isAuthenticated,
-    isLoading,
-    hasAuth,
-    isAdmin,
-    error: authError,
-    userInitials,
-    
-    // Methods
-    login: authService.login,
-    register: authService.register,
-    logout: authService.logout,
-    forgotPassword: authService.forgotPassword,
-    resetPassword: authService.resetPassword,
-    initAuth: authService.initAuth
-  };
-}
-```
-
-## 6. Implementation Examples
-
-### 6.1 Navbar User Menu Example
-
-```svelte
-<!-- src/lib/components/layout/UserMenu.svelte -->
-<script>
-  import { useAuth } from '$lib/hooks/useAuth';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import Button from '$lib/components/ui/button/button.svelte';
-  import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger
-  } from '$lib/components/ui/dropdown-menu';
-  import Avatar from '$lib/components/ui/avatar/avatar.svelte';
-  import AvatarFallback from '$lib/components/ui/avatar/avatar-fallback.svelte';
-  import { UserIcon, SettingsIcon, LogOutIcon } from '$lib/utils/lucide-compat.js';
-  
-  // Get auth state and methods
-  const { user, isAuthenticated, isLoading, userInitials, logout } = useAuth();
-  
-  // Handle logout
-  async function handleLogout() {
-    await logout();
-  }
-</script>
-
-{#if $isLoading}
-  <Button variant="ghost" size="icon" disabled>
-    <span class="animate-pulse">
-      <Icon icon={UserIcon} size={20} />
-    </span>
-  </Button>
-{:else if $isAuthenticated}
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-        <Button variant="ghost" class="relative h-8 w-8 rounded-full">
-        <Avatar>
-            <AvatarFallback>{$userInitials}</AvatarFallback>
-        </Avatar>
-        </Button>
-    </DropdownMenuTrigger>
-    
-    <DropdownMenuContent align="end">
-        <DropdownMenuLabel>
-        {$user?.displayName || $user?.email}
-        </DropdownMenuLabel>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem asChild>
-        <a href="/profile">
-            <Icon icon={UserIcon} class="mr-2 h-4 w-4" />
-            <span>Profile</span>
-        </a>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem asChild>
-        <a href="/settings">
-            <Icon icon={SettingsIcon} class="mr-2 h-4 w-4" />
-            <span>Settings</span>
-        </a>
-        </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem onclick={handleLogout}>
-        <Icon icon={LogOutIcon} class="mr-2 h-4 w-4" />
-        <span>Log out</span>
-        </DropdownMenuItem>
-    </DropdownMenuContent>
-    </DropdownMenu>
-    {:else}
-    <div class="flex gap-2">
-        <Button variant="ghost" href="/login">
-        Log in
-        </Button>
-        <Button href="/register">
-        Sign up
-        </Button>
-    </div>
-    {/if}
-```
-
-### 6.2 Auth Route Pages Example
-
-```svelte
-<!-- src/routes/login/+page.svelte -->
-<script>
-  import LoginForm from '$lib/components/auth/LoginForm.svelte';
-  import SocialLogins from '$lib/components/auth/SocialLogins.svelte';
-  import { page } from '$app/stores';
-  
-  // Get return URL from query parameter
-  $: returnTo = $page.url.searchParams.get('returnTo') || '/dashboard';
-</script>
-
-<div class="flex items-center justify-center min-h-screen">
-  <div class="w-full max-w-md p-6 bg-[hsl(var(--surface-2))] rounded-md shadow-md">
-    <h1 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] mb-6 text-center">
-      Log in to your account
-    </h1>
-    
-    <LoginForm />
-    
-    {#if returnTo}
-      <input type="hidden" name="returnTo" value={returnTo} />
-    {/if}
-    
-    {#if true} <!-- Replace with check for enabled social providers -->
-      <div class="my-6 flex items-center">
-        <div class="flex-grow h-px bg-[hsl(var(--border))]"></div>
-        <span class="px-3 text-sm text-[hsl(var(--text-2))]">OR</span>
-        <div class="flex-grow h-px bg-[hsl(var(--border))]"></div>
-      </div>
-      
-      <SocialLogins {returnTo} />
-    {/if}
-  </div>
-</div>
-```
-
-## 7. Token Refresh Mechanism
-
-### 7.1 Refresh Token Service
-
-1. **Token Refresh Implementation:**
-   - MUST implement token refresh logic:
-
-```javascript
-// src/lib/services/refreshTokenService.js
-
-/**
- * @typedef {Object} RefreshState
- * @property {boolean} isRefreshing - Whether a refresh is in progress
- * @property {Promise<boolean>|null} refreshPromise - Current refresh operation
- */
-
-/**
- * Service for managing authentication token refresh
- */
-const refreshTokenService = {
-  /** @type {RefreshState} */
-  state: {
-    isRefreshing: false,
-    refreshPromise: null
-  },
-  
-  /**
-   * Refreshes the authentication token
-   * @returns {Promise<boolean>} Whether refresh was successful
-   */
-  refreshToken: async () => {
-    // If already refreshing, return the existing promise
-    if (refreshTokenService.state.isRefreshing && refreshTokenService.state.refreshPromise) {
-      return refreshTokenService.state.refreshPromise;
-    }
-    
-    // Set refreshing state
-    refreshTokenService.state.isRefreshing = true;
-    
-    // Create and store the refresh promise
-    refreshTokenService.state.refreshPromise = (async () => {
-      try {
-        // Attempt to refresh the token
-        const response = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include'
-        });
-        
-        const data = await response.json();
-        
-        return data.success === true;
-      } catch (error) {
-        console.error('Token refresh error:', error);
-        return false;
-      } finally {
-        // Reset refreshing state
-        refreshTokenService.state.isRefreshing = false;
-        refreshTokenService.state.refreshPromise = null;
-      }
-    })();
-    
-    // Return the refresh promise
-    return refreshTokenService.state.refreshPromise;
-  }
-};
-
-export default refreshTokenService;
-```
-
-### 7.2 Auth Interceptor for Failed Requests
-
-1. **Request Interceptor:**
-   - MUST implement automatic token refresh on 401 responses:
-
-```javascript
-// src/lib/utils/authFetch.js
-
-import refreshTokenService from '$lib/services/refreshTokenService';
-
-/**
- * @typedef {Object} AuthFetchOptions
- * @property {string} [method='GET'] - HTTP method
- * @property {Object} [body] - Request body (will be JSON stringified)
- * @property {HeadersInit} [headers] - Additional headers
- * @property {boolean} [withCredentials=true] - Whether to include credentials
- * @property {boolean} [handleRefresh=true] - Whether to handle token refresh
- * @property {number} [maxRetries=1] - Maximum number of retry attempts
- */
-
-/**
- * Fetch wrapper with authentication and token refresh
- * @param {string} url - Request URL
- * @param {AuthFetchOptions} options - Fetch options
- * @returns {Promise<any>} Response data
- */
-export default async function authFetch(url, options = {}) {
-  const {
-    method = 'GET',
-    body,
-    headers = {},
-    withCredentials = true,
-    handleRefresh = true,
-    maxRetries = 1
-  } = options;
-  
-  let retries = 0;
-  
-  /**
-   * Executes the fetch request
-   * @returns {Promise<Response>} Fetch response
-   */
-  async function executeFetch() {
-    const fetchOptions = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers
-      }
-    };
-    
-    if (withCredentials) {
-      fetchOptions.credentials = 'include';
-    }
-    
-    if (body && method !== 'GET') {
-      fetchOptions.body = JSON.stringify(body);
-    }
-    
-    return fetch(url, fetchOptions);
-  }
-  
-  /**
-   * Processes the response
-   * @param {Response} response - Fetch response
-   * @returns {Promise<any>} Processed response data
-   */
-  async function processResponse(response) {
-    // Parse JSON response
-    const data = await response.json().catch(() => ({}));
-    
-    // If response is unauthorized and we should handle refresh
-    if (response.status === 401 && handleRefresh && retries < maxRetries) {
-      // Attempt to refresh token
-      const refreshSuccess = await refreshTokenService.refreshToken();
-      
-      if (refreshSuccess) {
-        // Increment retry count
-        retries++;
-        
-        // Retry the request with the new token
-        return executeFetch().then(processResponse);
-      }
-    }
-    
-    // If response is not ok and we didn't handle it above
-    if (!response.ok) {
-      const error = new Error(data.error || data.message || 'Request failed');
-      error.status = response.status;
-      error.data = data;
-      throw error;
-    }
-    
-    return data;
-  }
-  
-  // Execute the fetch and process the response
-  const response = await executeFetch();
-  return processResponse(response);
-}
-```
-
-## 8. Auth State Persistence
-
-### 8.1 Persisted Auth Check on Navigation
-
-1. **Navigation Guard with Auth Check:**
-   - SHOULD implement auth check on every navigation:
-
-```javascript
-// src/routes/+layout.js
-
-import { browser } from '$app/environment';
-import authService from '$lib/services/authService';
-
-/**
- * @type {number|null}
- */
-let authInitPromise = null;
-
-/**
- * SvelteKit load function to check auth state on every navigation
- * @returns {Promise<{}>} Empty props
- */
-export async function load() {
-  if (browser) {
-    // Only initialize auth once per session
-    if (!authInitPromise) {
-      authInitPromise = authService.initAuth();
-    }
-    
-    // Await the auth initialization (won't block SSR)
-    await authInitPromise;
-  }
-  
-  return {};
-}
-```
-
-### 8.2 SvelteKit Session Invalidation Hook
-
-1. **Session Invalidation Hook:**
-   - SHOULD implement hook to detect and handle invalid sessions during navigation:
-
-```javascript
-// src/hooks.client.js
-
-import { authStore } from '$lib/stores/authStore';
-import { goto } from '$app/navigation';
-
-/**
- * Client-side hook for handling fetch responses in SvelteKit
- * @type {import('@sveltejs/kit').HandleClientFetch}
- */
-export async function handleFetch({ request, fetch }) {
-  // Send the original request
-  const response = await fetch(request);
-  
-  // Check for 401 Unauthorized
-  if (response.status === 401) {
-    // Clone the response before consuming it
-    const clonedResponse = response.clone();
-    
-    try {
-      const data = await clonedResponse.json();
-      
-      // If session expired or invalid
-      if (data.error === 'invalid_session' || data.error === 'expired_session') {
-        // Reset auth store
-        authStore.reset();
-        
-        // Redirect to login with return URL
-        const returnUrl = encodeURIComponent(window.location.pathname);
-        goto(`/login?returnTo=${returnUrl}`);
-      }
-    } catch (error) {
-      // Response might not be JSON, ignore
-    }
-  }
-  
-  // Return the original response regardless
-  return response;
-}
-```
-
-## 9. Role-Based Access Control
-
-### 9.1 Role-Check Utility
-
-1. **Role Verification Utility:**
-   - MUST implement role verification helper:
-
-```javascript
-// src/lib/utils/roleUtils.js
-
-import { user } from '$lib/stores/authStore';
-import { derived } from 'svelte/store';
-
-/**
- * @typedef {Object} RoleUtils
- * @property {import('svelte/store').Readable<boolean>} isAdmin - Whether user has admin role
- * @property {import('svelte/store').Readable<boolean>} isEditor - Whether user has editor role
- * @property {function(string): import('svelte/store').Readable<boolean>} hasRole - Function to check a specific role
- * @property {function(string[]): import('svelte/store').Readable<boolean>} hasAnyRole - Function to check if user has any of the roles
- * @property {function(string[]): import('svelte/store').Readable<boolean>} hasAllRoles - Function to check if user has all roles
- */
-
-/**
- * Creates a store that checks if user has a specific role
- * @param {string} roleName - Role to check
- * @returns {import('svelte/store').Readable<boolean>} Derived store with boolean result
- */
-function createHasRoleStore(roleName) {
-  return derived(user, $user => {
-    if (!$user || !$user.roles) return false;
-    return $user.roles.includes(roleName);
-  });
-}
-
-/**
- * Creates a store that checks if user has any of the specified roles
- * @param {string[]} roleNames - Roles to check
- * @returns {import('svelte/store').Readable<boolean>} Derived store with boolean result
- */
-function createHasAnyRoleStore(roleNames) {
-  return derived(user, $user => {
-    if (!$user || !$user.roles || roleNames.length === 0) return false;
-    return roleNames.some(role => $user.roles.includes(role));
-  });
-}
-
-/**
- * Creates a store that checks if user has all specified roles
- * @param {string[]} roleNames - Roles to check
- * @returns {import('svelte/store').Readable<boolean>} Derived store with boolean result
- */
-function createHasAllRolesStore(roleNames) {
-  return derived(user, $user => {
-    if (!$user || !$user.roles || roleNames.length === 0) return false;
-    return roleNames.every(role => $user.roles.includes(role));
-  });
-}
-
-/**
- * Role utility with common role checks
- * @type {RoleUtils}
- */
-const roleUtils = {
-  // Common role checks
-  isAdmin: createHasRoleStore('admin'),
-  isEditor: createHasRoleStore('editor'),
-  
-  // Function to check a specific role
-  hasRole: (roleName) => createHasRoleStore(roleName),
-  
-  // Function to check if user has any of the roles
-  hasAnyRole: (roleNames) => createHasAnyRoleStore(roleNames),
-  
-  // Function to check if user has all roles
-  hasAllRoles: (roleNames) => createHasAllRolesStore(roleNames)
-};
-
-export default roleUtils;
-```
-
-### 9.2 Role-Protected Component
-
-1. **Role-Based Access Control Component:**
-   - MUST implement role-based access control:
-
-```svelte
-<!-- src/lib/components/auth/RequireRole.svelte -->
-<script>
-  import { onDestroy } from 'svelte';
-  import { isAuthenticated } from '$lib/stores/authStore';
-  import roleUtils from '$lib/utils/roleUtils';
-  
-  /**
-   * @typedef {Object} RequireRoleProps
-   * @property {string|string[]} roles - Role(s) required to access content
-   * @property {boolean} [requireAll=false] - Whether all roles are required
-   * @property {import('svelte').Snippet} [fallback] - Content to show if not authorized
-   * @property {import('svelte').Snippet} children - Child content
-   */
-  
-  /** @type {RequireRoleProps} */
-  let { 
-    roles, 
-    requireAll = false, 
-    fallback,
-    children
-  } = $props();
-  
-  // Convert single role to array
-  $: roleArray = Array.isArray(roles) ? roles : [roles];
-  
-  // Create appropriate role check store
-  $: roleCheck = requireAll 
-    ? roleUtils.hasAllRoles(roleArray)
-    : roleUtils.hasAnyRole(roleArray);
-  
-  // Store subscription
-  let authorized = false;
-  let unsubscribe;
-  
-  $: {
-    // Clean up previous subscription
-    if (unsubscribe) {
-      unsubscribe();
-    }
-    
-    // Subscribe to the role check store
-    unsubscribe = roleCheck.subscribe(hasRole => {
-      authorized = hasRole;
-    });
-  }
-  
-  // Clean up subscription
-  onDestroy(() => {
-    if (unsubscribe) {
-      unsubscribe();
-    }
-  });
-</script>
-
-{#if $isAuthenticated && authorized}
-  {#if children}
-    {@render children()}
-  {/if}
-{:else if fallback}
-  {@render fallback()}
-{/if}
-```
-
-### 9.3 Role-Protected Routes
-
-1. **Role-Based Route Protection:**
-   - SHOULD implement role-based route protection:
-
-```javascript
-// src/routes/(protected-admin)/+layout.js
-
-import { redirect } from '@sveltejs/kit';
-
-/**
- * SvelteKit load function for admin-only routes
- * @param {import('@sveltejs/kit').LoadEvent} event - Load event
- * @returns {Promise<{user: import('$lib/stores/authStore').User}>} User data
- */
-export async function load({ fetch, url }) {
-  // Check authentication and role status
-  const response = await fetch('/api/auth/verify-role', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      requiredRoles: ['admin']
-    })
-  });
-  
-  const data = await response.json();
-  
-  if (!data.success) {
-    // Determine redirect based on auth state
-    if (data.error === 'not_authenticated') {
-      // Save intended destination for redirecting back after login
-      const returnTo = encodeURIComponent(url.pathname);
-      throw redirect(303, `/login?returnTo=${returnTo}`);
-    } else {
-      // User is authenticated but doesn't have required role
-      throw redirect(303, '/unauthorized');
-    }
-  }
-  
-  // Pass the user data to the page/layout
-  return {
-    user: data.user
-  };
-}
-```
-
-## 10. Client-Side Error Handling
-
-### 10.1 Auth Error Handling Component
-
-1. **Auth Error Display Component:**
-   - SHOULD implement component for standardized auth error display:
-
-```svelte
-<!-- src/lib/components/auth/AuthError.svelte -->
-<script>
-  import Alert from '$lib/components/ui/alert/alert.svelte';
-  import AlertTitle from '$lib/components/ui/alert/alert-title.svelte';
-  import AlertDescription from '$lib/components/ui/alert/alert-description.svelte';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { AlertCircleIcon } from '$lib/utils/lucide-compat.js';
-  
-  /**
-   * @typedef {Object} AuthErrorProps
-   * @property {string} [error] - Error message to display
-   * @property {string} [code] - Error code
-   * @property {boolean} [dismissible=false] - Whether the error can be dismissed
-   */
-  
-  /** @type {AuthErrorProps} */
-  let { 
-    error = '',
-    code = '',
-    dismissible = false
-  } = $props();
-  
-  // Dismiss function
-  function dismiss() {
-    error = '';
-    code = '';
-  }
-  
-  /**
-   * Get user-friendly error message based on error code/message
-   * @param {string} errorCode - Error code or message
-   * @returns {string} User-friendly error message
-   */
-  function getUserFriendlyError(errorCode) {
-    const errorMessages = {
-      'invalid_credentials': 'The email or password you entered is incorrect.',
-      'email_already_exists': 'An account with this email already exists.',
-      'expired_session': 'Your session has expired. Please log in again.',
-      'invalid_session': 'Your session is invalid. Please log in again.',
-      'password_too_weak': 'Password does not meet security requirements.',
-      'insufficient_permissions': 'You do not have permission to access this resource.',
-      'network_error': 'Network error. Please check your connection and try again.'
-    };
-    
-    return errorMessages[errorCode] || errorCode || 'An unknown error occurred.';
-  }
-  
-  $: displayError = getUserFriendlyError(error || code);
-  $: showError = Boolean(displayError);
-</script>
-
-{#if showError}
-  <Alert variant="destructive">
-    <Icon icon={AlertCircleIcon} class="h-4 w-4" />
-    <AlertTitle>Authentication Error</AlertTitle>
-    <AlertDescription>{displayError}</AlertDescription>
-    
-    {#if dismissible}
-      <button 
-        class="absolute top-2 right-2 p-1 rounded-full hover:bg-[hsl(var(--functional-error)/0.2)]" 
-        aria-label="Close"
-        onclick={dismiss}
-      >
-        <span aria-hidden="true">&times;</span>
-      </button>
-    {/if}
-  </Alert>
-{/if}
-```
-
-### 10.2 Auth Error Handler Service
-
-1. **Error Handler Service:**
-   - SHOULD implement centralized auth error handling:
-
-```javascript
-// src/lib/services/errorHandlerService.js
-
-import { goto } from '$app/navigation';
-import { authStore } from '$lib/stores/authStore';
-
-/**
- * @typedef {Object} AuthErrorHandlerConfig
- * @property {boolean} [redirectOnSessionError=true] - Whether to redirect on session errors
- * @property {boolean} [resetStoreOnSessionError=true] - Whether to reset auth store on session errors
- * @property {string} [loginRedirectUrl='/login'] - Login page URL
- */
-
-/**
- * Auth error handler service
- */
-const errorHandlerService = {
-  /**
-   * Default error handler config
-   * @type {AuthErrorHandlerConfig}
-   */
-  defaultConfig: {
-    redirectOnSessionError: true,
-    resetStoreOnSessionError: true,
-    loginRedirectUrl: '/login'
-  },
-  
-  /**
-   * Handles authentication error
-   * @param {Error|Object|string} error - Error object, message, or code
-   * @param {AuthErrorHandlerConfig} [config] - Error handler configuration
-   * @returns {string} Processed error message
-   */
-  handleAuthError: (error, config = {}) => {
-    // Merge config with defaults
-    const fullConfig = { ...errorHandlerService.defaultConfig, ...config };
-    
-    // Extract error message and code
-    let errorMessage = '';
-    let errorCode = '';
-    
-    if (typeof error === 'string') {
-      errorMessage = error;
-      errorCode = error;
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-      errorCode = error.code || '';
-    } else if (typeof error === 'object' && error !== null) {
-      errorMessage = error.message || error.error || '';
-      errorCode = error.code || error.error || '';
-    }
-    
-    // Check for session errors
-    const isSessionError = [
-      'expired_session',
-      'invalid_session',
-      'session_not_found',
-      'unauthorized'
-    ].includes(errorCode);
-    
-    // Handle session errors
-    if (isSessionError) {
-      // Reset auth store if configured
-      if (fullConfig.resetStoreOnSessionError) {
-        authStore.reset();
-      }
-      
-      // Redirect to login if configured
-      if (fullConfig.redirectOnSessionError) {
-        const returnTo = encodeURIComponent(window.location.pathname);
-        goto(`${fullConfig.loginRedirectUrl}?returnTo=${returnTo}`);
-      }
-    }
-    
-    // Return processed error message
-    return errorMessage;
-  },
-  
-  /**
-   * Maps HTTP status to auth error
-   * @param {number} status - HTTP status code
-   * @returns {string} Auth error code
-   */
-  mapStatusToError: (status) => {
-    const statusMap = {
-      400: 'bad_request',
-      401: 'unauthorized',
-      403: 'forbidden',
-      404: 'not_found',
-      409: 'conflict',
-      429: 'too_many_requests',
-      500: 'server_error'
-    };
-    
-    return statusMap[status] || `http_error_${status}`;
-  }
-};
-
-export default errorHandlerService;
-```
-
-## 11. Testing Auth Flows
-
-### 11.1 Auth Flow Testing Strategy
-
-1. **Test Utility for Auth Flows:**
-   - SHOULD implement test utility for auth flows:
-
-```javascript
-// tests/helpers/authTestHelper.js (Example - for test framework)
-
-/**
- * @typedef {Object} AuthTestHelper
- * @property {Function} login - Test login flow
- * @property {Function} register - Test registration flow
- * @property {Function} logout - Test logout flow
- * @property {Function} verifyProtectedRoute - Test protected route
- */
-
-/**
- * Auth test helper for testing auth flows
- * @returns {AuthTestHelper} Auth test helper
- */
-export function createAuthTestHelper() {
-  /**
-   * Simulates login flow
-   * @param {Object} page - Browser page object
-   * @param {string} email - Email to use
-   * @param {string} password - Password to use
-   * @returns {Promise<void>}
-   */
-  async function login(page, email, password) {
-    // Navigate to login page
-    await page.goto('/login');
-    
-    // Fill login form
-    await page.fill('input[type="email"]', email);
-    await page.fill('input[type="password"]', password);
-    
-    // Submit form
-    await page.click('button[type="submit"]');
-    
-    // Wait for redirect to dashboard
-    await page.waitForURL('/dashboard');
-  }
-  
-  /**
-   * Simulates registration flow
-   * @param {Object} page - Browser page object
-   * @param {Object} userData - User data for registration
-   * @returns {Promise<void>}
-   */
-  async function register(page, { email, password, displayName }) {
-    // Navigate to registration page
-    await page.goto('/register');
-    
-    // Fill registration form
-    await page.fill('input[type="email"]', email);
-    if (displayName) {
-      await page.fill('input#display-name', displayName);
-    }
-    await page.fill('input#password', password);
-    await page.fill('input#confirm-password', password);
-    
-    // Submit form
-    await page.click('button[type="submit"]');
-    
-    // Wait for redirect to dashboard
-    await page.waitForURL('/dashboard');
-  }
-  
-  /**
-   * Simulates logout flow
-   * @param {Object} page - Browser page object
-   * @returns {Promise<void>}
-   */
-  async function logout(page) {
-    // Click user menu
-    await page.click('button[aria-label="User menu"]');
-    
-    // Click logout button
-    await page.click('text=Log out');
-    
-    // Wait for redirect to login page
-    await page.waitForURL('/login');
-  }
-  
-  /**
-   * Verifies protected route
-   * @param {Object} page - Browser page object
-   * @param {string} route - Protected route to check
-   * @returns {Promise<boolean>} Whether route is protected
-   */
-  async function verifyProtectedRoute(page, route) {
-    // Navigate to protected route without authentication
-    await page.goto(route);
-    
-    // Check if redirected to login
-    const currentUrl = page.url();
-    return currentUrl.includes('/login');
-  }
-  
-  return {
-    login,
-    register,
-    logout,
-    verifyProtectedRoute
-  };
-}
-```
-
-## 12. Implementation Checklist
-
-### 12.1 Client-Side Integration Checklist
-
-1. **Better Auth Client Setup:**
-   - [ ] Auth store implemented (`authStore.js`)
-   - [ ] Auth service implemented (`authService.js`)
-   - [ ] Auth initialization in layout
-   - [ ] Protected route guard implementation
-
-2. **Auth Components:**
-   - [ ] Login form implementation
-   - [ ] Registration form implementation
-   - [ ] Password reset flow components
-   - [ ] Logout functionality implementation
-   - [ ] User menu/profile components
-   - [ ] Social login components (if applicable)
-   - [ ] Role-based access control components
-
-3. **Auto Login Features:**
-   - [ ] WordPress auto login component
-   - [ ] Auto login page implementation
-
-4. **Advanced Features:**
-   - [ ] Token refresh mechanism
-   - [ ] Auth interceptor for failed requests
-   - [ ] Session invalidation hook
-   - [ ] Error handling utilities
-   - [ ] Auth state persistence
-   - [ ] Role verification utilities
-
-5. **Integration Points:**
-   - [ ] Auth initialization on app start
-   - [ ] Route protection (general and role-based)
-   - [ ] User interface integration (navbar, menus)
-   - [ ] WordPress <-> SvelteKit communication
-
-6. **Testing:**
-   - [ ] Manual testing of all auth flows
-   - [ ] Test utilities for auth flows
-   - [ ] Error cases testing
-
-## 13. Maintenance and Troubleshooting
-
-### 13.1 Common Issues and Solutions
-
-1. **Cookie Issues:**
-   - **Issue:** Session cookies not being set or sent.
-   - **Solution:** Ensure cookie options match between client and server, particularly `domain`, `sameSite`, and `secure` settings. Verify CORS configuration.
-
-2. **Token Refresh Problems:**
-   - **Issue:** Token refresh not working, causing frequent logouts.
-   - **Solution:** Verify refresh token implementation, check server-side token validation, ensure `refreshToken` endpoint is working correctly.
-
-3. **Cross-Domain Issues:**
-   - **Issue:** Authentication not working across different domains.
-   - **Solution:** Configure CORS correctly, ensure cookie `domain` setting allows sharing between domains if needed, consider using header-based auth for cross-domain scenarios.
-
-4. **WordPress Auto Login Failures:**
-   - **Issue:** Auto login not working from WordPress.
-   - **Solution:** Verify shared secrets match, ensure the WordPress plugin is properly configured, check WP session passing.
-
-### 13.2 Debugging Techniques
-
-1. **Auth State Inspection:**
-   - Add auth state inspection component for development:
-
-```svelte
-<!-- src/lib/components/debug/AuthDebug.svelte -->
-<script>
-  import { authStore } from '$lib/stores/authStore';
-  
-  // Only enable in development
-  const devMode = process.env.NODE_ENV === 'development';
-</script>
-
-{#if devMode}
-  <div class="fixed bottom-0 right-0 p-2 bg-black text-white text-xs opacity-75 z-50 max-w-sm">
-    <details>
-      <summary>Auth Debug</summary>
-      <pre>{JSON.stringify($authStore, null, 2)}</pre>
-    </details>
-  </div>
-{/if}
-```
-
-## 14. References and Resources
-
-- Better Auth Documentation: https://www.better-auth.com/docs/integrations/svelte-kit
-- Better Auth API Reference: https://www.better-auth.com/docs/reference/options
-- Better Auth Concepts (Cookies): https://www.better-auth.com/docs/concepts/cookies
-- Better Auth Session Management: https://www.better-auth.com/docs/concepts/session-management
-- SvelteKit Documentation: https://kit.svelte.dev/docs/modules
+## 4. Verification Checklist
+
+- [ ] Client-side auth store implemented correctly
+- [ ] Client-side auth service methods implemented
+- [ ] Auth initialization handled in root layout (`+layout.js`)
+- [ ] Protected routes implement server-side guards (`+layout.server.js`)
+- [ ] Protected layout component manages client state (`+layout.svelte`)
+- [ ] Login component handles email/password and OAuth initiation
+- [ ] Registration component handles user sign-up
+- [ ] Type safety maintained using JSDoc
+- [ ] Relevant error handling integrated
 
 
