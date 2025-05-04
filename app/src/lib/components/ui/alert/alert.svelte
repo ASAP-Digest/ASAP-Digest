@@ -15,5 +15,7 @@
 </script>
 
 <div class={cn(alertVariants({ variant }), className)} {...rest} role="alert">
-	{@render children?.() || (() => '')}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

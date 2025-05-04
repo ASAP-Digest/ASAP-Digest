@@ -43,6 +43,7 @@ const iconPaths = {
 	calendar: '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line>',
 	download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>',
 	play: '<polygon points="5 3 19 12 5 21 5 3"></polygon>',
+	pause: '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>',
 	clock: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
 	bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>',
 	barChart2: '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
@@ -56,7 +57,11 @@ const iconPaths = {
 	// Add PanelLeft icon path
 	panelLeft: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>',
 	// Add UserPlus icon path
-	userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>'
+	userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>',
+	// Add ExternalLink icon path
+	externalLink: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
+	// Add Maximize icon path
+	maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>'
 };
 
 // Revert exports to use the original pattern
@@ -93,6 +98,7 @@ export const Globe = createIconObject('globe', iconPaths.globe);
 export const Calendar = createIconObject('calendar', iconPaths.calendar);
 export const Download = createIconObject('download', iconPaths.download);
 export const Play = createIconObject('play', iconPaths.play);
+export const Pause = createIconObject('pause', iconPaths.pause);
 export const Clock = createIconObject('clock', iconPaths.clock);
 export const Bookmark = createIconObject('bookmark', iconPaths.bookmark);
 export const BarChart2 = createIconObject('barChart2', iconPaths.barChart2);
@@ -109,6 +115,10 @@ export const Circle = createIconObject('circle', iconPaths.circle);
 export const PanelLeft = createIconObject('panelLeft', iconPaths.panelLeft);
 // Add UserPlus export
 export const UserPlus = createIconObject('userPlus', iconPaths.userPlus);
+// Add ExternalLink export
+export const ExternalLink = createIconObject('externalLink', iconPaths.externalLink);
+// Add Maximize export
+export const Maximize = createIconObject('maximize', iconPaths.maximize);
 
 /**
  * Create a custom icon component from a name and SVG content

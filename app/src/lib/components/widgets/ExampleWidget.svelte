@@ -1,8 +1,7 @@
 <script>
   import WidgetShell from './WidgetShell.svelte';
-  import { createCustomIcon } from '$lib/utils/lucide-compat.js';
-  import { ExternalLink } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { createCustomIcon, ExternalLink } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   
   // Define custom icons
@@ -56,17 +55,17 @@
   refreshable={true}
   onRefresh={handleRefresh}
 >
-  <div class="flex flex-col gap-[0.75rem]">
-    <p class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))]">
+  <div class="flex flex-col gap-3">
+    <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
       {summary}
     </p>
     
     <div class="widget-items flex flex-col divide-y divide-[hsl(var(--border))]">
       {#each items as item (item.id)}
-        <div class="widget-item py-[0.5rem] first:pt-0 last:pb-0">
-          <h4 class="font-medium text-[var(--font-size-sm)]">{item.title}</h4>
+        <div class="widget-item py-2 first:pt-0 last:pb-0">
+          <h4 class="font-[var(--font-weight-medium)] text-[var(--font-size-sm)]">{item.title}</h4>
           {#if expanded}
-            <p class="text-[var(--font-size-xs)] text-[hsl(var(--muted-foreground))]">
+            <p class="text-[var(--font-size-xs)] text-[hsl(var(--text-2))]">
               {item.description}
             </p>
           {/if}
@@ -75,11 +74,10 @@
     </div>
     
     {#if expanded}
-      <div class="flex items-center gap-[0.5rem] text-[var(--font-size-xs)] text-[hsl(var(--muted-foreground))]">
+      <div class="flex items-center gap-2 text-[var(--font-size-xs)] text-[hsl(var(--text-2))]">
         <Icon 
           icon={InfoIcon} 
           size={14} 
-          color="currentColor" 
         />
         <span>Additional information is displayed when expanded.</span>
       </div>
@@ -87,16 +85,15 @@
   </div>
   
   <div slot="footer" class="flex justify-between items-center">
-    <span class="text-[var(--font-size-xs)] text-[hsl(var(--muted-foreground))]">
+    <span class="text-[var(--font-size-xs)] text-[hsl(var(--text-2))]">
       Updated: {new Date().toLocaleDateString()}
     </span>
     
-    <Button size="sm" variant="outline" class="gap-[0.25rem]">
+    <Button size="sm" variant="outline" class="gap-1">
       View All
       <Icon 
         icon={ExternalLink} 
         size={14} 
-        color="currentColor" 
       />
     </Button>
   </div>

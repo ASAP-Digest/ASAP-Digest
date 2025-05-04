@@ -121,7 +121,7 @@
 
 <div 
   class={cn(
-    'widget-shell relative bg-[hsl(var(--surface-2))] rounded-[var(--radius-lg)] border shadow-[var(--shadow-sm)] transition-all duration-[var(--duration-normal)]',
+    'widget-shell relative bg-[hsl(var(--surface-1))] rounded-[var(--radius-lg)] border shadow-[var(--shadow-sm)] transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]',
     'flex flex-col',
     sizeClasses,
     variantClasses,
@@ -132,7 +132,7 @@
 >
   <!-- Header with title and icon -->
   {#if title || icon}
-    <div class="widget-header flex items-center justify-between mb-3">
+    <div class="widget-header flex items-center justify-between mb-4">
       {#if title}
         <h3 class="font-[var(--font-weight-semibold)] text-[var(--font-size-base)] text-[hsl(var(--text-1))]">
           {title}
@@ -141,8 +141,8 @@
             <span class="inline-flex items-center ml-2 text-[hsl(var(--text-2))]">
               <Icon 
                 icon={Loader2} 
-                size={14} 
-                class="animate-spin mr-1" 
+                size={16} 
+                class="animate-spin mr-2" 
               />
               <span class="text-[var(--font-size-xs)]">Loading...</span>
             </span>
@@ -163,7 +163,7 @@
         {#if expandable}
           <button
             on:click={toggleExpanded}
-            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)]"
+            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
             aria-label={isExpanded ? "Collapse" : "Expand"}
             aria-expanded={isExpanded}
             type="button"
@@ -178,7 +178,7 @@
         {#if refreshable}
           <button
             on:click={handleRefresh}
-            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)]"
+            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
             aria-label="Refresh content"
             disabled={loading}
             type="button"
@@ -196,29 +196,29 @@
   
   <!-- Loading state -->
   {#if loading && !error}
-    <div class="widget-loading flex items-center justify-center py-4 text-[hsl(var(--text-2))]">
+    <div class="widget-loading flex items-center justify-center py-6 text-[hsl(var(--text-2))]">
       <Icon 
         icon={Loader2} 
         size={24} 
         class="animate-spin mr-2" 
       />
-      <span>Loading content...</span>
+      <span class="text-[var(--font-size-sm)]">Loading content...</span>
     </div>
   
   <!-- Error state -->
   {:else if error}
-    <div class="widget-error flex flex-col items-center justify-center py-4 text-[hsl(var(--functional-error))]">
+    <div class="widget-error flex flex-col items-center justify-center py-6 text-[hsl(var(--functional-error))]">
       <Icon 
         icon={AlertCircle} 
         size={24} 
         class="mb-2" 
       />
-      <span>{errorMessage}</span>
+      <span class="text-[var(--font-size-sm)]">{errorMessage}</span>
       
       {#if refreshable}
         <button
           on:click={handleRefresh}
-          class="mt-3 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:underline"
+          class="mt-4 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:text-[hsl(var(--brand-hover))] hover:underline transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
           type="button"
         >
           Try again
@@ -228,18 +228,18 @@
   
   <!-- Offline state -->
   {:else if offline}
-    <div class="widget-offline flex flex-col items-center justify-center py-4 text-[hsl(var(--text-1))]">
+    <div class="widget-offline flex flex-col items-center justify-center py-6 text-[hsl(var(--text-1))]">
       <Icon 
         icon={WifiOff} 
         size={24} 
         class="mb-2" 
       />
-      <span>Content not available offline</span>
+      <span class="text-[var(--font-size-sm)]">Content not available offline</span>
       
       {#if refreshable}
         <button
           on:click={handleRefresh}
-          class="mt-3 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:underline"
+          class="mt-4 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:text-[hsl(var(--brand-hover))] hover:underline transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
           type="button"
         >
           Check connection
@@ -257,7 +257,7 @@
   
   <!-- Footer slot -->
   {#if footer}
-    <div class="widget-footer mt-3 pt-3 border-t border-[hsl(var(--border)/0.5)]">
+    <div class="widget-footer mt-4 pt-4 border-t border-[hsl(var(--border)/0.5)]">
       {@render footer()}
     </div>
   {/if}
@@ -269,6 +269,9 @@
     box-sizing: border-box;
     max-width: 100%;
     overflow: hidden;
+    transition: transform var(--duration-fast) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out),
+                border-color var(--duration-normal) var(--ease-out);
   }
   
   .widget-expanded {
@@ -276,13 +279,19 @@
     max-height: none !important;
   }
   
-  /* Optional animation for expanding/collapsing */
+  /* Animation for expanding/collapsing using GRDSP variables */
   .widget-content {
-    transition: height var(--duration-normal) var(--ease-out);
+    transition: height var(--duration-normal) var(--ease-out), 
+                opacity var(--duration-normal) var(--ease-out);
   }
   
   /* Ensure proper stacking of elements */
   .widget-loading, .widget-error, .widget-offline {
     position: relative;
+  }
+  
+  /* Hover effect using GRDSP variables */
+  .widget-shell:hover:not(:has(.widget-error)) {
+    transform: translateY(-2px);
   }
 </style> 

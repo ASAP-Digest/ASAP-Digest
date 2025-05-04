@@ -18,5 +18,7 @@
 	class={cn("mb-1 font-[var(--font-weight-semibold)] leading-[var(--line-height-heading)] tracking-[var(--tracking-tight)]", className)}
 	{...rest}
 >
-	{@render children?.() || (() => '')}
+	{#if children}
+		{@render children()}
+	{/if}
 </svelte:element>

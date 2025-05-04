@@ -1,8 +1,8 @@
 <!-- Link.svelte - Atomic link component -->
 <script>
   import { cn } from "$lib/utils";
-  import Icon from '$lib/components/ui/Icon.svelte';
-  import { ExternalLink } from '$lib/utils/lucide-icons.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { ExternalLink } from '$lib/utils/lucide-compat.js';
 
   /** @typedef {'default' | 'underlined' | 'muted' | 'heading' | 'text'} LinkVariant */
   
@@ -24,22 +24,22 @@
   function getVariantClasses() {
     switch(variant) {
       case 'default':
-        return "text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.9)] hover:shadow-[var(--shadow-md)]";
+        return "text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))] transition-all duration-[var(--duration-fast)]";
       case 'underlined':
-        return "text-[hsl(var(--primary))] underline underline-offset-[4px] hover:decoration-[hsl(var(--link-hover))]";
+        return "text-[hsl(var(--link))] underline underline-offset-4 hover:text-[hsl(var(--link-hover))]";
       case 'muted':
-        return "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--link-hover))]";
+        return "text-[hsl(var(--text-2))] hover:text-[hsl(var(--link-hover))]";
       case 'heading':
-        return "text-[hsl(var(--foreground))] font-medium hover:text-[hsl(var(--primary))] block text-lg";
+        return "text-[hsl(var(--text-1))] font-[var(--font-weight-semibold)] hover:text-[hsl(var(--link))] block text-[var(--font-size-lg)]";
       case 'text':
-        return "text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.8)]";
+        return "text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]";
       default:
-        return "text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/0.9)]";
+        return "text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]";
     }
   }
   
   // Base classes for all links
-  const baseClass = "transition-all duration-200 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2";
+  const baseClass = "transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2";
   
   // Get variant class based on variant prop using $derived for reactivity
   let variantClass = $derived(getVariantClasses());
@@ -56,6 +56,6 @@
 >
   {@render children?.()}
   {#if external}
-    <Icon icon={ExternalLink} class="inline-block ml-[0.25rem]" size={14} color="currentColor" />
+    <Icon icon={ExternalLink} class="inline-block ml-2" size={14} />
   {/if}
 </a> 

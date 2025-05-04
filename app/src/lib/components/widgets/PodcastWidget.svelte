@@ -1,7 +1,7 @@
 <script>
-	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-icons.js';
+	import { Play, Pause, Share2, ExternalLink, Maximize } from '$lib/utils/lucide-compat.js';
 	import BaseWidget from './BaseWidget.svelte';
-	import Icon from '$lib/components/ui/Icon.svelte';
+	import Icon from '$lib/components/ui/icon/icon.svelte';
 	import { onMount } from 'svelte';
 	
 	let {
@@ -151,19 +151,19 @@
 	loading={loading}
 >
 	{#if error}
-		<div class="text-[hsl(var(--destructive))] text-[var(--font-size-sm)]">
+		<div class="text-[hsl(var(--functional-error))] text-[var(--font-size-sm)]">
 			Failed to load podcast content
 		</div>
 	{:else if loading}
-		<div class="space-y-[calc(var(--spacing-unit)*2)]">
-			<div class="h-4 w-3/4 bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse"></div>
-			<div class="h-4 w-1/2 bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse"></div>
-			<div class="h-8 w-full bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse mt-[calc(var(--spacing-unit)*4)]"></div>
+		<div class="space-y-4">
+			<div class="h-4 w-3/4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse"></div>
+			<div class="h-4 w-1/2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse"></div>
+			<div class="h-8 w-full bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse mt-6"></div>
 		</div>
 	{:else}
 		<div class="flex flex-col h-full">
-			<div class="mb-[calc(var(--spacing-unit)*3)]">
-				<div class="flex items-center text-[var(--font-size-xs)] text-[hsl(var(--muted-foreground))] mb-[calc(var(--spacing-unit)*2)]">
+			<div class="mb-6">
+				<div class="flex items-center text-[var(--font-size-xs)] text-[hsl(var(--text-2))] mb-2">
 					<span>Episode {episode}</span>
 					{#if duration}
 						<span class="mx-1">•</span>
@@ -171,66 +171,66 @@
 					{/if}
 				</div>
 				
-				<p class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))]">
+				<p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
 					{summary}
 				</p>
 			</div>
 			
-			<div class="mt-auto pt-[calc(var(--spacing-unit)*3)] border-t border-[hsl(var(--border))]">
+			<div class="mt-auto pt-4 border-t border-[hsl(var(--border))]">
 				<div class="flex items-center justify-between">
 					<button
 						onclick={togglePlay}
 						disabled={offline || !audioUrl}
-						class="play-button p-[calc(var(--spacing-unit)*2)] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] 
-                               transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)] 
-                               hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--primary))] 
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 
-                               disabled:opacity-50"
+						class="play-button p-2 rounded-full bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))]
+							   transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)]
+							   hover:bg-[hsl(var(--brand-hover))] hover:shadow-[var(--shadow-sm)]
+							   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2
+							   disabled:opacity-50"
 						aria-label={playing ? 'Pause' : 'Play'}
 					>
-						<Icon icon={playing ? Pause : Play} size={20} color="hsl(var(--primary-foreground))" />
+						<Icon icon={playing ? Pause : Play} size={20} />
 					</button>
 					
 					<div class="action-buttons flex gap-2">
 						<button 
 							onclick={expandView}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] rounded-[var(--radius-sm)] 
-                                   transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)]
-                                   hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] 
-                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+							class="p-1 text-[hsl(var(--text-2))] rounded-[var(--radius-sm)]
+								   transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]
+								   hover:text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] 
+								   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Expand view"
 						>
-							<Icon icon={Maximize} size={16} color="currentColor" />
+							<Icon icon={Maximize} size={16} />
 						</button>
 						<button 
 							onclick={handleShare}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] rounded-[var(--radius-sm)] 
-                                   transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)]
-                                   hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] 
-                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+							class="p-1 text-[hsl(var(--text-2))] rounded-[var(--radius-sm)]
+								   transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]
+								   hover:text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] 
+								   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Share podcast"
 						>
-							<Icon icon={Share2} size={16} color="currentColor" />
+							<Icon icon={Share2} size={16} />
 						</button>
 						<a 
 							href={`/podcast/${id}`}
-							class="p-[calc(var(--spacing-unit)*1)] text-[hsl(var(--muted-foreground))] rounded-[var(--radius-sm)] 
-                                  transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)]
-                                  hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.1)] 
-                                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+							class="p-1 text-[hsl(var(--text-2))] rounded-[var(--radius-sm)]
+								   transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]
+								   hover:text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] 
+								   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
 							aria-label="Open podcast details"
 						>
-							<Icon icon={ExternalLink} size={16} color="currentColor" />
+							<Icon icon={ExternalLink} size={16} />
 						</a>
 					</div>
 				</div>
 				
 				{#if offline}
-					<div class="mt-[calc(var(--spacing-unit)*2)] text-[var(--font-size-xs)] text-[hsl(var(--destructive))]">
+					<div class="mt-4 text-[var(--font-size-xs)] text-[hsl(var(--functional-error))]">
 						Podcasts not available offline
 					</div>
 				{:else if !audioUrl}
-					<div class="mt-[calc(var(--spacing-unit)*2)] text-[var(--font-size-xs)] text-[hsl(var(--muted-foreground))]">
+					<div class="mt-4 text-[var(--font-size-xs)] text-[hsl(var(--text-2))]">
 						Audio playback coming soon
 					</div>
 				{/if}
@@ -242,9 +242,9 @@
 <style>
 	/* Add animation to utility classes instead of custom CSS */
 	@keyframes pulse-slow {
-		0% { border-color: hsl(var(--secondary) / 1); }
-		50% { border-color: hsl(var(--secondary) / 0.6); }
-		100% { border-color: hsl(var(--secondary) / 1); }
+		0% { border-color: hsl(var(--accent) / 1); }
+		50% { border-color: hsl(var(--accent) / 0.6); }
+		100% { border-color: hsl(var(--accent) / 1); }
 	}
 	
 	:global(.animate-pulse-slow) {

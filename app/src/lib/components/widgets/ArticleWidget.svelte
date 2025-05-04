@@ -1,5 +1,5 @@
 <script>
-	import { BookOpen } from '$lib/utils/lucide-icons.js';
+	import { BookOpen } from '$lib/utils/lucide-compat.js';
 	import BaseWidget from './BaseWidget.svelte';
 	import { Separator } from '$lib/components/ui/separator';
 	import Link from '$lib/components/atoms/Link.svelte';
@@ -83,17 +83,17 @@
 	className="transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]"
 >
 	{#if loading}
-		<div class="space-y-[calc(var(--spacing-unit)*2)]">
-			<div class="h-32 bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse"></div>
-			<div class="h-4 w-3/4 bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse"></div>
-			<div class="h-4 w-1/2 bg-[hsl(var(--muted)/0.5)] rounded-[var(--radius-md)] animate-pulse"></div>
+		<div class="space-y-4">
+			<div class="h-32 bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse"></div>
+			<div class="h-4 w-3/4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse"></div>
+			<div class="h-4 w-1/2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] animate-pulse"></div>
 		</div>
 	{:else if error}
-		<div class="text-[hsl(var(--destructive))] text-[var(--font-size-sm)]">
+		<div class="text-[hsl(var(--functional-error))] text-[var(--font-size-sm)]">
 			Failed to load article content
 		</div>
 	{:else if displayTitle || (article && article.title)}
-		<div class="space-y-[calc(var(--spacing-unit)*4)]">
+		<div class="space-y-4">
 			{#if article && article.featuredImage}
 				<img 
 					src={article.featuredImage} 
@@ -103,19 +103,19 @@
 				/>
 			{/if}
 			
-			<div class="space-y-[calc(var(--spacing-unit)*3)]">
+			<div class="space-y-3">
 				{#if sourceUrl || (article && article.slug)}
 					<Link href={sourceUrl || (article ? `/article/${article.slug}` : '')} variant="heading">
 						{displayTitle}
 					</Link>
 				{:else}
-					<h3 class="text-[var(--font-size-lg)] font-[var(--font-weight-medium)] text-[hsl(var(--foreground))]">
+					<h3 class="text-[var(--font-size-lg)] font-[var(--font-weight-medium)] text-[hsl(var(--text-1))]">
 						{displayTitle}
 					</h3>
 				{/if}
 				
 				{#if displaySource}
-					<div class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))] flex items-center gap-[calc(var(--spacing-unit)*2)]">
+					<div class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))] flex items-center gap-2">
 						<span>{#if article?.author}By {/if}{displaySource}</span>
 						{#if formattedDate}
 							<span>•</span>
@@ -126,19 +126,22 @@
 			</div>
 			
 			{#if summary}
-				<hr class="border-t border-[hsl(var(--border))]" />
-				<p class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))]">{summary}</p>
+				<div class="border-t border-[hsl(var(--border))] my-3"></div>
+				<p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">{summary}</p>
 				
 				{#if displayExcerpt && displayExcerpt.length > 120 && !showFullSummary}
-					<Link href={sourceUrl || (article ? `/article/${article.slug}` : '')} variant="text" 
-						  className="text-[var(--font-size-sm)] hover:text-[hsl(var(--primary))] transition-colors duration-[var(--duration-normal)]">
+					<Link 
+					  href={sourceUrl || (article ? `/article/${article.slug}` : '')} 
+					  variant="text" 
+					  className="text-[var(--font-size-sm)] text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
+					>
 						Read more
 					</Link>
 				{/if}
 			{/if}
 		</div>
 	{:else}
-		<div class="text-center text-[hsl(var(--muted-foreground))] py-[calc(var(--spacing-unit)*4)]">
+		<div class="text-center text-[hsl(var(--text-2))] py-6">
 			No article available
 		</div>
 	{/if}

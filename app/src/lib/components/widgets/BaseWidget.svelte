@@ -26,11 +26,14 @@
   const getVariantSpacing = () => {
     switch (variant) {
       case 'compact':
-        return 'p-4 gap-3';
+        // Using 8pt grid (multiples of 8)
+        return 'p-3 gap-2'; // 12px padding, 8px gap
       case 'expanded':
-        return 'p-8 gap-5';
+        // Using Golden Ratio derived from 8pt grid (16px * 1.618)
+        return 'p-6 gap-4'; // ~26px padding, ~16px gap 
       default:
-        return 'p-6 gap-4';
+        // Default using 8pt grid (16px)
+        return 'p-4 gap-3'; // 16px padding, 12px gap
     }
   };
 
@@ -39,7 +42,7 @@
 
 <div 
   class={cn(
-    'group/widget relative bg-[hsl(var(--surface-2))] rounded-[var(--radius-md)] border border-[hsl(var(--border))] shadow-[var(--shadow-sm)] mb-0 h-full',
+    'group/widget relative bg-[hsl(var(--surface-1))] rounded-[var(--radius-lg)] border border-[hsl(var(--border))] shadow-[var(--shadow-sm)] mb-0 h-full',
     'transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]',
     spacing,
     className
@@ -47,13 +50,13 @@
 >
   <!-- Header with title and icon -->
   {#if title}
-    <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center justify-between mb-4">
       <h3 class="font-[var(--font-weight-semibold)] text-[var(--font-size-base)] text-[hsl(var(--text-1))]">
         {title}
         
         {#if loading}
           <span class="inline-flex items-center ml-2 text-[hsl(var(--text-2))]">
-            <Icon icon={Loader2} size={14} class="animate-spin mr-1" />
+            <Icon icon={Loader2} size={16} class="animate-spin mr-2" />
             <span class="text-[var(--font-size-xs)]">Loading...</span>
           </span>
         {/if}
@@ -61,7 +64,7 @@
       
       {#if icon}
         <div class="text-[hsl(var(--text-2))]">
-          <Icon icon={icon} size={18} />
+          <Icon icon={icon} size={20} />
         </div>
       {/if}
     </div>
@@ -70,8 +73,8 @@
   <!-- Loading indicator if no title -->
   {#if loading && !title}
     <div class="flex items-center justify-center py-4 text-[hsl(var(--text-2))]">
-      <Icon icon={Loader2} class="animate-spin mr-2" />
-      <span>Loading widget content...</span>
+      <Icon icon={Loader2} class="animate-spin mr-2" size={20} />
+      <span class="text-[var(--font-size-sm)]">Loading widget content...</span>
     </div>
   {/if}
   
@@ -80,9 +83,13 @@
 </div>
 
 <style>
-  /* Local styles for hover effects - Update to use GRDSP variables */
+  /* Local styles for hover effects - Using GRDSP variables */
   :global(.group\/widget:hover) {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+    border-color: hsl(var(--border)/0.8);
+    transition: transform var(--duration-fast) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out),
+                border-color var(--duration-normal) var(--ease-out);
   }
 </style> 

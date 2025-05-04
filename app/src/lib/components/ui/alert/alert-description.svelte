@@ -13,5 +13,7 @@
 </script>
 
 <div class={cn("text-[var(--font-size-base)] [&_p]:leading-[var(--line-height-body)]", className)} {...rest}>
-	{@render children?.() || (() => '')}
+	{#if children}
+		{@render children()}
+	{/if}
 </div>

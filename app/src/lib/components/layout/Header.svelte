@@ -1,10 +1,9 @@
 <script>
   import { page } from '$app/stores';
-  import { Home, User, LogIn, Menu, Search } from '$lib/utils/lucide-compat.js';
+  import { Home, User, LogIn, Menu, Search, Bell } from '$lib/utils/lucide-compat.js';
   import { Input } from '$lib/components/ui/input';
-  import { onMount } from 'svelte';
-  import { Bell } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { onMount } from 'svelte';
   
   /**
    * @typedef {Object} HeaderProps
@@ -28,65 +27,19 @@
   // Use notification count from props or state if needed
   let notificationCount = $state(3); // Example state, ideally from data
   
-  // Error handler for images
   /**
-   * @param {Event} event - The error event from the image
+   * Handle image error by replacing with a placeholder
+   * @param {Event} e - The error event
    */
-  function handleImageError(event) {
-    // Type assertion for event.target as HTMLImageElement
-    const imgElement = /** @type {HTMLImageElement} */ (event.target);
-    if (imgElement instanceof HTMLImageElement) {
-      imgElement.onerror = null;
-      imgElement.src = 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E';
+  function handleImageError(e) {
+    const target = e.target;
+    if (target instanceof HTMLImageElement) {
+      target.src = '/favicon.png'; // Fallback to favicon
     }
   }
-
-  // Function to check viewport position and adjust dropdown
-  function adjustDropdownPosition() {
-    if (isAvatarDropdownOpen) {
-      setTimeout(() => {
-        const dropdown = document.querySelector('.avatar-dropdown');
-        if (dropdown && dropdown instanceof HTMLElement) {
-          const rect = dropdown.getBoundingClientRect();
-          const viewportHeight = window.innerHeight;
-          const viewportWidth = window.innerWidth;
-          
-          // Check if dropdown is off the right edge
-          if (rect.right > viewportWidth) {
-            dropdown.style.right = '0px';
-            dropdown.style.left = 'auto';
-          }
-          
-          // Check if dropdown is off the bottom edge
-          if (rect.bottom > viewportHeight) {
-            dropdown.style.bottom = '100%';
-            dropdown.style.top = 'auto';
-            dropdown.style.marginBottom = '5px';
-          }
-        }
-      }, 0);
-    }
-  }
-  
-  // Add listener for window resize
-  let resizeObserver;
-  onMount(() => {
-    adjustDropdownPosition();
-    window.addEventListener('resize', adjustDropdownPosition);
-    return () => {
-      window.removeEventListener('resize', adjustDropdownPosition);
-    };
-  });
-  
-  // Call adjust function when dropdown state changes
-  $effect(() => {
-    if (isAvatarDropdownOpen) {
-      adjustDropdownPosition();
-    }
-  });
 </script>
 
-<header class="bg-[hsl(var(--canvas-base))] shadow-[var(--shadow-sm)]">
+<header class="bg-[hsl(var(--surface-1))] shadow-[var(--shadow-sm)]">
   <div class="container mx-auto px-4 py-3 flex justify-between items-center">
     <!-- Logo -->
     <div class="flex items-center">
@@ -110,7 +63,7 @@
       <div class="relative">
         <a
           href="/notifications"
-          class="relative p-2 text-[hsl(var(--text-2))] hover:text-[hsl(var(--text-1))] transition-colors"
+          class="relative p-2 text-[hsl(var(--text-2))] hover:text-[hsl(var(--text-1))] transition-colors duration-[var(--duration-fast)]"
         >
           <Icon icon={Bell} class="w-5 h-5" />
           {#if notificationCount > 0}
@@ -119,62 +72,77 @@
         </a>
       </div>
       
-      <!-- Avatar with dropdown -->
-      <div class="relative">
-        <button 
-          class="flex items-center space-x-2 rounded-full hover:bg-[hsl(var(--surface-2))] p-1 transition-colors"
-          onclick={toggleAvatarDropdown}
-          aria-haspopup="true"
-          aria-expanded={isAvatarDropdownOpen}
+      <!-- User actions -->
+      {#if user}
+        <!-- Logged in: Avatar -->
+        <div class="relative">
+          <button
+            onclick={toggleAvatarDropdown}
+            class="flex items-center p-2 rounded-full hover:bg-[hsl(var(--surface-2))] transition-colors duration-[var(--duration-fast)]"
+            aria-expanded={isAvatarDropdownOpen}
+            aria-haspopup="true"
+          >
+            <img
+              src={user.avatar || `/images/default-avatar.png`}
+              alt={user.displayName || "User"}
+              class="w-8 h-8 rounded-full"
+              onerror={handleImageError}
+            />
+          </button>
+          
+          <!-- Avatar dropdown menu -->
+          {#if isAvatarDropdownOpen}
+            <div class="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface-1))] border border-[hsl(var(--border))] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] z-10">
+              <div class="p-3 border-b border-[hsl(var(--border))]">
+                <p class="text-[var(--font-size-base)] font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
+                  {user.displayName || "User"}
+                </p>
+                <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
+                  {user.email}
+                </p>
+              </div>
+              
+              <nav class="py-1">
+                <a
+                  href="/profile"
+                  class="block px-4 py-2 text-[var(--font-size-base)] text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))]"
+                >
+                  Profile
+                </a>
+                <a
+                  href="/settings"
+                  class="block px-4 py-2 text-[var(--font-size-base)] text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))]"
+                >
+                  Settings
+                </a>
+                <a
+                  href="/logout"
+                  class="block px-4 py-2 text-[var(--font-size-base)] text-[hsl(var(--functional-error))] hover:bg-[hsl(var(--surface-2))]"
+                >
+                  Logout
+                </a>
+              </nav>
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <!-- Not logged in: Login button -->
+        <a
+          href="/login"
+          class="flex items-center gap-1 px-3 py-2 text-[var(--font-size-base)] text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))] transition-colors duration-[var(--duration-fast)]"
         >
-          <div class="w-8 h-8 rounded-full bg-[hsl(var(--surface-2))] overflow-hidden">
-            {#if user}
-              <img 
-                src={user.avatarUrl}
-                alt={user.displayName}
-                class="w-full h-full object-cover"
-                onerror={handleImageError}
-              />
-            {:else}
-              <Icon icon={User} class="w-full h-full p-1 text-[hsl(var(--text-2))]" />
-            {/if}
-          </div>
-        </button>
-        
-        {#if isAvatarDropdownOpen && user}
-          <div class="avatar-dropdown">
-            <div class="avatar-dropdown-header">
-              <div class="font-[var(--font-weight-semibold)]">{user.displayName}</div>
-              <div class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">{user.email}</div>
-            </div>
-            
-            <div class="py-1">
-              <a href="/dashboard" class="avatar-dropdown-link">
-                Dashboard
-              </a>
-              <a href="/settings" class="avatar-dropdown-link">
-                Settings
-              </a>
-              <a href="/logout" class="avatar-dropdown-link">
-                Logout
-              </a>
-            </div>
-          </div>
-        {/if}
-      </div>
+          <Icon icon={LogIn} class="w-4 h-4" />
+          <span>Login</span>
+        </a>
+      {/if}
       
-      <!-- Mobile menu button -->
-      <button class="md:hidden text-[hsl(var(--text-2))]">
-        <Icon icon={Menu} size={24} />
+      <!-- Mobile menu toggle -->
+      <button
+        class="md:hidden p-2 text-[hsl(var(--text-2))] hover:text-[hsl(var(--text-1))] transition-colors duration-[var(--duration-fast)]"
+        aria-label="Toggle menu"
+      >
+        <Icon icon={Menu} class="w-6 h-6" />
       </button>
-    </div>
-  </div>
-  
-  <!-- Mobile search (only visible on small screens) -->
-  <div class="md:hidden px-4 pb-3">
-    <div class="relative w-full">
-      <Icon icon={Search} class="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-2))]" size={16} />
-      <Input type="search" placeholder="Search..." class="pl-10 w-full" />
     </div>
   </div>
 </header>
