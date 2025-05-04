@@ -1,6 +1,6 @@
-<script lang="ts">
+<script>
   import { page } from '$app/stores';
-  import { Home, User, LogIn, Menu, Search } from '$lib/utils/lucide-icons.js';
+  import { Home, User, LogIn, Menu, Search } from '$lib/utils/lucide-compat.js';
   import { Input } from '$lib/components/ui/input';
   import { onMount } from 'svelte';
   import { Bell } from '$lib/utils/lucide-compat.js';
@@ -86,35 +86,35 @@
   });
 </script>
 
-<header class="bg-[hsl(var(--background))] dark:bg-[hsl(var(--muted))] shadow-[0_1px_3px_0_rgba(0,0,0,0.1)]">
-  <div class="container mx-auto px-[1rem] py-[0.75rem] flex justify-between items-center">
+<header class="bg-[hsl(var(--canvas-base))] shadow-[var(--shadow-sm)]">
+  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
     <!-- Logo -->
     <div class="flex items-center">
-      <a href="/" class="text-[1.25rem] font-bold flex items-center gap-[0.5rem]">
+      <a href="/" class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] flex items-center gap-2">
         <img src="/logo.svg" alt="ASAP Digest" width="32" height="32" loading="lazy" onerror={handleImageError} />
-        <span class="text-[hsl(var(--primary))]">⚡️ ASAP</span>
+        <span class="text-[hsl(var(--brand))]">⚡️ ASAP</span>
       </a>
     </div>
     
     <!-- Search (center) -->
-    <div class="hidden md:flex flex-1 max-w-md mx-[2rem]">
+    <div class="hidden md:flex flex-1 max-w-md mx-8">
       <div class="relative w-full">
-        <Search class="absolute left-[0.75rem] top-1/2 transform -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
-        <Input type="search" placeholder="Search..." class="pl-[2.5rem] w-full" />
+        <Icon icon={Search} class="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-2))]" size={16} />
+        <Input type="search" placeholder="Search..." class="pl-10 w-full" />
       </div>
     </div>
     
     <!-- Right side controls -->
-    <div class="flex items-center space-x-[1rem]">
+    <div class="flex items-center space-x-4">
       <!-- Notifications -->
       <div class="relative">
         <a
           href="/notifications"
-          class="relative p-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          class="relative p-2 text-[hsl(var(--text-2))] hover:text-[hsl(var(--text-1))] transition-colors"
         >
           <Icon icon={Bell} class="w-5 h-5" />
           {#if notificationCount > 0}
-            <span class="absolute top-1 right-1 w-2 h-2 bg-[hsl(var(--destructive))] rounded-full"></span>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-[hsl(var(--functional-error))] rounded-full"></span>
           {/if}
         </a>
       </div>
@@ -122,12 +122,12 @@
       <!-- Avatar with dropdown -->
       <div class="relative">
         <button 
-          class="flex items-center space-x-[0.5rem] rounded-full hover:bg-[hsl(var(--muted)/0.1)] dark:hover:bg-[hsl(var(--muted)/0.2)] p-[0.25rem] transition-colors"
+          class="flex items-center space-x-2 rounded-full hover:bg-[hsl(var(--surface-2))] p-1 transition-colors"
           onclick={toggleAvatarDropdown}
           aria-haspopup="true"
           aria-expanded={isAvatarDropdownOpen}
         >
-          <div class="w-[2rem] h-[2rem] rounded-full bg-[hsl(var(--muted)/0.2)] overflow-hidden">
+          <div class="w-8 h-8 rounded-full bg-[hsl(var(--surface-2))] overflow-hidden">
             {#if user}
               <img 
                 src={user.avatarUrl}
@@ -136,7 +136,7 @@
                 onerror={handleImageError}
               />
             {:else}
-              <Icon icon={User} class="w-full h-full p-1 text-[hsl(var(--muted-foreground))]" />
+              <Icon icon={User} class="w-full h-full p-1 text-[hsl(var(--text-2))]" />
             {/if}
           </div>
         </button>
@@ -144,11 +144,11 @@
         {#if isAvatarDropdownOpen && user}
           <div class="avatar-dropdown">
             <div class="avatar-dropdown-header">
-              <div class="font-semibold">{user.displayName}</div>
-              <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email}</div>
+              <div class="font-[var(--font-weight-semibold)]">{user.displayName}</div>
+              <div class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">{user.email}</div>
             </div>
             
-            <div class="py-[0.25rem]">
+            <div class="py-1">
               <a href="/dashboard" class="avatar-dropdown-link">
                 Dashboard
               </a>
@@ -164,17 +164,17 @@
       </div>
       
       <!-- Mobile menu button -->
-      <button class="md:hidden text-[hsl(var(--foreground)/0.7)] dark:text-[hsl(var(--foreground)/0.8)]">
-        <Menu size={24} />
+      <button class="md:hidden text-[hsl(var(--text-2))]">
+        <Icon icon={Menu} size={24} />
       </button>
     </div>
   </div>
   
   <!-- Mobile search (only visible on small screens) -->
-  <div class="md:hidden px-[1rem] pb-[0.75rem]">
+  <div class="md:hidden px-4 pb-3">
     <div class="relative w-full">
-      <Search class="absolute left-[0.75rem] top-1/2 transform -translate-y-1/2 text-[hsl(var(--muted-foreground))]" size={16} />
-      <Input type="search" placeholder="Search..." class="pl-[2.5rem] w-full" />
+      <Icon icon={Search} class="absolute left-3 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-2))]" size={16} />
+      <Input type="search" placeholder="Search..." class="pl-10 w-full" />
     </div>
   </div>
 </header>
@@ -197,20 +197,14 @@
     top: 100%;
     margin-top: 0.5rem;
     width: 12rem;
-    background-color: hsl(var(--background));
-    border-radius: 0.375rem;
+    background-color: hsl(var(--surface-1));
+    border-radius: var(--radius-md);
     border-width: 1px;
     border-style: solid;
     border-color: hsl(var(--border));
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
     max-height: calc(100vh - 3.75rem);
     overflow-y: auto;
-  }
-
-  /* Dark mode styles */
-  :global(.dark) .avatar-dropdown {
-    background-color: hsl(var(--muted));
-    border-color: hsl(var(--muted-foreground)/0.2);
   }
 
   .avatar-dropdown-header {
@@ -220,22 +214,14 @@
     border-bottom-color: hsl(var(--border));
   }
 
-  :global(.dark) .avatar-dropdown-header {
-    border-bottom-color: hsl(var(--muted-foreground)/0.2);
-  }
-
   .avatar-dropdown-link {
     display: block;
     padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    transition: background-color 0.2s;
+    font-size: var(--font-size-sm);
+    transition: background-color var(--duration-fast) var(--ease-out);
   }
 
   .avatar-dropdown-link:hover {
-    background-color: hsl(var(--muted)/0.1);
-  }
-
-  :global(.dark) .avatar-dropdown-link:hover {
-    background-color: hsl(var(--muted)/0.2);
+    background-color: hsl(var(--surface-2));
   }
 </style> 

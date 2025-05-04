@@ -12,6 +12,6 @@
 	const { className, children, ...rest } = $props();
 </script>
 
-<div class={cn("text-sm [&_p]:leading-relaxed", className)} {...rest}>
+<div class={cn("text-[var(--font-size-base)] [&_p]:leading-[var(--line-height-body)]", className)} {...rest}>
 	{@render children?.() || (() => '')}
 </div>

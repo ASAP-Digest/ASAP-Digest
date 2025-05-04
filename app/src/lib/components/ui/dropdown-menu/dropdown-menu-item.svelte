@@ -17,7 +17,7 @@
 <DropdownMenuPrimitive.Item
 	bind:ref
 	class={cn(
-		"relative flex cursor-default select-none items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-[var(--font-size-sm)] outline-none transition-colors data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-fg))] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+		"relative flex cursor-default select-none items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 text-[var(--font-size-sm)] outline-none transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)] data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-fg))] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
 		inset && "pl-8",
 		className
 	)}

@@ -3,7 +3,7 @@
   /**
    * @typedef {Object} IconProps
    * @property {string} [class] - Additional CSS classes
-   * @property {{ name: string, svgContent: string }} icon - Icon object with SVG content
+   * @property {{ name?: string, svgContent?: string }} [icon] - Icon object with SVG content
    * @property {number} [size=24] - Icon size in pixels
    * @property {string} [strokeWidth='2'] - SVG stroke width
    * @property {Object} [rest] - Additional props to pass to the SVG element

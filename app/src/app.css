@@ -6,6 +6,8 @@
 @import "tailwindcss";
 /* Preflight styles are usually included automatically by the above import in v4 */
 
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
 
 /* 
@@ -39,24 +41,27 @@
 
 @layer base {
   :root {
+    /* Golden Ratio Value */
+    --phi: 1.618;
+
     /* 1. Canvas (Base Background/Text) */
     --canvas-base: 220 13% 10%;       /* Dark Blue-Gray */
     --canvas-fg: 210 40% 98%;         /* Off-White */
 
-    /* 2. Brand (Primary Identity - Sparingly) */
+    /* 2. Brand (Primary Identity) */
     --brand: 326 100% 60%;            /* Neon Pink */
     --brand-fg: 210 40% 98%;          /* Text on Brand bg */
     --brand-hover: 326 100% 70%;      /* Lighter Pink for hover */
 
-    /* 3. Accent (Secondary Highlight - Sparingly) */
+    /* 3. Accent (Secondary Highlight) */
     --accent: 175 98% 60%;            /* Neon Cyan */
     --accent-fg: 220 13% 18%;         /* Dark Text on Accent bg */
-    --accent-hover: 175 98% 70%;      /* Lighter Cyan for hover */
+    --accent-hover: 175 98% 70%;       /* Lighter Cyan for hover */
 
     /* 4. Link (Interactive Elements) */
-    --link: 326 100% 60%;              /* Use Brand color for actions */
-    --link-fg: 210 40% 98%;           /* Text on Link background */
-    --link-hover: 326 100% 70%;       /* Use Brand hover for links */
+    --link: var(--brand);              /* Use Brand color for actions */
+    --link-fg: var(--brand-fg);       /* Text on Link background */
+    --link-hover: var(--brand-hover); /* Use Brand hover for links */
 
     /* 5. Visited (Visited Links Only) */
     --visited: 326 70% 50%;           /* Desaturated/Darker Pink */
@@ -69,23 +74,69 @@
     --functional-success-fg: 220 13% 10%;   /* Dark */
 
     /* Surfaces (Backgrounds) */
-    --surface-1: 220 13% 18%;           /* Primary background */
-    --surface-2: 220 13% 23%;           /* Slightly lighter layer (e.g., cards, modals) */
-    --surface-3: 220 13% 28%;           /* Even lighter layer */
+    --surface-1: var(--canvas-base);           /* Primary background */
+    --surface-2: 220 13% 18%;                 /* Slightly lighter layer (e.g., cards, modals) */
+    --surface-3: 220 13% 26%;                 /* Even lighter layer */
 
     /* Text Hierarchy */
-    --text-1: 210 40% 98%;                /* Primary text */
-    --text-2: 210 40% 75%;               /* Secondary/Muted text */
-    --text-3: 210 40% 50%;               /* Tertiary/Hint text */
-    --text-disabled: 210 40% 40%;        /* Disabled text */
+    --text-1: var(--canvas-fg);                /* Primary text */
+    --text-2: 210 40% 80%;                    /* Secondary/Muted text */
+    --text-3: 210 40% 65%;                    /* Tertiary/Hint text */
+    --text-disabled: 210 40% 40%;             /* Disabled text */
 
     /* UI Elements */
-    --border: 220 13% 30%;              /* Subtle border */
-    --input-bg: 220 13% 18%;            /* Input background */
-    --input-border: 220 13% 30%;
-    --input-border-focus: 326 100% 60%; /* Use ring color for focus border */
-    --ring: 326 100% 60%;               /* Focus ring uses Link color */
-    
+    --border: 220 13% 30%;                    /* Subtle border */
+    --input-bg: 220 13% 18%;                  /* Input background */
+    --input-border: var(--border);
+    --input-border-focus: hsl(var(--ring));   /* Use ring color for focus border */
+    --ring: var(--link);                      /* Focus ring */
+
+    /* Shadows */
+    --shadow-color: 0 0% 0%;                  /* Black for shadows */
+    --shadow-strength-sm: 0.1;                /* Opacity for small shadow */
+    --shadow-strength-md: 0.15;               /* Opacity for medium shadow */
+    --shadow-strength-lg: 0.2;                /* Opacity for large shadow */
+    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / var(--shadow-strength-sm));
+    --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / var(--shadow-strength-md)), 0 2px 4px -2px hsl(var(--shadow-color) / var(--shadow-strength-md));
+    --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / var(--shadow-strength-lg)), 0 4px 6px -4px hsl(var(--shadow-color) / var(--shadow-strength-lg));
+
+    /* Border Radius */
+    --radius-sm: 0.125rem;  /* 2px */
+    --radius-md: 0.375rem;  /* 6px */
+    --radius-lg: 0.5rem;    /* 8px */
+    --radius-xl: 0.75rem;   /* 12px */
+    --radius-2xl: 1rem;     /* 16px */
+    --radius-full: 9999px;  /* Full rounded (circular) */
+
+    /* Typography - Scale based on Golden Ratio */
+    --font-size-base: 1rem;                                              /* 16px */
+    --font-size-xs: calc(var(--font-size-base) / var(--phi) / var(--phi)); /* ~6px */
+    --font-size-sm: calc(var(--font-size-base) / var(--phi));              /* ~10px */
+    --font-size-lg: calc(var(--font-size-base) * var(--phi));              /* ~26px */
+    --font-size-xl: calc(var(--font-size-base) * var(--phi) * var(--phi)); /* ~42px */
+
+    /* Font Weights */
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+
+    /* Line Heights */
+    --line-height-heading: 1.2;
+    --line-height-body: 1.6;
+
+    /* Letter Spacing (Tracking) */
+    --tracking-tight: -0.025em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.025em;
+
+    /* Motion & Animation */
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
     /* Legacy mappings for backward compatibility */
     --background: var(--canvas-base);
     --foreground: var(--canvas-fg);
@@ -93,84 +144,14 @@
     --primary-foreground: var(--brand-fg);
     --secondary: var(--accent);
     --secondary-foreground: var(--accent-fg);
-    --card: var(--surface-2);
+    --card: var(--surface-1);
     --card-foreground: var(--text-1);
-    --popover: var(--surface-2);
+    --popover: var(--surface-1);
     --popover-foreground: var(--text-1);
-    --muted: var(--surface-3);
+    --muted: var(--surface-2);
     --muted-foreground: var(--text-2);
     --destructive: var(--functional-error);
     --destructive-foreground: var(--functional-error-fg);
-    
-    /* Shadows */
-    --shadow-color: 0 0% 0%;                /* Black for shadows */
-    --shadow-strength-sm: 0.1;              /* Opacity/alpha for small shadow */
-    --shadow-strength-md: 0.15;             /* Opacity/alpha for medium shadow */
-    --shadow-strength-lg: 0.2;              /* Opacity/alpha for large shadow */
-    --shadow-sm: 0 1px 2px 0 hsl(var(--shadow-color) / var(--shadow-strength-sm));
-    --shadow-md: 0 4px 6px -1px hsl(var(--shadow-color) / var(--shadow-strength-md)), 0 2px 4px -2px hsl(var(--shadow-color) / var(--shadow-strength-md));
-    --shadow-lg: 0 10px 15px -3px hsl(var(--shadow-color) / var(--shadow-strength-lg)), 0 4px 6px -4px hsl(var(--shadow-color) / var(--shadow-strength-lg));
-    
-    /* Gradients (Examples) */
-    --gradient-brand-to-accent: linear-gradient(to right, hsl(var(--brand)), hsl(var(--accent)));
-    --gradient-canvas-subtle: linear-gradient(to bottom, hsl(var(--surface-1)), hsl(var(--surface-2)));
-    
-    /* Border radius variables */
-    --radius-none: 0;
-    --radius-sm: 0.125rem;
-    --radius-md: 0.25rem;
-    --radius-lg: 0.5rem;
-    --radius-xl: 0.75rem;
-    --radius-2xl: 1rem;
-    --radius-full: 9999px;
-    
-    /* Typography variables */
-    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-body: 'Rubik', 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --font-mono: 'JetBrains Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    
-    /* Font size - Golden Ratio Scale */
-    --font-size-xl: calc(var(--font-size-base) * 1.618 * 1.618); /* ~42px */
-    --font-size-lg: calc(var(--font-size-base) * 1.618);         /* ~26px */
-    --font-size-base: 1rem;                                      /* 16px */
-    --font-size-sm: calc(var(--font-size-base) / 1.618);         /* ~10px */
-    --font-size-xs: calc(var(--font-size-base) / 1.618 / 1.618); /* ~6px */
-    
-    /* Font weight */
-    --font-weight-regular: 400;
-    --font-weight-semibold: 600;
-    
-    /* Line height */
-    --line-height-heading: 1.2;            /* For text using --font-size-lg and xl */
-    --line-height-body: 1.6;               /* For text using --font-size-base, sm, xs */
-    
-    /* Letter spacing */
-    --tracking-tight: -0.025em;
-    --tracking-normal: 0em;
-    --tracking-wide: 0.025em;
-    
-    /* Animation timing */
-    --duration-fast: 150ms;
-    --duration-normal: 300ms;
-    
-    /* Easing functions */
-    --ease-out: cubic-bezier(0, 0, 0.2, 1); /* Default easing */
-    
-    /* Z-Index Strategy - UPDATED FOR CLARITY */
-    --z-negative: -1;         /* Elements that should be below normal flow */
-    --z-base: 1;              /* Base level content */
-    --z-widgets: 10;          /* Content widgets, cards, etc. */
-    --z-sidebar: 20;          /* Navigation sidebar */
-    --z-header: 25;           /* App header */
-    --z-sidebar-trigger: 30;  /* Toggle button for sidebar */
-    --z-sidebar-tooltip: 35;  /* Tooltips for collapsed sidebar */
-    --z-dropdown: 40;         /* Dropdown menus and popover content */
-    --z-fab: 50;              /* Floating action button */
-    --z-fab-flyout: 55;       /* Flyout menu from FAB */
-    --z-modal-backdrop: 90;   /* Backdrop for modals */
-    --z-modal: 100;           /* Modal windows */
-    --z-notification: 200;    /* Notification alerts */
-    --z-max: 9999;            /* Absolute maximum z-index for critical elements */
     
     /* Neon Glow */
     --glow-sm: 0 0 2px;
@@ -603,3 +584,29 @@ body.sidebar-collapsed .sidebar-icon svg {
 }
 
 /* Add other base styles from your plan as needed */
+
+/* For backward compatibility with original variables */
+@layer base {
+  :root {
+    /* Old variable aliases mapped to new GRDSP variables */
+    
+    /* Original light theme color variables */
+    --background: var(--canvas-base);
+    --foreground: var(--canvas-fg);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-1);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-1);
+    --primary: var(--brand);
+    --primary-foreground: var(--brand-fg);
+    --secondary: var(--accent);
+    --secondary-foreground: var(--accent-fg);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-2);
+    --destructive: var(--functional-error);
+    --destructive-foreground: var(--functional-error-fg);
+    
+    /* Original radius values */
+    --radius: var(--radius-md);
+  }
+}

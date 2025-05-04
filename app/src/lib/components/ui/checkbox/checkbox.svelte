@@ -24,7 +24,7 @@
 <CheckboxPrimitive.Root
 	bind:ref
 	class={cn(
-		"peer box-content h-4 w-4 shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--ring))] disabled:cursor-not-allowed disabled:opacity-50 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 data-[state=checked]:bg-[hsl(var(--brand))] data-[state=checked]:text-[hsl(var(--brand-fg))]",
+		"peer box-content h-4 w-4 shrink-0 rounded-[var(--radius-sm)] border border-[hsl(var(--border))] shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-50 data-[state=checked]:bg-[hsl(var(--brand))] data-[state=checked]:text-[hsl(var(--brand-fg))] transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]",
 		className
 	)}
 	bind:checked

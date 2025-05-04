@@ -15,7 +15,7 @@
 
 <div
 	bind:this={ref}
-	class={cn("bg-[hsl(var(--surface-2))] text-[hsl(var(--text-1))] rounded-lg border border-[hsl(var(--border))] shadow-md", className)}
+	class={cn("bg-[hsl(var(--surface-1))] text-[hsl(var(--text-1))] rounded-[var(--radius-lg)] border border-[hsl(var(--border))] shadow-[var(--shadow-md)]", className)}
 	{...restProps}
 >
 	{@render children?.()}

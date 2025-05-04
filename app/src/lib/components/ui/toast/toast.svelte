@@ -62,7 +62,7 @@
 
 {#if visible}
   <div
-    class="fixed bottom-4 right-4 z-[var(--z-notification)] flex items-center gap-2 rounded-[var(--radius-md)] p-4 shadow-[var(--shadow-md)]"
+    class="fixed bottom-4 right-4 z-[200] flex items-center gap-2 rounded-[var(--radius-md)] p-4 shadow-[var(--shadow-lg)] transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]"
     class:bg-[hsl(var(--functional-success))]={type === 'success'}
     class:bg-[hsl(var(--functional-error))]={type === 'error'}
     class:bg-[hsl(var(--brand))]={type === 'info'}
@@ -75,9 +75,9 @@
     role="alert"
   >
     <Icon icon={icon} class="h-5 w-5" />
-    <span class="text-[var(--font-size-sm)] font-[var(--font-weight-regular)]">{message}</span>
+    <span class="text-[var(--font-size-sm)] font-[var(--font-weight-medium)]">{message}</span>
     <button
-      class="ml-2 rounded-full p-1 hover:bg-white/20"
+      class="ml-2 rounded-full p-1 hover:bg-white/20 transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out)]"
       onclick={handleClose}
     >
       <Icon icon={X} class="h-4 w-4" />

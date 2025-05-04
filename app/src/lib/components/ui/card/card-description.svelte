@@ -20,7 +20,7 @@
 	} = $props();
 </script>
 
-<p bind:this={ref} class={cn("text-[hsl(var(--text-2))] text-sm", className)} {...restProps}>
+<p bind:this={ref} class={cn("text-[hsl(var(--text-2))] text-[var(--font-size-sm)] leading-[var(--line-height-body)]", className)} {...restProps}>
 	{#if children}
 		{@render children?.()}
 	{:else if textContent}

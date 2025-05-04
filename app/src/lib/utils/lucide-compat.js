@@ -52,7 +52,11 @@ const iconPaths = {
 	// Add Plus icon path
 	plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
 	// Add Circle icon path
-	circle: '<circle cx="12" cy="12" r="10"></circle>'
+	circle: '<circle cx="12" cy="12" r="10"></circle>',
+	// Add PanelLeft icon path
+	panelLeft: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/>',
+	// Add UserPlus icon path
+	userPlus: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>'
 };
 
 // Revert exports to use the original pattern
@@ -101,6 +105,10 @@ export const FileText = createIconObject('fileText', iconPaths.fileText);
 export const Plus = createIconObject('plus', iconPaths.plus);
 // Add Circle export
 export const Circle = createIconObject('circle', iconPaths.circle);
+// Add PanelLeft export
+export const PanelLeft = createIconObject('panelLeft', iconPaths.panelLeft);
+// Add UserPlus export
+export const UserPlus = createIconObject('userPlus', iconPaths.userPlus);
 
 /**
  * Create a custom icon component from a name and SVG content
