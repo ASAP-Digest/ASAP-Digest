@@ -4167,3 +4167,40 @@ Last Updated: 03.30.25 | 03:45 PM PDT
 - Frontend Component Updates (⏳ Pending)
 
 // ... existing code ...
+
+### Auto-Login Implementation (In Progress)
+
+The auto-login functionality has been implemented with a server-to-server approach with shared secret validation, addressing previous CSRF validation issues for specific endpoints. The initial implementation is functioning but still undergoing testing and refinement. Key changes include:
+
+- Updated hooks.server.js to bypass CSRF validation specifically for the check-wp-session endpoint
+- Modified +layout.svelte to improve handling of authentication headers
+- Implemented special handling for check-wp-session endpoint in the authentication flow
+
+While the core functionality is working, we're still:
+- Conducting additional testing across different scenarios and edge cases
+- Refining error handling and logging 
+- Optimizing performance under load
+- Addressing potential race conditions or edge cases
+
+The implementation will be monitored and adjusted as needed based on testing results.
+
+### Dashboard Data API (In Progress)
+
+A new dashboard data API has been implemented at `/api/dashboard/+server.js` to provide user statistics and information. The API returns structured data including:
+
+- Digest statistics (total, weekly)
+- Recent activity (completed digests with dates)
+- Usage metrics (digests and searches used/remaining)
+- User preferences (topics, notification settings)
+
+The endpoint now correctly handles authentication via Bearer token and includes error handling. This resolves the immediate 404 error when accessing dashboard data, but the implementation is still being tested and refined. Next steps include:
+
+- Comprehensive testing across different user scenarios
+- Optimizing query performance
+- Adding additional data fields as needed
+- Implementing proper data validation and sanitization
+- Ensuring proper error handling for all edge cases
+
+This is an interim solution that will be enhanced as requirements evolve.
+
+// ... rest of the existing code ...
