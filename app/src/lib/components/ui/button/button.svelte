@@ -2,15 +2,15 @@
 	import { tv } from "tailwind-variants";
 
 	export const buttonVariants = tv({
-		base: "inline-flex items-center justify-center rounded-md whitespace-nowrap text-sm font-medium ring-offset-[hsl(var(--background))] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+		base: "inline-flex items-center justify-center rounded-md whitespace-nowrap text-sm font-medium ring-offset-[hsl(var(--canvas-base))] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
 		variants: {
 			variant: {
-				default: "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90",
-				destructive: "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--destructive))]/90",
-				outline: "border border-[hsl(var(--border))] bg-[hsl(var(--background))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]",
-				secondary: "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:bg-[hsl(var(--secondary))]/80",
-				ghost: "hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]",
-				link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline",
+				default: "bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] hover:bg-[hsl(var(--brand-hover))]",
+				destructive: "bg-[hsl(var(--functional-error))] text-[hsl(var(--functional-error-fg))] hover:bg-[hsl(var(--functional-error))]/90",
+				outline: "border border-[hsl(var(--border))] bg-[hsl(var(--canvas-base))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-fg))]",
+				secondary: "bg-[hsl(var(--accent))] text-[hsl(var(--accent-fg))] hover:bg-[hsl(var(--accent-hover))]",
+				ghost: "hover:bg-[hsl(var(--surface-2))] hover:text-[hsl(var(--text-1))]",
+				link: "text-[hsl(var(--link))] underline-offset-4 hover:underline hover:text-[hsl(var(--link-hover))]",
 			},
 			size: {
 				default: "h-10 px-4 py-2",

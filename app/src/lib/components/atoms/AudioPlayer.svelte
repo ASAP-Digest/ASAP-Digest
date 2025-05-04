@@ -51,9 +51,9 @@
       case 'minimal':
         return 'bg-transparent border-none shadow-none';
       case 'accent':
-        return 'bg-[hsl(var(--primary)/0.1)] border-[hsl(var(--primary)/0.2)] text-[hsl(var(--primary))]';
+        return 'bg-[hsl(var(--brand)/0.1)] border-[hsl(var(--brand)/0.2)] text-[hsl(var(--brand))]';
       default:
-        return 'bg-[hsl(var(--card))] border-[hsl(var(--border))]';
+        return 'bg-[hsl(var(--surface-1))] border-[hsl(var(--border))]';
     }
   };
 
@@ -64,11 +64,11 @@
   const getSizeClass = () => {
     switch (size) {
       case 'sm':
-        return 'p-[0.5rem] text-[var(--font-size-xs)]';
+        return 'p-2 text-[var(--font-size-xs)]';
       case 'lg':
-        return 'p-[1rem] text-[var(--font-size-base)]';
+        return 'p-4 text-[var(--font-size-base)]';
       default:
-        return 'p-[0.75rem] text-[var(--font-size-sm)]';
+        return 'p-3 text-[var(--font-size-sm)]';
     }
   };
 
@@ -289,27 +289,27 @@
 
 <div 
   class={cn(
-    'audio-player relative rounded-md border transition-colors duration-200',
+    'audio-player relative rounded-md border transition-colors duration-[var(--duration-normal)]',
     getVariantClass(),
     getSizeClass(),
     className
   )}
 >
   {#if error}
-    <div class="error-message text-[hsl(var(--destructive))] text-center py-[0.5rem]">
+    <div class="error-message text-[hsl(var(--functional-error))] text-center py-2">
       {errorMessage || 'Failed to load audio'}
     </div>
   {/if}
   
-  <div class="flex flex-col gap-[0.5rem]">
+  <div class="flex flex-col gap-2">
     {#if showControls}
       <div class="controls flex items-center justify-between">
-        <div class="flex items-center gap-[0.5rem]">
+        <div class="flex items-center gap-2">
           {#if showSkip}
             <button 
               onclick={skipBackward}
               disabled={!loaded}
-              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
+              class="p-1 rounded-full text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] transition-colors disabled:opacity-50"
               aria-label={`Skip back ${skipAmount} seconds`}
             >
               <Icon icon={SkipBack} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -319,17 +319,17 @@
           <button 
             onclick={togglePlay}
             disabled={!loaded && !error}
-            class="play-button p-[0.5rem] rounded-full bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[0_0_4px_hsl(var(--primary)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
+            class="play-button p-2 rounded-full bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] transition-colors hover:bg-[hsl(var(--brand-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:opacity-50"
             aria-label={playing ? 'Pause' : 'Play'}
           >
-            <Icon icon={playing ? Pause : Play} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="hsl(var(--primary-foreground))" />
+            <Icon icon={playing ? Pause : Play} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="hsl(var(--brand-fg))" />
           </button>
           
           {#if showSkip}
             <button 
               onclick={skipForward}
               disabled={!loaded}
-              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors disabled:opacity-50"
+              class="p-1 rounded-full text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] transition-colors disabled:opacity-50"
               aria-label={`Skip forward ${skipAmount} seconds`}
             >
               <Icon icon={SkipForward} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -337,17 +337,17 @@
           {/if}
           
           {#if showTime}
-            <div class="time-display text-[hsl(var(--muted-foreground))]">
+            <div class="time-display text-[hsl(var(--text-2))]">
               {formatTime(currentTime)} {#if duration && loaded}<span class="opacity-60">/ {formatTime(duration)}</span>{/if}
             </div>
           {/if}
         </div>
         
         {#if showVolume}
-          <div class="volume-controls flex items-center gap-[0.5rem]">
+          <div class="volume-controls flex items-center gap-2">
             <button 
               onclick={toggleMute}
-              class="p-[0.25rem] rounded-full text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted)/0.2)] transition-colors"
+              class="p-1 rounded-full text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))] transition-colors"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
               <Icon icon={muted ? VolumeX : Volume2} size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} color="currentColor" />
@@ -360,7 +360,7 @@
               step="0.01" 
               value={volume} 
               oninput={handleVolumeChange} 
-              class="volume-slider w-[4rem] accent-[hsl(var(--primary))]"
+              class="volume-slider w-16 accent-[hsl(var(--brand))]"
               aria-label="Volume"
             />
           </div>
@@ -381,7 +381,7 @@
           onmouseup={endSeeking}
           ontouchstart={startSeeking}
           ontouchend={endSeeking}
-          class="progress-slider w-full accent-[hsl(var(--primary))] h-[0.5rem] rounded-full bg-[hsl(var(--muted))]"
+          class="progress-slider w-full accent-[hsl(var(--brand))] h-2 rounded-full bg-[hsl(var(--surface-2))]"
           aria-label="Seek"
         />
       </div>
@@ -396,7 +396,7 @@
     appearance: none;
     height: 4px;
     border-radius: 4px;
-    background: hsl(var(--muted));
+    background: hsl(var(--surface-2));
   }
   
   input[type="range"]::-webkit-slider-thumb {
@@ -404,15 +404,14 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: hsl(var(--primary));
+    background: hsl(var(--brand));
     cursor: pointer;
     transition: all 0.15s ease;
   }
   
   input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.2);
-    background: hsl(var(--primary)/0.9);
-    box-shadow: 0 0 4px hsl(var(--primary)/0.5);
+    background: hsl(var(--brand-hover));
   }
   
   input[type="range"]::-moz-range-thumb {
@@ -420,15 +419,14 @@
     height: 12px;
     border: none;
     border-radius: 50%;
-    background: hsl(var(--primary));
+    background: hsl(var(--brand));
     cursor: pointer;
     transition: all 0.15s ease;
   }
   
   input[type="range"]::-moz-range-thumb:hover {
     transform: scale(1.2);
-    background: hsl(var(--primary)/0.9);
-    box-shadow: 0 0 4px hsl(var(--primary)/0.5);
+    background: hsl(var(--brand-hover));
   }
   
   /* Progress styling */
@@ -436,10 +434,10 @@
     height: 4px;
     border-radius: 4px;
     background: linear-gradient(to right, 
-      hsl(var(--primary)) 0%, 
-      hsl(var(--primary)) var(--progress), 
-      hsl(var(--muted)) var(--progress), 
-      hsl(var(--muted)) 100%);
+      hsl(var(--brand)) 0%, 
+      hsl(var(--brand)) var(--progress), 
+      hsl(var(--surface-2)) var(--progress), 
+      hsl(var(--surface-2)) 100%);
   }
   
   .progress-slider::-webkit-slider-runnable-track {

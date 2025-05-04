@@ -26,17 +26,17 @@
   function getVariantClasses() {
     switch(variant) {
       case 'primary':
-        return "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--primary))]";
+        return "bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] hover:bg-[hsl(var(--brand-hover))]";
       case 'secondary':
-        return "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:bg-[hsl(var(--secondary)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--secondary))]";
+        return "bg-[hsl(var(--accent))] text-[hsl(var(--accent-fg))] hover:bg-[hsl(var(--accent-hover))]";
       case 'outline':
-        return "bg-transparent border border-[hsl(var(--primary))] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.1)] hover:shadow-[var(--glow-sm)_hsl(var(--primary))]";
+        return "bg-transparent border border-[hsl(var(--brand))] text-[hsl(var(--brand))] hover:bg-[hsl(var(--brand)/0.1)]";
       case 'ghost':
-        return "bg-transparent text-[hsl(var(--foreground))] hover:bg-[hsl(var(--foreground)/0.1)]";
+        return "bg-transparent text-[hsl(var(--text-1))] hover:bg-[hsl(var(--surface-2))]";
       case 'destructive':
-        return "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--destructive)/0.9)] hover:shadow-[var(--glow-sm)_hsl(var(--destructive))]";
+        return "bg-[hsl(var(--functional-error))] text-[hsl(var(--functional-error-fg))] hover:bg-[hsl(var(--functional-error)/0.9)]";
       default:
-        return "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)]";
+        return "bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] hover:bg-[hsl(var(--brand-hover))]";
     }
   }
   
@@ -47,13 +47,13 @@
   function getSizeClasses() {
     switch(size) {
       case 'sm':
-        return "text-[var(--font-size-sm)] px-[calc(var(--spacing-unit)*3)] py-[calc(var(--spacing-unit)*1.5)]";
+        return "text-[var(--font-size-sm)] px-2 py-1"; // 8px/4px (8pt grid)
       case 'md':
-        return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
+        return "text-[var(--font-size-base)] px-4 py-2"; // 16px/8px (8pt grid)
       case 'lg':
-        return "text-[var(--font-size-lg)] px-[calc(var(--spacing-unit)*6)] py-[calc(var(--spacing-unit)*3)]";
+        return "text-[var(--font-size-lg)] px-6 py-3"; // 24px/12px (8pt grid)
       default:
-        return "text-[var(--font-size-base)] px-[calc(var(--spacing-unit)*4)] py-[calc(var(--spacing-unit)*2)]";
+        return "text-[var(--font-size-base)] px-4 py-2"; // 16px/8px (8pt grid)
     }
   }
   

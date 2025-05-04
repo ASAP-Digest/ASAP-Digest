@@ -1,6 +1,16 @@
 <script>
 	import { cn } from "$lib/utils.js";
-	let { ref = $bindable(null), class: className, children, ...restProps } = $props();
+	
+	/**
+	 * @typedef {Object} SidebarMenuBadgeProps
+	 * @property {HTMLElement | null} [ref] - Element reference
+	 * @property {string} [class] - Additional CSS classes
+	 * @property {import('svelte').Snippet} [children] - Badge content
+	 * @property {Object} [rest] - Additional props to pass to the badge
+	 */
+	
+	/** @type {SidebarMenuBadgeProps} */
+	let { ref = $bindable(null), class: className, children, ...rest } = $props();
 </script>
 
 <div
@@ -15,7 +25,7 @@
 		"group-data-[collapsible=icon]:hidden",
 		className
 	)}
-	{...restProps}
+	{...rest}
 >
 	{@render children?.()}
 </div>

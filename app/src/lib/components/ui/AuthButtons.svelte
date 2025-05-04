@@ -12,12 +12,12 @@
   import { UserPlus } from '$lib/utils/lucide-icons.js';
   
   /**
-   * Component props
+   * @typedef {Object} AuthButtonsProps
+   * @property {'sm'|'md'|'lg'} [size] - Button size
    */
+  
+  /** @type {AuthButtonsProps} */
   let { 
-    /**
-     * Button size: 'sm', 'md', or 'lg'
-     */
     size = 'md'
   } = $props();
   
@@ -31,6 +31,7 @@
   };
   
   const session = useSession();
+  let isLoading = $state(false);
   
   /**
    * Navigate to login page
@@ -51,10 +52,13 @@
    */
   async function logout() {
     try {
+      isLoading = true;
       await signOut();
       goto('/');
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      isLoading = false;
     }
   }
 </script>
@@ -63,7 +67,7 @@
   <Button
     variant="ghost"
     size="sm"
-    on:click={logout}
+    onclick={logout}
     disabled={isLoading}
     class="flex items-center gap-2"
   >
@@ -79,7 +83,7 @@
     <Button
       variant="ghost"
       size="sm"
-      on:click={() => goto('/login')}
+      onclick={() => goto('/login')}
       disabled={isLoading}
       class="flex items-center gap-2"
     >
@@ -92,8 +96,8 @@
     </Button>
     
     <button 
-      on:click={register}
-      class="bg-white text-[hsl(var(--primary))] border border-[hsl(var(--primary))] rounded-md hover:bg-gray-50 transition-colors flex items-center gap-1 {sizeClasses[size]}"
+      onclick={register}
+      class="bg-white text-[hsl(var(--brand))] border border-[hsl(var(--brand))] rounded-md hover:bg-[hsl(var(--surface-1))] transition-colors flex items-center gap-1 {sizeClasses[size]}"
       aria-label="Register"
     >
       <Icon icon={UserPlus} size={size === 'sm' ? 14 : size === 'md' ? 16 : 18} />

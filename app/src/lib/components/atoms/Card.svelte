@@ -17,10 +17,10 @@
   
   // Using simple concatenation instead of complex derived computation
   let cardClasses = $derived([
-    "bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] rounded-[var(--radius-lg)] overflow-hidden",
+    "bg-[hsl(var(--surface-1))] text-[hsl(var(--text-1))] rounded-[var(--radius-lg)] overflow-hidden",
     bordered ? "border border-[hsl(var(--border))]" : "",
     shadow ? "shadow-[var(--shadow-md)]" : "",
-    hover ? "transition-all duration-[var(--duration-normal)] hover:shadow-[var(--shadow-lg)] hover:translate-y-[-2px)]" : ""
+    hover ? "transition-all duration-[var(--duration-normal)] hover:shadow-[var(--shadow-lg)] hover:translate-y-[-2px]" : ""
   ].filter(Boolean).join(" "));
 </script>
 

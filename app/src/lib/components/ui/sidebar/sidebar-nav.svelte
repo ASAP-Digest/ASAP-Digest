@@ -5,7 +5,7 @@
    * Sidebar navigation component properties
    * @typedef {Object} SidebarNavProps
    * @property {string} [class] - Additional CSS classes for styling
-   * @property {Function} [children] - Child content to render
+   * @property {import('svelte').Snippet} [children] - Child content to render
    */
   
   /** @type {SidebarNavProps} */
@@ -16,7 +16,7 @@
 </script>
 
 <nav 
-  class={cn("grid gap-2 px-4 py-2 transition-all duration-200", className)} 
+  class={cn("grid gap-4 px-4 py-2 transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]", className)} 
   data-testid="sidebar-nav"
 >
   {@render children?.()}

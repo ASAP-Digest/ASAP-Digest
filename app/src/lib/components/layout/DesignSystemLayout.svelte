@@ -30,10 +30,16 @@
     
     // Re-apply essential theme color variables
     const themeVars = [
-      '--background', '--foreground', '--primary', '--primary-foreground',
-      '--secondary', '--secondary-foreground', '--accent', '--accent-foreground',
-      '--muted', '--muted-foreground', '--card', '--card-foreground',
-      '--destructive', '--destructive-foreground', '--border', '--ring'
+      '--brand', '--brand-fg', '--brand-hover',
+      '--accent', '--accent-fg', '--accent-hover',
+      '--link', '--link-fg', '--link-hover',
+      '--visited', '--visited-fg',
+      '--functional-error', '--functional-error-fg',
+      '--functional-success', '--functional-success-fg',
+      '--canvas-base', '--canvas-fg',
+      '--text-1', '--text-2', '--text-3', '--text-disabled',
+      '--surface-1', '--surface-2', '--surface-3',
+      '--border', '--ring'
     ];
     
     themeVars.forEach(name => {
@@ -103,8 +109,8 @@
     document.documentElement.style.setProperty('--css-forced', 'true');
     
     // Add direct background and text colors for debugging
-    document.body.style.backgroundColor = 'hsl(var(--background))';
-    document.body.style.color = 'hsl(var(--foreground))';
+    document.body.style.backgroundColor = 'hsl(var(--canvas-base))';
+    document.body.style.color = 'hsl(var(--canvas-fg))';
     
     return () => {
       // Clean up on unmount
@@ -130,23 +136,29 @@
   <div 
     class="design-system-context"
     style="
-      --applied-background: hsl(var(--background));
-      --applied-foreground: hsl(var(--foreground));
-      --applied-primary: hsl(var(--primary));
-      --applied-secondary: hsl(var(--secondary));
+      --applied-canvas-base: hsl(var(--canvas-base));
+      --applied-canvas-fg: hsl(var(--canvas-fg));
+      --applied-brand: hsl(var(--brand));
+      --applied-brand-fg: hsl(var(--brand-fg));
       --applied-accent: hsl(var(--accent));
-      --applied-muted: hsl(var(--muted));
-      --applied-card: hsl(var(--card));
+      --applied-accent-fg: hsl(var(--accent-fg));
+      --applied-surface-1: hsl(var(--surface-1));
+      --applied-surface-2: hsl(var(--surface-2));
+      --applied-text-1: hsl(var(--text-1));
+      --applied-text-2: hsl(var(--text-2));
       --applied-border: hsl(var(--border));
       
       /* Fallback direct colors in case HSL variables fail */
-      --fallback-background: hsl(220 13% 18%);
-      --fallback-foreground: hsl(210 40% 98%);
-      --fallback-primary: hsl(326 100% 60%);
-      --fallback-secondary: hsl(175 98% 60%);
-      --fallback-accent: hsl(265 90% 65%);
-      --fallback-muted: hsl(220 13% 28%);
-      --fallback-card: hsl(220 13% 23%);
+      --fallback-canvas-base: hsl(220 13% 18%);
+      --fallback-canvas-fg: hsl(210 40% 98%);
+      --fallback-brand: hsl(326 100% 60%);
+      --fallback-brand-fg: hsl(210 40% 98%);
+      --fallback-accent: hsl(175 98% 60%);
+      --fallback-accent-fg: hsl(220 13% 18%);
+      --fallback-surface-1: hsl(220 13% 23%);
+      --fallback-surface-2: hsl(220 13% 28%);
+      --fallback-text-1: hsl(210 40% 98%);
+      --fallback-text-2: hsl(210 40% 75%);
       --fallback-border: hsl(220 13% 30%);
     "
   >
@@ -157,90 +169,90 @@
 <style>
   /* Direct CSS styles for design system components */
   :global(.design-system-page) {
-    background-color: hsl(var(--background, 220 13% 18%)) !important;
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
+    background-color: hsl(var(--canvas-base, 220 13% 18%)) !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
   }
   
   :global(.design-system-container) {
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
-    background-color: hsl(var(--background, 220 13% 18%)) !important;
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
+    background-color: hsl(var(--canvas-base, 220 13% 18%)) !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
   }
   
   :global(.design-system-container h1) {
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
-    font-size: var(--font-size-4xl, 2.25rem) !important;
-    font-weight: var(--font-weight-extrabold, 800) !important;
-    margin-bottom: calc(var(--spacing-unit, 0.25rem) * 8) !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
+    font-size: var(--font-size-xl) !important;
+    font-weight: var(--font-weight-semibold) !important;
+    margin-bottom: 8 !important;
   }
   
   :global(.design-system-container h2) {
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
-    font-size: var(--font-size-3xl, 1.875rem) !important;
-    font-weight: var(--font-weight-bold, 700) !important;
-    margin-bottom: calc(var(--spacing-unit, 0.25rem) * 6) !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
+    font-size: var(--font-size-lg) !important;
+    font-weight: var(--font-weight-semibold) !important;
+    margin-bottom: 6 !important;
   }
   
   :global(.design-system-container p) {
-    margin-bottom: calc(var(--spacing-unit, 0.25rem) * 5) !important;
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
+    margin-bottom: 5 !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
   }
   
   /* Make sure buttons have the correct styling */
   :global(.design-system-container button.btn-primary) {
-    background-color: hsl(var(--primary, 326 100% 60%)) !important;
-    color: hsl(var(--primary-foreground, 210 40% 98%)) !important;
+    background-color: hsl(var(--brand, 326 100% 60%)) !important;
+    color: hsl(var(--brand-fg, 210 40% 98%)) !important;
   }
   
   :global(.design-system-container button.btn-secondary) {
-    background-color: hsl(var(--secondary, 175 98% 60%)) !important;
-    color: hsl(var(--secondary-foreground, 220 13% 18%)) !important;
+    background-color: hsl(var(--accent, 175 98% 60%)) !important;
+    color: hsl(var(--accent-fg, 220 13% 18%)) !important;
   }
   
   /* Override any Tailwind direct color classes */
   :global(.design-system-container .btn-primary) {
-    background-color: hsl(var(--primary, 326 100% 60%)) !important;
-    color: hsl(var(--primary-foreground, 210 40% 98%)) !important;
+    background-color: hsl(var(--brand, 326 100% 60%)) !important;
+    color: hsl(var(--brand-fg, 210 40% 98%)) !important;
   }
   
   :global(.design-system-container .text-primary) {
-    color: hsl(var(--primary, 326 100% 60%)) !important;
+    color: hsl(var(--brand, 326 100% 60%)) !important;
   }
   
   :global(.design-system-container .bg-primary) {
-    background-color: hsl(var(--primary, 326 100% 60%)) !important;
+    background-color: hsl(var(--brand, 326 100% 60%)) !important;
   }
   
   :global(.design-system-container .text-secondary) {
-    color: hsl(var(--secondary, 175 98% 60%)) !important;
+    color: hsl(var(--accent, 175 98% 60%)) !important;
   }
   
   :global(.design-system-container .bg-secondary) {
-    background-color: hsl(var(--secondary, 175 98% 60%)) !important;
+    background-color: hsl(var(--accent, 175 98% 60%)) !important;
   }
   
   :global(.design-system-container .text-background) {
-    color: hsl(var(--background, 220 13% 18%)) !important;
+    color: hsl(var(--canvas-base, 220 13% 18%)) !important;
   }
   
   :global(.design-system-container .bg-background) {
-    background-color: hsl(var(--background, 220 13% 18%)) !important;
+    background-color: hsl(var(--canvas-base, 220 13% 18%)) !important;
   }
   
   :global(.design-system-container .text-foreground) {
-    color: hsl(var(--foreground, 210 40% 98%)) !important;
+    color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
   }
   
   :global(.design-system-container .bg-foreground) {
-    background-color: hsl(var(--foreground, 210 40% 98%)) !important;
+    background-color: hsl(var(--canvas-fg, 210 40% 98%)) !important;
   }
   
   /* Ensure design system context has fallback colors */
   .design-system-context {
-    background-color: var(--applied-background, var(--fallback-background));
-    color: var(--applied-foreground, var(--fallback-foreground));
+    background-color: var(--applied-canvas-base, var(--fallback-canvas-base));
+    color: var(--applied-canvas-fg, var(--fallback-canvas-fg));
     min-height: 100vh;
     width: 100%;
   }

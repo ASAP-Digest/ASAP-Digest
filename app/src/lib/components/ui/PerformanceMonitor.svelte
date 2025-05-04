@@ -1,5 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { Plus, X } from '$lib/utils/lucide-compat.js';
   
   // Configuration props with defaults
   let isEnabled = $state(false);
@@ -127,19 +129,19 @@
     position: fixed;
     bottom: 5rem;
     right: 1rem;
-    background-color: hsl(var(--background)/0.8);
-    color: hsl(var(--foreground));
+    background-color: hsl(var(--surface-2)/0.8);
+    color: hsl(var(--text-1));
     border: 1px solid hsl(var(--border));
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     padding: 0.5rem;
-    font-family: monospace;
-    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
     backdrop-filter: blur(4px);
-    box-shadow: 0 2px 10px hsl(var(--foreground)/0.1);
+    box-shadow: var(--shadow-md);
     width: auto;
     min-width: 200px;
     max-width: 100%;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: all var(--duration-normal) var(--ease-out);
   }
   
   .performance-monitor-header {
@@ -152,22 +154,22 @@
   }
   
   .performance-monitor-title {
-    font-weight: bold;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wide);
   }
   
   .performance-monitor-toggle {
     background: none;
     border: none;
     cursor: pointer;
-    color: hsl(var(--foreground));
+    color: hsl(var(--text-1));
     width: 1.5rem;
     height: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     padding: 0;
   }
   
@@ -189,8 +191,8 @@
   }
   
   .performance-monitor-metrics td:first-child {
-    font-weight: bold;
-    color: hsl(var(--primary));
+    font-weight: var(--font-weight-semibold);
+    color: hsl(var(--brand));
   }
   
   .performance-monitor-metrics td:last-child {
@@ -201,8 +203,8 @@
     position: fixed;
     bottom: 25rem;
     right: 1rem;
-    background-color: hsl(var(--background)/0.8);
-    color: hsl(var(--foreground));
+    background-color: hsl(var(--surface-2)/0.8);
+    color: hsl(var(--text-1));
     border: 1px solid hsl(var(--border));
     border-radius: 50%;
     width: 2.5rem;
@@ -211,9 +213,9 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 10px hsl(var(--foreground)/0.1);
+    box-shadow: var(--shadow-sm);
     backdrop-filter: blur(4px);
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
   }
   
   .toggle-button:hover {
@@ -231,8 +233,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
+    font-size: var(--font-size-xs);
+    color: hsl(var(--text-2));
     margin-bottom: 0.25rem;
     cursor: pointer;
   }
@@ -251,7 +253,7 @@
     onclick={toggleVisibility}
     aria-label="Show performance monitor"
   >
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6m0 0V4m0 10h6m-6 0H6"/></svg>
+    <Icon icon={Plus} size={16} />
   </button>
 {:else}
   <div class="performance-monitor">
@@ -262,7 +264,7 @@
         onclick={toggleVisibility}
         aria-label="Hide performance monitor"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <Icon icon={X} size={16} />
       </button>
     </div>
     <div class="performance-monitor-body">

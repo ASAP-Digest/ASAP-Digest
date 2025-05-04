@@ -1,6 +1,7 @@
 <script>
   import { cn } from "$lib/utils";
-  import { ChevronLeft, ChevronRight } from "$lib/utils/lucide-icons.js";
+  import { ChevronLeft, ChevronRight } from "$lib/utils/lucide-compat.js";
+  import Icon from "$lib/components/ui/icon/icon.svelte";
   
   /**
    * Sidebar toggle component properties
@@ -23,30 +24,6 @@
   function handleToggle() {
     onToggle();
   }
-
-  /**
-   * @typedef {Object} IconObject
-   * @property {string} name - The icon name
-   * @property {string} svgContent - The SVG content as a string
-   */
-
-  /**
-   * Render the SVG icon based on its content
-   * @param {IconObject} icon - Icon object with svgContent
-   * @param {string} className - CSS class for the icon
-   * @returns {string} SVG HTML string
-   */
-  function renderIcon(icon, className) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" 
-      width="24" height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      stroke-width="2" 
-      stroke-linecap="round" 
-      stroke-linejoin="round" 
-      class="${className}">${icon.svgContent}</svg>`;
-  }
 </script>
 
 <button
@@ -56,15 +33,15 @@
     "flex h-6 w-6 items-center justify-center rounded-md text-[hsl(var(--sidebar-foreground))]",
     "hover:bg-[hsl(var(--sidebar-accent)/0.5)] hover:text-[hsl(var(--sidebar-accent-foreground))]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-1",
-    "transition-colors duration-200",
+    "transition-colors duration-[var(--duration-normal)] ease-[var(--ease-out)]",
     className
   )}
   aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
   data-testid="sidebar-toggle"
 >
   {#if expanded}
-    {@html renderIcon(ChevronLeft, "h-4 w-4")}
+    <Icon icon={ChevronLeft} class="h-4 w-4" />
   {:else}
-    {@html renderIcon(ChevronRight, "h-4 w-4")}
+    <Icon icon={ChevronRight} class="h-4 w-4" />
   {/if}
 </button> 
