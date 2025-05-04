@@ -1,20 +1,22 @@
 <!-- Icon.svelte -->
 <script>
-  /** @type {string} */
-  let className = '';
-  export { className as class };
+  /**
+   * @typedef {Object} IconProps
+   * @property {string} [class] - Additional CSS classes
+   * @property {{ name: string, svgContent: string }} icon - Icon object with SVG content
+   * @property {number} [size=24] - Icon size in pixels
+   * @property {string} [strokeWidth='2'] - SVG stroke width
+   * @property {Object} [rest] - Additional props to pass to the SVG element
+   */
 
-  /** @type {{ name: string, svgContent: string }} */
-  let icon;
-  export { icon };
-
-  /** @type {number} */
-  let size = 24;
-  export { size };
-
-  /** @type {string} */
-  let strokeWidth = '2';
-  export { strokeWidth };
+  /** @type {IconProps} */
+  const { 
+    class: className = '', 
+    icon, 
+    size = 24, 
+    strokeWidth = '2',
+    ...rest 
+  } = $props();
 </script>
 
 <svg
@@ -29,7 +31,7 @@
   stroke-linejoin="round"
   class={className}
   aria-hidden="true"
-  {...$$restProps}
+  {...rest}
 >
   {@html icon?.svgContent || ''}
 </svg> 
