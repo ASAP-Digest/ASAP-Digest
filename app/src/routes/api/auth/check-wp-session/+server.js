@@ -154,12 +154,20 @@ export async function POST(event) {
 					// Log successful session creation with session details
 					log(`[API /check-wp-session] Session created successfully with token length: ${session.token.length}. Cookie set using cookies API.`, 'info');
 					
+					// Log avatar URL for debugging
+					if (wpUserData.avatarUrl) {
+						log(`[API /check-wp-session] User has avatarUrl: ${wpUserData.avatarUrl}`);
+					} else {
+						log(`[API /check-wp-session] No avatarUrl found for user ${wpUserData.username}`);
+					}
+					
 					return json({
 						success: true,
 						user: {
 							id: session.userId,
 							email: wpUserData.email,
-							displayName: wpUserData.displayName || wpUserData.username
+							displayName: wpUserData.displayName || wpUserData.username,
+							avatarUrl: wpUserData.avatarUrl || ''
 						}
 					});
 				} else {

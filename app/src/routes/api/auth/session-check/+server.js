@@ -4,7 +4,24 @@ import { log } from '$lib/utils/log';
 
 /**
  * @typedef {import('$lib/types/better-auth').BetterAuth} BetterAuth
- * @typedef {import('$lib/types/better-auth').SessionResponse} SessionResponse
+ */
+
+/**
+ * @typedef {Object} SessionUser
+ * @property {string} id - User ID
+ * @property {string} email - User email
+ * @property {string} [displayName] - User display name
+ * @property {string} [avatarUrl] - User avatar URL
+ * @property {string[]} [roles] - User roles
+ * @property {string} [updatedAt] - Last update timestamp
+ */
+
+/**
+ * @typedef {Object} SessionResponse
+ * @property {boolean} authenticated - Whether the user is authenticated
+ * @property {SessionUser} [user] - User data if authenticated
+ * @property {string} [error] - Error code if not authenticated
+ * @property {string} [message] - Error message if not authenticated
  */
 
 /**
@@ -101,12 +118,16 @@ export async function GET(event) {
                 id: user.id,
                 email: user.email,
                 displayName: user.display_name || user.username || user.email.split('@')[0],
+                avatarUrl: user.avatarUrl || '',
                 roles: Array.isArray(user.roles) ? user.roles : 
                       (user.metadata && Array.isArray(user.metadata.roles)) ? user.metadata.roles : 
                       ['user'],
                 updatedAt: new Date().toISOString()
             }
         };
+        
+        // Log the response avatar URL for debugging
+        log('[API /session-check] Returning user with avatarUrl: ' + user.avatarUrl);
         
         return json(response);
     } catch (error) {

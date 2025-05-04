@@ -516,7 +516,17 @@
             aria-haspopup="true"
           >
             <div class="h-8 w-8 overflow-hidden rounded-full bg-[hsl(var(--muted)/0.2)]">
-              <!-- Use real user data for avatar -->
+              <!-- Add this debug output -->
+              {#if $page.data.user}
+                <div style="display: none;">
+                  <!-- This hidden div will help debug in the DOM -->
+                  Avatar URL debug: {$page.data.user.avatarUrl || 'No avatar URL found'}
+                </div>
+                <!-- Add console logging when component mounts -->
+                {@html `<script>console.log('Avatar URL:', ${JSON.stringify($page.data.user.avatarUrl || 'No avatar URL found')})</script>`}
+              {/if}
+              
+              <!-- Update the img tag -->
               <img
                 src={$page.data.user?.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'}
                 alt={$page.data.user?.displayName || 'User Avatar'}
