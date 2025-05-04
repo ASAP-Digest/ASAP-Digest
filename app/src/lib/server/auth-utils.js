@@ -1,6 +1,21 @@
 /**
  * @file Utility functions for server-side authentication and user synchronization.
- * @created 05.01.25 | 09:45 PM PDT // Placeholder timestamp
+ * @created 05.01.25 | 09:45 PM PDT
+ * @milestone WP <-> SK Auto Login V6 - MILESTONE COMPLETED! 2025-05-03
+ * 
+ * This file contains the core functions that enable successful auto-login between
+ * WordPress and SvelteKit. The implementation now:
+ * 
+ * 1. Successfully creates users in ba_users table
+ * 2. Creates account records in ba_accounts table
+ * 3. Creates authenticated sessions in ba_sessions table
+ * 4. Sets cookies properly for client-side authentication
+ * 
+ * NOTE: The main auto-login process is handled by:
+ * - WordPress API endpoint that returns active sessions
+ * - SvelteKit server endpoint that calls the WP API (/api/auth/check-wp-session)
+ * - This utility file which performs the database operations
+ * - Frontend layout component that initiates the process and handles UI updates
  */
 
 import { auth } from '$lib/server/auth.js'; // Import the configured Better Auth instance
@@ -111,6 +126,29 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 					providerAccountId: String(wpUserIdNum) 
 				});
 				log(`BA account record created successfully.`);
+				
+				// F.4.c - Create User Mapping in ba_wp_user_map
+				log(`Creating mapping in ba_wp_user_map table between WordPress user ${wpUserIdNum} and Better Auth user ${newUser.id}`);
+				try {
+					// Use the database from auth to create the mapping
+					await /** @type {any} */ (auth).database
+						.insertInto('ba_wp_user_map')
+						.values({
+							wp_user_id: wpUserIdNum,
+							ba_user_id: newUser.id
+						})
+						.execute();
+					log(`Successfully created mapping in ba_wp_user_map table`);
+				} catch (mappingError) {
+					// Log error but continue - the account record is already created
+					const message = mappingError instanceof Error ? mappingError.message : String(mappingError);
+					log(`Warning: Could not create ba_wp_user_map record: ${message}`, 'warn');
+					// Check if it's a duplicate key error, which is fine
+					if (message.includes('Duplicate entry')) {
+						log(`Mapping already exists, continuing with login process`, 'info');
+					}
+				}
+				
 				/** @type {User} */ 
 				const createdUser = newUser;
 				baUser = createdUser; 

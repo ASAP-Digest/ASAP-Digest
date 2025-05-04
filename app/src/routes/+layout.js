@@ -36,6 +36,8 @@ export async function load({ data, fetch, depends }) {
         
         // Use a lightweight session-check endpoint instead of redirecting
         const response = await fetch('/api/auth/session-check', {
+            method: 'GET',
+            credentials: 'include',
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -64,6 +66,7 @@ export async function load({ data, fetch, depends }) {
         try {
             const wpResponse = await fetch('/api/auth/check-wp-session', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',

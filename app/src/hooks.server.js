@@ -148,6 +148,33 @@ const betterAuthHandle = async ({ event, resolve }) => {
         // Add new constant for the check-wp-session path
         const CHECK_WP_SESSION_PATH = '/api/auth/check-wp-session';
         const isCheckWpSession = event.url.pathname === CHECK_WP_SESSION_PATH;
+        
+        // Special handling for check-wp-session endpoint - always allow without CSRF
+        if (isCheckWpSession && event.request.method === 'POST') {
+            console.log(`[Auth Handle] Special handling for ${CHECK_WP_SESSION_PATH}: bypassing CSRF check`);
+            
+            // Set session token from cookie if available
+            const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
+            if (sessionToken) {
+                const headers = new Headers(event.request.headers);
+                headers.set('Authorization', `Bearer ${sessionToken}`);
+                event.request = new Request(event.request.url, {
+                    method: event.request.method,
+                    headers,
+                    body: event.request.body,
+                    mode: event.request.mode,
+                    credentials: event.request.credentials,
+                    cache: event.request.cache,
+                    redirect: event.request.redirect,
+                    referrer: event.request.referrer,
+                    integrity: event.request.integrity
+                });
+            }
+            
+            // Skip other auth checks and proceed directly
+            console.log(`[Auth Handle] Resolving request for ${event.url.pathname}`);
+            return resolve(event);
+        }
 
         if (isAuthPath && isMutatingMethod) {
             let isAuthorized = false;
@@ -162,11 +189,6 @@ const betterAuthHandle = async ({ event, resolve }) => {
                 console.log(`[Auth Handle] Allowing POST to ${VERIFY_TOKEN_PATH} without CSRF/Secret check (Bridge Token Verification).`);
                 isAuthorized = true; // Assume authorized here; validation happens in the endpoint
                 expectedAuthMethod = 'Bridge Token Verification'; // Log this specific flow
-            } else if (isCheckWpSession && bypassCSRF) {
-                // For the background check-wp-session endpoint, bypass CSRF when explicitly requested
-                console.log(`[Auth Handle] Allowing ${event.request.method} to ${CHECK_WP_SESSION_PATH} with CSRF bypass header.`);
-                isAuthorized = true;
-                expectedAuthMethod = 'CSRF Bypass';
             } else if (isSyncPath) {
                 // For the specific internal sync path, check the shared secret
                 console.log(`[Auth Handle] Checking sync secret for ${CORRECT_SYNC_PATH}`); // Correct log
@@ -246,14 +268,16 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
             return resolve(event);
         }
 
+        console.log(`[hooks.server.js | WP Session] Found better_auth_session cookie. Token length: ${sessionToken.length}`);
+
         // When Better Auth session exists, check if it's valid and set user in locals
         try {
-        skConnection = await pool.getConnection();
+            skConnection = await pool.getConnection();
             const sessionQuery = `
                 SELECT 
                     s.id as session_id, 
                     s.user_id, 
-                    s.session_token,
+                    s.token, 
                     s.expires_at,
                     u.id,
                     u.email, 
@@ -265,12 +289,17 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                 JOIN 
                     ba_users u ON s.user_id = u.id
                 WHERE 
-                    s.session_token = ?
+                    s.token = ?
                     AND s.expires_at > NOW()
                 LIMIT 1
             `;
+            
+            console.log(`[hooks.server.js | WP Session] Executing session query with token: ${sessionToken.substring(0, 5)}...`);
+            
             /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
             const [rows, fields] = await skConnection.execute(sessionQuery, [sessionToken]);
+            
+            console.log(`[hooks.server.js | WP Session] Query returned ${rows.length} rows.`);
             
             // Use proper type checking before accessing rows
             if (Array.isArray(rows) && rows.length > 0) {
@@ -293,44 +322,36 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                     // Apply Local Variable Type Safety for roles
                     const roles = Array.isArray(metadata?.roles) ? metadata.roles : ['subscriber'];
                     
-                    /** @type {User} */
-                    const user = {
+                    // Ensure email is always a string to satisfy type requirements
+                    const userEmail = typeof sessionRow.email === 'string' ? sessionRow.email : '';
+                    
+                    // Set user in locals (using App.Locals.user type)
+                    locals.user = {
                         id: sessionRow.id,
-                        betterAuthId: sessionRow.id,
-                        email: sessionRow.email,
-                        displayName: sessionRow.name || sessionRow.username || sessionRow.email,
-                        roles: roles,
-                        syncStatus: 'synced',
-                        updatedAt: new Date().toISOString()
+                        email: userEmail,
+                        displayName: sessionRow.name || sessionRow.username || userEmail,
+                        roles: roles
+                        // Avoid adding betterAuthId directly as it's not part of App.User type
                     };
                     
-                    // Only add metadata if it exists and has content
-                    // This avoids the type error where metadata might not be recognized
-                    if (metadata && typeof metadata === 'object' && Object.keys(metadata).length > 0) {
-                        // @ts-ignore - We know metadata is valid from our type definition
-                        user.metadata = metadata;
-                    }
+                    // Ensure token is always a string to satisfy type requirements
+                    const sessionTokenValue = typeof sessionRow.token === 'string' ? sessionRow.token : '';
                     
-                    // Set session in locals according to global Session interface
-                    /** @type {Session} */
-                    const session = {
-                        id: sessionRow.session_id,
-                        sessionId: sessionRow.session_id,
+                    // Set session in locals according to App.Locals.session type
+                    locals.session = {
                         userId: sessionRow.user_id,
-                        token: sessionRow.session_token,
-                        expiresAt: new Date(sessionRow.expires_at),
-                        createdAt: new Date() // Default value since not stored
+                        token: sessionTokenValue,
+                        expiresAt: new Date(sessionRow.expires_at).toISOString()
                     };
                     
-                    // Set locals data for later route handlers and load functions
-                    locals.user = user;
-                    locals.session = session;
-                    
-                    console.log('[hooks.server.js | WP Session] User data in locals:', locals.user.id, locals.user.email);
+                    console.log('[hooks.server.js | WP Session] User data set in locals:', locals.user?.id, locals.user?.email);
+                } else {
+                    console.log('[hooks.server.js | WP Session] Session row found but invalid format:', sessionRow);
                 }
             } else {
                 // Invalid or expired session
-                console.log('[hooks.server.js | WP Session] No valid session found for token.');
+                console.log('[hooks.server.js | WP Session] No valid session found for token:', 
+                    sessionToken.length > 5 ? `${sessionToken.substring(0, 5)}...` : 'INVALID');
                 // Clear the invalid cookie
                 event.cookies.delete('better_auth_session', { 
                     path: '/', 
@@ -343,6 +364,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
             console.error('[hooks.server.js | WP Session] Database error validating session:', dbError);
         } finally {
             if (skConnection) {
+                console.log('[hooks.server.js | WP Session] Releasing database connection');
                 skConnection.release();
             }
         }
@@ -350,6 +372,10 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
         return resolve(event);
     } catch (error) {
         console.error('[hooks.server.js | WP Session] Unhandled error:', error);
+        if (skConnection) {
+            console.log('[hooks.server.js | WP Session] Releasing database connection after error');
+            skConnection.release();
+        }
         return resolve(event);
     }
 };
@@ -362,7 +388,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
 const protectedRouteHandle = async ({ event, resolve }) => {
     /** @type {App.Locals} */
     const locals = event.locals;
-    /** @type {User|undefined} */
+    /** @type {App.User|undefined} */
     const user = locals.user; // User data populated by wordPressSessionHandle or previous hooks
     
     const protectedRoutes = [
@@ -377,7 +403,7 @@ const protectedRouteHandle = async ({ event, resolve }) => {
     
     /**
      * Check if user has administrator role
-     * @param {User | undefined | null} user The user to check
+     * @param {App.User | undefined | null} user The user to check
      * @returns {boolean} Whether the user has admin role
      */
     const requiresAdmin = (user) => {

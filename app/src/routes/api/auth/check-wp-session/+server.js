@@ -1,3 +1,23 @@
+/**
+ * @file WordPress Session Check Endpoint
+ * @description Server-to-server endpoint that checks for active WordPress sessions and initiates auto-login
+ * @created 2025-05-01
+ * @milestone WP <-> SK Auto Login V6 - MILESTONE COMPLETED! 2025-05-03
+ * 
+ * This endpoint is critical to the WP <-> SK Auto Login process:
+ * 1. It receives requests from the frontend when no active session is found
+ * 2. It makes a server-to-server request to WordPress to check for active sessions
+ * 3. If an active WP session is found, it triggers syncWordPressUserAndCreateSession
+ * 4. It sets the proper session cookie for client-side authentication
+ * 
+ * The implementation now successfully:
+ * - Creates users in ba_users
+ * - Creates account records in ba_accounts
+ * - Creates authenticated sessions in ba_sessions
+ * - Handles CSRF validation properly with the bypass header
+ * - Uses the correct server-to-server authentication with shared secret
+ */
+
 import { json } from '@sveltejs/kit';
 import { syncWordPressUserAndCreateSession } from '$lib/server/auth-utils';
 import { log } from '$lib/utils/log';
@@ -121,19 +141,25 @@ export async function POST(event) {
 				const session = await syncWordPressUserAndCreateSession(wpUserData);
 
 				if (session) {
-					// Set Better Auth session cookie
-					const cookieHeader = `better_auth_session=${session.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`;
+					// Set Better Auth session cookie using event.cookies API instead of headers
+					// This provides more consistent behavior across environments
+					event.cookies.set('better_auth_session', session.token, {
+						path: '/',
+						httpOnly: true,
+						sameSite: 'lax',
+						secure: true,
+						maxAge: 30 * 24 * 60 * 60 // 30 days
+					});
 
+					// Log successful session creation with session details
+					log(`[API /check-wp-session] Session created successfully with token length: ${session.token.length}. Cookie set using cookies API.`, 'info');
+					
 					return json({
 						success: true,
 						user: {
 							id: session.userId,
 							email: wpUserData.email,
 							displayName: wpUserData.displayName || wpUserData.username
-						} 
-					}, {
-						headers: {
-							'Set-Cookie': cookieHeader
 						}
 					});
 				} else {

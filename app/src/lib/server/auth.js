@@ -1,3 +1,20 @@
+/**
+ * @file Better Auth Configuration and Adapter Implementation
+ * @created 2025-05-01
+ * @milestone WP <-> SK Auto Login V6 - MILESTONE COMPLETED! 2025-05-03
+ * 
+ * This file contains the complete Better Auth configuration and adapter implementation
+ * that enables auto-login between WordPress and SvelteKit. The implementation now:
+ * 
+ * 1. Creates proper users in ba_users with UUIDs
+ * 2. Creates account records in ba_accounts linking users to WordPress
+ * 3. Creates authenticated sessions in ba_sessions table
+ * 4. Fixed all type errors with proper error handling
+ * 
+ * The Better Auth adapter pattern allows for custom database operations that maintain
+ * the connection between WordPress users and SvelteKit authentication.
+ */
+
 import { betterAuth } from 'better-auth';
 import mysql from 'mysql2/promise';
 import { Kysely } from 'kysely';
