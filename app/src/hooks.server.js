@@ -59,6 +59,7 @@ function validateSyncSecret(request) {
 }
 
 /**
+ * Import database types from mysql2/promise
  * @typedef {import('mysql2/promise').PoolConnection} PoolConnection
  * @typedef {import('mysql2/promise').RowDataPacket} RowDataPacket
  * @typedef {import('mysql2/promise').OkPacket} OkPacket
@@ -66,7 +67,8 @@ function validateSyncSecret(request) {
  */
 
 /**
- * @typedef {Object} User - Defined locally for hook processing
+ * User model for hook processing
+ * @typedef {Object} User
  * @property {string} id - User ID (WP User ID)
  * @property {string} betterAuthId - Better Auth user ID (UUID)
  * @property {string | undefined} [displayName] - User's display name (Optional from DB)
@@ -78,12 +80,24 @@ function validateSyncSecret(request) {
  */
 
 /**
+ * Extended RequestInit interface with duplex property
+ * @typedef {RequestInit & {duplex: 'half'}} RequestInitWithDuplex
+ */
+
+/**
+ * SvelteKit event locals extension for hooks
  * @typedef {Object} EventLocals
  * @property {User} [user] - User object if authenticated
  * @property {Object.<string, any>} [additionalProps] - Any additional properties
  */
 
-/** @type {import('@sveltejs/kit').Handle} */
+/**
+ * SvelteKit handle function for CORS
+ * @param {object} params - Handle parameters
+ * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event - The request event
+ * @param {Function} params.resolve - The resolve function
+ * @returns {Promise<Response>} - The response
+ */
 const corsHandle = async ({ event, resolve }) => {
   // Define allowed origins (adjust for production)
   const allowedOrigin = dev ? 'https://localhost:5173' : 'https://app.asapdigest.com';
@@ -130,7 +144,13 @@ const corsHandle = async ({ event, resolve }) => {
   return response;
 };
 
-/** @type {import('@sveltejs/kit').Handle} */
+/**
+ * SvelteKit handle function for authentication
+ * @param {object} params - Handle parameters
+ * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event - The request event
+ * @param {Function} params.resolve - The resolve function
+ * @returns {Promise<Response>} - The response
+ */
 const betterAuthHandle = async ({ event, resolve }) => {
     try {
         // Only ignore Vite's internal HMR websocket connection
@@ -158,17 +178,25 @@ const betterAuthHandle = async ({ event, resolve }) => {
             if (sessionToken) {
                 const headers = new Headers(event.request.headers);
                 headers.set('Authorization', `Bearer ${sessionToken}`);
-                event.request = new Request(event.request.url, {
+                
+                /**
+                 * Create a new Request with modified headers
+                 * @type {RequestInitWithDuplex}
+                 */
+                const requestOptions = {
                     method: event.request.method,
                     headers,
                     body: event.request.body,
+                    duplex: "half", // Type assertion handled via JSDoc - Required for streaming request bodies
                     mode: event.request.mode,
                     credentials: event.request.credentials,
                     cache: event.request.cache,
                     redirect: event.request.redirect,
                     referrer: event.request.referrer,
                     integrity: event.request.integrity
-                });
+                };
+                
+                event.request = new Request(event.request.url, requestOptions);
             }
             
             // Skip other auth checks and proceed directly
@@ -219,17 +247,25 @@ const betterAuthHandle = async ({ event, resolve }) => {
         if (sessionToken) {
             const headers = new Headers(event.request.headers);
             headers.set('Authorization', `Bearer ${sessionToken}`);
-            event.request = new Request(event.request.url, {
+            
+            /**
+             * Create a new Request with modified headers
+             * @type {RequestInitWithDuplex}
+             */
+            const requestOptions = {
                 method: event.request.method,
                 headers,
                 body: event.request.body,
+                duplex: "half", // Type assertion handled via JSDoc - Required for streaming request bodies
                 mode: event.request.mode,
                 credentials: event.request.credentials,
                 cache: event.request.cache,
                 redirect: event.request.redirect,
                 referrer: event.request.referrer,
                 integrity: event.request.integrity
-            });
+            };
+            
+            event.request = new Request(event.request.url, requestOptions);
         }
 
         // Resolve the request (this will now correctly route all auth-related endpoints)
@@ -241,7 +277,13 @@ const betterAuthHandle = async ({ event, resolve }) => {
     }
 };
 
-/** @type {import('@sveltejs/kit').Handle} */
+/**
+ * SvelteKit handle function for WordPress session validation
+ * @param {object} params - Handle parameters 
+ * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event - The request event
+ * @param {Function} params.resolve - The resolve function
+ * @returns {Promise<Response>} - The response
+ */
 const wordPressSessionHandle = async ({ event, resolve }) => {
     /** @type {App.Locals} */
     const locals = event.locals;
@@ -296,7 +338,7 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
             
             console.log(`[hooks.server.js | WP Session] Executing session query with token: ${sessionToken.substring(0, 5)}...`);
             
-            /** @type {[import('mysql2/promise').RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
+            /** @type {[RowDataPacket[], import('mysql2/promise').FieldPacket[]]} */
             const [rows, fields] = await skConnection.execute(sessionQuery, [sessionToken]);
             
             console.log(`[hooks.server.js | WP Session] Query returned ${rows.length} rows.`);
@@ -383,7 +425,10 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
 /** 
  * Handle protected route access control
  * 
- * @type {import('@sveltejs/kit').Handle} 
+ * @param {object} params - Handle parameters
+ * @param {import('@sveltejs/kit').RequestEvent & { locals: App.Locals }} params.event - The request event
+ * @param {Function} params.resolve - The resolve function
+ * @returns {Promise<Response>} - The response
  */
 const protectedRouteHandle = async ({ event, resolve }) => {
     /** @type {App.Locals} */
@@ -414,6 +459,12 @@ const protectedRouteHandle = async ({ event, resolve }) => {
         return user.roles.includes('administrator');
     };
 
+    // IMPORTANT: Allow access to root path even if logged in - prevents auto redirection
+    if (event.url.pathname === '/' && user) {
+        console.log(`[Protected Route] User is logged in and accessing root path. Allowing access without redirect.`);
+        return resolve(event);
+    }
+
     // Check if the current path starts with any protected route
     const isProtectedRoute = protectedRoutes.some(route => event.url.pathname.startsWith(route));
 
@@ -428,13 +479,6 @@ const protectedRouteHandle = async ({ event, resolve }) => {
         // Redirect to dashboard if trying to access admin route without admin role
         const redirectUrl = '/dashboard?error=forbidden';
         console.log(`[Protected Route] User lacks admin role for ${event.url.pathname}. Redirecting to ${redirectUrl}`);
-        throw redirect(303, redirectUrl);
-    }
-
-    // If logged in and accessing root or login page, redirect to dashboard
-    if (user && (event.url.pathname === '/' || event.url.pathname === '/login')) {
-        const redirectUrl = '/dashboard';
-        console.log(`[Protected Route] User logged in, redirecting from ${event.url.pathname} to ${redirectUrl}`);
         throw redirect(303, redirectUrl);
     }
 
