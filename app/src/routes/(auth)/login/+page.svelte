@@ -55,13 +55,13 @@
   }
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-[hsl(var(--background))]">
+<div class="flex min-h-screen items-center justify-center bg-[hsl(var(--canvas-base))]">
   <div class="w-full max-w-md space-y-8 px-4 py-8">
     <div class="text-center">
-      <h1 class="text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+      <h1 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--tracking-tight)] text-[hsl(var(--text-1))]">
         Welcome back
       </h1>
-      <p class="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+      <p class="mt-2 text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
         Sign in to your account
       </p>
     </div>
@@ -109,11 +109,11 @@
               bind:checked={rememberMe}
               disabled={isLoading}
             />
-            <Label for="remember-me" class="text-sm">Remember me</Label>
+            <Label for="remember-me" class="text-[var(--font-size-sm)]">Remember me</Label>
           </div>
           <a
             href="/forgot-password"
-            class="text-sm text-[hsl(var(--primary))] hover:text-opacity-90"
+            class="text-[var(--font-size-sm)] text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]"
           >
             Forgot password?
           </a>
@@ -137,8 +137,8 @@
         <div class="absolute inset-0 flex items-center">
           <span class="w-full border-t border-[hsl(var(--border))]"></span>
         </div>
-        <div class="relative flex justify-center text-xs uppercase">
-          <span class="bg-[hsl(var(--background))] px-2 text-[hsl(var(--muted-foreground))]">
+        <div class="relative flex justify-center text-[var(--font-size-xs)] uppercase">
+          <span class="bg-[hsl(var(--canvas-base))] px-2 text-[hsl(var(--text-3))]">
             Or continue with
           </span>
         </div>
@@ -159,11 +159,11 @@
         Google
       </Button>
 
-      <p class="mt-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
+      <p class="mt-4 text-center text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
         Don't have an account?
         <a
           href="/register"
-          class="text-[hsl(var(--primary))] hover:text-opacity-90"
+          class="text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]"
         >
           Sign up
         </a>

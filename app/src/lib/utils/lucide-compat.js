@@ -48,7 +48,11 @@ const iconPaths = {
 	barChart2: '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
 	activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>',
 	// Add FileText icon path
-	fileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line>'
+	fileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line>',
+	// Add Plus icon path
+	plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+	// Add Circle icon path
+	circle: '<circle cx="12" cy="12" r="10"></circle>'
 };
 
 // Revert exports to use the original pattern
@@ -93,6 +97,10 @@ export const BookmarkIcon = createIconObject('bookmark', iconPaths.bookmark); //
 export const Activity = createIconObject('activity', iconPaths.activity);
 // Add FileText export
 export const FileText = createIconObject('fileText', iconPaths.fileText);
+// Add Plus export
+export const Plus = createIconObject('plus', iconPaths.plus);
+// Add Circle export
+export const Circle = createIconObject('circle', iconPaths.circle);
 
 /**
  * Create a custom icon component from a name and SVG content

@@ -7,8 +7,8 @@
   import { Label } from '$lib/components/ui/label';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
-  import { UserPlus } from '$lib/utils/lucide-icons.js';
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import { UserPlus, Loader2 } from '$lib/utils/lucide-compat.js';
+  import Icon from "$lib/components/ui/icon/icon.svelte";
 
   const session = useSession();
   let name = $state('');
@@ -58,13 +58,13 @@
   }
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-[hsl(var(--background))]">
+<div class="flex min-h-screen items-center justify-center bg-[hsl(var(--canvas-base))]">
   <div class="w-full max-w-md space-y-8 px-4 py-8">
     <div class="text-center">
-      <h1 class="text-2xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+      <h1 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] tracking-[var(--tracking-tight)] text-[hsl(var(--text-1))]">
         Create an account
       </h1>
-      <p class="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
+      <p class="mt-2 text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
         Join ASAP Digest today
       </p>
     </div>
@@ -134,11 +134,11 @@
             id="terms"
             bind:checked={acceptTerms}
           />
-          <Label for="terms" class="text-sm">
+          <Label for="terms" class="text-[var(--font-size-sm)]">
             I agree to the
             <a
               href="/terms"
-              class="text-[hsl(var(--primary))] hover:text-opacity-90"
+              class="text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]"
             >
               terms and conditions
             </a>
@@ -152,18 +152,18 @@
         disabled={isLoading}
       >
         {#if isLoading}
-          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+          <Icon icon={Loader2} class="mr-2 h-5 w-5 animate-spin" />
         {:else}
-          <Icon icon={UserPlus} class="mr-2" size={18} color="currentColor" />
+          <Icon icon={UserPlus} class="mr-2" size={18} />
         {/if}
         {isLoading ? 'Creating account...' : 'Create account'}
       </Button>
 
-      <p class="mt-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
+      <p class="mt-4 text-center text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
         Already have an account?
         <a
           href="/login"
-          class="text-[hsl(var(--primary))] hover:text-opacity-90"
+          class="text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))]"
         >
           Sign in
         </a>

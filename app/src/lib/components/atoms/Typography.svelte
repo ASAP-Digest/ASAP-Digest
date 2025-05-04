@@ -6,7 +6,18 @@
 
   /** @typedef {'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'caption' | 'blockquote' | 'code'} TypographyVariant */
 
-  // Destructure props, make children optional, add textContent
+  /**
+   * @typedef {Object} TypographyProps
+   * @property {TypographyVariant} [variant='p'] - Typography variant
+   * @property {string} [className] - Additional CSS classes
+   * @property {boolean} [bold=false] - Whether the text is bold
+   * @property {boolean} [italic=false] - Whether the text is italic
+   * @property {string | null} [color=null] - Text color override
+   * @property {Snippet | undefined} [children] - Child content
+   * @property {string} [textContent] - Alternative text content
+   */
+  
+  /** @type {TypographyProps} */
   let { 
     variant = /** @type {TypographyVariant} */ ('p'), 
     className = "", 
@@ -16,8 +27,6 @@
     children = /** @type {Snippet | undefined} */ (undefined), // Optional snippet prop
     textContent = "" // Add optional textContent prop
   } = $props();
-
-  // --- Restore Internal Logic --- 
   
   // Map variants to HTML tags
   /** @type {Record<string, string>} */
@@ -26,19 +35,19 @@
     'p': 'p', 'blockquote': 'blockquote', 'code': 'code'
   };
   
-  // Static CSS class mappings
+  // Static CSS class mappings updated for GRDSP
   /** @type {Record<string, string>} */
   const variantClassMap = {
-    'h1': "text-[var(--font-size-4xl)] font-[var(--font-weight-extrabold)] leading-[var(--line-height-tight)] tracking-[var(--tracking-tighter)] mb-[calc(var(--spacing-unit)*8)]",
-    'h2': "text-[var(--font-size-3xl)] font-[var(--font-weight-extrabold)] leading-[var(--line-height-tight)] tracking-[var(--tracking-tight)] mb-[calc(var(--spacing-unit)*6)]",
-    'h3': "text-[var(--font-size-2xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-snug)] tracking-[var(--tracking-tight)] mb-[calc(var(--spacing-unit)*5)]",
-    'h4': "text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-snug)] mb-[calc(var(--spacing-unit)*4)]",
-    'h5': "text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] leading-[var(--line-height-normal)] mb-[calc(var(--spacing-unit)*3)]",
-    'h6': "text-[var(--font-size-base)] font-[var(--font-weight-semibold)] leading-[var(--line-height-normal)] mb-[calc(var(--spacing-unit)*3)]",
-    'p': "text-[var(--font-size-base)] leading-[var(--line-height-loose)] mb-[calc(var(--spacing-unit)*5)]",
-    'caption': "text-[var(--font-size-sm)] leading-[var(--line-height-normal)] text-[hsl(var(--muted-foreground))] mb-[calc(var(--spacing-unit)*2)]",
-    'blockquote': "pl-[calc(var(--spacing-unit)*6)] border-l-[4px] border-[hsl(var(--border))] italic text-[var(--font-size-lg)] mb-[calc(var(--spacing-unit)*5)]",
-    'code': "font-mono bg-[hsl(var(--muted))] px-[calc(var(--spacing-unit)*1.5)] py-[calc(var(--spacing-unit)*0.8)] rounded-[var(--radius-sm)] text-[var(--font-size-sm)]"
+    'h1': "text-[var(--font-size-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-height-heading)] tracking-[var(--tracking-tight)] mb-6",
+    'h2': "text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] leading-[var(--line-height-heading)] tracking-[var(--tracking-tight)] mb-5",
+    'h3': "text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] leading-[var(--line-height-heading)] tracking-[var(--tracking-normal)] mb-4",
+    'h4': "text-[var(--font-size-base)] font-[var(--font-weight-semibold)] leading-[var(--line-height-body)] mb-3",
+    'h5': "text-[var(--font-size-base)] font-[var(--font-weight-semibold)] leading-[var(--line-height-body)] mb-2",
+    'h6': "text-[var(--font-size-sm)] font-[var(--font-weight-semibold)] leading-[var(--line-height-body)] mb-2",
+    'p': "text-[var(--font-size-base)] leading-[var(--line-height-body)] mb-4",
+    'caption': "text-[var(--font-size-sm)] leading-[var(--line-height-body)] text-[hsl(var(--text-2))] mb-2",
+    'blockquote': "pl-4 border-l-4 border-[hsl(var(--border))] italic text-[var(--font-size-base)] mb-4",
+    'code': "font-mono bg-[hsl(var(--surface-2))] px-2 py-1 rounded-[var(--radius-sm)] text-[var(--font-size-sm)]"
   };
 
   // Compute the HTML tag to render
@@ -49,7 +58,7 @@
 
   // Compute font modifiers
   let fontModifiers = $derived([
-    bold ? "font-[var(--font-weight-bold)]" : "",
+    bold ? "font-[var(--font-weight-semibold)]" : "",
     italic ? "italic" : ""
   ].filter(Boolean).join(" "));
 
@@ -60,6 +69,7 @@
   let computedClass = $derived(cn(
     variantClasses,
     fontModifiers,
+    "text-[hsl(var(--text-1))]", // Default text color from GRDSP
     className 
   ));
 

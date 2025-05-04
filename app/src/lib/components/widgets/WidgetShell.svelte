@@ -1,20 +1,12 @@
 <script>
   import { cn } from '$lib/utils';
-  import { Loader2 } from '$lib/utils/lucide-icons.js';
-  import { createCustomIcon } from '$lib/utils/lucide-compat.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Loader2, ChevronUp, ChevronDown, RefreshCw, AlertCircle, WifiOff } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
 
   /**
    * @typedef {'default' | 'compact' | 'expanded' | 'full-width'} WidgetSize
    * @typedef {'primary' | 'secondary' | 'accent' | 'muted'} WidgetVariant
    */
-
-  // Define icon objects for use in the component
-  const chevronUpIcon = createCustomIcon('chevron-up', '<polyline points="18 15 12 9 6 15"></polyline>');
-  const chevronDownIcon = createCustomIcon('chevron-down', '<polyline points="6 9 12 15 18 9"></polyline>');
-  const refreshIcon = createCustomIcon('refresh-cw', '<polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>');
-  const alertCircleIcon = createCustomIcon('alert-circle', '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>');
-  const wifiOffIcon = createCustomIcon('wifi-off', '<line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line>');
 
   /**
    * Declare component props using Svelte 5 runes syntax
@@ -33,6 +25,8 @@
    * @property {() => void} [onRefresh] - Callback when refresh button is clicked
    * @property {boolean} [offline] - Whether the widget is offline
    * @property {(expanded: boolean) => void} [onExpandedChange] - Callback when expanded state changes
+   * @property {import('svelte').Snippet} [children] - Widget content
+   * @property {import('svelte').Snippet} [footer] - Widget footer content
    */
   let { 
     title = '', 
@@ -48,7 +42,9 @@
     refreshable = false,
     onRefresh = () => {},
     offline = false,
-    onExpandedChange
+    onExpandedChange,
+    children,
+    footer
   } = $props();
 
   // Use $state for reactive variables that can change
@@ -78,13 +74,13 @@
   function getSizeClasses() {
     switch (size) {
       case 'compact':
-        return 'p-[0.75rem] gap-[0.5rem]';
+        return 'p-3 gap-2'; // 12px padding, 8px gap (multiples of 4px)
       case 'expanded':
-        return 'p-[1.5rem] gap-[1rem]';
+        return 'p-6 gap-4'; // 24px padding, 16px gap (multiples of 8px)
       case 'full-width':
-        return 'p-[1rem] gap-[0.75rem] col-span-full';
+        return 'p-4 gap-3 col-span-full'; // 16px padding, 12px gap (multiples of 4px)
       default:
-        return 'p-[1rem] gap-[0.75rem]';
+        return 'p-4 gap-3'; // 16px padding, 12px gap (multiples of 4px)
     }
   }
 
@@ -95,15 +91,15 @@
   function getVariantClasses() {
     switch (variant) {
       case 'primary':
-        return 'border-[hsl(var(--primary)/0.2)] hover:border-[hsl(var(--primary)/0.4)]';
+        return 'border-[hsl(var(--brand)/0.2)] hover:border-[hsl(var(--brand)/0.4)]';
       case 'secondary':
-        return 'border-[hsl(var(--secondary)/0.2)] hover:border-[hsl(var(--secondary)/0.4)]';
-      case 'accent':
         return 'border-[hsl(var(--accent)/0.2)] hover:border-[hsl(var(--accent)/0.4)]';
+      case 'accent':
+        return 'border-[hsl(var(--link)/0.2)] hover:border-[hsl(var(--link)/0.4)]';
       case 'muted':
         return 'border-[hsl(var(--border))] hover:border-[hsl(var(--border)/0.8)]';
       default:
-        return 'border-[hsl(var(--primary)/0.2)] hover:border-[hsl(var(--primary)/0.4)]';
+        return 'border-[hsl(var(--brand)/0.2)] hover:border-[hsl(var(--brand)/0.4)]';
     }
   }
 
@@ -125,29 +121,28 @@
 
 <div 
   class={cn(
-    'widget-shell relative bg-[hsl(var(--card))] rounded-[var(--radius-lg)] border shadow-[0_1px_3px_rgba(0,0,0,0.1)] transition-all duration-[var(--duration-normal)]',
+    'widget-shell relative bg-[hsl(var(--surface-2))] rounded-[var(--radius-lg)] border shadow-[var(--shadow-sm)] transition-all duration-[var(--duration-normal)]',
     'flex flex-col',
     sizeClasses,
     variantClasses,
     expandedClass,
     className
   )}
-  class:hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]={!error}
+  class:hover:shadow-[var(--shadow-md)]={!error}
 >
   <!-- Header with title and icon -->
   {#if title || icon}
-    <div class="widget-header flex items-center justify-between mb-[0.75rem]">
+    <div class="widget-header flex items-center justify-between mb-3">
       {#if title}
-        <h3 class="font-medium text-[var(--font-size-base)]">
+        <h3 class="font-[var(--font-weight-semibold)] text-[var(--font-size-base)] text-[hsl(var(--text-1))]">
           {title}
           
           {#if loading}
-            <span class="inline-flex items-center ml-[0.5rem] text-[hsl(var(--muted-foreground))]">
+            <span class="inline-flex items-center ml-2 text-[hsl(var(--text-2))]">
               <Icon 
                 icon={Loader2} 
                 size={14} 
-                class="animate-spin mr-[0.25rem]" 
-                color="currentColor" 
+                class="animate-spin mr-1" 
               />
               <span class="text-[var(--font-size-xs)]">Loading...</span>
             </span>
@@ -155,13 +150,12 @@
         </h3>
       {/if}
       
-      <div class="widget-actions flex gap-[0.5rem] text-[hsl(var(--muted-foreground))]">
+      <div class="widget-actions flex gap-2 text-[hsl(var(--text-2))]">
         {#if icon}
           <div class="widget-icon">
             <Icon 
               icon={icon} 
               size={20} 
-              color="currentColor" 
             />
           </div>
         {/if}
@@ -169,15 +163,14 @@
         {#if expandable}
           <button
             on:click={toggleExpanded}
-            class="p-[0.25rem] rounded-[var(--radius-sm)] hover:bg-[hsl(var(--muted)/0.1)] transition-colors duration-[var(--duration-fast)]"
+            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)]"
             aria-label={isExpanded ? "Collapse" : "Expand"}
             aria-expanded={isExpanded}
             type="button"
           >
             <Icon 
-              icon={isExpanded ? chevronUpIcon : chevronDownIcon} 
+              icon={isExpanded ? ChevronUp : ChevronDown} 
               size={16} 
-              color="currentColor" 
             />
           </button>
         {/if}
@@ -185,16 +178,15 @@
         {#if refreshable}
           <button
             on:click={handleRefresh}
-            class="p-[0.25rem] rounded-[var(--radius-sm)] hover:bg-[hsl(var(--muted)/0.1)] transition-colors duration-[var(--duration-fast)]"
+            class="p-1 rounded-[var(--radius-sm)] hover:bg-[hsl(var(--surface-3))] transition-colors duration-[var(--duration-fast)]"
             aria-label="Refresh content"
             disabled={loading}
             type="button"
           >
             <Icon 
-              icon={refreshIcon} 
+              icon={RefreshCw} 
               size={16} 
               class={loading ? 'animate-spin' : ''} 
-              color="currentColor" 
             />
           </button>
         {/if}
@@ -204,31 +196,29 @@
   
   <!-- Loading state -->
   {#if loading && !error}
-    <div class="widget-loading flex items-center justify-center py-[1rem] text-[hsl(var(--muted-foreground))]">
+    <div class="widget-loading flex items-center justify-center py-4 text-[hsl(var(--text-2))]">
       <Icon 
         icon={Loader2} 
         size={24} 
-        class="animate-spin mr-[0.5rem]" 
-        color="currentColor" 
+        class="animate-spin mr-2" 
       />
       <span>Loading content...</span>
     </div>
   
   <!-- Error state -->
   {:else if error}
-    <div class="widget-error flex flex-col items-center justify-center py-[1rem] text-[hsl(var(--destructive))]">
+    <div class="widget-error flex flex-col items-center justify-center py-4 text-[hsl(var(--functional-error))]">
       <Icon 
-        icon={alertCircleIcon} 
+        icon={AlertCircle} 
         size={24} 
-        class="mb-[0.5rem]" 
-        color="currentColor" 
+        class="mb-2" 
       />
       <span>{errorMessage}</span>
       
       {#if refreshable}
         <button
           on:click={handleRefresh}
-          class="mt-[0.75rem] text-[var(--font-size-sm)] text-[hsl(var(--primary))] hover:underline"
+          class="mt-3 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:underline"
           type="button"
         >
           Try again
@@ -238,36 +228,36 @@
   
   <!-- Offline state -->
   {:else if offline}
-    <div class="widget-offline flex flex-col items-center justify-center py-[1rem] text-[hsl(var(--warning))]">
+    <div class="widget-offline flex flex-col items-center justify-center py-4 text-[hsl(var(--text-1))]">
       <Icon 
-        icon={wifiOffIcon} 
+        icon={WifiOff} 
         size={24} 
-        class="mb-[0.5rem]" 
-        color="currentColor" 
+        class="mb-2" 
       />
       <span>Content not available offline</span>
       
       {#if refreshable}
         <button
           on:click={handleRefresh}
-          class="mt-[0.75rem] text-[var(--font-size-sm)] text-[hsl(var(--primary))] hover:underline"
+          class="mt-3 text-[var(--font-size-sm)] text-[hsl(var(--brand))] hover:underline"
           type="button"
         >
           Check connection
         </button>
       {/if}
     </div>
-  
-  <!-- Content slot -->
-  <div class="widget-content flex-1 min-h-0">
-    {#if children}
-      {@render children()}
-    {/if}
-  </div>
+  {:else}
+    <!-- Content slot -->
+    <div class="widget-content flex-1 min-h-0">
+      {#if children}
+        {@render children()}
+      {/if}
+    </div>
+  {/if}
   
   <!-- Footer slot -->
   {#if footer}
-    <div class="widget-footer mt-[0.75rem] pt-[0.75rem] border-t border-[hsl(var(--border)/0.5)]">
+    <div class="widget-footer mt-3 pt-3 border-t border-[hsl(var(--border)/0.5)]">
       {@render footer()}
     </div>
   {/if}
