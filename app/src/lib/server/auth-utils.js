@@ -50,6 +50,7 @@ function log(message, level = 'info') {
  * @property {string} [email]
  * @property {string} [username]
  * @property {string} [name]
+ * @property {string} [avatarUrl]
  * @property {string[]} [roles]
  */
 
@@ -65,13 +66,14 @@ function log(message, level = 'info') {
  * @param {string} wpUserDetails.email - The user's email.
  * @param {string} [wpUserDetails.username] - The WordPress username (optional).
  * @param {string} [wpUserDetails.name] - The user's display name (optional).
+ * @param {string} [wpUserDetails.avatarUrl] - The user's avatar URL (optional).
  * @returns {Promise<import('better-auth').Session | null>} The created Better Auth session object on success, or null on failure.
  * @created 07.27.24 | 03:40 PM PDT
  * @file-marker syncWordPressUserAndCreateSession
  */
 export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 	try {
-		const { wpUserId, email, username, name } = wpUserDetails;
+		const { wpUserId, email, username, name, avatarUrl } = wpUserDetails;
 
 		if (!wpUserId) {
 			log('Error: Missing wpUserId in syncWordPressUserAndCreateSession', 'error');
@@ -95,7 +97,31 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 			log(`Existing BA user found: ${baUser.id}`);
 			/** @type {User} */ 
 			const existingUser = baUser;
-			baUser = existingUser; 
+			baUser = existingUser;
+
+			// Update avatar URL if provided
+			if (avatarUrl && avatarUrl !== baUser.avatarUrl) {
+				log(`Updating avatar URL for user ${baUser.id}`);
+				try {
+					// Update the avatar URL in the database
+					await /** @type {any} */ (auth).database
+						.updateTable('ba_users')
+						.set({ 
+							avatarUrl: avatarUrl,
+							updated_at: new Date()
+						})
+						.where('id', '=', baUser.id)
+						.executeTakeFirst();
+					
+					// Update the local baUser object
+					baUser.avatarUrl = avatarUrl;
+					log(`Successfully updated avatar URL for user ${baUser.id}`);
+				} catch (updateError) {
+					const message = updateError instanceof Error ? updateError.message : String(updateError);
+					log(`Warning: Failed to update avatar URL: ${message}`, 'warn');
+					// Continue with login even if avatar update fails
+				}
+			}
 		} else {
 			// F.4 - Handle New User
 			log(`No existing BA user found for WP User ID: ${wpUserIdNum}. Initiating creation.`);
@@ -107,7 +133,8 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 					wpUserId: wpUserIdNum,
 					email: email,
 					username: username || email.split('@')[0], 
-					name: name || username || `WP User ${wpUserIdNum}`, 
+					name: name || username || `WP User ${wpUserIdNum}`,
+					avatarUrl: avatarUrl || '' // Include avatar URL in user creation
 				};
 				// Type assertion needed as Better Auth type is not exported and structural typing fails inference
 				const newUser = await /** @type {any} */ (auth).adapter.createUser(newUserInput); // Use Better Auth adapter

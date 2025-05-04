@@ -45,6 +45,10 @@ const iconPaths = {
 	play: '<polygon points="5 3 19 12 5 21 5 3"></polygon>',
 	clock: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
 	bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>',
+	barChart2: '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>',
+	activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>',
+	// Add FileText icon path
+	fileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line>'
 };
 
 // Revert exports to use the original pattern
@@ -83,6 +87,12 @@ export const Download = createIconObject('download', iconPaths.download);
 export const Play = createIconObject('play', iconPaths.play);
 export const Clock = createIconObject('clock', iconPaths.clock);
 export const Bookmark = createIconObject('bookmark', iconPaths.bookmark);
+export const BarChart2 = createIconObject('barChart2', iconPaths.barChart2);
+// Add BookmarkIcon and Activity exports
+export const BookmarkIcon = createIconObject('bookmark', iconPaths.bookmark); // Using the same path as Bookmark
+export const Activity = createIconObject('activity', iconPaths.activity);
+// Add FileText export
+export const FileText = createIconObject('fileText', iconPaths.fileText);
 
 /**
  * Create a custom icon component from a name and SVG content
