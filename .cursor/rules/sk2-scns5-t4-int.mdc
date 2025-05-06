@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules v1.2
+# SvelteKit 2 + Shadcn-Svelte 5 + Tailwind 4 Integration Rules v1.3
 
-*(Self-correction: Added Component Composition Rule, Added explicit rule against lang="ts", clarified $props usage, clarified internal Shadcn structure vs consumption)*
+*(Self-correction: v1.1 - Added Component Composition Rule, Added explicit rule against lang="ts", clarified $props usage, clarified internal Shadcn structure vs consumption; v1.2 - Added Component Composition Rule, Added explicit rule against lang="ts", clarified $props usage, clarified internal Shadcn structure vs consumption; v1.3 - Added JSDoc typings for Svelte component imports, detailed @ts-ignore guidance)*
 
 **Note:** This document provides SvelteKit/Shadcn/Tailwind integration specifics. For core visual styling rules (colors, typography, spacing, motion, states), refer PRIMARILY to `golden-ratio-design-system-protocol.mdc`. This protocol MUST NOT contradict the Golden Ratio system.
 
@@ -50,6 +50,7 @@ alwaysApply: true
     *   **When Consuming Components:** Import individual components directly from their `.svelte` files, not index files.
         ```javascript
         // CORRECT (When using Button in another component/page)
+        // @ts-ignore - Svelte component import
         import Button from '$lib/components/ui/button/button.svelte';
         // INCORRECT
         // import { Button } from '$lib/components/ui/button';
@@ -57,6 +58,27 @@ alwaysApply: true
         ```
     *   **Internal Structure:** The Shadcn component `.svelte` files themselves (`$lib/components/ui/.../*.svelte`) typically import primitives directly from `bits-ui` (e.g., `import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";`) and use those primitives (e.g., `<DropdownMenuPrimitive.Content>`). This internal structure should generally not be modified unless updating the component itself.
     *   When adding new Shadcn components, identify icons used within them. Grep the component source, find icon imports (likely direct `lucide-svelte` initially), and ensure those icons are exported via `$lib/utils/lucide-compat.js` per `icon-management.mdc`. Update the component to import icons from `lucide-compat.js` and use the `<Icon>` wrapper.
+    *   **Index Files (Svelte Component Exports):** When a component directory includes an `index.js` file exporting components, ensure ALL Svelte component imports have `// @ts-ignore` comments:
+        ```javascript
+        // app/src/lib/components/ui/alert/index.js
+        import { tv } from "tailwind-variants";
+        // @ts-ignore - Svelte component import
+        import Root from "./alert.svelte";
+        // @ts-ignore - Svelte component import 
+        import Description from "./alert-description.svelte";
+        // @ts-ignore - Svelte component import
+        import Title from "./alert-title.svelte";
+        
+        // Export both direct and aliased names
+        export {
+            Root,
+            Description,
+            Title,
+            Root as Alert,
+            Description as AlertDescription,
+            Title as AlertTitle
+        };
+        ```
 
 6.  **General Code Standards (MUST ADHERE):**
     *   Add explicit JSDoc type annotations for functions/parameters. Follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`.
@@ -67,9 +89,18 @@ alwaysApply: true
         ```svelte
         <!-- Example: atoms/Wrapper.svelte using ui/Underlying.svelte -->
         <script>
+          // @ts-ignore - Svelte component import
           import Underlying from '$lib/components/ui/Underlying.svelte';
-          // Receive children and textContent
-          let { children, textContent = "", ...rest } = $props(); // Ensure defaults if optional
+          
+          /**
+           * @typedef {Object} WrapperProps
+           * @property {string} [className] - Additional CSS classes
+           * @property {import('svelte').Snippet} [children] - Component content
+           * @property {string} [textContent] - Alternative text content
+           */
+          
+          /** @type {WrapperProps} */
+          const { children, textContent = "", ...rest } = $props(); // Ensure defaults if optional
         </script>
 
         <Underlying {...rest} {textContent}> {/* Pass textContent down */}
@@ -79,3 +110,30 @@ alwaysApply: true
         </Underlying>
         ```
     *   **(Optional SSR Note):** Be aware that rendering components accepting `children` snippets inside nested named snippets (`{#snippet name()}`) passed through intermediate components can sometimes cause SSR errors (`ReferenceError: children is not defined`) in Svelte 5 Runes, even if components handle optional children correctly. If this occurs, consider using an explicit prop (like `textContent`) for the content instead of the `children` snippet as a workaround for that specific usage.
+
+7.  **Svelte Import Type Safety (NEW - MUST ADHERE):**
+    *   **@ts-ignore Comments:** Add `// @ts-ignore - Svelte component import` comments before ALL Svelte component imports to prevent type checking errors.
+    *   **Automated Addition:** Use the project's `fix-svelte-imports.js` script to automatically add these comments across the codebase:
+        ```bash
+        node scripts/fix-svelte-imports.js
+        ```
+    *   **Component Props Typing:** Add JSDoc type definitions for component props in Svelte components:
+        ```svelte
+        <script>
+          /**
+           * @typedef {Object} ButtonProps
+           * @property {string} [variant="default"] - Button variant
+           * @property {string} [size="default"] - Button size
+           * @property {import('svelte').Snippet} [children] - Button content
+           */
+          
+          /** @type {ButtonProps} */
+          const { variant = "default", size = "default", children } = $props();
+        </script>
+        ```
+    *   **Children Type Safety:** Always check if `children` exists before rendering it:
+        ```svelte
+        {#if children}
+          {@render children()}
+        {/if}
+        ```

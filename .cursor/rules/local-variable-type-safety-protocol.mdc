@@ -3,7 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# Local Variable Type Safety Protocol v1.0
+# Local Variable Type Safety Protocol v1.1
+
+*(Self-correction: v1.1 - Added Svelte component-specific type guards)*
 
 ## 1. Purpose
 
@@ -14,6 +16,7 @@ This protocol establishes the standard practice for ensuring type safety when wo
 -   **Proactive Verification:** Type guards MUST be implemented *before* accessing properties on variables that might hold union types or objects with optional properties, or before passing them to functions with stricter type requirements. Do not assume the shape of data returned from external sources.
 -   **Explicit Guards:** Use clear and appropriate JavaScript runtime checks (type guards) to narrow down the type of a variable within a specific code block.
 -   **Avoid Unsafe Usage:** Directly accessing properties on a variable, **or passing it as an argument to a function requiring a narrower type (e.g., passing `string | null` to a function expecting `string`)**, without a preceding, relevant type guard that confirms the property's existence or narrows the type appropriately, is NOT PERMITTED if the variable's type definition allows for shapes/types that would violate the usage context.
+-   **Svelte Component Safety:** When working with Svelte components or their props, especially when receiving values from external sources or dynamically generating components, appropriate type guards MUST be used.
 
 ## 3. Identifying Potential Issues
 
@@ -24,6 +27,8 @@ Be vigilant for type safety issues when:
 -   Processing data where transformations might lead to different possible output shapes.
 -   Using libraries whose JSDoc/TypeScript definitions utilize union types for return values (like `mysql2/promise`'s `QueryResult`).
 -   Passing variables to functions whose parameter types are more restrictive than the variable's current type (e.g., requiring non-null).
+-   Working with Svelte component props, especially optional snippets/children.
+-   Dynamically generating component structures or layouts.
 
 ## 4. Required Type Guard Implementation
 
@@ -32,7 +37,7 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
 ### 4.1 Common Type Guards
 
 -   **Property Existence Check:** Useful for objects where a specific key might be optional or part of only one type in a union.
-    ````javascript
+    ```javascript
     /** @type {{ success: boolean, data?: string } | { success: boolean, error: string }} */
     let apiResult = await fetchData();
 
@@ -43,10 +48,10 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
       // SAFE: 'error' is guaranteed to exist here
       console.error(apiResult.error);
     }
-    ````
+    ```
 
 -   **Type Check (`typeof`):** For distinguishing between primitive types. Also effective for checking against `undefined`.
-    ````javascript
+    ```javascript
     /** @type {string | number} */
     let value = getConfigValue();
 
@@ -57,10 +62,10 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
       // SAFE: Treat as number
       console.log(value.toFixed(2));
     }
-    ````
+    ```
 
 -   **Instance Check (`instanceof`):** For distinguishing between class instances.
-    ````javascript
+    ```javascript
     class CustomError extends Error { /* ... */ }
 
     /** @type {Error | CustomError} */
@@ -73,10 +78,10 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
       // SAFE: Access standard Error properties
       console.error('Standard Error:', result.message);
     }
-    ````
+    ```
 
 -   **Array Check (`Array.isArray`):** Crucial when a result might be an object or an array.
-    ````javascript
+    ```javascript
     /** @type {import('mysql2/promise').QueryResult | null} */
     let dbResult = await connection.query('SELECT * FROM users');
     // QueryResult can be RowDataPacket[], ResultSetHeader, OkPacket, etc.
@@ -88,13 +93,11 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
       rows.forEach(user => console.log(user.email));
     } else if (dbResult && typeof dbResult[0] === 'object' && dbResult[0] !== null && !Array.isArray(dbResult[0])) {
        // Handle OkPacket, ResultSetHeader etc. based on specific properties if needed
-       // Example: Checking for affectedRows after an UPDATE/DELETE
-       // (Requires further specific property checks as below)
     }
-    ````
+    ```
 
 -   **Truthiness/Null/Undefined Check:** Often sufficient for guarding against `null` or `undefined` before usage, especially when passing to functions.
-    ````javascript
+    ```javascript
     /** @type {{ user?: { name: string } }} */
     let session = getSessionData();
 
@@ -114,15 +117,70 @@ Before accessing a specific property (`prop`) on a variable (`myVar`) whose type
         // SAFE: userId is guaranteed to be a non-null string here
         processUserId(userId);
     }
-    ````
+    ```
 
-### 4.2 Example: Handling `mysql2/promise` `execute` Result (The Resolved Issue)
+### 4.2 Svelte Component-Specific Type Guards
+
+-   **Optional Children/Snippet Check:** Essential when working with Svelte 5 snippet props like `children`.
+    ```svelte
+    <script>
+      /** @type {import('svelte').Snippet | undefined} */
+      const { children } = $props();
+      
+      // Safe Rendering: Check if children exists before rendering
+      // This prevents "children is not a function" runtime errors
+    </script>
+
+    {#if children}
+      {@render children()}
+    {/if}
+    ```
+
+-   **Dynamic Component Type Guard:** When working with dynamically rendered components:
+    ```javascript
+    /**
+     * @typedef {Object} ComponentConfig
+     * @property {any} component - The Svelte component to render
+     * @property {Object} [props] - Props for the component
+     */
+    
+    /** @type {ComponentConfig | null} */
+    const componentConfig = getComponentConfig();
+    
+    if (componentConfig && typeof componentConfig.component === 'function') {
+      // SAFE: Component exists and is a valid Svelte component (function)
+      const Component = componentConfig.component;
+      // Render Component with props
+    }
+    ```
+
+-   **Props Object Safety:** When passing a potentially incomplete props object:
+    ```javascript
+    /**
+     * @typedef {Object} ButtonProps
+     * @property {string} [variant] - Button variant
+     * @property {string} [size] - Button size
+     * @property {Function} [onClick] - Click handler
+     */
+    
+    /** @type {Partial<ButtonProps> | null} */
+    const buttonProps = getButtonProps();
+    
+    // Safe approach with default values
+    const variant = buttonProps?.variant || 'default';
+    const size = buttonProps?.size || 'medium';
+    const handleClick = typeof buttonProps?.onClick === 'function' 
+      ? buttonProps.onClick 
+      : () => console.log('Default action');
+    ```
+
+### 4.3 Example: Handling `mysql2/promise` `execute` Result
 
 The `connection.execute()` method often returns a `QueryResult`, which is a tuple where the first element (`result[0]`) can be `OkPacket`, `ResultSetHeader`, `RowDataPacket[]`, etc.
 
 **Problematic Pattern (Linter Error / Unsafe):**
 
-````javascript
+```javascript
 // usersResult type is QueryResult (complex union)
 const [usersResult] = await connection.execute(sql, params);
 
@@ -132,11 +190,11 @@ if (usersResult && typeof usersResult === 'object') {
     // const affectedRows = usersResult.affectedRows;
     // const insertId = usersResult.insertId;
 }
-````
+```
 
 **Corrected Pattern (Using Type Guard):**
 
-````javascript
+```javascript
 const [usersResult] = await connection.execute(sql, params);
 
 // Type Guard: Check for specific properties expected from INSERT/UPDATE results
@@ -157,8 +215,7 @@ if (usersResult && typeof usersResult === 'object' &&
     // Handle SELECT results (rows are in usersResult itself if using execute without destructuring the tuple)
     console.log(`Query returned ${usersResult.length} rows.`);
 }
-// Add other 'else if' blocks as needed for other QueryResult possibilities
-````
+```
 
 ## 5. Verification Checklist
 
@@ -169,3 +226,6 @@ When reviewing code involving local variables with potentially ambiguous types:
 -   [ ] Is there an appropriate type guard (e.g., `'prop' in obj`, `typeof`, `instanceof`, `Array.isArray`, truthiness check `if (variable)`) in the same logical block *before* the property access or function call?
 -   [ ] Does the type guard correctly narrow the type to ensure the accessed property exists, or that the variable's type matches the function's parameter requirement, within that block?
 -   [ ] Is unsafe direct property access or function argument passing avoided?
+-   [ ] When rendering Svelte component snippets (like `children`), is there a check before calling the function (e.g., `{#if children} {@render children()} {/if}`)?
+-   [ ] Are dynamic component configurations properly verified before rendering?
+

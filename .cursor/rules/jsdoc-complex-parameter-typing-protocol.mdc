@@ -3,9 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-# JSDoc Complex Parameter Typing Protocol v1.2
+# JSDoc Complex Parameter Typing Protocol v1.3
 
-*(Self-correction: v1.1 - Added nested parameter example and SvelteKit type guidance; v1.2 - Added structural type completeness check)*
+*(Self-correction: v1.1 - Added nested parameter example and SvelteKit type guidance; v1.2 - Added structural type completeness check; v1.3 - Added Svelte component import handling and props typing)*
 
 ## 1. Purpose
 
@@ -18,7 +18,8 @@ This protocol defines a standard, reliable method for applying JSDoc type checki
 -   **Global First:** Leverage globally defined types from project-wide type definition files (e.g., `global.d.ts`, `app.d.ts`, `src/types.d.ts`) whenever possible, especially for shared structures like application state or context interfaces (e.g., `App.Locals`, `AppContext`).
 -   **Explicit Parameters:** Use `@param` tags within the JSDoc block to explicitly type destructured function parameters, referencing their structure or individual properties.
 -   **Targeted Imports:** Use standard JSDoc `@type` imports only when necessary for specific, non-global types (e.g., utility types, types from specific modules). **Avoid framework-specific type imports like `import('@sveltejs/kit').Params`**.
--   **Structural Type Completeness (MUST):** When defining a structural JSDoc type (`@typedef` or inline) for an object originating from a library or framework (like SvelteKit's `event.cookies`), **MUST** verify the structure's completeness by consulting official documentation or using runtime inspection (e.g., `console.log(Object.keys(variable))`) to identify all necessary properties and methods required by the context where the type is used. *(New in v1.2)*
+-   **Structural Type Completeness (MUST):** When defining a structural JSDoc type (`@typedef` or inline) for an object originating from a library or framework (like SvelteKit's `event.cookies`), **MUST** verify the structure's completeness by consulting official documentation or using runtime inspection (e.g., `console.log(Object.keys(variable))`) to identify all necessary properties and methods required by the context where the type is used.
+-   **Svelte Component Imports (MUST):** All imports of Svelte components (`.svelte` files) MUST include a `// @ts-ignore - Svelte component import` comment to prevent linting errors. Preferably use automated tooling (`fix-svelte-imports.js`) to ensure consistent application.
 
 ## 3. Standard JSDoc Format for Functions with Complex Parameters
 
@@ -112,7 +113,31 @@ export const GET = async (event) => {
 };
 ```
 
-## 5. SvelteKit Common Type Guidance *(Updated v1.2)*
+### 4.4 Example: Svelte Component Props (NEW)
+
+For Svelte components using the runes approach:
+
+```javascript
+<script>
+  /**
+   * @typedef {Object} AlertProps
+   * @property {string} [variant="default"] - The variant style to use
+   * @property {string} [className] - Additional CSS classes
+   * @property {import('svelte').Snippet} [children] - Alert content
+   */
+  
+  /** @type {AlertProps} */
+  const { variant = "default", className = "", children } = $props();
+</script>
+
+<div class={cn(alertVariants({ variant }), className)}>
+  {#if children}
+    {@render children()}
+  {/if}
+</div>
+```
+
+## 5. SvelteKit Common Type Guidance
 
 Prefer standard JSDoc types or global types (`app.d.ts`) over framework imports:
 
@@ -121,8 +146,9 @@ Prefer standard JSDoc types or global types (`app.d.ts`) over framework imports:
 -   **`Params`**: Use `@param {Record<string, string>} event.params`.
 -   **`Locals`**: Use `@param {App.Locals} event.locals` (requires `App.Locals` definition in `app.d.ts`).
 -   **`Cookies`**: Use a **complete** structural definition (e.g., via `@typedef SvelteKitCookies`) that includes `get`, `getAll`, `set`, `delete`, and `serialize`. **MUST** verify the definition against SvelteKit documentation or runtime inspection. Apply this type using `@param {SvelteKitCookies} event.cookies`.
+-   **`SvelteComponent`**: Use a simplified structure as defined in `src/lib/types/svelte-components.js`.
 
-## 6. Verification Checklist *(Updated v1.2)*
+## 6. Verification Checklist
 
 When implementing or reviewing functions with complex, potentially destructured parameters:
 
@@ -133,8 +159,10 @@ When implementing or reviewing functions with complex, potentially destructured 
 -   [ ] Do the types referenced in `@param` tags prioritize globally defined types (e.g., `App.Locals`, `AppContext`) where applicable?
 -   [ ] Are framework-specific type aliases (like `$types`) or type imports (`import('@sveltejs/kit').*`) avoided for common types like `Params`, `Cookies`?
 -   [ ] Is the correct JSDoc syntax used for common SvelteKit types (Request, Params, Locals, Cookies)?
--   [ ] **Is the structural type definition for `event.cookies` complete and verified?** (New v1.2)
+-   [ ] Is the structural type definition for `event.cookies` complete and verified?
 -   [ ] Is the JSDoc syntax for nested parameters correct (typing the parent object)?
 -   [ ] Are `@type` imports used sparingly and only for necessary, specific types?
 -   [ ] Is there a `@returns` tag describing the output type?
 -   [ ] Are there any unresolved linter errors related to parameter types (especially 'implicitly has an any type')?
+-   [ ] Do all Svelte component imports have `// @ts-ignore` comments?
+-   [ ] Are component props properly typed with JSDoc?
