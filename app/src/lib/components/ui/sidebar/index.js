@@ -1,26 +1,38 @@
 import { useSidebar } from "./context.svelte.js";
+// @ts-ignore - Svelte component import
 import Content from "./sidebar-content.svelte";
 import Footer from "./sidebar-footer.svelte";
+// @ts-ignore - Svelte component import
 import GroupAction from "./sidebar-group-action.svelte";
 import GroupContent from "./sidebar-group-content.svelte";
+// @ts-ignore - Svelte component import
 import GroupLabel from "./sidebar-group-label.svelte";
 import Group from "./sidebar-group.svelte";
+// @ts-ignore - Svelte component import
 import Header from "./sidebar-header.svelte";
 import Input from "./sidebar-input.svelte";
+// @ts-ignore - Svelte component import
 import Inset from "./sidebar-inset.svelte";
 import MenuAction from "./sidebar-menu-action.svelte";
+// @ts-ignore - Svelte component import
 import MenuBadge from "./sidebar-menu-badge.svelte";
 import MenuButton from "./sidebar-menu-button.svelte";
+// @ts-ignore - Svelte component import
 import MenuItem from "./sidebar-menu-item.svelte";
 import MenuSkeleton from "./sidebar-menu-skeleton.svelte";
+// @ts-ignore - Svelte component import
 import MenuSubButton from "./sidebar-menu-sub-button.svelte";
 import MenuSubItem from "./sidebar-menu-sub-item.svelte";
+// @ts-ignore - Svelte component import
 import MenuSub from "./sidebar-menu-sub.svelte";
 import Menu from "./sidebar-menu.svelte";
+// @ts-ignore - Svelte component import
 import Provider from "./sidebar-provider.svelte";
 import Rail from "./sidebar-rail.svelte";
+// @ts-ignore - Svelte component import
 import Separator from "./sidebar-separator.svelte";
 import Trigger from "./sidebar-trigger.svelte";
+// @ts-ignore - Svelte component import
 import Root from "./sidebar.svelte";
 
 export {

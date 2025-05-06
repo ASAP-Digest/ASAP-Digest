@@ -29,58 +29,62 @@
   }
 </script>
 
-<div class="space-y-[2rem]">
-  <section class="bg-[hsl(var(--primary)/0.1)] rounded-[0.5rem] p-[1.5rem]">
-    <div class="flex items-center gap-[0.5rem] mb-[0.5rem] text-[0.875rem] text-[hsl(var(--muted-foreground))]">
-      <Icon icon={Calendar} size={16} color="currentColor" />
-      <span>{today}</span>
+<div class="space-y-8">
+  <section class="bg-[hsl(var(--primary)/0.1)] rounded-lg p-6">
+    <div class="flex items-center gap-2 mb-2 text-[0.875rem] text-[hsl(var(--muted-foreground))]">
+      <Icon icon={Calendar} size={16} />
+      <span>Today's Content • {today}</span>
     </div>
     
-    <h1 class="text-[1.5rem] md:text-[1.875rem] font-bold mb-[1rem]">Today's Digest</h1>
-    <p class="text-[1.125rem] mb-[1.5rem]">Your curated summary of essential updates across AI, tech, and finance.</p>
+    <h1 class="text-[var(--font-size-lg)] md:text-[var(--font-size-xl)] font-bold mb-4">Today's Digest</h1>
+    <p class="text-[var(--font-size-base)] mb-6">Your curated summary of essential updates across AI, tech, and finance.</p>
     
-    <div class="flex flex-wrap gap-[1rem] mb-[1.5rem]">
-      <Button size="lg" class="flex items-center justify-center gap-[0.5rem]">
-        <Icon icon={Play} size={18} color="currentColor" />
-        <span>Listen Now</span>
+    <div class="flex flex-wrap gap-4 mb-6">
+      <Button size="lg" class="flex items-center justify-center gap-2">
+        <Icon icon={Play} size={20} />
+        Listen Now
       </Button>
-      <Button size="lg" variant="secondary" class="flex items-center justify-center gap-[0.5rem]">
-        <Icon icon={Download} size={18} color="currentColor" />
-        <span>Download Audio</span>
+      <Button size="lg" variant="secondary" class="flex items-center justify-center gap-2">
+        <Icon icon={Download} size={20} />
+        Download Audio
       </Button>
-      <Button size="lg" variant="secondary" class="flex items-center justify-center gap-[0.5rem]">
-        <Icon icon={Share2} size={18} color="currentColor" />
-        <span>Share</span>
+      <Button size="lg" variant="secondary" class="flex items-center justify-center gap-2">
+        <Icon icon={Share2} size={20} />
+        Share
       </Button>
     </div>
   </section>
 
   <section>
-    <h2 class="text-[1.25rem] font-semibold mb-[1rem]">Today's Highlights</h2>
+    <h2 class="text-[var(--font-size-lg)] font-semibold mb-4">Today's Highlights</h2>
     
-    <div class="space-y-[1rem]">
+    <div class="space-y-4">
       {#each highlights as item, i}
-        <div class="bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-md p-[1rem] border border-[hsl(var(--border))]">
-          <div class="flex justify-between items-start mb-[0.75rem]">
-            <div class="text-[0.75rem] font-medium text-[hsl(var(--muted-foreground))] uppercase">
+        <div class="bg-white dark:bg-[hsl(var(--card))] rounded-lg shadow-md p-4 border border-[hsl(var(--border))]">
+          <div class="flex justify-between items-start mb-3">
+            <div class="bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] text-[0.75rem] font-medium rounded-full px-2 py-1">
               {item.type}
             </div>
-            <button class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]">
-              <Icon icon={Bookmark} size={16} color="currentColor" />
-            </button>
+            
+            <ButtonGroup variant="ghost" size="icon" tooltip="Options">
+              <Icon icon={Bookmark} size={18} />
+            </ButtonGroup>
           </div>
           
-          <h3 class="font-medium mb-[0.5rem]">{item.title || item.term || ''}</h3>
-          <p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-[0.75rem]">
+          <h3 class="font-medium mb-2">{item.title || item.term || ''}</h3>
+          <p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-3">
             {item.summary || item.definition || item.content || item.description || ''}
           </p>
           
-          <div class="flex justify-between items-center text-[0.75rem] text-[hsl(var(--muted-foreground))]">
-            <div class="flex items-center gap-[0.25rem]">
-              <Icon icon={Clock} size={14} color="currentColor" />
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-1">
+              <Icon icon={Clock} size={14} />
               <span>{getReadTime(item)}</span>
             </div>
-            <span>{item.source || ''}</span>
+            
+            <Link href={`/discover/${item.slug || '#'}`} variant="muted" size="sm">
+              Read More
+            </Link>
           </div>
         </div>
       {/each}

@@ -8,6 +8,6 @@
   } = $props();
 </script>
 
-<div class={cn('p-[calc(var(--spacing-unit)*6)] pt-0 mt-[calc(var(--spacing-unit)*3)]', className)}>
+<div class={cn('p-6 pt-0 mt-3', className)}>
   {@render children?.()}
 </div> 

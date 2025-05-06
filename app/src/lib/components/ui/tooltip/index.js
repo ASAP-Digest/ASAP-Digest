@@ -1,4 +1,5 @@
 import { Tooltip as TooltipPrimitive } from "bits-ui";
+// @ts-ignore - Svelte component import
 import Content from "./tooltip-content.svelte";
 
 const Root = TooltipPrimitive.Root;

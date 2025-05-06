@@ -1,10 +1,13 @@
 import { tv } from "tailwind-variants";
+// @ts-ignore
 import Root from "./alert.svelte";
+// @ts-ignore
 import Description from "./alert-description.svelte";
+// @ts-ignore
 import Title from "./alert-title.svelte";
 
 export const alertVariants = tv({
-	base: "[&>svg]:text-[hsl(var(--text-1))] relative w-full rounded-[var(--radius-lg)] border border-[hsl(var(--border))] px-4 py-3 text-[var(--font-size-base)] [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7",
+	base: "[&>svg]:text-[hsl(var(--text-1))] relative w-full rounded-[var(--radius-lg)] border border-[hsl(var(--border))] px-4 py-4 text-[var(--font-size-base)] [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-8",
 	variants: {
 		variant: {
 			default: "bg-[hsl(var(--surface-1))] text-[hsl(var(--text-1))]",

@@ -1,3 +1,8 @@
+/**
+ * Validates that all required environment variables are present
+ * @returns {void}
+ * @throws {Error} If any required environment variable is missing
+ */
 export function validateEnv() {
   const required = [
     'VITE_WORDPRESS_GRAPHQL_URL',

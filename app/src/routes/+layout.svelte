@@ -523,7 +523,7 @@
                   Avatar URL debug: {$page.data.user.avatarUrl || 'No avatar URL found'}
                 </div>
                 <!-- Add console logging when component mounts -->
-                {@html `<script>console.log('Avatar URL:', ${JSON.stringify($page.data.user.avatarUrl || 'No avatar URL found')})</script>`}
+                {@html `<script>console.log('Avatar URL:', '${$page.data.user?.avatarUrl || 'No avatar URL found'}')</script>`}
               {/if}
               
               <!-- Update the img tag -->

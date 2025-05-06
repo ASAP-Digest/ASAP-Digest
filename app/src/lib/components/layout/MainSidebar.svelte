@@ -818,8 +818,8 @@
   <Root 
     class="flex h-full flex-col border-r border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))] shadow-[1px_0_5px_rgba(0,0,0,0.05)]"
   >
-    <Header class="relative border-b border-[hsl(var(--sidebar-border)/0.8)] px-[0.75rem] py-[1rem]">
-      <div class="flex items-center justify-between px-[0.5rem]">
+    <Header class="relative border-b border-[hsl(var(--sidebar-border)/0.8)] px-3 py-4">
+      <div class="flex items-center justify-between px-2">
         <a href="/" class="header-logo">
           <span class="font-[600] text-[1.125rem]"> ASAP</span>
         </a>
@@ -868,7 +868,7 @@
       
       {#if isDev}
         <Group class="pb-[1rem] pt-[0.5rem]">
-          <GroupLabel class="sidebar-group-label px-[0.75rem] py-[0.5rem] text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
+          <GroupLabel class="sidebar-group-label px-3 py-2 text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
             Developer Tools
           </GroupLabel>
           <Menu class="space-y-[0.75rem]" {collapsed}>
@@ -898,24 +898,21 @@
         </Group>
       {/if}
       
-      <Separator class="my-[0.75rem] h-px bg-[hsl(var(--sidebar-border)/0.8)]" />
+      <Separator class="my-3 h-px bg-[hsl(var(--sidebar-border)/0.8)]" />
 
-      <Group class="recent-digests pb-[1rem]">
-        <GroupLabel class="sidebar-group-label recent-digests-label px-[0.75rem] py-[0.5rem] text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
+      <Group class="recent-digests pb-4">
+        <GroupLabel class="sidebar-group-label recent-digests-label px-3 py-2 text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
           Recent Digests
         </GroupLabel>
-        <GroupContent class="space-y-[0.75rem] sidebar-content-collapsible">
-          <Menu class="space-y-[0.75rem]" {collapsed}>
+        <GroupContent class="space-y-3 sidebar-content-collapsible">
+          <Menu class="space-y-3" {collapsed}>
             {#each ['Tech Digest', 'Finance Update', 'Health News'] as digest}
-              <MenuItem class="sidebar-menu-item" {collapsed}>
-                <a 
-                  href={`/digest/${digest.toLowerCase().replace(/\s+/g, '-')}`} 
-                  class="menu-item-hover flex w-full items-center justify-start py-[0.625rem] text-[0.875rem]"
-                  data-sveltekit-preload-data="hover"
-                  onclick={handleMenuItemClick}
-                >
-                  <span class="font-[600]">{digest}</span>
-                </a>
+              <MenuItem
+                class="menu-item-hover flex w-full items-center justify-start py-2.5 text-[0.875rem]" 
+                data-sveltekit-preload-data="hover"
+                onclick={handleMenuItemClick}
+              >
+                <span class="font-[600]">{digest}</span>
               </MenuItem>
             {/each}
           </Menu>
@@ -960,10 +957,11 @@
             class="avatar-dropdown fixed z-[var(--z-dropdown)] w-64 max-h-[calc(100vh-7.5rem)] overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 shadow-lg animate-fadeIn"
             bind:this={avatarDropdownElement}
           >
-            <div class="border-b border-[hsl(var(--border))] p-[0.5rem] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+            <div class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]">
               <div class="font-semibold">{user.displayName || 'User Name'}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email || 'user@example.com'}</div>
-              <div class="mt-[0.25rem] text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{user.plan || 'Plan'}</div>
+              <div class="mt-1 text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{user.plan || 'Plan'}</div>
+              <div class="py-1"></div>
             </div>
             
             <div class="py-[0.25rem]">
@@ -989,18 +987,18 @@
               </a>
             </div>
             
-            <div class="p-[0.5rem] border-t border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
-              <div class="text-[0.75rem] font-semibold mb-[0.5rem]">Preferences</div>
-              <div class="flex justify-between items-center mb-[0.5rem]">
-                <span class="text-[0.75rem]">Theme</span>
-                <div class="flex space-x-[0.25rem]">
-                  <button class="p-[0.25rem] rounded-[0.375rem] bg-[hsl(var(--background))] border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Light theme">
+            <div class="p-2 border-t border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]">
+              <div class="text-[0.75rem] font-semibold mb-2">Preferences</div>
+              <div class="flex justify-between items-center mb-2">
+                <div>Theme</div>
+                <div class="flex space-x-1">
+                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--background))] border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Light theme">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                   </button>
-                  <button class="p-[0.25rem] rounded-[0.375rem] bg-[hsl(var(--muted))] border border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Dark theme">
+                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--muted))] border border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Dark theme">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[hsl(var(--background))]"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                   </button>
-                  <button class="p-[0.25rem] rounded-[0.375rem] bg-[hsl(var(--muted)/0.2)] border border-[hsl(var(--border))] dark:bg-[hsl(var(--muted)/0.2)] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="System theme">
+                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--muted)/0.2)] border border-[hsl(var(--border))] dark:bg-[hsl(var(--muted)/0.2)] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="System theme">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                   </button>
                 </div>

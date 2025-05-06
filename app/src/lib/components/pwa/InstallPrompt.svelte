@@ -254,53 +254,61 @@
 </script>
 
 {#if isPromptVisible}
-	<div class="install-widget p-[0.625rem] fixed bottom-[1.5rem] left-[1rem] right-[1rem] md:left-auto md:w-[24rem] md:right-[1.5rem] bg-white dark:bg-[hsl(var(--card))] rounded-[0.5rem] shadow-lg border border-[hsl(var(--border))] z-[99]">
-		<div class="flex justify-between items-start mb-[0.75rem]">
-			<h3 class="text-[1rem] font-semibold flex items-center gap-[0.5rem]">
+	<div 
+		class="install-widget p-2.5 fixed bottom-6 left-4 right-4 md:left-auto md:w-96 md:right-6 bg-white dark:bg-[hsl(var(--card))] rounded-lg shadow-lg border border-[hsl(var(--border))]"
+		transition:slide={{ duration: 300, y: 20 }}
+	>
+		<div class="flex justify-between items-start mb-3">
+			<h3 class="text-[var(--font-size-base)] font-semibold flex items-center gap-2">
 				<Download size={18} />
-				<span>Install ASAP Digest</span>
+				Install ASAP Digest
 			</h3>
-			
-			<button 
+			<button
 				onclick={closePrompt}
-				class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+				class="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
 				aria-label="Close installation prompt"
 			>
 				<X size={18} />
 			</button>
 		</div>
-			
-		<p class="text-[0.875rem] text-[hsl(var(--muted-foreground))] mb-[1rem]">
+		
+		<p class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))] mb-4">
+			Install ASAP Digest for the best experience. Get offline access, faster loading, and desktop shortcuts.
 			{#if deviceOS === 'ios'}
-				Add ASAP Digest to your Home Screen for a better experience. Tap <span class="inline-block w-[1rem] h-[1rem] bg-[#1677ff] text-white text-center leading-[1rem] rounded-[0.25rem] mx-[0.25rem]">+</span> in your Safari browser and then "Add to Home Screen".
+				Tap <span class="inline-block bg-gray-200 dark:bg-gray-700 w-5 h-5 text-center leading-5 rounded mx-1">+</span> in your Safari browser and then "Add to Home Screen".
 			{:else if deviceOS === 'android'}
-				Install ASAP Digest as an app on your device for a better experience with offline access.
-			{:else}
-				Install ASAP Digest for offline access and a better experience.
+				Tap the menu button in your browser and select "Install" or "Add to Home Screen".
 			{/if}
 		</p>
 		
-		{#if deferredPrompt || deviceOS === 'desktop'}
+		{#if deferredPrompt && !isChrome && !isIOSPWA}
 			<button 
+				class="w-full py-2 px-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md flex items-center justify-center gap-2"
 				onclick={handleInstall}
-				class="w-full py-[0.5rem] px-[1rem] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-[0.375rem] flex items-center justify-center gap-[0.5rem]"
 			>
-				<Download size={16} />
-				<span>Install Now</span>
+				<Download size={18} />
+				Install Now
 			</button>
-		{:else if deviceOS === 'ios'}
-			<div class="flex items-center justify-center text-[0.875rem] text-[hsl(var(--muted-foreground))]">
-				<span>Tap</span>
-				<svg class="w-[1.25rem] h-[1.25rem] mx-[0.25rem]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-				<span>then "Add to Home Screen"</span>
-			</div>
+		{:else if isIOSPWA}
+			<button 
+				class="w-full py-2 px-4 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md flex items-center justify-center gap-2"
+			>
+				<svg class="w-5 h-5 mx-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+				Add to Home Screen
+			</button>
 		{/if}
-
-		{#if isTestMode}
-			<div class="mt-[0.5rem] pt-[0.5rem] border-t border-[hsl(var(--border))]">
-				<p class="text-[0.75rem] text-[hsl(var(--muted-foreground))]">Test Mode Active</p>
-			</div>
-		{/if}
+		
+		<div class="mt-2 pt-2 border-t border-[hsl(var(--border))]">
+			<label class="flex items-center justify-between">
+				<span class="text-[var(--font-size-sm)] text-[hsl(var(--muted-foreground))]">Don't show again</span>
+				<input 
+					type="checkbox" 
+					checked={dontShowAgain}
+					onclick={() => dontShowAgain = !dontShowAgain}
+					class="form-checkbox h-4 w-4 text-[hsl(var(--primary))] rounded border-[hsl(var(--border))]"
+				/>
+			</label>
+		</div>
 	</div>
 {/if}
 <style>

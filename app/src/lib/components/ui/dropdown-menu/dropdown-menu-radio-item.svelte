@@ -18,7 +18,7 @@
 <DropdownMenuPrimitive.RadioItem
 	bind:ref
 	class={cn(
-		"relative flex cursor-default select-none items-center rounded-[var(--radius-sm)] py-1.5 pl-8 pr-2 text-[var(--font-size-sm)] outline-none data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-fg))] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+		"relative flex cursor-default select-none items-center rounded-[var(--radius-sm)] py-2 pl-8 pr-2 text-[var(--font-size-sm)] outline-none data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-fg))] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 		className
 	)}
 	{...restProps}

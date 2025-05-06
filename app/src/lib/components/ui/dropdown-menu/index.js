@@ -1,12 +1,17 @@
 import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
+// @ts-ignore - Svelte component import
 import CheckboxItem from "./dropdown-menu-checkbox-item.svelte";
 import Content from "./dropdown-menu-content.svelte";
+// @ts-ignore - Svelte component import
 import GroupHeading from "./dropdown-menu-group-heading.svelte";
 import Item from "./dropdown-menu-item.svelte";
+// @ts-ignore - Svelte component import
 import Label from "./dropdown-menu-label.svelte";
 import RadioItem from "./dropdown-menu-radio-item.svelte";
+// @ts-ignore - Svelte component import
 import Separator from "./dropdown-menu-separator.svelte";
 import Shortcut from "./dropdown-menu-shortcut.svelte";
+// @ts-ignore - Svelte component import
 import SubContent from "./dropdown-menu-sub-content.svelte";
 import SubTrigger from "./dropdown-menu-sub-trigger.svelte";
 

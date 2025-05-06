@@ -41,7 +41,7 @@
 </script>
 
 <!-- Desktop Navigation - Top bar -->
-<nav class="container mx-auto {LAYOUT_SPACING.container} py-[0.75rem] md:py-[1rem]">
+<nav class="container mx-auto {LAYOUT_SPACING.container} py-3 md:py-4">
   <div class="flex justify-between items-center">
     <!-- Logo -->
     <a href="/" class="text-[1.25rem] font-bold">
@@ -49,7 +49,7 @@
     </a>
     
     <!-- Desktop navigation -->
-    <div class="hidden md:flex items-center space-x-[1.5rem]">
+    <div class="hidden md:flex items-center space-x-6">
       <a href="/" class="text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors">Home</a>
       <a href="/explore" class="text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors">Explore</a>
       <a href="/today" class="text-[hsl(var(--foreground))] hover:text-[hsl(var(--primary))] transition-colors">Today</a>
@@ -60,10 +60,10 @@
     <!-- Search button -->
     <div class="hidden md:block">
       <button 
-        class="p-[0.5rem] rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted-foreground/10))] transition-colors"
+        class="p-2 rounded-full bg-[hsl(var(--muted))] hover:bg-[hsl(var(--muted-foreground/10))] transition-colors"
         aria-label="Search"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-[1.25rem] w-[1.25rem]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </button>
@@ -73,8 +73,8 @@
 
 <!-- Mobile Navigation - Top header bar with menu button -->
 <div class="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-20">
-  <div class="container mx-auto px-[1rem] py-[0.75rem] flex justify-between items-center">
-    <a href="/" class="text-[1.25rem] font-bold flex items-center gap-[0.5rem]">
+  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+    <a href="/" class="text-[1.25rem] font-bold flex items-center gap-2">
       <span class="text-[hsl(var(--primary))]">ASAP</span>Digest
     </a>
     
@@ -92,17 +92,17 @@
 {#if mobileMenuOpen}
   <div 
     transition:slide={{ duration: 300 }}
-    class="fixed inset-0 bg-white dark:bg-gray-800 z-10 pt-[4rem] lg:hidden"
+    class="fixed inset-0 bg-white dark:bg-gray-800 z-10 pt-16 lg:hidden"
   >
-    <div class="container mx-auto px-[1rem] py-[1.5rem]">
-      <ul class="space-y-[1.5rem]">
+    <div class="container mx-auto px-4 py-6">
+      <ul class="space-y-6">
         {#each navItems as item}
           <li>
             <a 
               href={item.path} 
               data-sveltekit-preload-data="hover"
               onclick={closeMenu}
-              class="flex items-center gap-[1rem] text-[1.125rem] {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
+              class="flex items-center gap-4 text-[1.125rem] {isActive(item.path) ? 'text-[hsl(var(--primary))]' : 'text-gray-600 dark:text-gray-300'}"
             >
               <Icon icon={item.icon} size={24} />
               <span>{item.name}</span>

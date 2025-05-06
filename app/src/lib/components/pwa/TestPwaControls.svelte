@@ -288,9 +288,9 @@
 
 {#if browser}
   {#if showControls}
-  <div class="pwa-test-controls">
+  <div class="controls-panel">
     <div class="controls-header">
-      <h2>PWA Testing Tools</h2>
+      <h2 class="controls-title">PWA Testing Tools</h2>
       <button class="close-btn" onclick={() => showControls = false}>×</button>
     </div>
     
@@ -380,84 +380,75 @@
 {/if}
 
 <style>
-  .pwa-test-controls {
+  .controls-panel {
     position: fixed;
-    bottom: 0;
-    right: 0;
-    width: 23.75rem; /* Changed 380px */
-    background-color: hsl(var(--background)); /* Use HSL */
-    border-width: 1px; /* Standard CSS */
-    border-style: solid;
-    border-color: hsl(var(--border)/0.8); /* Use HSL */
-    border-top-left-radius: 0.5rem; /* Changed 8px */
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* Kept specific shadow */
-    font-size: 0.875rem; /* Changed 14px */
+    bottom: 1rem;
+    right: 1rem;
+    width: 20rem;
+    max-width: calc(100vw - 2rem);
+    background-color: hsl(var(--card));
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
   }
-  
+
   .controls-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.625rem 0.9375rem; /* Changed 10px 15px */
-    background-color: hsl(var(--primary)/0.1); /* Use HSL */
-    border-bottom-width: 1px; /* Standard CSS */
-    border-bottom-style: solid;
-    border-bottom-color: hsl(var(--border)/0.8); /* Use HSL */
-    border-top-left-radius: 0.5rem; /* Changed 8px */
+    padding: 0.75rem 1rem;
+    background-color: hsl(var(--muted)/0.7);
+    border-bottom: 1px solid hsl(var(--border));
   }
-  
-  .controls-header h2 {
-    margin: 0;
-    font-size: 1rem; /* Changed 16px */
+
+  .controls-title {
+    font-size: 0.875rem;
     font-weight: 600;
-    color: hsl(var(--primary)); /* Use HSL */
+    color: hsl(var(--foreground));
+    margin: 0;
   }
-  
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 1.25rem; /* Changed 20px */
-    cursor: pointer;
-    color: hsl(var(--foreground)/0.8); /* Use HSL */
-  }
-  
+
   .controls-body {
-    padding: 0.9375rem; /* Changed 15px */
-    max-height: 31.25rem; /* Changed 500px */
+    padding: 1rem; /* 16px (8pt grid) */
+    max-height: 32rem; /* 512px (8pt grid) */
     overflow-y: auto;
   }
   
   .status-section,
   .actions-section,
   .info-section {
-    margin-bottom: 1.25rem; /* Changed 20px */
+    margin-bottom: 1rem; /* 16px (8pt grid) */
   }
   
   .status-section h3,
   .actions-section h3,
   .info-section h3 {
     margin-top: 0;
-    margin-bottom: 0.625rem; /* Changed 10px */
-    font-size: 0.875rem; /* Changed 14px */
+    margin-bottom: 0.5rem; /* 8px (8pt grid) */
+    font-size: 0.875rem; /* 14px */
     font-weight: 600;
     color: hsl(var(--foreground)/0.8); /* Use HSL */
   }
   
   .button-row {
     display: flex;
-    gap: 0.625rem; /* Changed 10px */
-    margin-bottom: 0.625rem; /* Changed 10px */
+    gap: 0.5rem; /* 8px (8pt grid) */
+    margin-bottom: 0.5rem; /* 8px (8pt grid) */
   }
   
   .action-btn {
-    padding: 0.5rem 0.75rem; /* Changed 8px 12px */
+    padding: 0.5rem 0.75rem; /* 8px 12px (8pt grid with 4px exception) */
     background-color: hsl(var(--secondary)/0.8); /* Use HSL */
     color: hsl(var(--secondary-foreground)); /* Use HSL */
     border: none;
-    border-radius: 0.25rem; /* Changed 4px */
+    border-radius: 0.25rem; /* 4px (8pt grid exception) */
     cursor: pointer;
     flex: 1;
-    font-size: 0.8125rem; /* Changed 13px */
+    font-size: 0.8125rem; /* 13px */
     transition: background-color 0.2s ease;
   }
   
@@ -490,25 +481,25 @@
   
   .info-section ol {
     margin: 0;
-    padding-left: 1.25rem; /* Changed 20px */
+    padding-left: 1.25rem; /* 20px (closest to 8pt grid would be 1.5rem/24px) */
   }
   
   .info-section li {
-    margin-bottom: 0.3125rem; /* Changed 5px */
+    margin-bottom: 0.25rem; /* 4px (8pt grid exception) */
   }
   
   .show-controls-btn {
     position: fixed;
-    bottom: 1.25rem; /* Changed 20px */
-    right: 1.25rem; /* Changed 20px */
-    padding: 0.625rem 0.9375rem; /* Changed 10px 15px */
+    bottom: 1rem; /* 16px (8pt grid) */
+    right: 1rem; /* 16px (8pt grid) */
+    padding: 0.5rem 1rem; /* 8px 16px (8pt grid) */
     background-color: hsl(var(--primary)/0.8); /* Use HSL */
     color: hsl(var(--primary-foreground)); /* Use HSL */
     border: none;
-    border-radius: 0.25rem; /* Changed 4px */
+    border-radius: 0.25rem; /* 4px (8pt grid exception) */
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Kept specific shadow */
-    font-size: 0.875rem; /* Changed 14px */
+    font-size: 0.875rem; /* 14px */
   }
   
   .show-controls-btn:hover {

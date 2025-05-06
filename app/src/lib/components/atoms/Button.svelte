@@ -47,7 +47,7 @@
   function getSizeClasses() {
     switch(size) {
       case 'sm':
-        return "text-[var(--font-size-sm)] px-2 py-1"; // 8px/4px (8pt grid)
+        return "text-[var(--font-size-sm)] px-3 py-1"; // 12px/4px (8pt grid with 4px exception)
       case 'md':
         return "text-[var(--font-size-base)] px-4 py-2"; // 16px/8px (8pt grid)
       case 'lg':

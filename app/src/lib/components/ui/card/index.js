@@ -1,7 +1,10 @@
+// @ts-ignore - Svelte component import
 import Root from "./card.svelte";
 import Content from "./card-content.svelte";
+// @ts-ignore - Svelte component import
 import Description from "./card-description.svelte";
 import Footer from "./card-footer.svelte";
+// @ts-ignore - Svelte component import
 import Header from "./card-header.svelte";
 import Title from "./card-title.svelte";
 

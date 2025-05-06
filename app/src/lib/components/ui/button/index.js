@@ -1,3 +1,4 @@
+// @ts-ignore - Svelte component import
 import Root, { buttonVariants } from "./button.svelte";
 
 export {
