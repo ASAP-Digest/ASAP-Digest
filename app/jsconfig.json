@@ -12,7 +12,8 @@
 		"moduleResolution": "bundler",
 		"target": "ESNext",
 		"verbatimModuleSyntax": true,
-		"isolatedModules": true
+		"isolatedModules": true,
+		"allowSyntheticDefaultImports": true
 	},
 	"include": [
 		".svelte-kit/ambient.d.ts",

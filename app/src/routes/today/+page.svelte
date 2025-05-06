@@ -1,7 +1,8 @@
 <script>
   import { Calendar, Play, Download, Share2, Clock, Bookmark } from '$lib/utils/lucide-compat.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
+  import { ButtonGroup, Link } from '$lib/components/atoms';
   
   /**
    * @typedef {import('./$types').PageData} PageData
