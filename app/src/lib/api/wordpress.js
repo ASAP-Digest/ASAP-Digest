@@ -34,7 +34,7 @@ console.debug('WordPress API Configuration:', {
     WP_GRAPHQL_URL
 });
 
-export { SITE_URL };
+export { SITE_URL, APP_ENV, WP_GRAPHQL_URL };
 
 
 /**
@@ -87,10 +87,24 @@ export { SITE_URL };
  * @param {RequestInit} [options]
  */
 export async function wpFetch(url, options = {}) {
-    const security = await getSession();
+    const sessionData = await getSession();
+    let nonce = null;
+
+    // Check if sessionData is valid and has a token/nonce property
+    // Adjust 'sessionData.token' if the actual property name for the nonce is different
+    if (sessionData && typeof sessionData === 'object' && 'token' in sessionData && typeof sessionData.token === 'string') {
+        nonce = sessionData.token;
+    } else if (typeof sessionData === 'string') {
+        // If getSession() directly returns the nonce string
+        nonce = sessionData;
+    } else {
+        console.warn('WordPress API: Nonce not available or in unexpected format. Proceeding without X-WP-Nonce header.');
+        // Potentially, if nonce is critical, you might want to throw an error here:
+        // throw new Error('WordPress API: Failed to retrieve a valid nonce.');
+    }
 
     const headers = {
-        'X-WP-Nonce': security,
+        ...(nonce && { 'X-WP-Nonce': nonce }), // Only add X-WP-Nonce if nonce is available
         'Content-Type': 'application/json',
         ...options.headers
     };

@@ -19,7 +19,7 @@
     PanelLeft,
     Bell,
     LineChart
-  } from '$lib/utils/lucide-icons.js';
+  } from '$lib/utils/lucide-compat.js';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
   import Header from '$lib/components/ui/sidebar/sidebar-header.svelte';
@@ -33,7 +33,7 @@
   import Footer from '$lib/components/ui/sidebar/sidebar-footer.svelte';
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import Icon from "$lib/components/ui/Icon.svelte";
+  import Icon from "$lib/components/ui/icon/icon.svelte";
 
   /**
    * @typedef {Object} IconObject

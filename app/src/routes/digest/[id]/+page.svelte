@@ -1,8 +1,8 @@
 <script>
   import { page } from '$app/stores';
-  import * as Icons from '$lib/utils/lucide-icons.js';
+  import * as Icons from '$lib/utils/lucide-compat.js';
   import { AudioPlayer } from '$lib/components/atoms';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import { Button } from '$lib/components/ui/button';
   
   // Mock data - this would come from an API in a real application

@@ -1,0 +1,914 @@
+<!-- 
+  NewItemsSelector component for selecting curated content items
+  Based on GraphQL data fetching from WordPress
+-->
+<script>
+  // @ts-ignore - Svelte component import
+  import Button from '$lib/components/ui/button/button.svelte';
+  // @ts-ignore - Svelte component import
+  import { Input } from '$lib/components/ui/input';
+  // @ts-ignore - Svelte component import
+  import { Checkbox } from '$lib/components/ui/checkbox';
+  // @ts-ignore - Svelte component import
+  import { TabGroup, TabList, Tab, TabPanel } from '$lib/components/ui/tabs/index.js';
+  // @ts-ignore - Svelte component import
+  import Card from '$lib/components/ui/card/card.svelte';
+  // @ts-ignore - Svelte component import
+  import CardHeader from '$lib/components/ui/card/card-header.svelte';
+  // @ts-ignore - Svelte component import
+  import CardTitle from '$lib/components/ui/card/card-title.svelte';
+  // @ts-ignore - Svelte component import
+  import CardDescription from '$lib/components/ui/card/card-description.svelte';
+  // @ts-ignore - Svelte component import
+  import CardContent from '$lib/components/ui/card/card-content.svelte';
+  // @ts-ignore - Svelte component import
+  import CardFooter from '$lib/components/ui/card/card-footer.svelte';
+  // @ts-ignore - Svelte component import
+  import { Badge } from '$lib/components/ui/badge';
+  // @ts-ignore - Svelte component import
+  import { Skeleton } from '$lib/components/ui/skeleton';
+  // @ts-ignore - Svelte component import
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  // @ts-ignore - Svelte component import
+  import Dialog from '$lib/components/ui/dialog/dialog.svelte';
+  // @ts-ignore - Svelte component import
+  import DialogContent from '$lib/components/ui/dialog/dialog-content.svelte';
+  // @ts-ignore - Svelte component import
+  import DialogHeader from '$lib/components/ui/dialog/dialog-header.svelte';
+  // @ts-ignore - Svelte component import
+  import DialogTitle from '$lib/components/ui/dialog/dialog-title.svelte';
+  
+  import { browser } from '$app/environment';
+  import { fly, fade } from 'svelte/transition';
+  
+  import { 
+    Search,
+    Filter,
+    Calendar,
+    Plus,
+    X,
+    ChevronRight,
+    ChevronDown,
+    Loader2,
+    FileText,
+    Headphones,
+    Key,
+    DollarSign,
+    Twitter,
+    MessageSquare,
+    LineChart,
+    Check
+  } from '$lib/utils/lucide-compat.js';
+  
+  import { 
+    fetchContentItems, 
+    searchMultipleContentTypes,
+    getContentTypeDetails
+  } from '$lib/api/content-service';
+  
+  /**
+   * @typedef {import('$lib/api/content-service').ContentItem} ContentItem
+   * @typedef {import('$lib/api/content-service').PaginationInfo} PaginationInfo
+   * @typedef {import('$lib/api/content-service').QueryParams} QueryParams
+   */
+  
+  /**
+   * @typedef {Object} NewItemsSelectorProps
+   * @property {string} [className] - Additional CSS classes
+   * @property {number} [maxItems=10] - Maximum number of items to select
+   * @property {ContentItem[]} [initialSelectedItems=[]] - Initial selected items
+   * @property {string[]} [enabledContentTypes=['article', 'podcast', 'keyterm']] - Content types to enable
+   * @property {function(ContentItem[]): void} [onSelectionChange] - Callback when selection changes
+   * @property {boolean} [showFab=true] - Whether to show the floating action button
+   * @property {boolean} [startOpen=false] - Whether to open directly in content selection mode
+   * @property {string} [initialType=''] - Initial content type to select
+   */
+  
+  /** @type {NewItemsSelectorProps} */
+  const { 
+    className = '',
+    maxItems = 10,
+    initialSelectedItems = [],
+    enabledContentTypes = ['article', 'podcast', 'keyterm'],
+    onSelectionChange = undefined,
+    showFab = true,
+    startOpen = false,
+    initialType = ''
+  } = $props();
+  
+  // State management
+  let searchQuery = $state('');
+  let activeTab = $state(initialType || enabledContentTypes[0] || 'article');
+  let selectedDateRange = $state({ from: null, to: null });
+  let showFlyout = $state(false);
+  let fabPosition = $state('corner'); // 'corner' or 'center'
+  let isSidebarCollapsed = $state(false);
+  let dialogOpen = $state(startOpen);
+  let flyoutPosition = $state('top'); // 'top', 'left', 'right'
+  
+  // Available content types
+  const contentTypeDetails = getContentTypeDetails().filter(type => 
+    enabledContentTypes.includes(type.id)
+  );
+  
+  // Define content type icons
+  const contentTypeIcons = {
+    article: FileText,
+    podcast: Headphones,
+    keyterm: Key,
+    financial: DollarSign,
+    xpost: Twitter,
+    reddit: MessageSquare,
+    event: Calendar,
+    polymarket: LineChart
+  };
+  
+  // Content items and loading states
+  /** @type {Record<string, ContentItem[]>} */
+  let contentItems = $state({}); 
+  
+  /** @type {Record<string, PaginationInfo>} */
+  let paginationByType = $state({});
+  
+  /** @type {Record<string, boolean>} */
+  let loadingByType = $state({});
+  
+  /** @type {Record<string, string>} */
+  let errorByType = $state({});
+  
+  // Selected items management
+  /** @type {ContentItem[]} */
+  let selectedItems = $state([...initialSelectedItems]);
+  
+  // Initialize loadingByType for each content type
+  $effect(() => {
+    enabledContentTypes.forEach(type => {
+      loadingByType[type] = false;
+      contentItems[type] = [];
+      paginationByType[type] = { hasNextPage: false, endCursor: null };
+    });
+  });
+  
+  // Load stored FAB position preference and sidebar state
+  $effect(() => {
+    if (browser) {
+      const storedPosition = localStorage.getItem('fab-position');
+      if (storedPosition === 'center' || storedPosition === 'corner') {
+        fabPosition = storedPosition;
+      }
+      
+      // Check sidebar state
+      const sidebarState = localStorage.getItem('sidebar-collapsed');
+      isSidebarCollapsed = sidebarState === 'true';
+      
+      // Set up sidebar state observer
+      const observer = new MutationObserver(() => {
+        isSidebarCollapsed = document.body.classList.contains('sidebar-collapsed');
+      });
+      
+      if (document.body) {
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
+      
+      // If startOpen is true, open the dialog
+      if (startOpen) {
+        dialogOpen = true;
+        if (initialType) {
+          activeTab = initialType;
+        }
+      }
+      
+      return () => {
+        observer.disconnect();
+      };
+    }
+  });
+  
+  /**
+   * Fetch content for a specific type
+   * @param {string} contentType
+   * @param {boolean} [reset=false] Reset pagination and content
+   */
+  async function fetchContent(contentType, reset = false) {
+    try {
+      loadingByType[contentType] = true;
+      errorByType[contentType] = '';
+      
+      /** @type {QueryParams} */
+      const params = {
+        limit: 10,
+        search: searchQuery || undefined,
+        cursor: reset ? null : paginationByType[contentType]?.endCursor,
+        dateFrom: selectedDateRange.from,
+        dateTo: selectedDateRange.to
+      };
+      
+      const result = await fetchContentItems(contentType, params);
+      
+      // Update content items - either replace or append based on reset flag
+      if (reset) {
+        contentItems[contentType] = result.items;
+      } else {
+        contentItems[contentType] = [...(contentItems[contentType] || []), ...result.items];
+      }
+      
+      // Update pagination info
+      paginationByType[contentType] = result.pagination;
+    } catch (err) {
+      console.error(`Error fetching ${contentType}:`, err);
+      errorByType[contentType] = err instanceof Error ? err.message : 'Unknown error';
+    } finally {
+      loadingByType[contentType] = false;
+    }
+  }
+  
+  /**
+   * Load all content types initial data
+   */
+  async function loadInitialContent() {
+    for (const contentType of enabledContentTypes) {
+      await fetchContent(contentType, true);
+    }
+  }
+  
+  /**
+   * Handle search
+   */
+  function handleSearch() {
+    for (const contentType of enabledContentTypes) {
+      fetchContent(contentType, true); // Reset and search
+    }
+  }
+  
+  /**
+   * Clear search
+   */
+  function clearSearch() {
+    if (searchQuery) {
+      searchQuery = '';
+      handleSearch();
+    }
+  }
+  
+  /**
+   * Load more items for the current active tab
+   */
+  function loadMore() {
+    if (paginationByType[activeTab]?.hasNextPage && !loadingByType[activeTab]) {
+      fetchContent(activeTab, false); // Don't reset, just append
+    }
+  }
+  
+  /**
+   * Toggle item selection
+   * @param {ContentItem} item
+   */
+  function toggleSelectItem(item) {
+    const isSelected = selectedItems.some(selected => selected.id === item.id && selected.type === item.type);
+    
+    if (isSelected) {
+      // Remove from selection
+      selectedItems = selectedItems.filter(selected => !(selected.id === item.id && selected.type === item.type));
+    } else {
+      // Check if we've reached the max limit
+      if (selectedItems.length >= maxItems) {
+        return; // Don't add more
+      }
+      
+      // Add to selection
+      selectedItems = [...selectedItems, item];
+    }
+    
+    // Notify parent of selection change
+    if (onSelectionChange) {
+      onSelectionChange(selectedItems);
+    }
+  }
+  
+  /**
+   * Remove a selected item
+   * @param {ContentItem} item
+   */
+  function removeSelectedItem(item) {
+    selectedItems = selectedItems.filter(selected => !(selected.id === item.id && selected.type === item.type));
+    
+    // Notify parent of selection change
+    if (onSelectionChange) {
+      onSelectionChange(selectedItems);
+    }
+  }
+  
+  /**
+   * Check if an item is selected
+   * @param {ContentItem} item
+   * @returns {boolean}
+   */
+  function isItemSelected(item) {
+    return selectedItems.some(selected => selected.id === item.id && selected.type === item.type);
+  }
+  
+  /**
+   * Switch to a different content type tab
+   * @param {string} contentType
+   */
+  function switchTab(contentType) {
+    activeTab = contentType;
+    
+    // If we haven't loaded content for this type yet, load it
+    if (!contentItems[contentType] || contentItems[contentType].length === 0) {
+      fetchContent(contentType, true);
+    }
+  }
+  
+  /**
+   * Format the timestamp to a readable format
+   * @param {string} timestamp
+   * @returns {string}
+   */
+  function formatTimestamp(timestamp) {
+    if (!timestamp) return '';
+    
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return timestamp; // Return the original if parsing fails
+    }
+  }
+  
+  /**
+   * Toggle FAB position and save preference
+   */
+  function toggleFabPosition() {
+    fabPosition = fabPosition === 'corner' ? 'center' : 'corner';
+    if (browser) {
+      localStorage.setItem('fab-position', fabPosition);
+    }
+  }
+  
+  /**
+   * Calculate the appropriate position for the flyout based on screen edges
+   * @param {HTMLElement} fabElement - The FAB element
+   * @returns {string} The position for the flyout
+   */
+  function calculateFlyoutPosition() {
+    if (!browser) return 'top';
+    
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Get FAB position
+    const fabElement = document.querySelector('.selector-fab');
+    if (!fabElement) return 'top';
+    
+    const fabRect = fabElement.getBoundingClientRect();
+    
+    // Calculate position - default to 'top' unless close to top edge
+    if (fabRect.top < 300) {
+      return 'bottom';
+    } else if (fabRect.left < 200) {
+      return 'right';
+    } else if (viewportWidth - fabRect.right < 200) {
+      return 'left';
+    } else {
+      return 'top';
+    }
+  }
+  
+  /**
+   * Toggle the flyout visibility with edge detection
+   */
+  function toggleFlyout() {
+    console.log('Toggling flyout');
+    if (!showFlyout) {
+      // Calculate position before showing
+      flyoutPosition = calculateFlyoutPosition();
+    }
+    
+    showFlyout = !showFlyout;
+    
+    // If we're showing the flyout, make sure the dialog is closed
+    if (showFlyout) {
+      dialogOpen = false;
+    }
+  }
+  
+  /**
+   * Open the dialog
+   */
+  function openDialog() {
+    dialogOpen = true;
+    showFlyout = false;
+    if (!contentItems[activeTab] || contentItems[activeTab].length === 0) {
+      fetchContent(activeTab, true);
+    }
+  }
+  
+  /**
+   * Close the dialog
+   */
+  function closeDialog() {
+    dialogOpen = false;
+  }
+  
+  /**
+   * Select a content type and open the dialog
+   * @param {string} type
+   */
+  function selectContentType(type) {
+    console.log('Selecting content type:', type);
+    activeTab = type;
+    showFlyout = false;
+    dialogOpen = true;
+    if (!contentItems[type] || contentItems[type].length === 0) {
+      fetchContent(type, true);
+    }
+  }
+  
+  /**
+   * Add selected items and close the dialog
+   */
+  function addSelectedItems() {
+    if (onSelectionChange) {
+      onSelectionChange(selectedItems);
+    }
+    closeDialog();
+  }
+  
+  // Load content when component mounts
+  $effect(() => {
+    if (dialogOpen && (!contentItems[activeTab] || contentItems[activeTab].length === 0)) {
+      fetchContent(activeTab, true);
+    }
+  });
+</script>
+
+<!-- Floating Action Button -->
+{#if showFab && !dialogOpen}
+  <div 
+    class="selector-fab {fabPosition === 'center' ? 'center' : 'corner'} {isSidebarCollapsed ? 'sidebar-collapsed' : ''}"
+    style={fabPosition === 'corner' && !isSidebarCollapsed ? 'right: calc(1.5rem + 240px);' : ''}
+  >
+    <!-- Main FAB Button -->
+    <button 
+      class="selector-fab-button {showFlyout ? 'active' : ''}"
+      onclick={toggleFlyout}
+      aria-label="Add new content"
+    >
+      <Icon icon={showFlyout ? X : Plus} size={24} />
+    </button>
+    
+    <!-- Position Toggle (small button) -->
+    <button 
+      class="selector-fab-position-toggle"
+      onclick={toggleFabPosition}
+      title="Toggle position"
+    >
+      <Icon icon={fabPosition === 'corner' ? Calendar : LineChart} size={12} />
+    </button>
+    
+    <!-- Radial Flyout Menu with Arc Pattern -->
+    {#if showFlyout}
+      <div class="radial-menu {fabPosition === 'center' ? 'center' : 'corner'}">
+        {#each contentTypeDetails as type, i}
+          <button 
+            transition:fly|local={{
+              delay: i * 50, // Increased delay for more pronounced staggered effect
+              duration: 300,
+              y: 20,
+              opacity: 0,
+              easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+            class="radial-menu-item" 
+            style="--index: {i}; --total: {contentTypeDetails.length};"
+            onclick={() => selectContentType(type.id)}
+            aria-label="Add {type.label}"
+          >
+            <div class="radial-menu-icon">
+              <Icon icon={contentTypeIcons[type.id] || FileText} size={20} />
+            </div>
+            <span class="radial-menu-label">{type.label}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<!-- Selection Dialog -->
+<Dialog open={dialogOpen} onClose={closeDialog}>
+  <DialogContent class="selector-dialog-content">
+    <DialogHeader>
+      <DialogTitle class="text-[1.25rem] font-medium flex items-center gap-[0.5rem]">
+        {#if contentTypeDetails.find(t => t.id === activeTab)}
+          {@const type = contentTypeDetails.find(t => t.id === activeTab)}
+          {#if contentTypeIcons[type.id]}
+            <div class="w-[1.5rem] h-[1.5rem] bg-[hsl(var(--muted))] rounded-full flex items-center justify-center">
+              <Icon icon={contentTypeIcons[type.id]} size={14} class="text-[hsl(var(--primary))]" />
+            </div>
+          {/if}
+          <span>Select {type.label} Content</span>
+        {:else}
+          <span>Select Content</span>
+        {/if}
+      </DialogTitle>
+    </DialogHeader>
+    
+    <!-- Content Type Tabs -->
+    <TabGroup value={activeTab} onValueChange={(value) => switchTab(value)}>
+      <TabList class="grid grid-flow-col auto-cols-fr">
+        {#each contentTypeDetails as type}
+          <Tab value={type.id} class="flex items-center justify-center">
+            {type.label}
+            {#if loadingByType[type.id]}
+              <Icon icon={Loader2} class="ml-1 animate-spin" size={16} />
+            {/if}
+          </Tab>
+        {/each}
+      </TabList>
+      
+      <!-- Selected Items Preview -->
+      <div class="pt-4">
+        <div class="flex flex-wrap items-center mb-2 gap-2">
+          <span class="font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
+            Selected ({selectedItems.length}/{maxItems}):
+          </span>
+          {#if selectedItems.length === 0}
+            <span class="text-[hsl(var(--text-3))]">No items selected</span>
+          {:else}
+            {#each selectedItems as item}
+              <Badge variant="outline" class="flex items-center gap-1">
+                {item.title.length > 20 ? item.title.slice(0, 20) + '...' : item.title}
+                <button 
+                  type="button" 
+                  class="text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
+                  onclick={() => removeSelectedItem(item)}
+                >
+                  <Icon icon={X} size={12} />
+                </button>
+              </Badge>
+            {/each}
+          {/if}
+        </div>
+      </div>
+      
+      <!-- Search & Filters -->
+      <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 mt-2">
+        <div class="relative flex-1">
+          <Icon 
+            icon={Search} 
+            class="absolute left-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))]" 
+            size={18} 
+          />
+          <Input
+            placeholder="Search content..." 
+            class="pl-8"
+            value={searchQuery}
+            onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+            onchange={(e) => {
+              searchQuery = e.target.value;
+            }}
+          />
+          {#if searchQuery}
+            <button 
+              type="button" 
+              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
+              onclick={clearSearch}
+            >
+              <Icon icon={X} size={16} />
+            </button>
+          {/if}
+        </div>
+        <Button 
+          variant="outline" 
+          onclick={handleSearch}
+        >
+          <Icon icon={Filter} class="mr-2" size={16} />
+          Filter
+        </Button>
+      </div>
+      
+      <!-- Content Panels -->
+      {#each contentTypeDetails as type}
+        <TabPanel value={type.id} class="pt-4">
+          {#if errorByType[type.id]}
+            <div class="p-4 text-[hsl(var(--functional-error-fg))] bg-[hsl(var(--functional-error)/0.1)] rounded-md">
+              Error loading {type.label}: {errorByType[type.id]}
+            </div>
+          {:else if contentItems[type.id]?.length === 0 && !loadingByType[type.id]}
+            <div class="p-4 text-[hsl(var(--text-2))] bg-[hsl(var(--surface-2))] rounded-md">
+              No {type.label} items found.
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+              {#each contentItems[type.id] || [] as item}
+                <div class={`overflow-hidden transition-all cursor-pointer border rounded-lg ${isItemSelected(item) ? 'border-[hsl(var(--brand))]' : 'border-[hsl(var(--border))]'}`}>
+                  <button type="button"
+                    class="flex flex-row p-3 gap-4 w-full text-left"
+                    onclick={() => toggleSelectItem(item)}
+                  >
+                    <div class="flex-shrink-0 mt-1">
+                      <Checkbox checked={isItemSelected(item)} />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-[var(--font-size-base)] font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))] mb-1">
+                        {item.title}
+                      </h3>
+                      <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))] line-clamp-2">
+                        {item.excerpt || 'No description available'}
+                      </p>
+                      <div class="flex gap-2 mt-2 text-[var(--font-size-xs)] text-[hsl(var(--text-3))]">
+                        <Badge variant="outline" class="capitalize">{item.type}</Badge>
+                        {#if item.source}
+                          <span>{item.source}</span>
+                        {/if}
+                        {#if item.date}
+                          <span class="flex items-center gap-1">
+                            <Icon icon={Calendar} size={12} />
+                            {item.date}
+                          </span>
+                        {/if}
+                      </div>
+                    </div>
+                    {#if isItemSelected(item)}
+                      <div class="absolute top-2 right-2 bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] rounded-full w-6 h-6 flex items-center justify-center">
+                        <Icon icon={Check} size={14} />
+                      </div>
+                    {/if}
+                  </button>
+                </div>
+              {/each}
+              
+              {#if loadingByType[type.id]}
+                {#each Array(2) as _, i}
+                  <Card>
+                    <div class="flex flex-row p-3 gap-4">
+                      <div class="flex-shrink-0 mt-1">
+                        <Skeleton class="h-4 w-4 rounded-sm" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <Skeleton class="h-5 w-3/4 mb-2" />
+                        <Skeleton class="h-4 w-full mb-1" />
+                        <Skeleton class="h-4 w-5/6 mb-2" />
+                        <div class="flex gap-2">
+                          <Skeleton class="h-4 w-16 rounded-full" />
+                          <Skeleton class="h-4 w-20 rounded-sm" />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                {/each}
+              {/if}
+            </div>
+            
+            {#if paginationByType[type.id]?.hasNextPage}
+              <div class="flex justify-center mt-4">
+                <Button 
+                  variant="outline" 
+                  onclick={loadMore}
+                  disabled={loadingByType[type.id]}
+                >
+                  {#if loadingByType[type.id]}
+                    <Icon icon={Loader2} class="mr-2 animate-spin" size={16} />
+                    Loading...
+                  {:else}
+                    Load More
+                    <Icon icon={ChevronDown} class="ml-2" size={16} />
+                  {/if}
+                </Button>
+              </div>
+            {/if}
+          {/if}
+        </TabPanel>
+      {/each}
+    </TabGroup>
+    
+    <!-- Action Buttons -->
+    <div class="flex justify-between mt-4">
+      <Button variant="outline" onclick={closeDialog}>
+        Cancel
+      </Button>
+      <Button 
+        variant="default" 
+        onclick={addSelectedItems} 
+        disabled={selectedItems.length === 0}
+      >
+        Add {selectedItems.length} {selectedItems.length === 1 ? 'Item' : 'Items'}
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
+
+<style>
+  /* Base FAB styling */
+  .selector-fab {
+    position: fixed;
+    bottom: 1.5rem;
+    z-index: 50;
+    transition: all 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  /* Corner positioning */
+  .selector-fab.corner {
+    right: 1.5rem;
+  }
+
+  /* Center positioning */
+  .selector-fab.center {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* Adjust for sidebar on desktop */
+  @media (min-width: 1024px) {
+    /* When sidebar is expanded, shift FAB position to account for sidebar width */
+    .selector-fab.corner:not(.sidebar-collapsed) {
+      right: calc(1.5rem + 240px);
+    }
+  }
+
+  .selector-fab-button {
+    background: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--brand-hover)));
+    color: hsl(var(--brand-fg));
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.2s, background 0.2s;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+  }
+  
+  .selector-fab-button.active {
+    background: hsl(var(--surface-2));
+    color: hsl(var(--text-1));
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .selector-fab-button.active svg {
+    transform: rotate(135deg);
+  }
+
+  .selector-fab-button:hover {
+    transform: scale(1.05);
+  }
+  
+  .selector-fab-button.active:hover {
+    transform: rotate(45deg) scale(1.05);
+  }
+
+  .selector-fab-position-toggle {
+    position: absolute;
+    right: 0.25rem;
+    bottom: -0.5rem;
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--text-1));
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s;
+    z-index: 11;
+  }
+
+  .selector-fab-position-toggle:hover {
+    transform: scale(1.1);
+  }
+  
+  /* Radial Menu Styling */
+  .radial-menu {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9;
+    width: 0;
+    height: 0;
+  }
+  
+  .radial-menu.center {
+    right: 50%;
+    transform: translateX(50%);
+  }
+  
+  /* Arc Positioning for Menu Items */
+  .radial-menu-item {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border));
+    border-radius: 2rem;
+    padding: 0.5rem 1rem;
+    padding-left: 0.75rem;
+    box-shadow: var(--shadow-md);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+  }
+  
+  /* Corner positioning - creates a quarter circle arc */
+  .radial-menu.corner .radial-menu-item:nth-child(1) {
+    bottom: 70px;
+    right: 10px;
+  }
+  
+  .radial-menu.corner .radial-menu-item:nth-child(2) {
+    bottom: 120px;
+    right: 20px;
+  }
+  
+  .radial-menu.corner .radial-menu-item:nth-child(3) {
+    bottom: 160px;
+    right: 50px;
+  }
+  
+  .radial-menu.corner .radial-menu-item:nth-child(4) {
+    bottom: 180px;
+    right: 90px;
+  }
+  
+  .radial-menu.corner .radial-menu-item:nth-child(5) {
+    bottom: 180px;
+    right: 140px;
+  }
+  
+  /* Center positioning - creates a semi-circle arc */
+  .radial-menu.center .radial-menu-item:nth-child(1) {
+    bottom: 70px;
+    right: calc(50% - 60px);
+  }
+  
+  .radial-menu.center .radial-menu-item:nth-child(2) {
+    bottom: 100px;
+    right: calc(50% - 20px);
+  }
+  
+  .radial-menu.center .radial-menu-item:nth-child(3) {
+    bottom: 120px;
+    right: 50%;
+  }
+  
+  .radial-menu.center .radial-menu-item:nth-child(4) {
+    bottom: 100px;
+    right: calc(50% + 20px);
+  }
+  
+  .radial-menu.center .radial-menu-item:nth-child(5) {
+    bottom: 70px;
+    right: calc(50% + 60px);
+  }
+  
+  .radial-menu-item:hover {
+    background: hsl(var(--surface-3));
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .radial-menu-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: hsl(var(--brand));
+    margin-right: 0.5rem;
+  }
+  
+  .radial-menu-label {
+    color: hsl(var(--text-1));
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  /* Preserve all other styles (selector-dialog-content, etc.) */
+  .selector-dialog-content {
+    width: 90vw;
+    max-width: 800px;
+  }
+
+  /* Enhance animation */
+  :global(.flyout-enter), :global(.flyout-exit) {
+    transition: opacity 200ms, transform 200ms;
+  }
+  :global(.flyout-enter-start), :global(.flyout-exit-end) {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  :global(.flyout-enter-end), :global(.flyout-exit-start) {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style> 

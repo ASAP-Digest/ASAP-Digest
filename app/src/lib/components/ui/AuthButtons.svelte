@@ -9,7 +9,7 @@
   import { Button } from '$lib/components/ui/button';
   import { LogIn, LogOut, Loader2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { UserPlus } from '$lib/utils/lucide-icons.js';
+  import { UserPlus } from '$lib/utils/lucide-compat.js';
   
   /**
    * @typedef {Object} AuthButtonsProps

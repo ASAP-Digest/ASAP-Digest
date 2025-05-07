@@ -10,6 +10,7 @@
 	 * @property {string} [class] - Additional CSS classes
 	 * @property {Function} [transition] - Transition function
 	 * @property {Object} [transitionConfig] - Transition configuration
+	 * @property {import('svelte').Snippet} [children] - The dialog content
 	 * @property {Object} [rest] - Additional props to forward
 	 */
 	
@@ -20,6 +21,7 @@
 		transitionConfig = {
 			duration: 200,
 		},
+		children,
 		...rest
 	} = $props();
 </script>
@@ -35,7 +37,9 @@
 		)}
 		{...rest}
 	>
-		<slot />
+		{#if children}
+			{@render children()}
+		{/if}
 		<DialogPrimitive.Close
 			class="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--surface-2))] disabled:pointer-events-none data-[state=open]:bg-[hsl(var(--surface-3))] data-[state=open]:text-[hsl(var(--text-2))]"
 		>

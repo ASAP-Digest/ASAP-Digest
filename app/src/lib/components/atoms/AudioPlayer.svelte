@@ -4,8 +4,8 @@
    * Provides standardized audio playback with consistent controls and styling
    */
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-  import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import { cn } from '$lib/utils';
 
   // Event dispatcher

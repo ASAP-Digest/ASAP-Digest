@@ -8,8 +8,8 @@
   import DialogTitle from '$lib/components/ui/dialog/dialog-title.svelte';
   import Button from '$lib/components/ui/button/button.svelte';
   import Input from '$lib/components/ui/input/input.svelte';
-  import { Check, Plus, X, Search, FileText, Headphones, Key, DollarSign, Twitter, MessageSquare, Calendar, LineChart } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Check, Plus, X, Search, FileText, Headphones, Key, DollarSign, Twitter, MessageSquare, Calendar, LineChart } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import { getContentTypeColor } from '$lib/utils/color-utils.js';
   
   const dispatch = createEventDispatcher();

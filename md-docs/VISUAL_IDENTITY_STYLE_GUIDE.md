@@ -464,8 +464,8 @@ Our component library is built using Svelte 5 with a consistent architecture for
 
 Icons are implemented through a central utility file and wrapper component:
 
-1. **Compatibility Layer** (`$lib/utils/lucide-icons.ts`):
-   ```ts
+1. **Compatibility Layer** (`$lib/utils/lucid-compat.js`):
+   ```js
    import type { ComponentType, SvelteComponent } from 'svelte';
    
    // Create standardized icon object

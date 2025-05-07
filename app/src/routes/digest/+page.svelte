@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
-  import { Calendar, Clock } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Calendar, Clock } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   /** @typedef {Object} Digest 
    * @property {string} id - Digest ID

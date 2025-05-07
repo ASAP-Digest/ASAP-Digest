@@ -14,10 +14,11 @@ export { default as CardHeader } from './CardHeader.svelte';
 export { default as CardTitle } from './CardTitle.svelte';
 export { default as Checkbox } from './Checkbox.svelte';
 export { default as FormGroup } from './FormGroup.svelte';
-export { default as Icon } from './Icon.svelte';
 export { default as Image } from './Image.svelte';
 export { default as Link } from './Link.svelte';
 export { default as Typography } from './Typography.svelte';
 
 // Card components
-export { default as AudioPlayer } from './AudioPlayer.svelte'; 
+export { default as AudioPlayer } from './AudioPlayer.svelte';
+
+// No export for Icon is present, as confirmed, to maintain compliance with icon-management rules 

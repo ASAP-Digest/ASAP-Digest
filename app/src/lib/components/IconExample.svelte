@@ -1,6 +1,6 @@
 <script>
   // Import our custom Icon wrapper
-  import Icon from './ui/Icon.svelte';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   // Import createIconObject utility
   import { createIconObject } from '$lib/utils/icon-utils';

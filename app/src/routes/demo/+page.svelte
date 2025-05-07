@@ -1,8 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import Button from '$lib/components/ui/button/button.svelte';
-  import { Plus } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Plus } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   let selectedItems = $state([]);
   

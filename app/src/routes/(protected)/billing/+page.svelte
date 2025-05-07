@@ -7,8 +7,8 @@
     Plus,
     Check,
     X
-  } from '$lib/utils/lucide-icons';
-  import Icon from "$lib/components/ui/Icon.svelte";
+  } from '$lib/utils/lucide-compat.js';
+  import Icon from "$lib/components/ui/icon/icon.svelte";
 
   /** @typedef {Object} PlanFeature
    * @property {string} name - Feature name

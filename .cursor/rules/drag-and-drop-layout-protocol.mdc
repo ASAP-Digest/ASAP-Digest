@@ -1,0 +1,609 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Drag-and-Drop Layout Protocol v1.0
+
+## 1. Purpose
+
+This protocol defines the standard approach for implementing drag-and-drop functionality within the ASAP Digest project using the `svelte-dnd-action` library. It ensures all drag-and-drop interactions adhere to the Golden Ratio Design System, maintain consistent animations, and provide an accessible, intuitive user experience.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. golden-ratio-design-system-protocol  │ // Core Visual Standards
+│ 4. strict-visual-enforcement-protocol   │ // Syntax-level Checks
+│ 5. visual-style-enforcement-protocol    │ // Visual Verification
+│ 6. icon-management.mdc                  │ // Drag Handle Icons
+│ 7. sk2-scns5-t4-int.mdc                 │ // SvelteKit Integration
+│ 8. svelte-dnd-action                    │ // Drag-and-Drop Library
+│ 9. ui-check.mdc                         │ // Visual Review
+│ 10. component-dependency-usage-protocol │ // Package Integration
+└─────────────────────────────────────────┘
+```
+
+## 3. Core Principles
+
+1. **Integration with Design System:** All drag-and-drop elements MUST adhere to the Golden Ratio Design System for spacing, colors, motion, and states.
+2. **Consistent Animation:** Animations MUST use the design system's duration and easing variables.
+3. **Clear Affordances:** Draggable elements MUST provide clear visual affordances indicating they can be dragged.
+4. **Accessibility:** All drag-and-drop functionality MUST remain accessible via keyboard and screen readers.
+5. **Performance:** Animations MUST be optimized for performance, preferring CSS properties that trigger only composition.
+
+## 4. Library Integration
+
+### 4.1. Package Integration
+
+```javascript
+// In package.json - Add dependency
+"dependencies": {
+  "svelte-dnd-action": "^0.9.26",
+  // ... other dependencies
+}
+```
+
+### 4.2. Component Import
+
+```javascript
+<script>
+  import { dndzone } from 'svelte-dnd-action';
+  import { flip } from 'svelte/animate';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { GripVertical } from '$lib/utils/lucide-compat.js';
+  // ... other imports
+</script>
+```
+
+## 5. Standard Implementation
+
+### 5.1. Basic DnD Container Implementation
+
+```svelte
+<script>
+  import { dndzone } from 'svelte-dnd-action';
+  import { flip } from 'svelte/animate';
+  
+  /**
+   * @typedef {Object} DndItem
+   * @property {string} id - Unique identifier (REQUIRED by svelte-dnd-action)
+   * @property {any} [additionalProps] - Any other properties needed
+   */
+  
+  /** @type {DndItem[]} */
+  let items = [
+    { id: '1', title: 'Item 1' },
+    { id: '2', title: 'Item 2' },
+    { id: '3', title: 'Item 3' }
+  ];
+  
+  // Duration MUST use design system variable
+  const flipDurationMs = 200; // Should match --duration-normal (300ms) or --duration-fast (150ms)
+  
+  /**
+   * Update items when drag events occur
+   * @param {CustomEvent} e - The dnd event
+   */
+  function handleSort(e) {
+    items = e.detail.items;
+  }
+</script>
+
+<section 
+  use:dndzone={{items, flipDurationMs}}
+  on:consider={handleSort}
+  on:finalize={handleSort}
+  class="grid gap-4 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
+>
+  {#each items as item (item.id)}
+    <div 
+      class="p-4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
+             hover:shadow-[var(--shadow-md)] cursor-grab active:cursor-grabbing transition-all
+             duration-[var(--duration-fast)] ease-[var(--ease-out)]"
+      animate:flip={{duration: flipDurationMs}}
+    >
+      {item.title}
+    </div>
+  {/each}
+</section>
+```
+
+### 5.2. Adding Drag Handles
+
+```svelte
+<script>
+  import { dndzone } from 'svelte-dnd-action';
+  import { flip } from 'svelte/animate';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { GripVertical } from '$lib/utils/lucide-compat.js';
+  
+  /** @type {DndItem[]} */
+  let items = [ /* ... */ ];
+  
+  const flipDurationMs = 200;
+  
+  function handleSort(e) {
+    items = e.detail.items;
+  }
+</script>
+
+<section 
+  use:dndzone={{items, flipDurationMs, dragHandle: '.drag-handle'}}
+  on:consider={handleSort}
+  on:finalize={handleSort}
+  class="grid gap-4 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
+>
+  {#each items as item (item.id)}
+    <div 
+      class="flex items-center p-4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
+             hover:shadow-[var(--shadow-md)] transition-all
+             duration-[var(--duration-fast)] ease-[var(--ease-out)]"
+      animate:flip={{duration: flipDurationMs}}
+    >
+      <div class="drag-handle mr-2 cursor-grab active:cursor-grabbing">
+        <Icon icon={GripVertical} class="w-5 h-5 text-[hsl(var(--text-2))]" aria-hidden="true" />
+      </div>
+      <span>{item.title}</span>
+    </div>
+  {/each}
+</section>
+```
+
+### 5.3. Multi-Container (Between Lists) Implementation
+
+```svelte
+<script>
+  import { dndzone } from 'svelte-dnd-action';
+  import { flip } from 'svelte/animate';
+  
+  /** @type {DndItem[]} */
+  let leftItems = [ /* items with ids */ ];
+  
+  /** @type {DndItem[]} */
+  let rightItems = [ /* items with ids */ ];
+  
+  const flipDurationMs = 200;
+  
+  /**
+   * Handle sorting within the left container
+   * @param {CustomEvent} e - The dnd event
+   */
+  function handleSortLeft(e) {
+    leftItems = e.detail.items;
+  }
+  
+  /**
+   * Handle sorting within the right container
+   * @param {CustomEvent} e - The dnd event
+   */
+  function handleSortRight(e) {
+    rightItems = e.detail.items;
+  }
+</script>
+
+<div class="flex gap-4">
+  <!-- Left Container -->
+  <section
+    use:dndzone={{items: leftItems, flipDurationMs, type: 'shared-list'}}
+    on:consider={handleSortLeft}
+    on:finalize={handleSortLeft}
+    class="w-1/2 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
+  >
+    {#each leftItems as item (item.id)}
+      <div
+        class="p-4 my-2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)]
+               cursor-grab active:cursor-grabbing"
+        animate:flip={{duration: flipDurationMs}}
+      >
+        {item.title}
+      </div>
+    {/each}
+  </section>
+  
+  <!-- Right Container -->
+  <section
+    use:dndzone={{items: rightItems, flipDurationMs, type: 'shared-list'}}
+    on:consider={handleSortRight}
+    on:finalize={handleSortRight}
+    class="w-1/2 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
+  >
+    {#each rightItems as item (item.id)}
+      <div
+        class="p-4 my-2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)]
+               cursor-grab active:cursor-grabbing"
+        animate:flip={{duration: flipDurationMs}}
+      >
+        {item.title}
+      </div>
+    {/each}
+  </section>
+</div>
+```
+
+### 5.4. Nested DnD Zones (Board-like Implementation)
+
+```svelte
+<script>
+  import { dndzone } from 'svelte-dnd-action';
+  import { flip } from 'svelte/animate';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { GripVertical } from '$lib/utils/lucide-compat.js';
+  
+  /**
+   * @typedef {Object} CardItem
+   * @property {string} id - Unique identifier
+   * @property {string} title - Card title
+   */
+  
+  /**
+   * @typedef {Object} ColumnItem
+   * @property {string} id - Unique identifier
+   * @property {string} title - Column title
+   * @property {CardItem[]} cards - Cards in this column
+   */
+  
+  /** @type {ColumnItem[]} */
+  let columns = [
+    {
+      id: 'col1',
+      title: 'Todo',
+      cards: [
+        { id: 'card1', title: 'Task 1' },
+        { id: 'card2', title: 'Task 2' }
+      ]
+    },
+    {
+      id: 'col2',
+      title: 'In Progress',
+      cards: [
+        { id: 'card3', title: 'Task 3' }
+      ]
+    }
+  ];
+  
+  const flipDurationMs = 200;
+  
+  /**
+   * Handle column reordering
+   * @param {CustomEvent} e - The dnd event
+   */
+  function handleColumnSort(e) {
+    columns = e.detail.items;
+  }
+  
+  /**
+   * Handle card sorting within a column
+   * @param {CustomEvent} e - The dnd event
+   * @param {string} columnId - The column ID
+   */
+  function handleCardSort(e, columnId) {
+    const columnIndex = columns.findIndex(col => col.id === columnId);
+    if (columnIndex !== -1) {
+      columns = columns.map((col, i) => {
+        if (i === columnIndex) {
+          return { ...col, cards: e.detail.items };
+        }
+        return col;
+      });
+    }
+  }
+</script>
+
+<!-- Board container -->
+<div
+  use:dndzone={{items: columns, flipDurationMs, type: 'columns'}}
+  on:consider={handleColumnSort}
+  on:finalize={handleColumnSort}
+  class="flex gap-4 p-4 overflow-x-auto"
+>
+  {#each columns as column (column.id)}
+    <!-- Column -->
+    <div
+      animate:flip={{duration: flipDurationMs}}
+      class="flex flex-col w-80 shrink-0 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)] p-4 border border-[hsl(var(--border))]"
+    >
+      <!-- Column header -->
+      <div class="flex items-center mb-4">
+        <div class="cursor-grab active:cursor-grabbing mr-2">
+          <Icon icon={GripVertical} class="w-5 h-5 text-[hsl(var(--text-2))]" aria-hidden="true" />
+        </div>
+        <h3 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)]">{column.title}</h3>
+      </div>
+      
+      <!-- Cards container -->
+      <div
+        use:dndzone={{items: column.cards, flipDurationMs, type: 'cards'}}
+        on:consider={e => handleCardSort(e, column.id)}
+        on:finalize={e => handleCardSort(e, column.id)}
+        class="flex-grow flex flex-col gap-2"
+      >
+        {#each column.cards as card (card.id)}
+          <!-- Card -->
+          <div
+            animate:flip={{duration: flipDurationMs}}
+            class="p-3 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
+                   cursor-grab active:cursor-grabbing shadow-[var(--shadow-sm)]
+                   hover:shadow-[var(--shadow-md)] transition-all
+                   duration-[var(--duration-fast)] ease-[var(--ease-out)]"
+          >
+            {card.title}
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/each}
+</div>
+```
+
+## 6. Accessibility Requirements
+
+1. **Semantic Structure:**
+   - Use proper ARIA roles for draggable items (`role="listitem"` and `aria-grabbed`)
+   - Include `aria-live` regions to announce changes after drag operations
+
+2. **Keyboard Navigation:**
+   - Implement keyboard commands for drag operations:
+     - `Space` - Select item for dragging
+     - `Arrow Keys` - Move item
+     - `Enter` - Drop item
+     - `Escape` - Cancel drag operation
+
+3. **Screen Reader Support:**
+   - Include descriptive instructions for drag operations
+   - Announce new positions after drag completion
+
+```svelte
+<!-- Example with accessibility features -->
+<div 
+  role="list"
+  aria-label="Draggable items list"
+>
+  <div
+    role="listitem"
+    tabindex="0"
+    aria-grabbed="false"
+    aria-roledescription="draggable item"
+    aria-describedby="drag-instructions"
+  >
+    Item content
+  </div>
+  
+  <!-- Hidden instructions for screen readers -->
+  <div id="drag-instructions" class="sr-only">
+    Press Space to pick up an item, use arrow keys to move, and press Enter to drop. Press Escape to cancel.
+  </div>
+  
+  <!-- Live region for announcing results -->
+  <div aria-live="polite" class="sr-only">
+    <!-- Updated dynamically after drag operations -->
+  </div>
+</div>
+```
+
+## 7. Animation Standards
+
+1. **Duration Variables:**
+   - MUST use design system duration variables:
+     ```css
+     duration-[var(--duration-fast)] /* 150ms */
+     duration-[var(--duration-normal)] /* 300ms */
+     ```
+
+2. **Easing Variables:**
+   - MUST use design system easing variables:
+     ```css
+     ease-[var(--ease-out)]
+     ```
+
+3. **Animation Properties:**
+   - SHOULD prioritize CSS properties that trigger only composition:
+     ```css
+     transform, opacity
+     ```
+   - SHOULD avoid properties that trigger layout recalculation:
+     ```css
+     width, height, top, left
+     ```
+
+4. **Responsive Animations:**
+   - MAY reduce animation duration on smaller screens:
+     ```css
+     duration-[var(--duration-normal)] md:duration-[var(--duration-fast)]
+     ```
+
+## 8. Visual State Guidelines
+
+1. **Draggable Element States:**
+   - **Default:** Subtle visual affordance (drop shadow, border)
+   - **Hover:** Enhanced affordance (deeper shadow, slight scaling)
+   - **Active (During Drag):** Clear visual differentiation (rotation, scaling, opacity)
+   - **Disabled:** Standard disabled state (opacity-50, cursor-not-allowed)
+
+2. **Drop Zone States:**
+   - **Default:** Standard surface styling
+   - **Active (Potential Drop Target):** Visual highlight (border color change, background color change)
+   - **Invalid Drop Target:** Visual warning (colored border or background)
+
+3. **CSS Implementation:**
+```css
+/* Draggable Element */
+.draggable {
+  @apply cursor-grab 
+         bg-[hsl(var(--surface-2))] 
+         border border-[hsl(var(--border))] 
+         rounded-[var(--radius-sm)]
+         shadow-[var(--shadow-sm)]
+         transition-all
+         duration-[var(--duration-fast)]
+         ease-[var(--ease-out)];
+}
+
+.draggable:hover {
+  @apply shadow-[var(--shadow-md)]
+         transform scale-[1.01];
+}
+
+.draggable:active {
+  @apply cursor-grabbing
+         transform scale-[1.03] rotate-[1deg];
+}
+
+.draggable[disabled] {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Drop Zone */
+.dropzone {
+  @apply bg-[hsl(var(--surface-1))]
+         border border-[hsl(var(--border))]
+         rounded-[var(--radius-md)]
+         transition-all
+         duration-[var(--duration-fast)]
+         ease-[var(--ease-out)];
+}
+
+.dropzone.active {
+  @apply border-[hsl(var(--brand))];
+}
+
+.dropzone.invalid {
+  @apply border-[hsl(var(--functional-error))];
+}
+```
+
+## 9. Verification & Testing
+
+### 9.1. Manual Verification Checklist
+
+1. **Visual Consistency:**
+   - [ ] Draggable elements use design system color variables
+   - [ ] Spacing follows 8pt grid
+   - [ ] Border radii use defined variables
+   - [ ] Shadows use defined variables
+   - [ ] Typography uses design system size and weight variables
+   - [ ] Animations use design system duration and easing variables
+
+2. **Functional Testing:**
+   - [ ] Drag and drop works between intended containers
+   - [ ] Animation smoothness during drag operations
+   - [ ] Correct behavior on item drop
+   - [ ] No visual glitches during transitions
+   - [ ] Scrolling behavior works as expected
+   - [ ] Touch/mobile interaction functions correctly
+
+3. **Accessibility Testing:**
+   - [ ] Keyboard navigation works for all drag operations
+   - [ ] Screen readers announce drag operations
+   - [ ] Focus management is appropriate
+   - [ ] ARIA attributes correctly implemented
+   - [ ] Color contrast meets accessibility standards
+
+### 9.2. Automated Verification
+
+```javascript
+// Example: Verify component with strict-visual-enforcement-protocol
+// This would be executed via the protocol's mechanisms
+async function verifyDragDropComponent(targetFile) {
+  // 1. Run strict-visual-enforcement-protocol
+  const strictResult = await runStrictVisualEnforcement(targetFile);
+  if (!strictResult.pass) {
+    return {
+      pass: false,
+      errors: strictResult.errors,
+      message: "Failed strict visual enforcement checks"
+    };
+  }
+  
+  // 2. Run visual-style-enforcement-protocol
+  const visualResult = await runVisualStyleEnforcement(targetFile);
+  if (!visualResult.pass) {
+    return {
+      pass: false,
+      errors: visualResult.errors,
+      message: "Failed visual style enforcement checks"
+    };
+  }
+  
+  // 3. Additional drag-and-drop specific checks
+  const dndResult = await runDragDropSpecificChecks(targetFile);
+  if (!dndResult.pass) {
+    return {
+      pass: false,
+      errors: dndResult.errors,
+      message: "Failed drag-and-drop specific checks"
+    };
+  }
+  
+  return {
+    pass: true,
+    message: "Component passes all verification checks"
+  };
+}
+```
+
+## 10. Common Anti-Patterns & Corrections
+
+1. **❌ Incorrect:** Using hardcoded duration values
+   ```svelte
+   <div animate:flip={{duration: 250}}>Item</div>
+   ```
+   **✅ Correct:** Using design system duration variables
+   ```svelte
+   <div animate:flip={{duration: flipDurationMs}}>Item</div>
+   <!-- where flipDurationMs matches a design system value -->
+   ```
+
+2. **❌ Incorrect:** Using direct Tailwind color classes
+   ```svelte
+   <div class="bg-blue-500">Item</div>
+   ```
+   **✅ Correct:** Using HSL variables
+   ```svelte
+   <div class="bg-[hsl(var(--brand))]">Item</div>
+   ```
+
+3. **❌ Incorrect:** Missing accessibility attributes
+   ```svelte
+   <div>Draggable item</div>
+   ```
+   **✅ Correct:** Including proper accessibility attributes
+   ```svelte
+   <div role="listitem" aria-grabbed="false" tabindex="0">Draggable item</div>
+   ```
+
+4. **❌ Incorrect:** Inconsistent animation styles
+   ```svelte
+   <div class="transition-transform duration-200 hover:scale-105">Item</div>
+   ```
+   **✅ Correct:** Using design system variables
+   ```svelte
+   <div class="transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:scale-[1.05]">Item</div>
+   ```
+
+## 11. Integration with Other Protocols
+
+This protocol is designed to work in conjunction with:
+
+1. **golden-ratio-design-system-protocol.mdc:** All visual styling MUST adhere to the defined variables and specifications.
+
+2. **strict-visual-enforcement-protocol.mdc:** All components MUST pass the automated verification checks defined in this protocol.
+
+3. **visual-style-enforcement-protocol.mdc:** Visual review via `ui-check.mdc` SHOULD be performed for drag-and-drop layouts.
+
+4. **sk2-scns5-t4-int.mdc:** Implementation MUST follow the defined patterns for SvelteKit, Svelte, and Tailwind integration.
+
+5. **icon-management.mdc:** All icons (e.g., drag handles) MUST be imported and used according to the icon management protocol.
+
+## 12. Implementation Examples
+
+See sections 5.1 through 5.4 for implementation examples covering:
+- Basic single container drag-and-drop
+- Drag handles
+- Multi-container drag-and-drop
+- Nested drag-and-drop (board-like layout)

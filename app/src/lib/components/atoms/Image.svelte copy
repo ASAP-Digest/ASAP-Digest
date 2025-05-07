@@ -1,0 +1,49 @@
+<!-- Image.svelte - Atomic component for images -->
+<script>
+  import { cn } from "$lib/utils";
+
+  let {
+    /** @type {string} */ src,
+    /** @type {string} */ alt,
+    /** @type {string} */ aspectRatio = "16/9",
+    /** @type {boolean} */ lazy = true,
+    /** @type {string} */ objectFit = "cover",
+    /** @type {string} */ className = "",
+    /** @type {boolean} */ rounded = true,
+    /** @type {function} */ onError = undefined
+  } = $props();
+
+  /**
+   * Handle image loading error
+   * @param {Event} e - Error event
+   */
+  function handleError(e) {
+    if (onError) {
+      onError(e);
+    } else {
+      // Default error handling - add a subtle error state
+      const img = e.target;
+      if (img instanceof HTMLImageElement) {
+        img.style.opacity = '0.5';
+        img.style.backgroundColor = 'hsl(var(--surface-2))';
+      }
+    }
+  }
+</script>
+
+<div 
+  class={cn(
+    "relative overflow-hidden", 
+    rounded && "rounded-[var(--radius-md)]", 
+    className
+  )} 
+  style="aspect-ratio: {aspectRatio};"
+>
+  <img 
+    {src}
+    {alt}
+    loading={lazy ? "lazy" : "eager"}
+    class="w-full h-full object-{objectFit} transition-all duration-[var(--duration-normal)] ease-[var(--ease-out)]"
+    on:error={handleError}
+  />
+</div> 

@@ -2,8 +2,8 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { Plus, X, Calendar, LineChart, Check } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import { Plus, X, Calendar, LineChart, Check } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import NewItemsSelector from '$lib/components/selectors/NewItemsSelector.svelte';
   import { getContentTypeColor } from '$lib/utils/color-utils.js';
   

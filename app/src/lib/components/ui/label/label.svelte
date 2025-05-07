@@ -7,10 +7,11 @@
 	 * @property {string} [class] - Additional CSS classes
 	 * @property {HTMLLabelElement | null} [ref] - Element reference
 	 * @property {Object} [rest] - Additional props to pass to the label
+	 * @property {import('svelte').Snippet | undefined} [children] - Optional content snippet
 	 */
 	
 	/** @type {LabelProps} */
-	let { class: className, ref = $bindable(null), ...rest } = $props();
+	let { class: className, ref = $bindable(null), children = undefined, ...rest } = $props();
 </script>
 
 <LabelPrimitive.Root
@@ -21,5 +22,7 @@
 	)}
 	{...rest}
 >
-	<slot />
+	{#if children}
+		{@render children()}
+	{/if}
 </LabelPrimitive.Root>

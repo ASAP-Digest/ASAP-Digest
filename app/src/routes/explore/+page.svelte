@@ -1,7 +1,6 @@
 <script>
-  import { Search, Filter } from '$lib/utils/lucide-icons.js';
-  import Icon from '$lib/components/ui/Icon.svelte';
-  import { Search as SearchCompat } from '$lib/utils/lucide-compat.js';
+  import { Search, Filter } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   
   /**
    * @typedef {import('./$types').PageData} PageData
@@ -42,7 +41,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Icon icon={SearchCompat} size={18} class="text-gray-400" />
+          <Icon icon={Search} size={18} class="text-gray-400" />
         </div>
         <input 
           type="text" 

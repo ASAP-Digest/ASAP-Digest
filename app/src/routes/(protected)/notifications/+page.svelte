@@ -1,6 +1,6 @@
 <script>
   import { page } from '$app/stores';
-  import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from '$lib/utils/lucide-icons.js';
+  import { Bell, Calendar, BookOpen, ArrowUpRight, Settings, Clock, Check, X } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   
   // Mock notification data

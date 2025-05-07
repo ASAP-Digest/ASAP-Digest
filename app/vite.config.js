@@ -76,8 +76,8 @@ export default defineConfig(({ mode }) => {
 			preserveSymlinks: true,
 			dedupe: ['svelte', '@sveltejs/kit'],
 			alias: {
-				'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
-				'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-icons.js'),
+				'lucide-svelte': resolve(__dirname, 'src/lib/utils/lucide-compat.js'),
+				'lucide-svelte/icons': resolve(__dirname, 'src/lib/utils/lucide-compat.js'),
 				'svelte-chart': resolve(__dirname, 'src/lib/utils/svelte-chart-compat.js'),
 				'$src': path.resolve('./src'),
 			}
