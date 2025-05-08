@@ -71,7 +71,7 @@ This protocol establishes the standard procedures and best practices for integra
     ```
 4.  **Error Handling:** Implement `try...catch` blocks. Log errors appropriately (server-side). Return standardized error responses (see above).
 5.  **Documentation & Specification (REVISED):**
-    *   **Primary Documentation Source:** The canonical source for internal API reference documentation MUST be an automatically generated OpenAPI 3.x specification file (e.g., `/docs/openapi.json`). Manual documentation should supplement, not replace, this generated spec for core endpoint details.
+    *   **Primary Documentation Source:** The canonical source for internal API reference documentation MUST be an automatically generated OpenAPI 3.x specification file (e.g., `/md-docs/openapi.json`). Manual documentation should supplement, not replace, this generated spec for core endpoint details.
     *   **JSDoc Annotations (MANDATORY):** To enable OpenAPI generation, `+server.js` files containing API handlers (GET, POST, etc.) MUST include specific JSDoc annotations for each exported handler.
         *   **Required Tags:** `@summary` (Short description), `@description` (Longer description, optional), `@tags` (Grouping tags), `@param` (For path/query parameters), `@requestBody` (Describing the request body schema/example), `@response` (For each HTTP status code, describing the response schema/example), `@security` (Referencing security schemes defined in the base OpenAPI spec).
         *   **Format:** Follow standard JSDoc syntax. Type information for `@param`, `@requestBody`, `@response` should ideally reference reusable schemas defined perhaps in a base OpenAPI component schema section (managed by the generation script).
@@ -91,8 +91,8 @@ This protocol establishes the standard procedures and best practices for integra
             // ... implementation ...
         }
         ```
-    *   **Generation Process:** Refer to `openapi-generation-protocol.mdc` for details on the script that parses these annotations and generates `/docs/openapi.json`.
-    *   **Mintlify Integration:** The `/docs/mint.json` configuration should point to the generated `/docs/openapi.json` to automatically render the API reference pages. (Ref: `documentation-standards-protocol.mdc`).
+    *   **Generation Process:** Refer to `openapi-generation-protocol.mdc` for details on the script that parses these annotations and generates `/md-docs/openapi.json`.
+    *   **Mintlify Integration:** The `/md-docs/mint.json` configuration should point to the generated `/md-docs/openapi.json` to automatically render the API reference pages. (Ref: `documentation-standards-protocol.mdc`).
 
 ## 6. Consuming External APIs
 

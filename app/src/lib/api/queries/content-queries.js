@@ -88,7 +88,7 @@
  */
 
 /**
- * GraphQL query for articles
+ * Query for fetching article content
  */
 export const ARTICLE_QUERY = `
   query GetArticles($limit: Int, $cursor: String, $search: String, $dateFrom: String, $dateTo: String, $categories: [ID]) {
@@ -106,16 +106,6 @@ export const ARTICLE_QUERY = `
         databaseId
         title
         date
-        excerpt
-        featuredImage {
-          node {
-            sourceUrl
-            mediaDetails {
-              width
-              height
-            }
-          }
-        }
         acfArticle {
           summary
           source
@@ -134,7 +124,7 @@ export const ARTICLE_QUERY = `
 `;
 
 /**
- * GraphQL query for podcasts
+ * Query for fetching podcast content
  */
 export const PODCAST_QUERY = `
   query GetPodcasts($limit: Int, $cursor: String, $search: String, $dateFrom: String, $dateTo: String) {
@@ -151,19 +141,118 @@ export const PODCAST_QUERY = `
         databaseId
         title
         date
-        featuredImage {
-          node {
+        acfPodcast {
+          summary
+          audioUrl
+          duration
+          host
+          coverImage {
+            sourceUrl
+            mediaDetails {
+              width
+              height
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for fetching financial data content
+ */
+export const FINANCIAL_QUERY = `
+  query GetFinancialData($limit: Int, $cursor: String, $search: String, $dateFrom: String, $dateTo: String) {
+    financialData(first: $limit, after: $cursor, where: {
+      search: $search, 
+      dateQuery: { after: $dateFrom, before: $dateTo }
+    }) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        databaseId
+        title
+        date
+        acfFinancial {
+          summary
+          source
+          dataPoints
+          chartImage {
             sourceUrl
           }
         }
-        acfPodcast {
-          summary
-          source
-          duration
-          audioUrl
-          image {
-            sourceUrl
-          }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for fetching social media posts
+ */
+export const SOCIAL_QUERY = `
+  query GetSocialPosts($limit: Int, $cursor: String, $search: String, $dateFrom: String, $dateTo: String, $platforms: [String]) {
+    socialPosts(first: $limit, after: $cursor, where: {
+      search: $search, 
+      dateQuery: { after: $dateFrom, before: $dateTo },
+      metaQuery: { 
+        relation: "AND",
+        metaArray: [
+          { key: "platform", compare: "IN", value: $platforms }
+        ]
+      }
+    }) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        databaseId
+        title
+        date
+        acfSocial {
+          platform
+          author
+          content
+          mediaUrl
+          engagementStats
+          link
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * Query for fetching multiple content types with a unified structure
+ */
+export const UNIFIED_CONTENT_QUERY = `
+  query GetContentItems($types: [String], $limit: Int, $cursor: String, $search: String, $dateFrom: String, $dateTo: String) {
+    contentItems(first: $limit, after: $cursor, where: {
+      types: $types,
+      search: $search,
+      dateQuery: { after: $dateFrom, before: $dateTo }
+    }) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        databaseId
+        type
+        title
+        date
+        summary
+        source
+        imageUrl
+        metadata {
+          key
+          value
         }
       }
     }
@@ -190,36 +279,6 @@ export const KEYTERM_QUERY = `
           definition
           source
           relatedTerms
-        }
-      }
-    }
-  }
-`;
-
-/**
- * GraphQL query for financial data
- */
-export const FINANCIAL_QUERY = `
-  query GetFinancialData($limit: Int, $cursor: String, $search: String, $type: String) {
-    financialData(first: $limit, after: $cursor, where: {
-      search: $search,
-      taxQuery: { type: { terms: [$type], field: SLUG, operator: IN } }
-    }) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      nodes {
-        id
-        databaseId
-        title
-        acfFinancial {
-          summary
-          source
-          type
-          value
-          change
-          period
         }
       }
     }

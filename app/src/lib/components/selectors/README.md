@@ -1,73 +1,81 @@
-# Content Selector Components
+# Content Selection Components
 
-This directory contains components for content selection in the ASAP Digest application.
+This directory contains components related to content selection and filtering within the ASAP Digest system. These components are designed to be reusable across different parts of the application where content needs to be filtered, searched, or selected.
 
-## NewItemsSelector
+## Core Components
 
-The `NewItemsSelector` component is a versatile and visually appealing UI for selecting and adding content items to the user's digest.
+### FilterPanel.svelte
 
-### Features
+A comprehensive filtering UI component that allows users to filter content by various criteria:
 
-- **Floating Action Button (FAB)**: Accessible button that can be positioned at the bottom-center or bottom-right of the screen
-- **Configurable Position**: Users can toggle the FAB position based on their preference
-- **Content Type Flyout Menu**: Visual menu for selecting content types
-- **Visual Grid Selection**: Rich card-based UI for browsing and selecting content
-- **Multi-Select Capability**: Users can select multiple items before adding them
-- **Search Functionality**: Users can filter available content by searching
-- **Persistent Settings**: User preferences for FAB position are saved to localStorage
+- Full-text search
+- Content types (articles, podcasts, financial data, social posts)
+- Date ranges
+- Categories
+- Sources
+- "Fresh content" toggle (last 24 hours)
+- Items per page selection
 
-### Usage
+The component emits a `filter` event with the complete filter state whenever filters are changed, making it easy to integrate with any content display component.
+
+#### Usage
 
 ```svelte
 <script>
-  import NewItemsSelector from '$lib/components/selectors/NewItemsSelector.svelte';
+  import FilterPanel from '$lib/components/selectors/FilterPanel.svelte';
   
-  // Control visibility
-  let showSelector = $state(false);
-  
-  // Handle selected items
-  function handleAdd(event) {
-    const { items, type } = event.detail;
-    // Do something with the selected items
-    console.log('Added items:', items);
+  /**
+   * Handle filter changes
+   * @param {CustomEvent} event
+   */
+  function handleFilterChange(event) {
+    const filters = event.detail;
+    console.log('Filters changed:', filters);
+    // Use filters to query content
   }
 </script>
 
-<!-- Toggle button -->
-<button onclick={() => showSelector = !showSelector}>
-  Add Content
-</button>
-
-<!-- Render the selector when needed -->
-{#if showSelector}
-  <NewItemsSelector 
-    on:close={() => showSelector = false} 
-    on:add={handleAdd} 
-  />
-{/if}
+<FilterPanel on:filter={handleFilterChange} />
 ```
 
-### Events
+#### Filter Options Interface
 
-- `close`: Dispatched when the selector is closed
-- `add`: Dispatched when items are selected and added, with details containing:
-  - `items`: Array of selected content items
-  - `type`: The content type that was selected
+```typescript
+interface FilterOptions {
+  search: string;           // Search term
+  types: string[];          // Content types
+  categories: string[];     // Categories
+  sources: string[];        // Sources
+  dateFrom: Date | null;    // Start date
+  dateTo: Date | null;      // End date
+  onlyFresh: boolean;       // Only show content from last 24 hours
+  limit: number;            // Number of items per page
+}
+```
 
-### Implementation Notes
+## Integration
 
-- Uses Svelte 5 runes for reactivity
-- Implements ShadCN UI components for consistent styling
-- Uses Tailwind HSL variables for theming compatibility
-- Compatible with both light and dark modes
-- Sample content is currently hardcoded but designed to be replaced with API data
+These selector components are designed to work with:
 
-### Future Enhancements
+1. The content fetcher services (`$lib/api/content-fetcher.js`)
+2. The selected items store (`$lib/stores/selected-items-store.js`)
+3. The content browser components (`$lib/components/browsers/ContentBrowser.svelte`)
 
-- Integration with backend API for dynamic content loading
-- Pagination for large content libraries
-- Category filtering
-- Recently added section
-- Favorites/bookmarks
-- Accessibility improvements
-- Animation refinements 
+## Design Principles
+
+1. **Reusability** - Components are designed to be used in different contexts
+2. **Accessibility** - All inputs are properly labeled and keyboard navigable
+3. **Responsive** - Components adapt to different screen sizes
+4. **Stateful** - Components maintain their own internal state but also emit events for parent integration
+
+## Demo
+
+A complete demo of these selection components is available at `/demo/new-items-selector`
+
+## Future Enhancements
+
+- Saved filter presets
+- Advanced query builder
+- Natural language filter input ("Show me articles about tech from last week")
+- Category hierarchy filtering
+- Save and share filter configurations 

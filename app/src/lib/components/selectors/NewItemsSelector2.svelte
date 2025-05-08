@@ -1,6 +1,14 @@
-<!-- 
-  NewItemsSelector component for selecting curated content items
-  Based on GraphQL data fetching from WordPress
+<!--
+  NewItemsSelector2.svelte
+  -----------------------
+  TEST/DEMO CONTENT SELECTOR COMPONENT
+
+  This file is a test/demo version of the content selector, used for development, prototyping, and integration testing.
+  - NOT used in production or by the main app (see NewItemsSelector.svelte for the production version).
+  - Used in demo/test pages (e.g., /routes/demo/new-items-selector/test/+page.svelte).
+  - Implements advanced UI/UX patterns, tabbed content types, and detailed item views.
+  - May contain experimental features or alternate approaches for selection, search, and layout.
+  - Useful for reference, prototyping, or future migration, but not currently active in the app.
 -->
 <script>
   // @ts-ignore - Svelte component import
@@ -379,8 +387,8 @@
     if (!sharedSelectedItems.isSelected(item) && 
         isMaxItemsReached(maxItems)) {
       return; // Don't add more if at limit
-    }
-    
+      }
+      
     // Toggle the item in the shared store
     sharedSelectedItems.toggle(item);
     

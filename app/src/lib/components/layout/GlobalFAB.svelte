@@ -30,6 +30,7 @@
   let showNotification = $state(false);
   let notificationMessage = $state('');
   let isSidebarCollapsed = $state(false);
+  let selectedType = $state('');
   
   // New radial menu state
   let showFlyout = $state(false);
@@ -141,7 +142,7 @@
   function selectContentType(type) {
     console.log('Selecting content type:', type);
     showFlyout = false;
-    
+    selectedType = type;
     // Add a small delay before opening selector
     setTimeout(() => {
       console.log('Opening selector after content type selection');
@@ -244,7 +245,8 @@
   <NewItemsSelector 
     showFab={false}
     startOpen={true}
-    onclose={() => showSelector = false}
+    initialType={selectedType}
+    onclose={() => { showSelector = false; selectedType = ''; }}
     onadd={handleAdd}
   />
 {/if}
