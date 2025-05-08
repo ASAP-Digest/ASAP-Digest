@@ -81,27 +81,44 @@ export async function load(event) {
             // Get user from session
             const betterAuthUser = await auth.adapter.getUserById(authSession.userId);
             
+            // Log the raw betterAuthUser object for debugging
+            log('[Layout.server] betterAuthUser: ' + JSON.stringify(betterAuthUser));
+            
             if (betterAuthUser) {
                 log('[Layout.server] User loaded from session', 'info');
                 
-                // Set user in locals for API endpoint access following App.User type
-                /** @type {App.User} */
+                // Always include roles as an array
                 const userForLocals = {
                     id: betterAuthUser.id,
                     email: betterAuthUser.email,
                     displayName: betterAuthUser.display_name || betterAuthUser.username || betterAuthUser.email.split('@')[0],
-                    // Include other fields as needed
+                    avatarUrl: betterAuthUser.avatarUrl,
+                    roles: Array.isArray(betterAuthUser.roles)
+                        ? betterAuthUser.roles
+                        : Array.isArray(betterAuthUser.metadata?.roles)
+                            ? betterAuthUser.metadata.roles
+                            : [],
+                    // Add any other properties you need
                 };
+                log('[Layout.server] userForLocals: ' + JSON.stringify(userForLocals));
+                
+                // Prepare the object to return
+                const loaderReturn = {
+                    user: {
+                        ...userForLocals,
+                        testProp: 'should-be-visible',
+                        rolesTest: 'should-be-visible'
+                    }
+                };
+                const loaderReturnCloned = JSON.parse(JSON.stringify(loaderReturn));
+                log('[Layout.server] Loader return value (final, deep clone): ' + JSON.stringify(loaderReturnCloned));
                 
                 event.locals.user = userForLocals;
                 
                 // Convert session to the format expected by App.Locals.session
                 event.locals.session = convertSessionForLocals(authSession);
                 
-                return {
-                    user: userForLocals,
-                    // Don't return the session token to the client for security
-                };
+                return loaderReturnCloned;
             }
             
             log('[Layout.server] Session exists but user not found', 'warn');

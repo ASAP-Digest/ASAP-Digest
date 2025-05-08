@@ -37,6 +37,15 @@
       target.src = '/favicon.png'; // Fallback to favicon
     }
   }
+
+  // Add console logging for user object and roles
+  $effect(() => {
+    console.log('[Header] User object in dropdown:', user);
+    console.log('[Header] user.roles:', user?.roles);
+    console.log('[Header] user.testProp:', user?.testProp);
+    console.log('[Header] user.rolesTest:', user?.rolesTest);
+    console.log('[Header] Show Analytics Dashboard:', user?.roles && user.roles.includes('administrator'));
+  });
 </script>
 
 <header class="bg-[hsl(var(--surface-1))] shadow-[var(--shadow-sm)]">
@@ -115,6 +124,16 @@
                 >
                   Settings
                 </a>
+                {#if user.roles && user.roles.includes('administrator')}
+                  {console.log('[Header] Rendering Analytics Dashboard menu item for administrator')}
+                  <!-- Show Analytics Dashboard link for administrator users only -->
+                  <a
+                    href="/admin/analytics"
+                    class="block px-4 py-2 text-[var(--font-size-base)] text-[hsl(var(--brand))] hover:bg-[hsl(var(--surface-2))] font-semibold"
+                  >
+                    Analytics Dashboard
+                  </a>
+                {/if}
                 <a
                   href="/logout"
                   class="block px-4 py-2 text-[var(--font-size-base)] text-[hsl(var(--functional-error))] hover:bg-[hsl(var(--surface-2))]"

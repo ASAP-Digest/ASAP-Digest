@@ -7,7 +7,7 @@
 <script>
   import { onMount } from 'svelte';
   import { getModerationQueue, approveContent, rejectContent } from '$lib/api/crawler-api.js';
-  import { Button } from '$lib/components/ui';
+  import { Button } from '$lib/components/ui/button';
   import { Check, X, RefreshCw } from 'lucide-svelte';
 
   let queue = [];

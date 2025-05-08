@@ -7,7 +7,7 @@
 <script>
   import { onMount } from 'svelte';
   import { getMetrics } from '$lib/api/crawler-api.js';
-  import { Button } from '$lib/components/ui';
+  import { Button } from '$lib/components/ui/button';
   import { RefreshCw } from 'lucide-svelte';
 
   let sourceMetrics = [];

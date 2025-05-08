@@ -7,7 +7,10 @@
 <script>
   import { onMount } from 'svelte';
   import { fetchSources, addSource, updateSource } from '$lib/api/crawler-api.js';
-  import { Button, Input, Switch, Select } from '$lib/components/ui';
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Switch } from '$lib/components/ui/switch';
+  import { Select } from '$lib/components/ui/select';
   import { Plus, Edit2, RefreshCw } from 'lucide-svelte';
 
   let sources = [];

@@ -18,7 +18,8 @@
     Bug,
     PanelLeft,
     Bell,
-    LineChart
+    LineChart,
+    BarChart2
   } from '$lib/utils/lucide-compat.js';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
@@ -471,6 +472,14 @@
 
   // Reactive derived state for sidebar classes
   let isCollapsible = $state(false);
+
+  $effect(() => {
+    console.log('[Sidebar] User object in avatar dropdown:', user);
+    console.log('[Sidebar] user.roles:', user?.roles);
+    console.log('[Sidebar] user.testProp:', user?.testProp);
+    console.log('[Sidebar] user.rolesTest:', user?.rolesTest);
+    console.log('[Sidebar] Show Analytics Dashboard:', user?.roles && user.roles.includes('administrator'));
+  });
 </script>
 
 <style lang="postcss">
@@ -804,10 +813,37 @@
 	
 	/* Ensure avatar dropdown has proper z-index and visibility */
 	.avatar-dropdown {
-		z-index: var(--z-dropdown);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		z-index: 1200;
+		box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08);
+		border-radius: 1rem;
+		background: hsl(var(--background));
+		border: 1px solid hsl(var(--border));
+		padding: 0.75rem 0.5rem;
+		min-width: 16rem;
+		max-width: 90vw;
+		margin-top: 0.5rem;
+		animation: fadeIn 0.18s cubic-bezier(0.4,0,0.2,1);
 	}
-
+	.avatar-dropdown .dropdown-item {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.5rem 1rem;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		color: hsl(var(--sidebar-foreground));
+		transition: background 0.15s, color 0.15s;
+	}
+	.avatar-dropdown .dropdown-item:hover {
+		background: hsl(var(--surface-2));
+		color: hsl(var(--brand));
+	}
+	.avatar-dropdown .sidebar-icon {
+		min-width: 1.25rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
 </style>
 
 <div 
@@ -953,6 +989,11 @@
         {/if}
         
         {#if isAvatarDropdownOpen && user}
+          {console.log('[Sidebar] User object in avatar dropdown:', user)}
+          {console.log('[Sidebar] user.roles:', user.roles)}
+          {console.log('[Sidebar] user.testProp:', user.testProp)}
+          {console.log('[Sidebar] user.rolesTest:', user.rolesTest)}
+          {console.log('[Sidebar] Show Analytics Dashboard:', user.roles && user.roles.includes('administrator'))}
           <div
             class="avatar-dropdown fixed z-[var(--z-dropdown)] w-64 max-h-[calc(100vh-7.5rem)] overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 shadow-lg animate-fadeIn"
             bind:this={avatarDropdownElement}
@@ -981,6 +1022,14 @@
                 <span class="sidebar-icon"><Icon icon={Settings} size={16} color="currentColor" /></span>
                 <span>Settings</span>
               </a>
+              {#if user.roles && user.roles.includes('administrator')}
+                {console.log('[Sidebar] Rendering Analytics Dashboard menu item for administrator')}
+                <!-- Show Analytics Dashboard link for administrator users only -->
+                <a href="/admin/analytics" class="dropdown-item font-semibold text-[hsl(var(--brand))] hover:bg-[hsl(var(--surface-2))]">
+                  <span class="sidebar-icon"><Icon icon={BarChart2} size={16} color="currentColor" /></span>
+                  <span>Analytics Dashboard</span>
+                </a>
+              {/if}
               <a href="/logout" class="dropdown-item">
                 <span class="sidebar-icon"><Icon icon={LogOut} size={16} color="currentColor" /></span>
                 <span>Sign Out</span>
