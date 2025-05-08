@@ -39,6 +39,7 @@
   import DialogTitle from '$lib/components/ui/dialog/dialog-title.svelte';
   
   import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   
   import { 
@@ -64,14 +65,30 @@
     ArrowsLeftRight
   } from '$lib/utils/lucide-compat.js';
   
+  // Import the new content fetcher service
   import { 
-    fetchContentItems, 
-    searchMultipleContentTypes,
+    fetchCachedContent, 
+    searchContentWithDebounce,
+    getContentItemById,
+    createSelectedItemsManager
+  } from '$lib/api/content-fetcher.js';
+  
+  // Import the content service for type details
+  import { 
     getContentTypeDetails
-  } from '$lib/api/content-service';
+  } from '$lib/api/content-service.js';
+  
+  // Import image optimization utils
+  import { getOptimalImageUrl } from '$lib/utils/image-utils.js';
+  
+  // Import the selectedItems store
+  import { 
+    selectedItems as sharedSelectedItems, 
+    isMaxItemsReached 
+  } from '$lib/stores/selected-items-store.js';
   
   /**
-   * @typedef {import('$lib/api/content-service').ContentItem} ContentItem
+   * @typedef {import('$lib/api/content-fetcher').ContentItem} ContentItem
    * @typedef {import('$lib/api/content-service').PaginationInfo} PaginationInfo
    * @typedef {import('$lib/api/content-service').QueryParams} QueryParams
    */
@@ -120,6 +137,9 @@
   let detailView = $state(false);
   let currentDetailItem = $state(null);
   
+  // Create a search debounce function cancellation tracker
+  let cancelSearch = $state(null);
+  
   // Available content types
   const contentTypeDetails = getContentTypeDetails().filter(type => 
     enabledContentTypes.includes(type.id)
@@ -149,10 +169,6 @@
   
   /** @type {Record<string, string>} */
   let errorByType = $state({});
-  
-  // Selected items management
-  /** @type {ContentItem[]} */
-  let selectedItems = $state([...initialSelectedItems]);
   
   // Initialize loadingByType for each content type
   $effect(() => {
@@ -220,6 +236,34 @@
     console.log('Flyout state:', showFlyout ? 'open' : 'closed');
   });
   
+  // Effect to clean up search cancellation
+  onMount(() => {
+    return () => {
+      if (cancelSearch && typeof cancelSearch === 'function') {
+        cancelSearch();
+      }
+    };
+  });
+  
+  // Replace local selectedItems usage with the shared store
+  $effect(() => {
+    // Initialize with the initial items or use the existing items in the store
+    if (initialSelectedItems && initialSelectedItems.length > 0) {
+      // Only add initial items if they're not already in the store
+      const currentSelected = $sharedSelectedItems;
+      const newItems = initialSelectedItems.filter(
+        initialItem => !currentSelected.some(
+          item => item.id === initialItem.id && item.type === initialItem.type
+        )
+      );
+      
+      // Add any new items to the store
+      newItems.forEach(item => {
+        sharedSelectedItems.add(item);
+      });
+    }
+  });
+  
   /**
    * Fetch content for a specific type
    * @param {string} contentType
@@ -239,7 +283,10 @@
         dateTo: selectedDateRange.to
       };
       
-      const result = await fetchContentItems(contentType, params);
+      // Use the enhanced cached fetcher instead of direct API calls
+      const result = await fetchCachedContent(contentType, params, {
+        bypassCache: reset && !!searchQuery, // Bypass cache on new searches
+      });
       
       // Update content items - either replace or append based on reset flag
       if (reset) {
@@ -259,21 +306,49 @@
   }
   
   /**
-   * Load all content types initial data
-   */
-  async function loadInitialContent() {
-    for (const contentType of enabledContentTypes) {
-      await fetchContent(contentType, true);
-    }
-  }
-  
-  /**
    * Handle search
    */
   function handleSearch() {
-    for (const contentType of enabledContentTypes) {
-      fetchContent(contentType, true); // Reset and search
+    // Cancel any existing search
+    if (cancelSearch && typeof cancelSearch === 'function') {
+      cancelSearch();
     }
+    
+    // Set loading state
+    loadingByType[activeTab] = true;
+    errorByType[activeTab] = '';
+    
+    // Create params for search
+    /** @type {QueryParams} */
+    const params = {
+      limit: 10,
+      search: searchQuery || undefined,
+      dateFrom: selectedDateRange.from,
+      dateTo: selectedDateRange.to
+    };
+    
+    // Only search the active tab for now
+    const searchTypes = [activeTab];
+    
+    // Use debounced search
+    cancelSearch = searchContentWithDebounce(
+      searchTypes,
+      params,
+      (results, error) => {
+        // Handle results
+        if (error) {
+          errorByType[activeTab] = error.message;
+          contentItems[activeTab] = [];
+          paginationByType[activeTab] = { hasNextPage: false, endCursor: null };
+        } else if (results[activeTab]) {
+          contentItems[activeTab] = results[activeTab].items;
+          paginationByType[activeTab] = results[activeTab].pagination;
+        }
+        
+        // Clear loading state
+        loadingByType[activeTab] = false;
+      }
+    );
   }
   
   /**
@@ -300,24 +375,18 @@
    * @param {ContentItem} item
    */
   function toggleSelectItem(item) {
-    const isSelected = selectedItems.some(selected => selected.id === item.id && selected.type === item.type);
-    
-    if (isSelected) {
-      // Remove from selection
-      selectedItems = selectedItems.filter(selected => !(selected.id === item.id && selected.type === item.type));
-    } else {
-      // Check if we've reached the max limit
-      if (selectedItems.length >= maxItems) {
-        return; // Don't add more
-      }
-      
-      // Add to selection
-      selectedItems = [...selectedItems, item];
+    // Check if we've reached the max limit before adding
+    if (!sharedSelectedItems.isSelected(item) && 
+        isMaxItemsReached(maxItems)) {
+      return; // Don't add more if at limit
     }
     
-    // Notify parent of selection change
+    // Toggle the item in the shared store
+    sharedSelectedItems.toggle(item);
+    
+    // Notify parent of selection change if callback provided
     if (onSelectionChange) {
-      onSelectionChange(selectedItems);
+      onSelectionChange($sharedSelectedItems);
     }
   }
   
@@ -326,11 +395,11 @@
    * @param {ContentItem} item
    */
   function removeSelectedItem(item) {
-    selectedItems = selectedItems.filter(selected => !(selected.id === item.id && selected.type === item.type));
+    sharedSelectedItems.remove(item);
     
     // Notify parent of selection change
     if (onSelectionChange) {
-      onSelectionChange(selectedItems);
+      onSelectionChange($sharedSelectedItems);
     }
   }
   
@@ -340,7 +409,7 @@
    * @returns {boolean}
    */
   function isItemSelected(item) {
-    return selectedItems.some(selected => selected.id === item.id && selected.type === item.type);
+    return sharedSelectedItems.isSelected(item);
   }
   
   /**
@@ -384,7 +453,6 @@
   
   /**
    * Calculate the appropriate position for the flyout based on screen edges
-   * @param {HTMLElement} fabElement - The FAB element
    * @returns {string} The position for the flyout
    */
   function calculateFlyoutPosition() {
@@ -490,7 +558,7 @@
    */
   function addSelectedItems() {
     if (onSelectionChange) {
-      onSelectionChange(selectedItems);
+      onSelectionChange($sharedSelectedItems);
     }
     closeDialog();
   }
@@ -623,12 +691,12 @@
     <div class="pt-4">
       <div class="flex flex-wrap items-center mb-2 gap-2">
         <span class="font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
-          Selected ({selectedItems.length}/{maxItems}):
+          Selected ({sharedSelectedItems.length}/{maxItems}):
         </span>
-        {#if selectedItems.length === 0}
+        {#if sharedSelectedItems.length === 0}
           <span class="text-[hsl(var(--text-3))]">No items selected</span>
         {:else}
-          {#each selectedItems as item}
+          {#each sharedSelectedItems as item}
             <Badge variant="outline" class="flex items-center gap-1">
               {item.title.length > 20 ? item.title.slice(0, 20) + '...' : item.title}
               <button 
@@ -644,41 +712,41 @@
       </div>
     </div>
       
-      <!-- Search & Filters -->
+  <!-- Search & Filters -->
       <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 mt-2">
-        <div class="relative flex-1">
-          <Icon 
-            icon={Search} 
-            class="absolute left-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))]" 
-            size={18} 
-          />
-          <Input
-            placeholder="Search content..." 
-            class="pl-8"
-            value={searchQuery}
-            onkeydown={(e) => e.key === 'Enter' && handleSearch()}
-            onchange={(e) => {
-              searchQuery = e.target.value;
-            }}
-          />
-          {#if searchQuery}
-            <button 
-              type="button" 
-              class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
-              onclick={clearSearch}
-            >
-              <Icon icon={X} size={16} />
-            </button>
-          {/if}
-        </div>
-        <Button 
-          variant="outline" 
-          onclick={handleSearch}
+    <div class="relative flex-1">
+      <Icon 
+        icon={Search} 
+        class="absolute left-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))]" 
+        size={18} 
+      />
+      <Input
+        placeholder="Search content..." 
+        class="pl-8"
+        value={searchQuery}
+        onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+        onchange={(e) => {
+          searchQuery = e.target.value;
+        }}
+      />
+      {#if searchQuery}
+        <button 
+          type="button" 
+          class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
+          onclick={clearSearch}
         >
-          <Icon icon={Filter} class="mr-2" size={16} />
-          Filter
-        </Button>
-      </div>
+          <Icon icon={X} size={16} />
+        </button>
+      {/if}
+    </div>
+    <Button 
+      variant="outline" 
+      onclick={handleSearch}
+    >
+      <Icon icon={Filter} class="mr-2" size={16} />
+      Filter
+    </Button>
+    </div>
     
     <!-- Content Panels -->
     {#each contentTypeDetails as type}
@@ -717,10 +785,10 @@
                     {currentDetailItem.source}
                   </span>
                 {/if}
-                {#if currentDetailItem.date}
+                {#if currentDetailItem.formattedDate}
                   <span class="flex items-center gap-1">
                     <Icon icon={Calendar} size={14} />
-                    {currentDetailItem.date}
+                    {currentDetailItem.formattedDate}
                   </span>
                 {/if}
               </div>
@@ -734,10 +802,10 @@
                   <p>No content available for this item.</p>
                 {/if}
                 
-                {#if currentDetailItem.url}
+                {#if currentDetailItem.meta?.url || currentDetailItem.meta?.sourceUrl}
                   <div class="mt-4">
                     <a 
-                      href={currentDetailItem.url} 
+                      href={currentDetailItem.meta?.url || currentDetailItem.meta?.sourceUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       class="text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))] inline-flex items-center"
@@ -789,10 +857,10 @@
                       {#if item.source}
                         <span>{item.source}</span>
                       {/if}
-                      {#if item.date}
+                      {#if item.formattedDate}
                         <span class="flex items-center gap-1">
                           <Icon icon={Calendar} size={12} />
-                          {item.date}
+                          {item.formattedDate}
                         </span>
                       {/if}
                       </div>
@@ -875,9 +943,9 @@
       <Button 
         variant="default" 
         onclick={addSelectedItems} 
-        disabled={selectedItems.length === 0}
+        disabled={sharedSelectedItems.length === 0}
       >
-        Add {selectedItems.length} {selectedItems.length === 1 ? 'Item' : 'Items'}
+        Add {sharedSelectedItems.length} {sharedSelectedItems.length === 1 ? 'Item' : 'Items'}
       </Button>
 </div> 
   </DialogContent>
