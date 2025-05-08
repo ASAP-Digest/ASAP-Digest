@@ -57,7 +57,11 @@
     Twitter,
     MessageSquare,
     LineChart,
-    Check
+    Check,
+    ArrowLeft,
+    Globe,
+    ExternalLink,
+    ArrowsLeftRight
   } from '$lib/utils/lucide-compat.js';
   
   import { 
@@ -96,6 +100,9 @@
     initialType = ''
   } = $props();
   
+  // Initial state setup
+  let isInitialized = $state(false);
+  
   // State management
   let searchQuery = $state('');
   let activeTab = $state(initialType || enabledContentTypes[0] || 'article');
@@ -103,8 +110,15 @@
   let showFlyout = $state(false);
   let fabPosition = $state('corner'); // 'corner' or 'center'
   let isSidebarCollapsed = $state(false);
-  let dialogOpen = $state(startOpen);
+  // CRITICAL: Force dialog to ALWAYS initialize as false
+  let dialogOpen = $state(false);
   let flyoutPosition = $state('top'); // 'top', 'left', 'right'
+  // Add flag to prevent immediate dialog opening
+  let preventDialogOpen = $state(false);
+  
+  // State for detailed item view
+  let detailView = $state(false);
+  let currentDetailItem = $state(null);
   
   // Available content types
   const contentTypeDetails = getContentTypeDetails().filter(type => 
@@ -170,18 +184,40 @@
         observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
       }
       
-      // If startOpen is true, open the dialog
-      if (startOpen) {
-        dialogOpen = true;
-        if (initialType) {
-          activeTab = initialType;
-        }
-      }
-      
       return () => {
         observer.disconnect();
       };
     }
+  });
+  
+  // Initialization effect - run only once
+  $effect(() => {
+    if (!isInitialized) {
+      console.log('Initializing component, startOpen:', startOpen);
+      isInitialized = true;
+      
+      // Override startOpen behavior - NEVER auto-open dialog anymore
+      // We want the radial menu first, then dialog
+      console.log('Overriding startOpen behavior to favor radial menu');
+      
+      // If startOpen is requested, show the flyout instead of dialog
+      if (startOpen) {
+        setTimeout(() => {
+          console.log('Auto-showing flyout instead of dialog due to startOpen');
+          toggleFlyout();
+        }, 500);
+      }
+    }
+  });
+  
+  // Debug effect to log dialog state changes
+  $effect(() => {
+    console.log('Dialog state:', dialogOpen ? 'open' : 'closed');
+  });
+  
+  // Debug effect to log flyout state changes
+  $effect(() => {
+    console.log('Flyout state:', showFlyout ? 'open' : 'closed');
   });
   
   /**
@@ -380,24 +416,41 @@
    * Toggle the flyout visibility with edge detection
    */
   function toggleFlyout() {
-    console.log('Toggling flyout');
+    console.log('Toggling flyout, current showFlyout:', showFlyout);
+    
+    // CRITICAL: Always close dialog when opening flyout
+    dialogOpen = false;
+    console.log('Closing dialog to show flyout');
+    
+    // Set preventDialogOpen flag to block any attempts to open dialog
+    preventDialogOpen = true;
+    
+    // Clear the flag after a reasonable delay
+    setTimeout(() => {
+      preventDialogOpen = false;
+      console.log('Dialog prevention released');
+    }, 500);
+    
     if (!showFlyout) {
       // Calculate position before showing
       flyoutPosition = calculateFlyoutPosition();
     }
     
     showFlyout = !showFlyout;
-    
-    // If we're showing the flyout, make sure the dialog is closed
-    if (showFlyout) {
-      dialogOpen = false;
-    }
+    console.log('New showFlyout state:', showFlyout);
   }
   
   /**
    * Open the dialog
    */
   function openDialog() {
+    // CRITICAL: Don't open if prevention is active
+    if (preventDialogOpen) {
+      console.log('Dialog open prevented by flag');
+      return;
+    }
+    
+    console.log('Opening dialog explicitly');
     dialogOpen = true;
     showFlyout = false;
     if (!contentItems[activeTab] || contentItems[activeTab].length === 0) {
@@ -409,6 +462,7 @@
    * Close the dialog
    */
   function closeDialog() {
+    console.log('Closing dialog explicitly');
     dialogOpen = false;
   }
   
@@ -420,10 +474,15 @@
     console.log('Selecting content type:', type);
     activeTab = type;
     showFlyout = false;
-    dialogOpen = true;
-    if (!contentItems[type] || contentItems[type].length === 0) {
-      fetchContent(type, true);
-    }
+    
+    // Add a small delay before opening dialog to ensure proper rendering
+    setTimeout(() => {
+      console.log('Opening dialog after content type selection');
+      dialogOpen = true;
+      if (!contentItems[type] || contentItems[type].length === 0) {
+        fetchContent(type, true);
+      }
+    }, 50);
   }
   
   /**
@@ -436,7 +495,38 @@
     closeDialog();
   }
   
-  // Load content when component mounts
+  /**
+   * View detailed info for an item
+   * @param {ContentItem} item
+   */
+  function viewItemDetail(item) {
+    currentDetailItem = item;
+    detailView = true;
+  }
+  
+  /**
+   * Close the detail view
+   */
+  function closeDetailView() {
+    detailView = false;
+    currentDetailItem = null;
+  }
+  
+  /**
+   * Add current detail item to digest
+   */
+  function addDetailItemToDigest() {
+    if (currentDetailItem) {
+      if (!isItemSelected(currentDetailItem)) {
+        toggleSelectItem(currentDetailItem);
+      }
+      closeDetailView();
+      // Optionally close dialog after adding
+      // closeDialog();
+    }
+  }
+  
+  // Update the dialog content when needed
   $effect(() => {
     if (dialogOpen && (!contentItems[activeTab] || contentItems[activeTab].length === 0)) {
       fetchContent(activeTab, true);
@@ -451,13 +541,13 @@
     style={fabPosition === 'corner' && !isSidebarCollapsed ? 'right: calc(1.5rem + 240px);' : ''}
   >
     <!-- Main FAB Button -->
-    <button 
+        <button 
       class="selector-fab-button {showFlyout ? 'active' : ''}"
       onclick={toggleFlyout}
       aria-label="Add new content"
     >
       <Icon icon={showFlyout ? X : Plus} size={24} />
-    </button>
+        </button>
     
     <!-- Position Toggle (small button) -->
     <button 
@@ -465,7 +555,7 @@
       onclick={toggleFabPosition}
       title="Toggle position"
     >
-      <Icon icon={fabPosition === 'corner' ? Calendar : LineChart} size={12} />
+      <Icon icon={ArrowsLeftRight} size={14} />
     </button>
     
     <!-- Radial Flyout Menu with Arc Pattern -->
@@ -474,11 +564,12 @@
         {#each contentTypeDetails as type, i}
           <button 
             transition:fly|local={{
-              delay: i * 50, // Increased delay for more pronounced staggered effect
-              duration: 300,
-              y: 20,
+              delay: i * 80, // Increased delay for more pronounced staggered effect
+              duration: 400,
+              x: i * 15, // Add some horizontal offset
+              y: 30,
               opacity: 0,
-              easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)' // More bounce/spring effect
             }}
             class="radial-menu-item" 
             style="--index: {i}; --total: {contentTypeDetails.length};"
@@ -514,44 +605,44 @@
         {/if}
       </DialogTitle>
     </DialogHeader>
-    
-    <!-- Content Type Tabs -->
-    <TabGroup value={activeTab} onValueChange={(value) => switchTab(value)}>
-      <TabList class="grid grid-flow-col auto-cols-fr">
-        {#each contentTypeDetails as type}
-          <Tab value={type.id} class="flex items-center justify-center">
-            {type.label}
-            {#if loadingByType[type.id]}
-              <Icon icon={Loader2} class="ml-1 animate-spin" size={16} />
-            {/if}
-          </Tab>
-        {/each}
-      </TabList>
-      
-      <!-- Selected Items Preview -->
-      <div class="pt-4">
-        <div class="flex flex-wrap items-center mb-2 gap-2">
-          <span class="font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
-            Selected ({selectedItems.length}/{maxItems}):
-          </span>
-          {#if selectedItems.length === 0}
-            <span class="text-[hsl(var(--text-3))]">No items selected</span>
-          {:else}
-            {#each selectedItems as item}
-              <Badge variant="outline" class="flex items-center gap-1">
-                {item.title.length > 20 ? item.title.slice(0, 20) + '...' : item.title}
-                <button 
-                  type="button" 
-                  class="text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
-                  onclick={() => removeSelectedItem(item)}
-                >
-                  <Icon icon={X} size={12} />
-                </button>
-              </Badge>
-            {/each}
+  
+  <!-- Content Type Tabs -->
+  <TabGroup value={activeTab} onValueChange={(value) => switchTab(value)}>
+    <TabList class="grid grid-flow-col auto-cols-fr">
+      {#each contentTypeDetails as type}
+        <Tab value={type.id} class="flex items-center justify-center">
+          {type.label}
+          {#if loadingByType[type.id]}
+            <Icon icon={Loader2} class="ml-1 animate-spin" size={16} />
           {/if}
-        </div>
+        </Tab>
+      {/each}
+    </TabList>
+    
+    <!-- Selected Items Preview -->
+    <div class="pt-4">
+      <div class="flex flex-wrap items-center mb-2 gap-2">
+        <span class="font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
+          Selected ({selectedItems.length}/{maxItems}):
+        </span>
+        {#if selectedItems.length === 0}
+          <span class="text-[hsl(var(--text-3))]">No items selected</span>
+        {:else}
+          {#each selectedItems as item}
+            <Badge variant="outline" class="flex items-center gap-1">
+              {item.title.length > 20 ? item.title.slice(0, 20) + '...' : item.title}
+              <button 
+                type="button" 
+                class="text-[hsl(var(--text-3))] hover:text-[hsl(var(--text-1))]"
+                onclick={() => removeSelectedItem(item)}
+              >
+                <Icon icon={X} size={12} />
+              </button>
+            </Badge>
+          {/each}
+        {/if}
       </div>
+    </div>
       
       <!-- Search & Filters -->
       <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 mt-2">
@@ -588,101 +679,193 @@
           Filter
         </Button>
       </div>
-      
-      <!-- Content Panels -->
-      {#each contentTypeDetails as type}
+    
+    <!-- Content Panels -->
+    {#each contentTypeDetails as type}
         <TabPanel value={type.id} class="pt-4">
-          {#if errorByType[type.id]}
-            <div class="p-4 text-[hsl(var(--functional-error-fg))] bg-[hsl(var(--functional-error)/0.1)] rounded-md">
-              Error loading {type.label}: {errorByType[type.id]}
-            </div>
-          {:else if contentItems[type.id]?.length === 0 && !loadingByType[type.id]}
-            <div class="p-4 text-[hsl(var(--text-2))] bg-[hsl(var(--surface-2))] rounded-md">
-              No {type.label} items found.
-            </div>
-          {:else}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
-              {#each contentItems[type.id] || [] as item}
-                <div class={`overflow-hidden transition-all cursor-pointer border rounded-lg ${isItemSelected(item) ? 'border-[hsl(var(--brand))]' : 'border-[hsl(var(--border))]'}`}>
-                  <button type="button"
-                    class="flex flex-row p-3 gap-4 w-full text-left"
-                    onclick={() => toggleSelectItem(item)}
+          {#if detailView && currentDetailItem && currentDetailItem.type === type.id}
+            <!-- Item Detail View -->
+            <div class="bg-[hsl(var(--surface-1))] rounded-lg p-4">
+              <div class="flex justify-between items-center mb-4">
+                <Button variant="ghost" size="sm" onclick={closeDetailView}>
+                  <Icon icon={ArrowLeft} class="mr-2" size={16} />
+                  Back
+                </Button>
+                <div class="flex gap-2">
+                  <Button 
+                    variant={isItemSelected(currentDetailItem) ? "outline" : "default"} 
+                    size="sm"
+                    onclick={addDetailItemToDigest}
                   >
+                    {isItemSelected(currentDetailItem) ? 'Added to Digest' : 'Add to Digest'}
+                    {#if isItemSelected(currentDetailItem)}
+                      <Icon icon={Check} class="ml-2" size={14} />
+                    {/if}
+                  </Button>
+                </div>
+              </div>
+              
+              <h2 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)] mb-3">
+                {currentDetailItem.title}
+              </h2>
+              
+              <div class="flex gap-3 mb-4 text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
+                <Badge variant="outline" class="capitalize">{currentDetailItem.type}</Badge>
+                {#if currentDetailItem.source}
+                  <span class="flex items-center gap-1">
+                    <Icon icon={Globe} size={14} />
+                    {currentDetailItem.source}
+                  </span>
+                {/if}
+                {#if currentDetailItem.date}
+                  <span class="flex items-center gap-1">
+                    <Icon icon={Calendar} size={14} />
+                    {currentDetailItem.date}
+                  </span>
+                {/if}
+              </div>
+              
+              <div class="prose dark:prose-invert max-w-none mb-6">
+                {#if currentDetailItem.content}
+                  <p>{@html currentDetailItem.content}</p>
+                {:else if currentDetailItem.excerpt}
+                  <p>{currentDetailItem.excerpt}</p>
+                {:else}
+                  <p>No content available for this item.</p>
+                {/if}
+                
+                {#if currentDetailItem.url}
+                  <div class="mt-4">
+                    <a 
+                      href={currentDetailItem.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      class="text-[hsl(var(--link))] hover:text-[hsl(var(--link-hover))] inline-flex items-center"
+                    >
+                      View Original
+                      <Icon icon={ExternalLink} class="ml-1" size={14} />
+                    </a>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {:else if errorByType[type.id]}
+          <div class="p-4 text-[hsl(var(--functional-error-fg))] bg-[hsl(var(--functional-error)/0.1)] rounded-md">
+            Error loading {type.label}: {errorByType[type.id]}
+          </div>
+        {:else if contentItems[type.id]?.length === 0 && !loadingByType[type.id]}
+          <div class="p-4 text-[hsl(var(--text-2))] bg-[hsl(var(--surface-2))] rounded-md">
+            No {type.label} items found.
+          </div>
+        {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+            {#each contentItems[type.id] || [] as item}
+                <div class={`overflow-hidden transition-all border rounded-lg ${isItemSelected(item) ? 'border-[hsl(var(--brand))]' : 'border-[hsl(var(--border))]'}`}>
+                  <div class="flex flex-row p-3 gap-4 w-full text-left relative">
+                  <div class="flex-shrink-0 mt-1">
+                      <Checkbox 
+                        checked={isItemSelected(item)} 
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          toggleSelectItem(item);
+                        }}
+                      />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-[var(--font-size-base)] font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))] mb-1">
+                        <button 
+                          type="button" 
+                          class="hover:underline focus:outline-none focus:underline"
+                          onclick={() => viewItemDetail(item)}
+                        >
+                      {item.title}
+                        </button>
+                    </h3>
+                    <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))] line-clamp-2">
+                      {item.excerpt || 'No description available'}
+                    </p>
+                    <div class="flex gap-2 mt-2 text-[var(--font-size-xs)] text-[hsl(var(--text-3))]">
+                      <Badge variant="outline" class="capitalize">{item.type}</Badge>
+                      {#if item.source}
+                        <span>{item.source}</span>
+                      {/if}
+                      {#if item.date}
+                        <span class="flex items-center gap-1">
+                          <Icon icon={Calendar} size={12} />
+                          {item.date}
+                        </span>
+                      {/if}
+                      </div>
+                      <div class="flex justify-between mt-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onclick={() => viewItemDetail(item)}
+                        >
+                          View Details
+                        </Button>
+                        <Button 
+                          variant={isItemSelected(item) ? "outline" : "default"} 
+                          size="sm"
+                          onclick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectItem(item);
+                          }}
+                        >
+                          {isItemSelected(item) ? 'Added' : 'Add'}
+                          {#if isItemSelected(item)}
+                            <Icon icon={Check} class="ml-1" size={14} />
+                          {/if}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            {/each}
+            
+            {#if loadingByType[type.id]}
+              {#each Array(2) as _, i}
+                <Card>
+                  <div class="flex flex-row p-3 gap-4">
                     <div class="flex-shrink-0 mt-1">
-                      <Checkbox checked={isItemSelected(item)} />
+                      <Skeleton class="h-4 w-4 rounded-sm" />
                     </div>
                     <div class="flex-1 min-w-0">
-                      <h3 class="text-[var(--font-size-base)] font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))] mb-1">
-                        {item.title}
-                      </h3>
-                      <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))] line-clamp-2">
-                        {item.excerpt || 'No description available'}
-                      </p>
-                      <div class="flex gap-2 mt-2 text-[var(--font-size-xs)] text-[hsl(var(--text-3))]">
-                        <Badge variant="outline" class="capitalize">{item.type}</Badge>
-                        {#if item.source}
-                          <span>{item.source}</span>
-                        {/if}
-                        {#if item.date}
-                          <span class="flex items-center gap-1">
-                            <Icon icon={Calendar} size={12} />
-                            {item.date}
-                          </span>
-                        {/if}
+                      <Skeleton class="h-5 w-3/4 mb-2" />
+                      <Skeleton class="h-4 w-full mb-1" />
+                      <Skeleton class="h-4 w-5/6 mb-2" />
+                      <div class="flex gap-2">
+                        <Skeleton class="h-4 w-16 rounded-full" />
+                        <Skeleton class="h-4 w-20 rounded-sm" />
                       </div>
                     </div>
-                    {#if isItemSelected(item)}
-                      <div class="absolute top-2 right-2 bg-[hsl(var(--brand))] text-[hsl(var(--brand-fg))] rounded-full w-6 h-6 flex items-center justify-center">
-                        <Icon icon={Check} size={14} />
-                      </div>
-                    {/if}
-                  </button>
-                </div>
+                  </div>
+                </Card>
               {/each}
-              
-              {#if loadingByType[type.id]}
-                {#each Array(2) as _, i}
-                  <Card>
-                    <div class="flex flex-row p-3 gap-4">
-                      <div class="flex-shrink-0 mt-1">
-                        <Skeleton class="h-4 w-4 rounded-sm" />
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <Skeleton class="h-5 w-3/4 mb-2" />
-                        <Skeleton class="h-4 w-full mb-1" />
-                        <Skeleton class="h-4 w-5/6 mb-2" />
-                        <div class="flex gap-2">
-                          <Skeleton class="h-4 w-16 rounded-full" />
-                          <Skeleton class="h-4 w-20 rounded-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                {/each}
-              {/if}
-            </div>
-            
-            {#if paginationByType[type.id]?.hasNextPage}
-              <div class="flex justify-center mt-4">
-                <Button 
-                  variant="outline" 
-                  onclick={loadMore}
-                  disabled={loadingByType[type.id]}
-                >
-                  {#if loadingByType[type.id]}
-                    <Icon icon={Loader2} class="mr-2 animate-spin" size={16} />
-                    Loading...
-                  {:else}
-                    Load More
-                    <Icon icon={ChevronDown} class="ml-2" size={16} />
-                  {/if}
-                </Button>
-              </div>
             {/if}
+          </div>
+          
+          {#if paginationByType[type.id]?.hasNextPage}
+            <div class="flex justify-center mt-4">
+              <Button 
+                variant="outline" 
+                onclick={loadMore}
+                disabled={loadingByType[type.id]}
+              >
+                {#if loadingByType[type.id]}
+                  <Icon icon={Loader2} class="mr-2 animate-spin" size={16} />
+                  Loading...
+                {:else}
+                  Load More
+                  <Icon icon={ChevronDown} class="ml-2" size={16} />
+                {/if}
+              </Button>
+            </div>
           {/if}
-        </TabPanel>
-      {/each}
-    </TabGroup>
+        {/if}
+      </TabPanel>
+    {/each}
+  </TabGroup>
     
     <!-- Action Buttons -->
     <div class="flex justify-between mt-4">
@@ -696,7 +879,7 @@
       >
         Add {selectedItems.length} {selectedItems.length === 1 ? 'Item' : 'Items'}
       </Button>
-    </div>
+</div> 
   </DialogContent>
 </Dialog>
 
@@ -791,106 +974,51 @@
   /* Radial Menu Styling */
   .radial-menu {
     position: absolute;
-    bottom: 1rem;
-    right: 1rem;
-    z-index: 9;
-    width: 0;
-    height: 0;
+    bottom: 4rem;
+    right: 0;
+    z-index: 100; /* Increased z-index */
+    background: rgba(0, 0, 0, 0.1); /* Slightly visible background */
+    border-radius: 2rem;
+    padding: 1rem;
+    pointer-events: all;
+    width: 30rem; /* Explicit width */
+    height: 20rem; /* Explicit height */
   }
   
   .radial-menu.center {
-    right: 50%;
-    transform: translateX(50%);
+    right: -15rem; /* Center */
   }
   
-  /* Arc Positioning for Menu Items */
   .radial-menu-item {
     position: absolute;
     display: flex;
     align-items: center;
     background: hsl(var(--surface-2));
-    border: 1px solid hsl(var(--border));
+    border: 2px solid hsl(var(--brand)); /* More visible border */
     border-radius: 2rem;
     padding: 0.5rem 1rem;
     padding-left: 0.75rem;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg); /* Heavier shadow */
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease-out;
-  }
-  
-  /* Corner positioning - creates a quarter circle arc */
-  .radial-menu.corner .radial-menu-item:nth-child(1) {
-    bottom: 70px;
-    right: 10px;
-  }
-  
-  .radial-menu.corner .radial-menu-item:nth-child(2) {
-    bottom: 120px;
-    right: 20px;
-  }
-  
-  .radial-menu.corner .radial-menu-item:nth-child(3) {
-    bottom: 160px;
-    right: 50px;
-  }
-  
-  .radial-menu.corner .radial-menu-item:nth-child(4) {
-    bottom: 180px;
-    right: 90px;
-  }
-  
-  .radial-menu.corner .radial-menu-item:nth-child(5) {
-    bottom: 180px;
-    right: 140px;
-  }
-  
-  /* Center positioning - creates a semi-circle arc */
-  .radial-menu.center .radial-menu-item:nth-child(1) {
-    bottom: 70px;
-    right: calc(50% - 60px);
-  }
-  
-  .radial-menu.center .radial-menu-item:nth-child(2) {
-    bottom: 100px;
-    right: calc(50% - 20px);
-  }
-  
-  .radial-menu.center .radial-menu-item:nth-child(3) {
-    bottom: 120px;
-    right: 50%;
-  }
-  
-  .radial-menu.center .radial-menu-item:nth-child(4) {
-    bottom: 100px;
-    right: calc(50% + 20px);
-  }
-  
-  .radial-menu.center .radial-menu-item:nth-child(5) {
-    bottom: 70px;
-    right: calc(50% + 60px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* More dramatic animation */
+    transform: translate(calc(-60px - var(--index) * 70px), calc(-40px - var(--index) * 50px)); /* More pronounced arc */
   }
   
   .radial-menu-item:hover {
-    background: hsl(var(--surface-3));
-    transform: scale(1.1);
-    box-shadow: var(--shadow-lg);
+    background: hsl(var(--accent));
+    transform: translate(calc(-60px - var(--index) * 70px), calc(-40px - var(--index) * 50px)) scale(1.05);
+    box-shadow: 0 0 15px hsl(var(--brand) / 0.6);
   }
   
   .radial-menu-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    color: hsl(var(--brand));
     margin-right: 0.5rem;
+    color: hsl(var(--brand));
   }
   
   .radial-menu-label {
+    font-weight: 500;
     color: hsl(var(--text-1));
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
   }
 
   /* Preserve all other styles (selector-dialog-content, etc.) */
