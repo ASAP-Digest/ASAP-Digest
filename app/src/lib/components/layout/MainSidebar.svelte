@@ -32,9 +32,10 @@
   import MenuItem from '$lib/components/ui/sidebar/sidebar-menu-item.svelte';
   import Separator from '$lib/components/ui/sidebar/sidebar-separator.svelte';
   import Footer from '$lib/components/ui/sidebar/sidebar-footer.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from "$lib/components/ui/icon/icon.svelte";
+  import { user as userStore } from '$lib/stores/user.js';
 
   /**
    * @typedef {Object} IconObject
@@ -174,15 +175,8 @@
   let {
     collapsed = false,
     isMobile = false,
-    closeMobileMenu = () => {},
-    /** @type {User} */
-    user = null
+    closeMobileMenu = () => {}
   } = $props();
-
-  // Log received user data when it changes
-  $effect(() => {
-    console.debug('[MainSidebar $effect] Received user prop:', JSON.stringify(user));
-  });
 
   // Main navigation items with reactive closures for 'active' property
   const mainNavItems = [
@@ -474,12 +468,37 @@
   let isCollapsible = $state(false);
 
   $effect(() => {
-    console.log('[Sidebar] User object in avatar dropdown:', user);
-    console.log('[Sidebar] user.roles:', user?.roles);
-    console.log('[Sidebar] user.testProp:', user?.testProp);
-    console.log('[Sidebar] user.rolesTest:', user?.rolesTest);
-    console.log('[Sidebar] Show Analytics Dashboard:', user?.roles && user.roles.includes('administrator'));
+    console.log('[Sidebar] User object in avatar dropdown:', userValue);
+    console.log('[Sidebar] user.roles:', userValue?.roles);
+    console.log('[Sidebar] user.testProp:', userValue?.testProp);
+    console.log('[Sidebar] user.rolesTest:', userValue?.rolesTest);
+    console.log('[Sidebar] Show Analytics Dashboard:', userValue?.roles && userValue.roles.includes('administrator'));
   });
+
+  let userValue = null;
+  const unsubscribe = userStore.subscribe(value => { 
+    userValue = value; 
+    console.log('[ADMIN-ROLES DEBUG] User value updated:', userValue);
+    console.log('[ADMIN-ROLES DEBUG] User roles array:', userValue?.roles);
+    console.log('[ADMIN-ROLES DEBUG] Is administrator:', userValue?.roles?.includes('administrator'));
+  });
+  onDestroy(unsubscribe);
+
+  // Add administrator menu items
+  const adminOnlyNavItems = [
+    {
+      label: "Analytics Dashboard",
+      url: "/admin/analytics",
+      icon: BarChart2,
+      get active() { return path.startsWith('/admin/analytics') }
+    },
+    {
+      label: "Content Crawler",
+      url: "/admin/content-crawler",
+      icon: Compass, 
+      get active() { return path.startsWith('/admin/content-crawler') }
+    }
+  ];
 </script>
 
 <style lang="postcss">
@@ -902,6 +921,25 @@
         </Menu>
       </Group>
       
+      {#if userValue?.roles && userValue.roles.includes('administrator')}
+        <Separator />
+        <Group>
+          <GroupLabel collapsed={collapsed}>
+            Administrator Only
+          </GroupLabel>
+          <GroupContent>
+            <Menu>
+              {#each adminOnlyNavItems as item}
+                <MenuItem href={item.url} active={item.active} url={item.url} collapsed={collapsed} on:click={handleMenuItemClick}>
+                  <Icon icon={item.icon} class="sidebar-icon h-5 w-5 mx-auto" />
+                  <span class="menu-label">{item.label}</span>
+                </MenuItem>
+              {/each}
+            </Menu>
+          </GroupContent>
+        </Group>
+      {/if}
+      
       {#if isDev}
         <Group class="pb-[1rem] pt-[0.5rem]">
           <GroupLabel class="sidebar-group-label px-3 py-2 text-[0.75rem] font-[700] uppercase text-[hsl(var(--sidebar-foreground)/0.7)]">
@@ -958,7 +996,7 @@
     
     <Footer class="mt-auto border-t border-[hsl(var(--sidebar-border)/0.8)] px-4 py-4">
       <div class="relative">
-        {#if user}
+        {#if userValue}
           <button
             class="avatar-container flex w-full items-center rounded-md p-2 text-left transition-colors duration-200 hover:bg-[hsl(var(--muted)/0.2)]"
             class:justify-center={collapsed}
@@ -968,15 +1006,15 @@
           >
             <div class="avatar">
               <img 
-                src={user.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'} 
-                alt={user.displayName || 'User Avatar'} 
+                src={userValue?.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'} 
+                alt={userValue?.displayName || 'User Avatar'} 
                 onerror={handleImageError} 
                 class="h-full w-full object-cover" 
               />
             </div>
             <div class="avatar-text-content ml-2 flex-grow overflow-hidden">
-              <div class="truncate font-semibold">{user.displayName || 'User Name'}</div>
-              <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.plan || 'Plan'}</div>
+              <div class="truncate font-semibold">{userValue?.displayName || 'User'}</div>
+              <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{userValue?.plan || 'Free Plan'}</div>
             </div>
             <div class="avatar-chevron ml-auto">
               <Icon icon={ChevronDown} size={16} class={`transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-180' : ''}`} />
@@ -988,20 +1026,20 @@
           </a>
         {/if}
         
-        {#if isAvatarDropdownOpen && user}
-          {console.log('[Sidebar] User object in avatar dropdown:', user)}
-          {console.log('[Sidebar] user.roles:', user.roles)}
-          {console.log('[Sidebar] user.testProp:', user.testProp)}
-          {console.log('[Sidebar] user.rolesTest:', user.rolesTest)}
-          {console.log('[Sidebar] Show Analytics Dashboard:', user.roles && user.roles.includes('administrator'))}
+        {#if isAvatarDropdownOpen && userValue}
+          {console.log('[Sidebar] User object in avatar dropdown:', userValue)}
+          {console.log('[Sidebar] user.roles:', userValue?.roles)}
+          {console.log('[Sidebar] user.testProp:', userValue?.testProp)}
+          {console.log('[Sidebar] user.rolesTest:', userValue?.rolesTest)}
+          {console.log('[Sidebar] Show Analytics Dashboard:', userValue?.roles && userValue.roles.includes('administrator'))}
           <div
             class="avatar-dropdown fixed z-[var(--z-dropdown)] w-64 max-h-[calc(100vh-7.5rem)] overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 shadow-lg animate-fadeIn"
             bind:this={avatarDropdownElement}
           >
             <div class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]">
-              <div class="font-semibold">{user.displayName || 'User Name'}</div>
-              <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{user.email || 'user@example.com'}</div>
-              <div class="mt-1 text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{user.plan || 'Plan'}</div>
+              <div class="font-semibold">{userValue.displayName || 'User'}</div>
+              <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{userValue.email || 'No email available'}</div>
+              <div class="mt-1 text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{userValue.plan || 'Free Plan'}</div>
               <div class="py-1"></div>
             </div>
             
@@ -1022,7 +1060,7 @@
                 <span class="sidebar-icon"><Icon icon={Settings} size={16} color="currentColor" /></span>
                 <span>Settings</span>
               </a>
-              {#if user.roles && user.roles.includes('administrator')}
+              {#if userValue.roles && userValue.roles.includes('administrator')}
                 {console.log('[Sidebar] Rendering Analytics Dashboard menu item for administrator')}
                 <!-- Show Analytics Dashboard link for administrator users only -->
                 <a href="/admin/analytics" class="dropdown-item font-semibold text-[hsl(var(--brand))] hover:bg-[hsl(var(--surface-2))]">
@@ -1062,7 +1100,7 @@
               </div>
             </div>
             
-            {#if user.plan !== 'Bolt'}
+            {#if userValue?.plan !== 'Bolt'}
               <button class="upgrade-button">
                 Upgrade Plan
               </button>

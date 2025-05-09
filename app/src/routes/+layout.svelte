@@ -609,7 +609,6 @@
         toggleSidebar={toggleDesktopSidebarCollapsed}
         isMobile={isMobile}
         closeMobileMenu={() => (isSidebarOpen = false)}
-        user={$page.data.user}
       />
     </aside>
     

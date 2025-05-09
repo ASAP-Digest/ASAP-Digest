@@ -167,7 +167,8 @@ export async function POST(event) {
 							id: session.userId,
 							email: wpUserData.email,
 							displayName: wpUserData.displayName || wpUserData.username,
-							avatarUrl: wpUserData.avatarUrl || ''
+							avatarUrl: wpUserData.avatarUrl || '',
+							roles: wpUserData.roles || []
 						}
 					});
 				} else {

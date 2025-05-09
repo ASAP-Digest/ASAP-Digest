@@ -13,6 +13,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { RefreshCw } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
 
   let usageMetrics = [];
   let costAnalysis = [];
@@ -69,7 +70,7 @@
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">Analytics Dashboard</h1>
     <Button on:click={loadAnalytics} variant="outline">
-      <RefreshCw class="w-4 h-4 mr-2" /> Refresh
+      <Icon icon={RefreshCw} class="w-4 h-4 mr-2" /> Refresh
     </Button>
   </div>
 

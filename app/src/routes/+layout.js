@@ -1,153 +1,199 @@
+/**
+ * @file +layout.js
+ * @description SvelteKit client-side layout loader with Better Auth user normalization and rigorous typing.
+ */
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import { log } from '$lib/utils/log.js';
+import { user as userStore } from '$lib/stores/user.js';
 
 /**
- * Enhanced data object type including preventRefresh flag
- * @typedef {Object} LoadData
- * @property {App.User|null} [user] User data if available
- * @property {boolean} [preventRefresh] Flag to prevent refresh loops
+ * @typedef {Object} UserMetadata
+ * @property {string[]} [roles]
+ * @property {string} [nickname]
+ * @property {number} [wp_user_id]
+ * @property {string} [description]
  */
 
 /**
- * Client-side load function that enhances the session handling
- * @param {Object} params The load parameters
- * @param {LoadData} params.data The data from the parent layout
- * @param {function(RequestInfo, RequestInit=): Promise<Response>} params.fetch Fetch function
- * @param {function(string): void} params.depends Dependencies registration function
- * @returns {Promise<LoadData>} Enhanced data object with user and preventRefresh flag
+ * @typedef {Object} BetterAuthUser
+ * @property {string} id
+ * @property {string=} displayName
+ * @property {string=} email
+ * @property {string=} avatarUrl
+ * @property {string[]=} roles
+ * @property {UserMetadata=} metadata
+ * @property {string=} plan
+ * @property {string=} updatedAt
+ */
+
+/**
+ * @typedef {Object} LoadData
+ * @property {BetterAuthUser|null} [user]
+ * @property {boolean} [preventRefresh]
+ */
+
+/**
+ * Normalize a user object from any source (server, session, or WordPress)
+ * to ensure it has consistent structure and properties.
+ * 
+ * @param {any} inputUser - The user object to normalize
+ * @returns {BetterAuthUser} - Normalized user object
+ */
+function normalizeUser(inputUser) {
+  // Create an empty user object with default values to satisfy the BetterAuthUser type
+  // This ensures we never return null which would violate our type contract
+  const emptyUser = {
+    id: '',
+    email: '',
+    displayName: '',
+    avatarUrl: '',
+    roles: [],
+    metadata: {},
+    plan: 'Free',
+    updatedAt: new Date().toISOString()
+  };
+  
+  if (!inputUser) return emptyUser;
+  
+  // Log the input to diagnose issues
+  log(`[+layout.js] Normalizing user object: ${JSON.stringify(inputUser)}`, 'debug');
+  
+  // Create a case-normalized properties map
+  const props = {};
+  
+  // Map all properties to lowercase for case-insensitive normalization
+  Object.keys(inputUser).forEach(key => {
+    const lowerKey = key.toLowerCase();
+    props[lowerKey] = inputUser[key];
+  });
+  
+  // Get potential nested roles
+  const metadataRoles = props.metadata?.roles || [];
+  const rolesFromMeta = Array.isArray(metadataRoles) ? metadataRoles : [];
+  
+  // Get direct roles property (could be uppercase)
+  const directRoles = props.roles || inputUser.ROLES || inputUser.Roles || [];
+  const normalizedRoles = Array.isArray(directRoles) ? directRoles : [];
+  
+  // Combine roles from both sources (unique values only)
+  const combinedRoles = [...new Set([...normalizedRoles, ...rolesFromMeta])];
+  
+  // Construct final normalized user with defaults for optional properties
+  const normalizedUser = {
+    id: props.id || inputUser.ID || inputUser.Id || '',
+    email: props.email || inputUser.EMAIL || inputUser.Email || '',
+    displayName: props.displayname || inputUser.DISPLAYNAME || inputUser.DisplayName || props.name || '',
+    avatarUrl: props.avatarurl || inputUser.AVATARURL || inputUser.AvatarUrl || '',
+    roles: combinedRoles,
+    metadata: props.metadata || {},
+    plan: props.plan || 'Free', // Default value for plan
+    updatedAt: props.updatedat || inputUser.UPDATEDAT || new Date().toISOString() // Default current date for updatedAt
+  };
+  
+  // Log the normalized result
+  log(`[+layout.js] Normalized user result: ${JSON.stringify(normalizedUser)}`, 'debug');
+  
+  return normalizedUser;
+}
+
+/**
+ * Client-side layout load function.
+ * Fetches user data from session, and refreshes if needed.
+ * 
+ * @param {Object} event - SvelteKit event object.
+ * @param {Object} event.data - Server-provided data.
+ * @param {Function} event.fetch - Fetch function.
+ * @param {Function} event.depends - Dependency function.
+ * @returns {Promise<Object>} - Layout data.
  */
 export async function load({ data, fetch, depends }) {
-    // Register dependencies that will trigger this load function when invalidated
-    depends('app:user');
-    depends('app:session');
+  depends('app:user');
+  depends('app:session');
 
-    // Prevent this from running during SSR
-    if (!browser) {
-        return data;
+  if (!browser) {
+    return data;
+  }
+
+  if (data && data.preventRefresh === true) {
+    if (data.user) {
+      const normalizedUser = normalizeUser(data.user);
+      userStore.set(normalizedUser);
     }
+    return data;
+  }
 
-    // IMPORTANT: If the data already has preventRefresh flag, respect it to stop the loop
-    if (data && data.preventRefresh === true) {
-        return data;
-    }
+  if (data && 'user' in data && data.user) {
+    log('[+layout.js] User data available from server load', 'info');
+    const normalizedUser = normalizeUser(data.user);
+    userStore.set(normalizedUser);
+    return data;
+  }
 
-    // Check if we already have user data from the server
-    if (data && 'user' in data && data.user) {
-        log('[+layout.js] User data available from server load', 'info');
+  try {
+    log('[+layout.js] No user data from server, checking session status...', 'info');
+    
+    // Request session check from our session endpoint
+    const res = await fetch('/api/auth/session', {
+      method: 'GET',
+      headers: {
+        'x-better-auth-client': 'app-client'
+      }
+    });
+    
+    const sessionData = await res.json();
+    
+    if (sessionData && sessionData.success === true && sessionData.user) {
+      log('[+layout.js] Found active session', 'info');
+      const normalizedUser = normalizeUser(sessionData.user);
+      userStore.set(normalizedUser);
+      
+      // Return the normalized user session for page loads
+      return {
+        user: normalizedUser,
+        fallbackAuth: false
+      };
+    } else {
+      log('[+layout.js] No session found, checking WordPress session...', 'info');
+      
+      // Try WordPress auto-login (just a GET request, no credentials)
+      const wpRes = await fetch('/api/auth/check-wp-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ clientRequest: true })
+      });
+      
+      const wpData = await wpRes.json();
+      
+      if (wpData && wpData.success && wpData.user) {
+        log('[+layout.js] WordPress auto-login successful!', 'info');
+        const normalizedUser = normalizeUser(wpData.user);
+        userStore.set(normalizedUser);
+        
+        // Return the normalized WordPress user for page loads
         return {
-            ...data,
-            preventRefresh: true // Add preventRefresh flag
+          user: normalizedUser,
+          fallbackAuth: true
         };
+      } else {
+        log('[+layout.js] No WordPress session found, user is not logged in', 'info');
+        userStore.set(null);
+        return { user: null, fallbackAuth: false };
+      }
     }
-
-    // Check if we recently attempted auto-login to prevent constant retries
-    try {
-        const autoLoginAttemptTimestamp = sessionStorage.getItem('auto_login_attempt_timestamp');
-        const now = Date.now();
-        
-        if (autoLoginAttemptTimestamp) {
-            const timestamp = parseInt(autoLoginAttemptTimestamp, 10);
-            // If we've attempted auto-login in the last 5 seconds, don't try again
-            if (!isNaN(timestamp) && (now - timestamp) < 5000) {
-                log('[+layout.js] Recent auto-login attempt detected, skipping check', 'info');
-                return {
-                    ...data,
-                    preventRefresh: true
-                };
-            }
-        }
-        
-        // Update the timestamp for this attempt
-        sessionStorage.setItem('auto_login_attempt_timestamp', now.toString());
-    } catch (e) {
-        // Ignore sessionStorage errors
-    }
-
-    try {
-        // If no user in data but we're in browser, check session state
-        log('[+layout.js] No user data from server, checking session status...', 'info');
-        
-        // Use a lightweight session-check endpoint instead of redirecting
-        const response = await fetch('/api/auth/session-check', {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
-            }
-        });
-
-        if (response.ok) {
-            const sessionData = await response.json();
-            
-            if (sessionData.authenticated && sessionData.user) {
-                log('[+layout.js] Session check success, user authenticated', 'info');
-                
-                // Return enhanced data with user and preventRefresh flag
-                return {
-                    ...data,
-                    user: sessionData.user,
-                    preventRefresh: true // Add preventRefresh flag
-                };
-            }
-        }
-        
-        // No session found, try server-to-server WordPress check
-        log('[+layout.js] No session found, checking WordPress session...', 'info');
-        
-        try {
-            const wpResponse = await fetch('/api/auth/check-wp-session', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Cache-Control': 'no-cache, no-store'
-                },
-                body: JSON.stringify({
-                    timestamp: Date.now()
-                })
-            });
-            
-            if (wpResponse.ok) {
-                const wpData = await wpResponse.json();
-                
-                if (wpData.success && wpData.user) {
-                    log('[+layout.js] WordPress auto-login successful!', 'info');
-                    
-                    // Always set preventRefresh to true to avoid the loop
-                    const preventRefresh = true;
-                    
-                    // Return the data immediately with preventRefresh flag
-                    return {
-                        ...data,
-                        user: wpData.user,
-                        preventRefresh: true
-                    };
-                }
-                
-                log('[+layout.js] WordPress auto-login unsuccessful', 'info');
-            }
-        } catch (wpError) {
-            const errorMessage = wpError instanceof Error ? wpError.message : String(wpError);
-            log(`[+layout.js] Error checking WordPress session: ${errorMessage}`, 'error');
-        }
-        
-        // Session check failed or no user - continue with original data
-        log('[+layout.js] Session check completed - no authenticated user', 'debug');
-        return {
-            ...data,
-            preventRefresh: true // Add preventRefresh flag
-        };
-    } catch (error) {
-        // Type guard for error message access
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        log(`[+layout.js] Error checking session: ${errorMessage}`, 'error');
-        return {
-            ...data,
-            preventRefresh: true // Add preventRefresh flag
-        };
-    }
+  } catch (error) {
+    // Apply type guard as per type-definition-management-protocol section 6.2
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log(`[+layout.js] Error checking session or WordPress auto-login: ${errorMessage}`, 'error');
+    
+    // Don't set user to null on error, maintain previous state
+    // Only return error state for this page load
+    return {
+      user: null,
+      fallbackAuth: false,
+      error: errorMessage
+    };
+  }
 } 

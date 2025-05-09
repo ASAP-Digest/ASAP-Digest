@@ -20,7 +20,8 @@
   import { Calendar } from '$lib/components/ui/calendar';
   import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
   import { format } from 'date-fns';
-  import { Calendar as CalendarIcon, X } from 'lucide-svelte';
+  import { Calendar as CalendarIcon, X } from '$lib/utils/lucide-compat.js';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
   import { fetchContentTypes } from '$lib/api/content-fetcher.js';
   
   /**
@@ -280,7 +281,7 @@
           />
           {#if search}
             <Button variant="ghost" size="icon" on:click={() => search = ''}>
-              <X class="h-4 w-4" />
+              <Icon icon={X} class="h-4 w-4" />
               <span class="sr-only">Clear search</span>
             </Button>
           {/if}
@@ -330,7 +331,7 @@
                         {:else}
                           <span class="text-muted-foreground">Select date</span>
                         {/if}
-                        <CalendarIcon class="ml-auto h-4 w-4 opacity-50" />
+                        <Icon icon={CalendarIcon} class="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent class="w-auto p-0" align="start">
@@ -348,7 +349,7 @@
                         {:else}
                           <span class="text-muted-foreground">Select date</span>
                         {/if}
-                        <CalendarIcon class="ml-auto h-4 w-4 opacity-50" />
+                        <Icon icon={CalendarIcon} class="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent class="w-auto p-0" align="start">

@@ -86,6 +86,7 @@ export const Edit2 = createIconObject('edit-2', '<polygon points="16 3 21 8 8 21
 // Misc
 export const Maximize = createIconObject('maximize', '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>');
 export const Plus = createIconObject('plus', '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>');
+export const Trash2 = createIconObject('trash-2', '<path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line>');
 
 // Document Icons
 export const FileText = createIconObject('file-text', '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>');
@@ -95,7 +96,9 @@ export const Headphones = createIconObject('headphones', '<path d="M3 18v-6a9 9 
 
 // Security Icons
 export const Key = createIconObject('key', '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>');
+export const KeyRound = createIconObject('key-round', '<path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4Z"/><circle cx="16.5" cy="7.5" r=".5"/>');
 export const Shield = createIconObject('shield', '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>');
+export const ShieldCheck = createIconObject('shield-check', '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>');
 
 // Finance Icons
 export const DollarSign = createIconObject('dollar-sign', '<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>');
@@ -109,6 +112,13 @@ export const Info = createIconObject('info', '<svg xmlns="http://www.w3.org/2000
 // Social Icons
 export const Twitter = createIconObject('twitter', '<path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>');
 export const MessageSquare = createIconObject('message-square', '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>');
+
+// Device Icons
+export const Smartphone = createIconObject('smartphone', '<rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line>');
+
+// Add the missing Eye icon
+export const Eye = createIconObject('eye', '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle>');
+export const EyeOff = createIconObject('eye-off', '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line>');
 
 // Alias object for backward compatibility
 export const icons = {
@@ -173,6 +183,7 @@ export default {
   FileText,
   Headphones,
   Key,
+  KeyRound,
   DollarSign,
   BarChart2,
   Twitter,
@@ -182,7 +193,12 @@ export default {
   Activity,
   BookmarkIcon,
   Shield,
+  ShieldCheck,
   Grid,
   List,
-  Edit2
+  Edit2,
+  Eye,
+  EyeOff,
+  Smartphone,
+  Trash2
 }; 
