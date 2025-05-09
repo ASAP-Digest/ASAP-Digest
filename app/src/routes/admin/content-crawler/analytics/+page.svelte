@@ -8,7 +8,7 @@
   import { onMount } from 'svelte';
   import { getMetrics } from '$lib/api/crawler-api.js';
   import { Button } from '$lib/components/ui/button';
-  import { RefreshCw } from 'lucide-svelte';
+  import { RefreshCw } from '$lib/utils/lucide-compat.js';
 
   let sourceMetrics = [];
   let storageMetrics = [];

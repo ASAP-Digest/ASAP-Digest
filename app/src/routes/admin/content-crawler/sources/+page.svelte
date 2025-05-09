@@ -11,7 +11,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Switch } from '$lib/components/ui/switch';
   import { Select } from '$lib/components/ui/select';
-  import { Plus, Edit2, RefreshCw } from 'lucide-svelte';
+  import { Plus, Edit2, RefreshCw } from '$lib/utils/lucide-compat.js';
 
   let sources = [];
   let isLoading = true;

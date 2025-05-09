@@ -22,6 +22,7 @@ export const Languages = createIconObject('languages', '<path d="m5 8 6 6"></pat
 export const HelpCircle = createIconObject('help-circle', '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>');
 export const Bug = createIconObject('bug', '<rect width="8" height="14" x="8" y="6" rx="4"></rect><path d="m19 7-3 2"></path><path d="m5 7 3 2"></path><path d="m19 19-3-2"></path><path d="m5 19 3-2"></path><path d="M20 13h-4"></path><path d="M4 13h4"></path><path d="m4 8 2 2"></path><path d="m4 16 2-2"></path><path d="m20 8-2 2"></path><path d="m20 16-2-2"></path>');
 export const Loader2 = createIconObject('loader2', '<path d="M21 12a9 9 0 1 1-6.219-8.56"></path>');
+export const RefreshCw = createIconObject('refresh-cw', '<polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path><path d="M20.49 15A9 9 0 0 1 6.36 18.36L1 14"></path>');
 export const PanelLeft = createIconObject('panel-left', '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line>');
 
 // Media Controls
@@ -80,9 +81,7 @@ export const BookmarkIcon = createIconObject('bookmark', '<svg xmlns="http://www
 export const ArrowsLeftRight = createIconObject('arrows-left-right', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left-right-icon lucide-arrow-left-right"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>');
 export const Grid = createIconObject('grid', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-grid-icon lucide-layout-grid"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>');
 export const List = createIconObject('list', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-icon lucide-list"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></svg>');
-
-
-
+export const Edit2 = createIconObject('edit-2', '<polygon points="16 3 21 8 8 21 3 21 3 16 16 3"></polygon>');
 
 // Misc
 export const Maximize = createIconObject('maximize', '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>');
@@ -170,6 +169,7 @@ export default {
   CreditCard,
   Bug,
   Loader2,
+  RefreshCw,
   FileText,
   Headphones,
   Key,
@@ -183,5 +183,6 @@ export default {
   BookmarkIcon,
   Shield,
   Grid,
-  List
+  List,
+  Edit2
 }; 

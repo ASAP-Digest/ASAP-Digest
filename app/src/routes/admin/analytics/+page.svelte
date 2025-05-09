@@ -11,8 +11,8 @@
   import { onMount } from 'svelte';
   import { getUsageMetrics, getCostAnalysis, postServiceTracking } from '$lib/api/metrics.js';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input/input.svelte';
-  import { RefreshCw } from 'lucide-svelte';
+  import { Input } from '$lib/components/ui/input';
+  import { RefreshCw } from '$lib/utils/lucide-compat.js';
 
   let usageMetrics = [];
   let costAnalysis = [];

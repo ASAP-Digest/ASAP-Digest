@@ -22,7 +22,7 @@
 <script>
 	import { Dialog } from "bits-ui";
 	import { X } from "$lib/utils/lucide-compat.js";
-	import { SheetOverlay } from "./sheet-overlay.svelte";
+	import SheetOverlay from "./sheet-overlay.svelte";
 	import { cn } from "$lib/utils.js";
 
 	let {
