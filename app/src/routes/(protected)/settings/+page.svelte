@@ -37,35 +37,35 @@
       title: 'Account Settings',
       description: 'Manage your account details and preferences',
       icon: User,
-      href: '/settings/account'
+      href: './account'
     },
     {
       id: 'notifications',
       title: 'Notification Settings',
       description: 'Control how and when you receive notifications',
       icon: Bell,
-      href: '/settings/notifications'
+      href: './notifications'
     },
     {
       id: 'security',
       title: 'Security Settings',
       description: 'Manage passwords, 2FA, and account security',
       icon: ShieldCheck,
-      href: '/settings/security'
+      href: './security'
     },
     {
       id: 'privacy',
       title: 'Privacy Settings',
       description: 'Control data usage and privacy preferences',
       icon: Eye,
-      href: '/settings/privacy'
+      href: './privacy'
     },
     {
       id: 'billing',
       title: 'Billing & Subscription',
       description: 'Manage your subscription plan and payment methods',
       icon: CreditCard,
-      href: '/billing'
+      href: '../billing'
     }
   ];
 </script>

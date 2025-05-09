@@ -81,10 +81,42 @@ class ASAP_Digest_Core_Activator {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        // Moderation Log Table
+        /**
+         * Moderation Log Table
+         * Tracks all moderation actions for content ingestion (approve/reject, reviewer, timestamp, decision, reason, content reference)
+         *
+         * Columns:
+         * - id: bigint(20) UNSIGNED, primary key
+         * - content_id: bigint(20) UNSIGNED, reference to ingested content (e.g., post ID)
+         * - source_id: bigint(20) UNSIGNED, reference to content source
+         * - action: varchar(20), moderation action (approve/reject)
+         * - reviewer: bigint(20) UNSIGNED, user ID of moderator
+         * - decision: varchar(20), decision (approved/rejected/flagged)
+         * - reason: text, optional reason/comment
+         * - created_at: datetime, timestamp of moderation action
+         */
+        $sql_moderation_log = "CREATE TABLE {$prefix}asap_moderation_log (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            content_id bigint(20) UNSIGNED NOT NULL,
+            source_id bigint(20) UNSIGNED DEFAULT NULL,
+            action varchar(20) NOT NULL,
+            reviewer bigint(20) UNSIGNED DEFAULT NULL,
+            decision varchar(20) NOT NULL,
+            reason text DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY content_id (content_id),
+            KEY source_id (source_id),
+            KEY reviewer (reviewer),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
         dbDelta($sql_sources);
         dbDelta($sql_metrics);
         dbDelta($sql_storage);
         dbDelta($sql_errors);
+        dbDelta($sql_moderation_log);
     }
 }
 

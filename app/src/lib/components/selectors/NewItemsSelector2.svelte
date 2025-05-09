@@ -95,6 +95,9 @@
     isMaxItemsReached 
   } from '$lib/stores/selected-items-store.js';
   
+  // Import crawler API
+  import { getContent as getCrawlerContent, getSources as getCrawlerSources } from '$lib/api/crawler-api.js';
+  
   /**
    * @typedef {import('$lib/api/content-fetcher').ContentItem} ContentItem
    * @typedef {import('$lib/api/content-service').PaginationInfo} PaginationInfo
@@ -177,6 +180,27 @@
   
   /** @type {Record<string, string>} */
   let errorByType = $state({});
+  
+  // Crawler sources state variables
+  let crawlerSources = $state([]);
+  let isCrawlerLoading = $state(false);
+  let selectedSource = $state(''); // Added missing state variable
+  let isLoading = $state(false);
+  let error = $state(null);
+  let pagination = $state({ totalItems: 0, totalPages: 1, currentPage: 1 });
+  
+  // Source options for filter
+  let sourceOptions = $state([
+    {
+      id: 'wp',
+      name: 'WordPress',
+      description: 'Content from WordPress',
+      icon: '/icons/wordpress.svg'
+    }
+  ]);
+  
+  // WordPress categories for source filter
+  let wpCategories = $state([]);
   
   // Initialize loadingByType for each content type
   $effect(() => {
@@ -269,6 +293,45 @@
       newItems.forEach(item => {
         sharedSelectedItems.add(item);
       });
+    }
+  });
+  
+  // Add to onMount or wherever you initialize your component
+  onMount(async () => {
+    // Load crawler sources
+    try {
+      isCrawlerLoading = true;
+      const result = await getCrawlerSources();
+      crawlerSources = result.sources || [];
+      
+      // Add crawler sources to the filter options
+      if (crawlerSources.length > 0) {
+        // Add a general crawler source group
+        sourceOptions = [
+          ...sourceOptions,
+          {
+            id: 'crawler',
+            name: 'Crawler Sources',
+            description: 'Content from external websites',
+            icon: '/icons/rss.svg'
+          }
+        ];
+        
+        // Add individual crawler sources
+        crawlerSources.forEach(source => {
+          sourceOptions.push({
+            id: `crawler_${source.id}`,
+            name: source.name,
+            description: source.url,
+            icon: '/icons/rss.svg',
+            parentId: 'crawler'
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Error loading crawler sources:', error);
+    } finally {
+      isCrawlerLoading = false;
     }
   });
   
@@ -608,6 +671,100 @@
       fetchContent(activeTab, true);
     }
   });
+  
+  // Update the fetchItems function to handle crawler sources
+  async function fetchItems(params = {}) {
+    isLoading = true;
+    error = null;
+    let items = []; // Declare items locally to avoid conflicts
+    
+    try {
+      // Determine if we need to fetch from crawler
+      const sourceType = params.source ? getSourceType(params.source) : 'all';
+      
+      let result = { items: [], pagination: { totalItems: 0, totalPages: 1, currentPage: 1 }};
+      
+      if (sourceType === 'wp' || sourceType === 'all') {
+        // Fetch WordPress content
+        console.log('Fetching WordPress content...');
+        // Would implement WordPress fetch here
+      }
+      
+      if (sourceType === 'crawler' || sourceType === 'crawler_source' || sourceType === 'all') {
+        // Fetch crawler content
+        const crawlerParams = {
+          page: params.page || 1,
+          per_page: params.perPage || 20,
+          search: params.search || '',
+          orderby: params.orderBy || 'date',
+          order: params.order || 'desc'
+        };
+        
+        // Add source filter if selecting a specific crawler source
+        if (sourceType === 'crawler_source') {
+          crawlerParams.source_id = params.source.replace('crawler_', '');
+        }
+        
+        try {
+          const crawlerResult = await getCrawlerContent(crawlerParams);
+          
+          // Transform crawler items to match our component's expected format
+          const crawlerItems = (crawlerResult.items || []).map(item => ({
+            id: `crawler_${item.id}`,
+            title: item.title,
+            content: item.content,
+            excerpt: item.summary || '',
+            date: item.publish_date,
+            url: item.url,
+            thumbnail: item.image || '',
+            source: 'crawler',
+            sourceId: `crawler_${item.source_id}`,
+            sourceName: item.source_name,
+            sourceIcon: '/icons/rss.svg'
+          }));
+          
+          // Combine with WordPress items if fetching all
+          if (sourceType === 'all' && result.items.length > 0) {
+            result.items = [...result.items, ...crawlerItems];
+            // Sort by date
+            result.items.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Apply pagination
+            result.items = result.items.slice(0, params.perPage || 20);
+          } else {
+            result = {
+              items: crawlerItems,
+              pagination: {
+                totalItems: crawlerResult.total_items || 0,
+                totalPages: crawlerResult.total_pages || 1,
+                currentPage: params.page || 1
+              }
+            };
+          }
+        } catch (err) {
+          console.error('Error fetching crawler content:', err);
+        }
+      }
+      
+      // Return the results instead of updating component state directly
+      return result;
+      
+    } catch (err) {
+      console.error('Error fetching items:', err);
+      error = 'Failed to load items. Please try again.';
+      return { items: [], pagination: { totalItems: 0, totalPages: 1, currentPage: 1 } };
+    } finally {
+      isLoading = false;
+    }
+  }
+  
+  // Helper function to determine source type
+  function getSourceType(source) {
+    if (!source) return 'all';
+    if (source === 'wp') return 'wp';
+    if (source === 'crawler') return 'crawler';
+    if (source.startsWith('crawler_')) return 'crawler_source';
+    return 'wp'; // Default to WordPress
+  }
 </script>
 
 <!-- Floating Action Button -->
@@ -958,6 +1115,43 @@
 </div> 
   </DialogContent>
 </Dialog>
+
+<!-- Replace the select element with the correct event syntax -->
+<div class="source-filter">
+  <label for="sourceFilter">Source:</label>
+  <select
+    id="sourceFilter"
+    value={selectedSource}
+    onchange={(e) => {
+      selectedSource = e.target.value;
+      fetchItems({ source: selectedSource, page: 1 });
+    }}
+  >
+    <option value="">All Sources</option>
+    
+    <!-- WordPress sources -->
+    <option value="wp">WordPress</option>
+    {#each wpCategories as category}
+      <option value={category.id}>&nbsp;&nbsp;{category.name}</option>
+    {/each}
+    
+    <!-- Crawler sources -->
+    {#if crawlerSources.length > 0}
+      <option value="crawler">Crawler Sources</option>
+      {#each crawlerSources as source}
+        <option value={`crawler_${source.id}`}>&nbsp;&nbsp;{source.name}</option>
+      {/each}
+    {/if}
+  </select>
+</div>
+
+<!-- Display loading state for crawler sources -->
+{#if isCrawlerLoading}
+  <div class="loading-indicator">
+    <span class="spinner"></span>
+    <span>Loading crawler sources...</span>
+  </div>
+{/if}
 
 <style>
   /* Base FAB styling */

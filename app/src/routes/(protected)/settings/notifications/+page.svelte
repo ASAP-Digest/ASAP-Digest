@@ -85,7 +85,10 @@
 </script>
 
 <div class="container max-w-4xl py-6">
-  <h1 class="text-3xl font-bold mb-6">Notification Settings</h1>
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold">Notification Settings</h1>
+    <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
+  </div>
   
   <form on:submit|preventDefault={saveSettings} class="space-y-6">
     <!-- Email Notifications -->
