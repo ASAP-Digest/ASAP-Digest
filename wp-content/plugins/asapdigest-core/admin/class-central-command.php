@@ -46,7 +46,7 @@ class ASAP_Digest_Central_Command {
             'dashicons-analytics',
             25
         );
-        
+
         add_submenu_page(
             'asap-digest',
             'Dashboard',
@@ -55,7 +55,7 @@ class ASAP_Digest_Central_Command {
             'asap-digest',
             [$this, 'render_dashboard']
         );
-        
+
         add_submenu_page(
             'asap-digest',
             'Crawler Sources',
@@ -64,7 +64,7 @@ class ASAP_Digest_Central_Command {
             'asap-crawler-sources',
             [$this, 'render_sources']
         );
-        
+
         add_submenu_page(
             'asap-digest',
             'Moderation Queue',
@@ -73,7 +73,7 @@ class ASAP_Digest_Central_Command {
             'asap-moderation-queue',
             [$this, 'render_moderation']
         );
-        
+
         add_submenu_page(
             'asap-digest',
             'Analytics',

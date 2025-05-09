@@ -1,14 +1,15 @@
 <!--
   Notification Settings
-  -----------------
+  -------------------
   Allows users to configure their notification preferences including:
   - Email notifications
-  - Push notifications (browser/device)
-  - Notification frequency
-  - Content type preferences
+  - In-app notifications
+  - Mobile push notifications
+  - Digest frequency
+  - Content alerts
   
   @file-marker notification-settings-page
-  @implementation-context: SvelteKit, Better Auth, Svelte Forms
+  @implementation-context: SvelteKit, Better Auth, Local First
 -->
 <script>
   import { page } from '$app/stores';
@@ -16,215 +17,202 @@
   import { Switch } from '$lib/components/ui/switch';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
-  import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
   import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group';
-  import { AlertCircle, Bell, Mail } from '$lib/utils/lucide-compat.js';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  
-  // Notification settings state
-  let emailEnabled = $state(true);
-  let pushEnabled = $state(true);
-  let digestNotifications = $state(true);
-  let contentUpdates = $state(true);
-  let accountNotifications = $state(true);
-  let marketingEmails = $state(false);
-  let frequency = $state('daily');
-  let preferredTime = $state('morning');
-  
-  // Track form submission state
-  let saving = $state(false);
-  let success = $state(false);
-  let error = $state('');
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
+  import { user as userStore } from '$lib/utils/auth-persistence';
   
   /**
-   * Save notification preferences
+   * @typedef {Object} PageData
+   * @property {Object} user - User data
+   * @property {boolean} [usingLocalAuth] - Whether using cached local auth
    */
-  async function saveSettings() {
-    saving = true;
-    success = false;
-    error = '';
+  
+  /** @type {PageData} */
+  let { data } = $props();
+  
+  // Create reactive derived state for user data to ensure updates during navigation
+  let user = $derived(data.user);
+  
+  // Notification settings with defaults from user data or fallbacks
+  let emailNotifications = $state(user?.notifications?.email || true);
+  let inAppNotifications = $state(user?.notifications?.inApp || true);
+  let pushNotifications = $state(user?.notifications?.push || false);
+  let digestFrequency = $state(user?.notifications?.digestFrequency || 'daily');
+  let contentAlerts = $state(user?.notifications?.contentAlerts || true);
+  
+  // Update notification settings when user data changes
+  $effect(() => {
+    if (user?.notifications) {
+      emailNotifications = user.notifications.email !== undefined ? user.notifications.email : true;
+      inAppNotifications = user.notifications.inApp !== undefined ? user.notifications.inApp : true;
+      pushNotifications = user.notifications.push !== undefined ? user.notifications.push : false;
+      digestFrequency = user.notifications.digestFrequency || 'daily';
+      contentAlerts = user.notifications.contentAlerts !== undefined ? user.notifications.contentAlerts : true;
+    }
+  });
+  
+  let isSavingSettings = $state(false);
+  let errorMessage = $state('');
+  let successMessage = $state('');
+  
+  /**
+   * Save notification settings
+   */
+  async function saveNotificationSettings() {
+    isSavingSettings = true;
+    errorMessage = '';
+    successMessage = '';
     
     try {
-      // In a real implementation, this would save to API
-      // For demo, simulate a network request
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const response = await fetch('/api/user/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: emailNotifications,
+          inApp: inAppNotifications,
+          push: pushNotifications,
+          digestFrequency,
+          contentAlerts
+        })
+      });
       
-      const settings = {
-        emailEnabled,
-        pushEnabled,
-        digestNotifications,
-        contentUpdates,
-        accountNotifications,
-        marketingEmails,
-        frequency,
-        preferredTime
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update notification settings');
+      }
+      
+      // Update local user store with new notification settings
+      $userStore = {
+        ...$userStore,
+        notifications: {
+          email: emailNotifications,
+          inApp: inAppNotifications,
+          push: pushNotifications,
+          digestFrequency,
+          contentAlerts
+        }
       };
       
-      console.log('Saving notification settings:', settings);
+      // Invalidate page data to refresh
+      await invalidateAll();
       
-      // Simulate successful save
-      success = true;
-      // After successful save, you might want to invalidate related data
-      // await invalidateAll();
-    } catch (e) {
-      console.error('Error saving notification settings:', e);
-      error = 'Failed to save notification settings. Please try again.';
+      successMessage = 'Notification settings updated successfully!';
+    } catch (error) {
+      errorMessage = error.message || 'An error occurred';
+      console.error('Failed to update notification settings:', error);
     } finally {
-      saving = false;
-      
-      // Auto-hide success message after 3 seconds
-      if (success) {
-        setTimeout(() => {
-          success = false;
-        }, 3000);
-      }
+      isSavingSettings = false;
     }
   }
 </script>
 
-<div class="container max-w-4xl py-6">
+<div>
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-3xl font-bold">Notification Settings</h1>
     <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
   </div>
   
-  <form on:submit|preventDefault={saveSettings} class="space-y-6">
-    <!-- Email Notifications -->
+  <div class="space-y-6">
+    {#if errorMessage}
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+        {errorMessage}
+      </div>
+    {/if}
+    
+    {#if successMessage}
+      <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+        {successMessage}
+      </div>
+    {/if}
+    
     <Card>
       <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Icon icon={Mail} class="h-5 w-5" />
-          Email Notifications
-        </CardTitle>
-        <CardDescription>Configure what emails you receive and how often</CardDescription>
+        <CardTitle>Notification Channels</CardTitle>
+        <CardDescription>Configure how you receive notifications</CardDescription>
       </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <Label for="email-notifications" class="text-base">Enable Email Notifications</Label>
-            <p class="text-sm text-muted-foreground">Receive updates via email</p>
+      <CardContent>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Email Notifications</h3>
+              <p class="text-sm text-muted-foreground">
+                Receive notifications via email
+              </p>
+            </div>
+            <Switch checked={emailNotifications} onchange={() => emailNotifications = !emailNotifications} />
           </div>
-          <Switch id="email-notifications" bind:checked={emailEnabled} />
-        </div>
-        
-        <div class="space-y-4 border-t pt-4 mt-4">
-          <Label class="text-sm font-medium">Email Frequency</Label>
-          <RadioGroup bind:value={frequency} disabled={!emailEnabled}>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="daily" id="daily" />
-              <Label for="daily">Daily Digest</Label>
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">In-App Notifications</h3>
+              <p class="text-sm text-muted-foreground">
+                Receive notifications within the app
+              </p>
             </div>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="weekly" id="weekly" />
-              <Label for="weekly">Weekly Summary</Label>
+            <Switch checked={inAppNotifications} onchange={() => inAppNotifications = !inAppNotifications} />
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Push Notifications</h3>
+              <p class="text-sm text-muted-foreground">
+                Receive push notifications on your devices
+              </p>
             </div>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="immediate" id="immediate" />
-              <Label for="immediate">Immediate (As Content Arrives)</Label>
-            </div>
-          </RadioGroup>
-        </div>
-        
-        <div class="space-y-4 border-t pt-4 mt-4">
-          <Label class="text-sm font-medium">Preferred Time of Day</Label>
-          <RadioGroup bind:value={preferredTime} disabled={!emailEnabled || frequency === 'immediate'}>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="morning" id="morning" />
-              <Label for="morning">Morning (8:00 AM)</Label>
-            </div>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="afternoon" id="afternoon" />
-              <Label for="afternoon">Afternoon (1:00 PM)</Label>
-            </div>
-            <div class="flex items-center space-x-2">
-              <RadioGroupItem value="evening" id="evening" />
-              <Label for="evening">Evening (6:00 PM)</Label>
-            </div>
-          </RadioGroup>
+            <Switch checked={pushNotifications} onchange={() => pushNotifications = !pushNotifications} />
+          </div>
         </div>
       </CardContent>
     </Card>
     
-    <!-- Push Notifications -->
     <Card>
       <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Icon icon={Bell} class="h-5 w-5" />
-          Push Notifications
-        </CardTitle>
-        <CardDescription>Configure browser and device notifications</CardDescription>
+        <CardTitle>Notification Preferences</CardTitle>
+        <CardDescription>Customize your notification experience</CardDescription>
       </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="flex items-center justify-between">
+      <CardContent>
+        <div class="space-y-6">
           <div>
-            <Label for="push-notifications" class="text-base">Enable Push Notifications</Label>
-            <p class="text-sm text-muted-foreground">Receive alerts in your browser or device</p>
+            <Label class="text-sm font-medium mb-1">Digest Frequency</Label>
+            <p class="text-sm text-muted-foreground mb-3">
+              How often you want to receive content digest emails
+            </p>
+            
+            <RadioGroup value={digestFrequency} onchange={e => digestFrequency = e.target.value}>
+              <div class="flex items-center space-x-2 mb-2">
+                <RadioGroupItem value="daily" id="daily" />
+                <Label for="daily">Daily</Label>
+              </div>
+              <div class="flex items-center space-x-2 mb-2">
+                <RadioGroupItem value="weekly" id="weekly" />
+                <Label for="weekly">Weekly</Label>
+              </div>
+              <div class="flex items-center space-x-2">
+                <RadioGroupItem value="never" id="never" />
+                <Label for="never">Never</Label>
+              </div>
+            </RadioGroup>
           </div>
-          <Switch id="push-notifications" bind:checked={pushEnabled} />
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Content Alerts</h3>
+              <p class="text-sm text-muted-foreground">
+                Get notified about new content matching your interests
+              </p>
+            </div>
+            <Switch checked={contentAlerts} onchange={() => contentAlerts = !contentAlerts} />
+          </div>
         </div>
       </CardContent>
+      <CardFooter>
+        <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={saveNotificationSettings}>
+          {isSavingSettings ? 'Saving...' : 'Save Settings'}
+        </Button>
+      </CardFooter>
     </Card>
-    
-    <!-- Notification Types -->
-    <Card>
-      <CardHeader>
-        <CardTitle>Notification Types</CardTitle>
-        <CardDescription>Control which types of notifications you receive</CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <Label for="digest-notifications" class="text-base">Digest Notifications</Label>
-            <p class="text-sm text-muted-foreground">When new digests are available</p>
-          </div>
-          <Switch id="digest-notifications" bind:checked={digestNotifications} />
-        </div>
-        
-        <div class="flex items-center justify-between">
-          <div>
-            <Label for="content-updates" class="text-base">Content Updates</Label>
-            <p class="text-sm text-muted-foreground">When new content matches your interests</p>
-          </div>
-          <Switch id="content-updates" bind:checked={contentUpdates} />
-        </div>
-        
-        <div class="flex items-center justify-between">
-          <div>
-            <Label for="account-notifications" class="text-base">Account Notifications</Label>
-            <p class="text-sm text-muted-foreground">Security and account-related alerts</p>
-          </div>
-          <Switch id="account-notifications" bind:checked={accountNotifications} />
-        </div>
-        
-        <div class="flex items-center justify-between">
-          <div>
-            <Label for="marketing-emails" class="text-base">Marketing Updates</Label>
-            <p class="text-sm text-muted-foreground">Product updates and promotional content</p>
-          </div>
-          <Switch id="marketing-emails" bind:checked={marketingEmails} />
-        </div>
-      </CardContent>
-    </Card>
-    
-    <div class="flex justify-end">
-      {#if error}
-        <div class="p-3 bg-red-100 text-red-600 rounded-md flex items-center mr-auto">
-          <Icon icon={AlertCircle} class="h-5 w-5 mr-1" />
-          {error}
-        </div>
-      {/if}
-      
-      {#if success}
-        <div class="p-3 bg-green-100 text-green-600 rounded-md mr-auto">
-          Settings saved successfully!
-        </div>
-      {/if}
-      
-      <Button type="submit" disabled={saving}>
-        {saving ? 'Saving...' : 'Save Settings'}
-      </Button>
-    </div>
-  </form>
+  </div>
 </div> 
