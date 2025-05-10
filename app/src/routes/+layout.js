@@ -6,6 +6,7 @@ import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import { log } from '$lib/utils/log.js';
 import { user as userStore } from '$lib/stores/user.js';
+import { authStore } from '$lib/utils/auth-persistence';
 
 /**
  * @typedef {Object} UserMetadata
@@ -16,21 +17,16 @@ import { user as userStore } from '$lib/stores/user.js';
  */
 
 /**
- * @typedef {Object} BetterAuthUser
- * @property {string} id
- * @property {string=} displayName
- * @property {string=} email
- * @property {string=} avatarUrl
- * @property {string[]=} roles
- * @property {UserMetadata=} metadata
- * @property {string=} plan
- * @property {string=} updatedAt
+ * Note: Using the User type from user.js store for consistent typing.
+ * @typedef {import('$lib/stores/user').User} NormalizedUser
  */
 
 /**
  * @typedef {Object} LoadData
- * @property {BetterAuthUser|null} [user]
+ * @property {NormalizedUser|null} [user]
  * @property {boolean} [preventRefresh]
+ * @property {boolean} [fallbackAuth] - Indicates if fallback auth attempt was made
+ * @property {string} [error] - Error message if authentication failed
  */
 
 /**
@@ -38,19 +34,19 @@ import { user as userStore } from '$lib/stores/user.js';
  * to ensure it has consistent structure and properties.
  * 
  * @param {any} inputUser - The user object to normalize
- * @returns {BetterAuthUser} - Normalized user object
+ * @returns {import('$lib/stores/user').User} - Normalized user object compatible with userStore
  */
 function normalizeUser(inputUser) {
-  // Create an empty user object with default values to satisfy the BetterAuthUser type
+  // Create an empty user object with default values to satisfy the User type
   // This ensures we never return null which would violate our type contract
   const emptyUser = {
     id: '',
-    email: '',
+    email: '', // Always provide a string value for email (empty string if not available)
     displayName: '',
     avatarUrl: '',
     roles: [],
     metadata: {},
-    plan: 'Free',
+    plan: { name: 'Free' }, // Must be an object with name property to match UserPlan type
     updatedAt: new Date().toISOString()
   };
   
@@ -79,15 +75,23 @@ function normalizeUser(inputUser) {
   // Combine roles from both sources (unique values only)
   const combinedRoles = [...new Set([...normalizedRoles, ...rolesFromMeta])];
   
+  // Process the plan data
+  // If it's already in the correct format (object with name), use it
+  // Otherwise, create a valid plan object
+  let planData = props.plan || { name: 'Free' };
+  if (typeof planData === 'string') {
+    planData = { name: planData };
+  }
+  
   // Construct final normalized user with defaults for optional properties
   const normalizedUser = {
     id: props.id || inputUser.ID || inputUser.Id || '',
-    email: props.email || inputUser.EMAIL || inputUser.Email || '',
+    email: props.email || inputUser.EMAIL || inputUser.Email || '', // Ensure email is never undefined
     displayName: props.displayname || inputUser.DISPLAYNAME || inputUser.DisplayName || props.name || '',
     avatarUrl: props.avatarurl || inputUser.AVATARURL || inputUser.AvatarUrl || '',
     roles: combinedRoles,
     metadata: props.metadata || {},
-    plan: props.plan || 'Free', // Default value for plan
+    plan: planData, // Properly formatted plan object
     updatedAt: props.updatedat || inputUser.UPDATEDAT || new Date().toISOString() // Default current date for updatedAt
   };
   
@@ -98,27 +102,32 @@ function normalizeUser(inputUser) {
 }
 
 /**
- * Client-side layout load function.
- * Fetches user data from session, and refreshes if needed.
- * 
- * @param {Object} event - SvelteKit event object.
- * @param {Object} event.data - Server-provided data.
- * @param {Function} event.fetch - Fetch function.
- * @param {Function} event.depends - Dependency function.
- * @returns {Promise<Object>} - Layout data.
+ * @param {object} loadEvent - The SvelteKit route load event
+ * @param {function} loadEvent.fetch - SvelteKit fetch function
+ * @param {URL} loadEvent.url - Request URL 
+ * @param {any} loadEvent.data - Server provided data
+ * @param {App.Locals} loadEvent.locals - Server locals (includes user if authenticated)
+ * @param {boolean} loadEvent.isSubRequest - Whether this is a subrequest
+ * @param {function} loadEvent.depends - Function to declare dependencies
+ * @returns {Promise<LoadData>} Data for the route
  */
 export async function load({ data, fetch, depends }) {
   depends('app:user');
   depends('app:session');
 
   if (!browser) {
+    // On the server, data is passed directly from +layout.server.js
+    // We might still want to ensure event.locals.user is set for server-side rendering of components using it.
+    // However, userStore and authStore are client-side stores primarily.
     return data;
   }
 
+  // Client-side logic from here
   if (data && data.preventRefresh === true) {
     if (data.user) {
       const normalizedUser = normalizeUser(data.user);
       userStore.set(normalizedUser);
+      authStore.set(normalizedUser);
     }
     return data;
   }
@@ -127,6 +136,7 @@ export async function load({ data, fetch, depends }) {
     log('[+layout.js] User data available from server load', 'info');
     const normalizedUser = normalizeUser(data.user);
     userStore.set(normalizedUser);
+    authStore.set(normalizedUser);
     return data;
   }
 
@@ -143,10 +153,19 @@ export async function load({ data, fetch, depends }) {
     
     const sessionData = await res.json();
     
-    if (sessionData && sessionData.success === true && sessionData.user) {
+    if (sessionData && sessionData.authenticated === true && sessionData.user) {
       log('[+layout.js] Found active session', 'info');
       const normalizedUser = normalizeUser(sessionData.user);
       userStore.set(normalizedUser);
+      authStore.set(normalizedUser);
+      
+      // Save to localStorage for protected routes to access
+      try {
+        localStorage.setItem('asap_digest_last_auth', JSON.stringify(normalizedUser));
+        console.log('[+layout.js] Saved user to localStorage for protected routes');
+      } catch (storageError) {
+        console.warn('[+layout.js] Error saving to localStorage:', storageError);
+      }
       
       // Return the normalized user session for page loads
       return {
@@ -171,6 +190,15 @@ export async function load({ data, fetch, depends }) {
         log('[+layout.js] WordPress auto-login successful!', 'info');
         const normalizedUser = normalizeUser(wpData.user);
         userStore.set(normalizedUser);
+        authStore.set(normalizedUser);
+        
+        // Save to localStorage for protected routes to access
+        try {
+          localStorage.setItem('asap_digest_last_auth', JSON.stringify(normalizedUser));
+          console.log('[+layout.js] Saved WordPress user to localStorage for protected routes');
+        } catch (storageError) {
+          console.warn('[+layout.js] Error saving to localStorage:', storageError);
+        }
         
         // Return the normalized WordPress user for page loads
         return {
@@ -180,6 +208,7 @@ export async function load({ data, fetch, depends }) {
       } else {
         log('[+layout.js] No WordPress session found, user is not logged in', 'info');
         userStore.set(null);
+        authStore.set(null);
         return { user: null, fallbackAuth: false };
       }
     }

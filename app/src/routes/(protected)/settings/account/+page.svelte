@@ -18,10 +18,11 @@
   import { Label } from '$lib/components/ui/label';
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getCSRFToken } from '$lib/auth-client.js';
 
   /**
    * @typedef {Object} PageData
-   * @property {Object} user - User data
+   * @property {Object|null} user - User data (may be null during SSR or loading)
    * @property {boolean} [usingLocalAuth] - Whether using cached local auth
    */
   
@@ -29,15 +30,25 @@
   let { data } = $props();
   
   // Create reactive derived state for user data to ensure updates during navigation
-  let user = $derived(data.user);
-  let displayName = $state(user?.displayName || '');
-  let email = $state(user?.email || '');
+  let user = $derived(data?.user || null);
   
-  // Update form values when user data changes
+  // Initialize state variables
+  let displayName = $state('');
+  let email = $state('');
+  
+  // Set initial values and respond to user changes
   $effect(() => {
     if (user) {
       displayName = user.displayName || '';
       email = user.email || '';
+    }
+  });
+  
+  // Also listen to userStore directly for local updates
+  $effect(() => {
+    if ($userStore) {
+      displayName = $userStore.displayName || displayName;
+      email = $userStore.email || email;
     }
   });
   
@@ -46,44 +57,60 @@
   let successMessage = $state('');
   
   /**
-   * Save profile information
+   * @description Save profile changes
    */
   async function saveProfile() {
+    if (!formData.displayName.trim()) {
+      toasts.show('Display name cannot be empty', 'error');
+      return;
+    }
+    
     isSaving = true;
-    errorMessage = '';
-    successMessage = '';
     
     try {
-      const response = await fetch('/api/user/profile', {
+      // Prepare the update data
+      const updateData = {
+        id: data.user.id,
+        displayName: formData.displayName,
+        email: formData.email,
+        preferences: formData.preferences || {},
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      
+      // Get all existing cookies to ensure we're sending the session cookie
+      const allCookies = document.cookie;
+      console.log('Using cookies for auth:', allCookies);
+      
+      // Make API call to save profile
+      const response = await fetch('/api/auth/profile', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json',
+          'Cookie': allCookies // Explicitly include cookies
         },
-        body: JSON.stringify({
-          displayName,
-          email
-        })
+        body: JSON.stringify(updateData),
+        credentials: 'include', // CRITICAL: Include credentials (cookies) with request
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update profile');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
       }
       
-      // Update local user store
-      $userStore = {
-        ...$userStore,
-        displayName,
-        email
-      };
+      // Success
+      toasts.show('Profile updated successfully', 'success');
       
-      // Invalidate page data to refresh
+      // Refresh page data
       await invalidateAll();
       
-      successMessage = 'Profile updated successfully!';
     } catch (error) {
-      errorMessage = error.message || 'An error occurred';
-      console.error('Failed to update profile:', error);
+      toasts.show(error.message || 'Failed to update profile', 'error');
+      console.error('Error saving profile:', error);
     } finally {
       isSaving = false;
     }
@@ -115,7 +142,7 @@
         <CardDescription>Update your account details</CardDescription>
       </CardHeader>
       <CardContent>
-        <form class="space-y-4" on:submit|preventDefault={saveProfile}>
+        <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); saveProfile(); }}>
           <div class="space-y-2">
             <Label for="displayName">Name</Label>
             <Input id="displayName" bind:value={displayName} required />

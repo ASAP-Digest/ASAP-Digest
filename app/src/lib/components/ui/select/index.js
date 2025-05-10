@@ -10,6 +10,7 @@ import ScrollUpButton from "./select-scroll-up-button.svelte";
 
 const Root = SelectPrimitive.Root;
 const Group = SelectPrimitive.Group;
+const Value = SelectPrimitive.Value;
 
 export {
 	Root,
@@ -21,6 +22,7 @@ export {
 	Separator,
 	ScrollDownButton,
 	ScrollUpButton,
+	Value,
 	//
 	Root as Select,
 	Item as SelectItem,
@@ -31,4 +33,5 @@ export {
 	Separator as SelectSeparator,
 	ScrollDownButton as SelectScrollDownButton,
 	ScrollUpButton as SelectScrollUpButton,
+	Value as SelectValue,
 };

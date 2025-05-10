@@ -9,6 +9,7 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import { Settings, CreditCard, LogOut } from '$lib/utils/lucide-compat.js';
+  import { getAvatarUrl } from '$lib/stores/user.js';
 
   /**
    * @typedef {Object} LayoutData
@@ -33,81 +34,108 @@
 
   let eventSource = $state(/** @type {EventSource | null} */ (null));
 
+  /**
+   * Helper function to try both sync endpoints
+   * @param {string} endpoint - The API endpoint to call
+   * @returns {Promise<Object>} The API response
+   */
+  async function trySyncEndpoint(endpoint) {
+    console.debug(`[Sync Layout] Calling sync endpoint: ${endpoint}`);
+    const response = await fetch(endpoint, {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!response.ok) {
+      console.warn(`[Sync Layout] Sync endpoint ${endpoint} returned ${response.status}`);
+      throw new Error(`Sync failed with status: ${response.status}`);
+    }
+    
+    console.debug(`[Sync Layout] ${endpoint} call completed successfully`);
+    return await response.json();
+  }
+
   onMount(() => {
     console.debug('[Sync Layout] onMount: Starting initial sync...');
-    // Initial sync to check for auto-login
-    fetch('/api/auth/sync', {
-      credentials: 'include'
-    }).then(async (response) => {
-      console.debug('[Sync Layout] Initial sync fetch completed. Status:', response.status);
-      console.log(`["(protected) Layout"] Sync API response status: ${response.status}`); // DEBUG
-
-      if (response.ok) {
-        const result = await response.json();
-        console.debug('[Sync Layout] Initial sync result:', result);
-        console.debug('["(protected) Layout"] Received data from /api/auth/sync:', JSON.stringify(result)); 
-        if (result.valid && result.updated) {
-          console.debug('[Sync Layout] Initial sync indicates update. Invalidating and showing toast...');
-          // Show auto-login notification only when auto-login occurs
-          toasts.show('Successfully logged in via WordPress', 'success');
-          await invalidateAll();
-        } else {
-          console.debug('[Sync Layout] Initial sync valid but no update detected.');
+    
+    // Skip sync if we already have user data
+    if (user) {
+      console.debug('[Sync Layout] User already authenticated, skipping initial sync');
+      return;
+    }
+    
+    // Add a timeout to prevent indefinite loading
+    const syncTimeout = setTimeout(() => {
+      console.warn('[Sync Layout] Initial sync timed out, proceeding with local data');
+    }, 5000);
+    
+    // Try main sync endpoint first
+    trySyncEndpoint('/api/auth/sync')
+      .catch(error => {
+        console.warn('[Sync Layout] Primary sync endpoint failed:', error.message);
+        // Try fallback endpoint if primary fails
+        return trySyncEndpoint('/api/auth/sync-check');
+      })
+      .then(async (response) => {
+        clearTimeout(syncTimeout);
+        console.debug('[Sync Layout] Initial sync result:', response);
+        
+        if (response.ok) {
+          console.debug('[Sync Layout] Sync successful');
+          const result = await response.json();
+          // Handle successful sync
         }
-      } else {
-         console.debug('[Sync Layout] Initial sync fetch failed or returned non-OK status.');
-      }
-    }).catch((error) => {
-      console.error('[Sync Layout] Initial sync fetch error:', error);
-    });
+      })
+      .catch(error => {
+        clearTimeout(syncTimeout);
+        console.error('[Sync Layout] All sync attempts failed:', error);
+      });
 
-    // --- Setup Server-Sent Events --- 
-    console.log('[Sync Layout] Setting up SSE connection...');
-    eventSource = new EventSource('/api/auth/sync-stream');
-
-    eventSource.onopen = () => {
-      console.log('[Sync Layout] SSE connection opened.');
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('[Sync Layout] SSE connection error:', error);
-      // Optional: Implement reconnection logic here if needed
-      toasts.show('Real-time sync connection lost. Retrying...', 'warning');
-      eventSource?.close(); // Close the errored connection
-      // Simple retry after a delay
-      setTimeout(() => {
-        if (!eventSource || eventSource.readyState === EventSource.CLOSED) {
-           console.log('[Sync Layout] Attempting SSE reconnection...');
-           eventSource = new EventSource('/api/auth/sync-stream');
-           // Re-attach handlers if necessary (or manage within a class/store)
+    console.debug('[Sync Layout] Setting up SSE connection...');
+    
+    // Check if root layout already has an SSE connection
+    if (typeof window !== 'undefined' && window.asapDigestSseActive) {
+      console.debug('[Sync Layout] Root layout SSE connection already active, skipping duplicate connection');
+      return;
+    }
+    
+    // Only set up SSE if not already connected at root layout
+    let eventSource = null;
+    try {
+      eventSource = new EventSource('/api/auth/sync-stream');
+      
+      eventSource.onopen = () => {
+        console.log('[Protected Layout] SSE connection opened');
+      };
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          // Process the data as needed
+          console.log('[Protected Layout] SSE message received:', data);
+          
+          // Handle user updates, etc.
+        } catch (error) {
+          console.error('[Protected Layout] Error processing SSE message:', error);
         }
-      }, 5000); // Retry after 5 seconds
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const eventData = JSON.parse(event.data);
-        console.log('[Sync Layout] SSE message received:', eventData);
-
-        if (eventData.connected) {
-          console.log(`[Sync Layout] SSE confirmed connection with clientId: ${eventData.clientId}`);
-          return; // Ignore connection confirmation message
+      };
+      
+      eventSource.onerror = (error) => {
+        console.error('[Protected Layout] SSE connection error:', error);
+      };
+      
+      return () => {
+        if (eventSource) {
+          console.log('[Protected Layout] Closing SSE connection');
+          eventSource.close();
         }
-
-        if (eventData.updated) {
-            // Check if the update is for the current user (optional but good practice)
-            if (eventData.userId === user?.id) {
-                console.log('[Sync Layout] SSE update received for current user. Invalidating data and showing toast...');
-                invalidateAll();
-                toasts.show('Profile information updated', 'info');
-            } else {
-                 console.log(`[Sync Layout] SSE update received for different user (${eventData.userId}), ignoring.`);
-            }
-        }
-      } catch (e) {
-        console.error('[Sync Layout] Error parsing SSE message:', e, 'Data:', event.data);
-      }
-    };
+      };
+    } catch (error) {
+      console.error('[Protected Layout] Error setting up SSE connection:', error);
+    }
   });
   
   onDestroy(() => {
@@ -115,6 +143,11 @@
       if (eventSource) {
           eventSource.close();
           eventSource = null;
+          
+          // Reset the global flag when this component is destroyed
+          if (typeof window !== 'undefined') {
+            window.asapDigestSseActive = false;
+          }
       }
       // Clear any pending retry timeouts if implemented more robustly
   });
@@ -129,14 +162,29 @@
     <header class="user-header">
       <div class="user-info">
         <Avatar.Root class="h-9 w-9">
-          <Avatar.Image class="" src={user.avatarUrl} alt={user.displayName || 'User Avatar'} />
+          <Avatar.Image 
+            class="" 
+            src={getAvatarUrl(user) || '/images/default-avatar.svg'} 
+            alt={user?.displayName || 'User Avatar'} 
+          />
           <Avatar.Fallback class="">
             <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" color="currentColor" />
           </Avatar.Fallback>
         </Avatar.Root>
         <div class="user-details">
-          <span class="display-name">{user.displayName}</span>
-          <span class="email">{user.email}</span>
+          <span class="display-name">{user?.displayName || 'User'}</span>
+          <span class="email">{user?.email || ''}</span>
+          {#if user?.plan}
+            <span class="plan">
+              {#if typeof user.plan === 'object' && user.plan !== null}
+                {user.plan.name || 'Free'}
+              {:else if typeof user.plan === 'string'}
+                {user.plan}
+              {:else}
+                Free
+              {/if}
+            </span>
+          {/if}
         </div>
       </div>
       <DropdownMenu.Root>
@@ -146,7 +194,20 @@
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content class="w-56" align="end">
-          <DropdownMenu.Label>{user.displayName || user.email}</DropdownMenu.Label>
+          <DropdownMenu.Label>
+            {user.displayName || user.email}
+            {#if user?.plan}
+              <span class="block text-xs text-[hsl(var(--primary)/0.8)] mt-1">
+                {#if typeof user.plan === 'object' && user.plan !== null}
+                  {user.plan.name || 'Free Plan'}
+                {:else if typeof user.plan === 'string'}
+                  {user.plan}
+                {:else}
+                  Free Plan
+                {/if}
+              </span>
+            {/if}
+          </DropdownMenu.Label>
           <DropdownMenu.Separator />
           <DropdownMenu.Item href="/profile">
             <Icon icon={Settings} class="mr-2 h-4 w-4" color="currentColor" />
@@ -214,6 +275,11 @@
   }
 
   .email {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .plan {
     font-size: 0.875rem;
     color: hsl(var(--muted-foreground));
   }

@@ -42,9 +42,6 @@
   $effect(() => {
     console.log('[Header] User object in dropdown:', user);
     console.log('[Header] user.roles:', user?.roles);
-    console.log('[Header] user.testProp:', user?.testProp);
-    console.log('[Header] user.rolesTest:', user?.rolesTest);
-    console.log('[Header] Show Analytics Dashboard:', user?.roles && user.roles.includes('administrator'));
   });
 </script>
 

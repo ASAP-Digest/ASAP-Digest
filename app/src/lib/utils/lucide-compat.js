@@ -9,6 +9,10 @@ import { createIconObject } from './icon-utils';
 // Define the SVG paths for all icons used in the application
 // Organized by category for easier reference
 
+// Network Icons
+export const Wifi = createIconObject('wifi', '<path d="M5 13a10 10 0 0 1 14 0"></path><path d="M8.5 16.5a5 5 0 0 1 7 0"></path><path d="M12 20h.01"></path>');
+export const WifiOff = createIconObject('wifi-off', '<line x1="2" y1="2" x2="22" y2="22"></line><path d="M8.5 16.5a5 5 0 0 1 7 0"></path><path d="M2 8.82a15 15 0 0 1 4.17-2.65"></path><path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"></path><path d="M16.85 11.25a10 10 0 0 1 2.22 1.68"></path><path d="M5 13a10 10 0 0 1 5.24-2.76"></path><path d="M12 20h.01"></path>');
+
 // Navigation Icons
 export const Home = createIconObject('home', '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>');
 export const Search = createIconObject('search', '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>');
@@ -48,6 +52,7 @@ export const BookmarkCheck = createIconObject('bookmark-check', '<path d="M19 21
 export const ChevronLeft = createIconObject('chevron-left', '<polyline points="15 18 9 12 15 6"></polyline>');
 export const ChevronRight = createIconObject('chevron-right', '<polyline points="9 18 15 12 9 6"></polyline>');
 export const ChevronDown = createIconObject('chevron-down', '<polyline points="6 9 12 15 18 9"></polyline>');
+export const ChevronUp = createIconObject('chevron-up', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up-icon lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>');
 export const ArrowLeft = createIconObject('arrow-left', '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 19 12 12 5"></polyline>');
 export const ArrowRight = createIconObject('arrow-right', '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>');
 export const ArrowUpRight = createIconObject('arrow-up-right', '<line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline>');
@@ -200,5 +205,7 @@ export default {
   Eye,
   EyeOff,
   Smartphone,
-  Trash2
+  Trash2,
+  Wifi,
+  WifiOff
 }; 

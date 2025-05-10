@@ -6,7 +6,7 @@
 -->
 <script>
   import { onMount } from 'svelte';
-  import { getMetrics } from '$lib/api/crawler-api.js';
+  import { getAllMetrics } from '$lib/api/crawler-api.js';
   import { Button } from '$lib/components/ui/button';
   import { RefreshCw } from '$lib/utils/lucide-compat.js';
 
@@ -19,7 +19,7 @@
     isLoading = true;
     error = '';
     try {
-      const data = await getMetrics();
+      const data = await getAllMetrics();
       sourceMetrics = data.source_metrics || [];
       storageMetrics = data.storage_metrics || [];
     } catch (e) {

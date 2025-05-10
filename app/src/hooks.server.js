@@ -169,6 +169,75 @@ const betterAuthHandle = async ({ event, resolve }) => {
         const CHECK_WP_SESSION_PATH = '/api/auth/check-wp-session';
         const isCheckWpSession = event.url.pathname === CHECK_WP_SESSION_PATH;
         
+        // Add new constant for the profile path
+        const PROFILE_PATH = '/api/auth/profile';
+        const isProfilePath = event.url.pathname === PROFILE_PATH;
+        
+        // Enhanced debug logging for auth requests
+        if (isAuthPath) {
+            console.log(`[Auth Handle] Processing ${event.request.method} request for ${event.url.pathname}`);
+            console.log(`[Auth Handle] Headers:`, Object.fromEntries([...event.request.headers.entries()]));
+            console.log(`[Auth Handle] Cookie header:`, event.request.headers.get('cookie'));
+            console.log(`[Auth Handle] CSRF token:`, event.request.headers.get('X-CSRF-Token'));
+        }
+        
+        // Special handling for profile endpoint - always check session
+        if (isProfilePath && isMutatingMethod) {
+            console.log(`[Auth Handle] Special handling for ${PROFILE_PATH}: checking for session cookie`);
+            
+            // Check for session token
+            const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
+            if (!sessionToken) {
+                console.warn(`[Auth Handle] No session token found for ${PROFILE_PATH}`);
+                return new Response(JSON.stringify({ 
+                    error: 'Authentication required',
+                    success: false 
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // Set the Authorization header from the session token cookie
+            const headers = new Headers(event.request.headers);
+            headers.set('Authorization', `Bearer ${sessionToken}`);
+            
+            /**
+             * Create a new Request with modified headers
+             * @type {RequestInitWithDuplex}
+             */
+            const requestOptions = {
+                method: event.request.method,
+                headers,
+                body: event.request.body,
+                duplex: "half", // Type assertion handled via JSDoc - Required for streaming request bodies
+                mode: event.request.mode,
+                credentials: event.request.credentials,
+                cache: event.request.cache,
+                redirect: event.request.redirect,
+                referrer: event.request.referrer,
+                integrity: event.request.integrity
+            };
+            
+            // Create a new request with the updated headers
+            event.request = new Request(event.request.url, requestOptions);
+            
+            // Profile path also requires CSRF token validation
+            const isAuthorized = validateCSRFToken(event.request);
+            if (!isAuthorized) {
+                console.warn(`[Auth Handle] Invalid CSRF token for ${PROFILE_PATH}`);
+                return new Response(JSON.stringify({ 
+                    error: 'Invalid CSRF token',
+                    success: false 
+                }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            console.log(`[Auth Handle] Session token and CSRF token validated for ${PROFILE_PATH}`);
+        }
+        
         // Special handling for check-wp-session endpoint - always allow without CSRF
         if (isCheckWpSession && event.request.method === 'POST') {
             console.log(`[Auth Handle] Special handling for ${CHECK_WP_SESSION_PATH}: bypassing CSRF check`);
@@ -204,7 +273,7 @@ const betterAuthHandle = async ({ event, resolve }) => {
             return resolve(event);
         }
 
-        if (isAuthPath && isMutatingMethod) {
+        if (isAuthPath && isMutatingMethod && !isProfilePath && !isCheckWpSession) {
             let isAuthorized = false;
             let expectedAuthMethod = ''; // For logging/error message
 
@@ -242,9 +311,10 @@ const betterAuthHandle = async ({ event, resolve }) => {
             }
         }
 
-        // Get session token from secure cookie
+        // Get session token from secure cookie for all requests
         const sessionToken = event.request.headers.get('cookie')?.match(/better_auth_session=([^;]+)/)?.[1];
         if (sessionToken) {
+            console.log(`[Auth Handle] Found session token in cookie for ${event.url.pathname}, length: ${sessionToken.length}`);
             const headers = new Headers(event.request.headers);
             headers.set('Authorization', `Bearer ${sessionToken}`);
             

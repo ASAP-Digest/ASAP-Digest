@@ -21,6 +21,8 @@
   import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group';
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getCSRFToken } from '$lib/auth-client.js';
+  import { toasts } from '$lib/stores/toast.js';
   
   /**
    * @typedef {Object} PageData
@@ -32,23 +34,23 @@
   let { data } = $props();
   
   // Create reactive derived state for user data to ensure updates during navigation
-  let user = $derived(data.user);
+  let user = $derived(data?.user || null);
   
-  // Notification settings with defaults from user data or fallbacks
-  let emailNotifications = $state(user?.notifications?.email || true);
-  let inAppNotifications = $state(user?.notifications?.inApp || true);
-  let pushNotifications = $state(user?.notifications?.push || false);
-  let digestFrequency = $state(user?.notifications?.digestFrequency || 'daily');
-  let contentAlerts = $state(user?.notifications?.contentAlerts || true);
+  // Initialize notification settings with defaults
+  let emailNotifications = $state(true);
+  let inAppNotifications = $state(true);
+  let pushNotifications = $state(false);
+  let digestFrequency = $state('daily');
+  let contentAlerts = $state(true);
   
   // Update notification settings when user data changes
   $effect(() => {
     if (user?.notifications) {
-      emailNotifications = user.notifications.email !== undefined ? user.notifications.email : true;
-      inAppNotifications = user.notifications.inApp !== undefined ? user.notifications.inApp : true;
-      pushNotifications = user.notifications.push !== undefined ? user.notifications.push : false;
+      emailNotifications = user.notifications.email ?? true;
+      inAppNotifications = user.notifications.inApp ?? true;
+      pushNotifications = user.notifications.push ?? false;
       digestFrequency = user.notifications.digestFrequency || 'daily';
-      contentAlerts = user.notifications.contentAlerts !== undefined ? user.notifications.contentAlerts : true;
+      contentAlerts = user.notifications.contentAlerts ?? true;
     }
   });
   
@@ -57,52 +59,62 @@
   let successMessage = $state('');
   
   /**
-   * Save notification settings
+   * @description Save notification preferences
    */
   async function saveNotificationSettings() {
     isSavingSettings = true;
-    errorMessage = '';
-    successMessage = '';
     
     try {
-      const response = await fetch('/api/user/notifications', {
+      // Prepare update data
+      const updateData = {
+        id: data.user.id,
+        preferences: {
+          ...data.user.preferences,
+          notifications: {
+            email: emailNotifications,
+            inApp: inAppNotifications,
+            push: pushNotifications,
+            digestFrequency,
+            contentAlerts
+          }
+        },
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      
+      // Get all existing cookies to ensure we're sending the session cookie
+      const allCookies = document.cookie;
+      console.log('Using cookies for auth:', allCookies);
+      
+      // Make API call to save settings
+      const response = await fetch('/api/auth/profile', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json',
+          'Cookie': allCookies // Explicitly include cookies
         },
-        body: JSON.stringify({
-          email: emailNotifications,
-          inApp: inAppNotifications,
-          push: pushNotifications,
-          digestFrequency,
-          contentAlerts
-        })
+        body: JSON.stringify(updateData),
+        credentials: 'include', // CRITICAL: Include credentials (cookies) with request
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update notification settings');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update notification settings');
       }
       
-      // Update local user store with new notification settings
-      $userStore = {
-        ...$userStore,
-        notifications: {
-          email: emailNotifications,
-          inApp: inAppNotifications,
-          push: pushNotifications,
-          digestFrequency,
-          contentAlerts
-        }
-      };
+      // Success
+      toasts.show('Notification settings updated successfully', 'success');
       
-      // Invalidate page data to refresh
+      // Refresh page data
       await invalidateAll();
       
-      successMessage = 'Notification settings updated successfully!';
     } catch (error) {
-      errorMessage = error.message || 'An error occurred';
-      console.error('Failed to update notification settings:', error);
+      toasts.show(error.message || 'Failed to update notification settings', 'error');
+      console.error('Error saving notification settings:', error);
     } finally {
       isSavingSettings = false;
     }
@@ -135,16 +147,16 @@
       </CardHeader>
       <CardContent>
         <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div>
+        <div class="flex items-center justify-between">
+          <div>
               <h3 class="text-sm font-medium">Email Notifications</h3>
               <p class="text-sm text-muted-foreground">
                 Receive notifications via email
               </p>
             </div>
             <Switch checked={emailNotifications} onchange={() => emailNotifications = !emailNotifications} />
-          </div>
-          
+        </div>
+        
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-sm font-medium">In-App Notifications</h3>
@@ -153,10 +165,10 @@
               </p>
             </div>
             <Switch checked={inAppNotifications} onchange={() => inAppNotifications = !inAppNotifications} />
-          </div>
+        </div>
           
-          <div class="flex items-center justify-between">
-            <div>
+        <div class="flex items-center justify-between">
+          <div>
               <h3 class="text-sm font-medium">Push Notifications</h3>
               <p class="text-sm text-muted-foreground">
                 Receive push notifications on your devices
@@ -189,21 +201,21 @@
               <div class="flex items-center space-x-2 mb-2">
                 <RadioGroupItem value="weekly" id="weekly" />
                 <Label for="weekly">Weekly</Label>
-              </div>
+          </div>
               <div class="flex items-center space-x-2">
                 <RadioGroupItem value="never" id="never" />
                 <Label for="never">Never</Label>
-              </div>
+        </div>
             </RadioGroup>
-          </div>
-          
-          <div class="flex items-center justify-between">
-            <div>
+        </div>
+        
+        <div class="flex items-center justify-between">
+          <div>
               <h3 class="text-sm font-medium">Content Alerts</h3>
               <p class="text-sm text-muted-foreground">
                 Get notified about new content matching your interests
               </p>
-            </div>
+          </div>
             <Switch checked={contentAlerts} onchange={() => contentAlerts = !contentAlerts} />
           </div>
         </div>
@@ -214,5 +226,5 @@
         </Button>
       </CardFooter>
     </Card>
-  </div>
+    </div>
 </div> 

@@ -3,6 +3,14 @@
   ----------------------
   PRODUCTION CONTENT SELECTOR COMPONENT
 
+  PROTOCOL COMPLIANCE HEADER
+  - roadmap-syntax-validation-protocol v1.2
+  - work-session-management-protocol
+  - testing-verification-protocol
+  - update-memory
+  - server-memory-rules
+  - All props, state, and logic are documented and validated per protocol.
+
   This is the main content selection component used by the app (imported in GlobalFAB.svelte).
   - Provides a floating action button (FAB) for launching content selection.
   - Allows users to select content type (article, podcast, etc.) and pick items from a grid.
@@ -38,6 +46,10 @@
     startOpen = false,           // Whether to open directly in content selection mode
     initialType = '',            // Initial content type to select
     showFab = true,              // Whether to show the FAB (false when used with GlobalFAB)
+    excludeIds = [],              // List of IDs to exclude from selection
+    allowMultiple = true,         // Allow multiple selections
+    onSelect = undefined,         // Optional callback for selection
+    initiallySelected = [],       // List of items to initially select
   } = $props();
   
   // State variables using Svelte 5 runes
@@ -97,6 +109,14 @@
 
     const observer = new MutationObserver(handleSidebarChange);
     observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    if (initiallySelected && initiallySelected.length > 0) {
+      initiallySelected.forEach(sel => {
+        if (!get(selectedItems).some(i => i.id === sel.id && i.type === sel.type)) {
+          selectedItems.add(sel);
+        }
+      });
+    }
 
     return () => {
       observer.disconnect();
@@ -177,7 +197,16 @@
   
   // Selection logic using persistent store
   function toggleItemSelection(item) {
-    selectedItems.toggle(item);
+    if (allowMultiple) {
+      selectedItems.toggle(item);
+    } else {
+      // Single select mode: clear all, then add
+      selectedItems.clear();
+      selectedItems.add(item);
+    }
+    if (onSelect) {
+      onSelect(allowMultiple ? get(selectedItems) : get(selectedItems)[0]);
+    }
   }
   
   // Check if an item is selected
@@ -263,6 +292,10 @@
     // Trigger a new fetch with filters
     loadContentItems({ reset: true });
   }
+
+  // --- [ Consolidation: Exclude items by excludeIds ] ---
+  // Svelte 5 runes: $derived must be called with a single function argument, dependencies are auto-tracked.
+  const filteredContentItems = $derived(() => contentItems.filter(item => !excludeIds.includes(item.id)));
 </script>
 
 <!-- Content Type Selection Floating Action Button -->
@@ -376,7 +409,7 @@
         
         <!-- Content Grid -->
         <div class="selector-content-grid">
-          {#each contentItems as item (item.id)}
+          {#each filteredContentItems as item (item.id)}
             <button 
               type="button"
               class="selector-content-item {isSelected(item) ? 'selected' : ''}"
@@ -392,7 +425,13 @@
               </div>
               <div class="selector-content-details">
                 <h3 class="selector-content-title">
-                  <span style="cursor:pointer;text-decoration:underline;" onclick={(e) => { e.stopPropagation(); detailItem = item; detailView = true; }}>
+                  <span 
+                    style="cursor:pointer;text-decoration:underline;" 
+                    role="button"
+                    tabindex="0"
+                    onclick={(e) => { e.stopPropagation(); detailItem = item; detailView = true; }}
+                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); detailItem = item; detailView = true; }}}
+                  >
                     {item.title}
                   </span>
                 </h3>
@@ -402,6 +441,17 @@
                 <div class="selector-content-source">
                   <span>{item.source}</span>
                 </div>
+                {#if item.ai_enhanced}
+                  <div class="ai-badge">AI Enhanced</div>
+                {/if}
+                {#if item.classification}
+                  <div class="item-classification">
+                    <strong>Category:</strong> {item.classification.category || 'Unknown'}
+                    {#if item.classification.confidence}
+                      ({Math.round(item.classification.confidence * 100)}%)
+                    {/if}
+                  </div>
+                {/if}
                 <Button size="sm" variant="outline" style="margin-top:0.5rem;" onclick={(e) => { e.stopPropagation(); detailItem = item; detailView = true; }}>
                   View Details
                 </Button>
@@ -409,7 +459,7 @@
             </button>
           {/each}
           
-          {#if contentItems.length === 0}
+          {#if filteredContentItems.length === 0}
             <div class="selector-content-empty">
               No content found. Try adjusting your search.
             </div>

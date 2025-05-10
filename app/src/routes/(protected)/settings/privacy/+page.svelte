@@ -30,21 +30,21 @@
   let { data } = $props();
   
   // Create reactive derived state for user data to ensure updates during navigation
-  let user = $derived(data.user);
+  let user = $derived(data?.user || null);
   
-  // Privacy settings with defaults from user data or fallbacks
-  let dataSharing = $state(user?.privacy?.dataSharing || false);
-  let contentTracking = $state(user?.privacy?.contentTracking || true);
-  let personalization = $state(user?.privacy?.personalization || true);
-  let thirdPartyIntegration = $state(user?.privacy?.thirdPartyIntegration || false);
+  // Initialize privacy settings with defaults
+  let dataSharing = $state(false);
+  let contentTracking = $state(true);
+  let personalization = $state(true);
+  let thirdPartyIntegration = $state(false);
   
   // Update privacy settings when user data changes
   $effect(() => {
     if (user?.privacy) {
-      dataSharing = user.privacy.dataSharing || false;
-      contentTracking = user.privacy.contentTracking || true;
-      personalization = user.privacy.personalization || true;
-      thirdPartyIntegration = user.privacy.thirdPartyIntegration || false;
+      dataSharing = user.privacy.dataSharing ?? false;
+      contentTracking = user.privacy.contentTracking ?? true;
+      personalization = user.privacy.personalization ?? true;
+      thirdPartyIntegration = user.privacy.thirdPartyIntegration ?? false;
     }
   });
   

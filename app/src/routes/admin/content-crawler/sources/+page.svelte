@@ -6,7 +6,7 @@
 -->
 <script>
   import { onMount } from 'svelte';
-  import { fetchSources, addSource, updateSource } from '$lib/api/crawler-api.js';
+  import { getSources, createSource, updateSource } from '$lib/api/crawler-api.js';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Switch } from '$lib/components/ui/switch';
@@ -34,7 +34,8 @@
     isLoading = true;
     error = '';
     try {
-      sources = await fetchSources();
+      const response = await getSources();
+      sources = response.sources || [];
     } catch (e) {
       error = e.message;
     } finally {
@@ -61,7 +62,7 @@
     formLoading = true;
     formError = '';
     try {
-      await addSource(form);
+      await createSource(form);
       showAddForm = false;
       await loadSources();
     } catch (e) {

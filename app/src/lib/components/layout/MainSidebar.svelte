@@ -17,9 +17,10 @@
     CreditCard as CreditCardIcon,
     Bug,
     PanelLeft,
-    Bell,
+    Bell, 
     LineChart,
-    BarChart2
+    BarChart2,
+    ChevronUp
   } from '$lib/utils/lucide-compat.js';
   // Import individual components directly
   import Root from '$lib/components/ui/sidebar/sidebar.svelte';
@@ -247,8 +248,12 @@
   let visibilityObserver = $state(/** @type {IntersectionObserver | null} */ (null));
   let showTopShadow = $state(false);
   let showBottomShadow = $state(false);
+  
+  // Add a debug flag to control logging
+  const DEBUG = false;
+  
   onMount(() => {
-    console.log('[MainSidebar] Component mounted');
+    if (DEBUG) console.log('[MainSidebar] Component mounted');
     
     // Cleanup on unmount
     return () => {
@@ -275,7 +280,7 @@
   
   // Add document click listener on mount
   onMount(() => {
-    console.log('[MainSidebar] Component mounted');
+    // Remove duplicate mount log - this is a second onMount handler
     document.addEventListener('click', handleClickOutside);
     
     // Cleanup on unmount
@@ -448,8 +453,13 @@
   function handleMenuItemClick(event) {
     // Type assertion for event.currentTarget
     const target = /** @type {HTMLAnchorElement} */ (event.currentTarget);
-    console.log('MenuItem clicked:', target.href);
-    // Additional logic if needed
+    
+    if (DEBUG) console.log('MenuItem clicked:', target.href);
+    
+    // If on mobile, close the menu
+    if (isMobile) {
+      closeMobileMenu();
+    }
   }
 
   /**
@@ -468,19 +478,19 @@
   let isCollapsible = $state(false);
 
   $effect(() => {
-    console.log('[Sidebar] User object in avatar dropdown:', userValue);
-    console.log('[Sidebar] user.roles:', userValue?.roles);
-    console.log('[Sidebar] user.testProp:', userValue?.testProp);
-    console.log('[Sidebar] user.rolesTest:', userValue?.rolesTest);
-    console.log('[Sidebar] Show Analytics Dashboard:', userValue?.roles && userValue.roles.includes('administrator'));
+    // Remove these console.log statements
+    // console.log('[Sidebar] User object in avatar dropdown:', userValue);
+    // console.log('[Sidebar] user.roles:', userValue?.roles);
+    // console.log('[Sidebar] Show Analytics Dashboard:', userValue?.roles && userValue.roles.includes('administrator'));
   });
 
-  let userValue = null;
+  let userValue = $state(null);
   const unsubscribe = userStore.subscribe(value => { 
     userValue = value; 
-    console.log('[ADMIN-ROLES DEBUG] User value updated:', userValue);
-    console.log('[ADMIN-ROLES DEBUG] User roles array:', userValue?.roles);
-    console.log('[ADMIN-ROLES DEBUG] Is administrator:', userValue?.roles?.includes('administrator'));
+    // Remove these console.log statements
+    // console.log('[ADMIN-ROLES DEBUG] User value updated:', userValue);
+    // console.log('[ADMIN-ROLES DEBUG] User roles array:', userValue?.roles);
+    // console.log('[ADMIN-ROLES DEBUG] Is administrator:', userValue?.roles?.includes('administrator'));
   });
   onDestroy(unsubscribe);
 
@@ -1014,7 +1024,7 @@
             </div>
             <div class="avatar-text-content ml-2 flex-grow overflow-hidden">
               <div class="truncate font-semibold">{userValue?.displayName || 'User'}</div>
-              <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{userValue?.plan || 'Free Plan'}</div>
+              <div class="truncate text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{(userValue?.plan?.name || userValue?.plan) || 'Free Plan'}</div>
             </div>
             <div class="avatar-chevron ml-auto">
               <Icon icon={ChevronDown} size={16} class={`transition-transform duration-200 ${isAvatarDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1027,11 +1037,6 @@
         {/if}
         
         {#if isAvatarDropdownOpen && userValue}
-          {console.log('[Sidebar] User object in avatar dropdown:', userValue)}
-          {console.log('[Sidebar] user.roles:', userValue?.roles)}
-          {console.log('[Sidebar] user.testProp:', userValue?.testProp)}
-          {console.log('[Sidebar] user.rolesTest:', userValue?.rolesTest)}
-          {console.log('[Sidebar] Show Analytics Dashboard:', userValue?.roles && userValue.roles.includes('administrator'))}
           <div
             class="avatar-dropdown fixed z-[var(--z-dropdown)] w-64 max-h-[calc(100vh-7.5rem)] overflow-y-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-2 shadow-lg animate-fadeIn"
             bind:this={avatarDropdownElement}
@@ -1039,7 +1044,7 @@
             <div class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]">
               <div class="font-semibold">{userValue.displayName || 'User'}</div>
               <div class="text-[0.75rem] text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">{userValue.email || 'No email available'}</div>
-              <div class="mt-1 text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{userValue.plan || 'Free Plan'}</div>
+              <div class="mt-1 text-[0.75rem] font-[500] text-[hsl(var(--primary))]">{(userValue?.plan?.name || userValue?.plan) || 'Free Plan'}</div>
               <div class="py-1"></div>
             </div>
             
@@ -1061,7 +1066,6 @@
                 <span>Settings</span>
               </a>
               {#if userValue.roles && userValue.roles.includes('administrator')}
-                {console.log('[Sidebar] Rendering Analytics Dashboard menu item for administrator')}
                 <!-- Show Analytics Dashboard link for administrator users only -->
                 <a href="/admin/analytics" class="dropdown-item font-semibold text-[hsl(var(--brand))] hover:bg-[hsl(var(--surface-2))]">
                   <span class="sidebar-icon"><Icon icon={BarChart2} size={16} color="currentColor" /></span>

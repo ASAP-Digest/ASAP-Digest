@@ -1,5 +1,6 @@
 <script>
-	import ChevronUp from "@lucide/svelte/icons/chevron-up";
+	import { ChevronUp } from "$lib/utils/lucide-compat.js";
+	import Icon from "$lib/components/ui/icon/icon.svelte";
 	import { Select as SelectPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils.js";
 
@@ -11,5 +12,5 @@
 	class={cn("flex cursor-default items-center justify-center py-1", className)}
 	{...restProps}
 >
-	<ChevronUp class="size-4" />
+	<Icon icon={ChevronUp} class="size-4" />
 </SelectPrimitive.ScrollUpButton>

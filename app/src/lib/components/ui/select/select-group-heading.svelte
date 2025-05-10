@@ -5,7 +5,7 @@
 	let { ref = $bindable(null), class: className, ...restProps } = $props();
 </script>
 
-<SelectPrimitive.GroupHeading
+<SelectPrimitive.Group.Heading
 	bind:ref
 	class={cn("px-2 py-1.5 text-sm font-semibold", className)}
 	{...restProps}

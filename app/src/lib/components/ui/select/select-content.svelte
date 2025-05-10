@@ -1,6 +1,5 @@
 <script>
 	import { Select as SelectPrimitive } from "bits-ui";
-	// import { Portal as PortalPrimitive, Viewport as ViewportPrimitive } from "bits-ui";
 	import * as Select from "./index.js";
 	import { cn } from "$lib/utils.js";
 

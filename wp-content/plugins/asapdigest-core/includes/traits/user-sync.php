@@ -159,6 +159,11 @@ trait User_Sync {
                         ? 'https://localhost:5173/api/auth/sync' 
                         : 'https://asapdigest.com/api/auth/sync'; // Replace with actual production URL if different
 
+            // Define fallback URL for redundancy
+            $fallback_sync_url = defined('WP_ENVIRONMENT_TYPE') && WP_ENVIRONMENT_TYPE === 'development' 
+                        ? 'https://localhost:5173/api/auth/sync-check' 
+                        : 'https://asapdigest.com/api/auth/sync-check';
+
             // --- MODIFIED: Retrieve ba_user_id directly from map table ---
             $retrieved_ba_user_id = $wpdb->get_var(
                 $wpdb->prepare(
@@ -174,17 +179,40 @@ trait User_Sync {
                     'skUserId' => $retrieved_ba_user_id // Use the ID retrieved from the DB
                 ]);
 
+                // Try primary sync endpoint first with non-blocking request
                 $response = wp_remote_post($sync_url, [
                     'method'    => 'POST',
-                    'headers'   => ['Content-Type' => 'application/json; charset=utf-8'],
+                    'headers'   => [
+                        'Content-Type' => 'application/json; charset=utf-8',
+                        'X-WP-Sync-Secret' => defined('BETTER_AUTH_SECRET') ? BETTER_AUTH_SECRET : ''
+                    ],
                     'body'      => $post_body,
                     'timeout'   => 15, // seconds
                     'blocking'  => false // Don't wait for the response to avoid blocking WP profile update
                 ]);
 
-                // Optional: Log if the request scheduling failed (is_wp_error)
+                // Log the primary request result
                 if (is_wp_error($response)) {
-                    error_log('[ASAP Digest Sync Error] Failed to trigger SvelteKit sync endpoint: ' . $response->get_error_message());
+                    error_log('[ASAP Digest Sync Error] Primary sync endpoint failed: ' . $response->get_error_message());
+                    
+                    // Try fallback endpoint if primary fails - non-blocking as well
+                    $fallback_response = wp_remote_post($fallback_sync_url, [
+                        'method'    => 'POST',
+                        'headers'   => [
+                            'Content-Type' => 'application/json; charset=utf-8',
+                            'X-WP-Sync-Secret' => defined('BETTER_AUTH_SECRET') ? BETTER_AUTH_SECRET : ''
+                        ],
+                        'body'      => $post_body,
+                        'timeout'   => 15, // seconds
+                        'blocking'  => false // Don't wait for the response to avoid blocking WP profile update
+                    ]);
+                    
+                    // Log fallback attempt
+                    if (is_wp_error($fallback_response)) {
+                        error_log('[ASAP Digest Sync Error] Fallback sync endpoint also failed: ' . $fallback_response->get_error_message());
+                    } else {
+                        error_log('[ASAP Digest Sync Debug] Triggered fallback sync endpoint for wpUserId: ' . $user->ID);
+                    }
                 } else {
                     // Optional: Log success if needed for debugging
                      error_log('[ASAP Digest Sync Debug] Triggered SvelteKit sync POST for wpUserId: ' . $user->ID . ', skUserId: ' . $retrieved_ba_user_id);

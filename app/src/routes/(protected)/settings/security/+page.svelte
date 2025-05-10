@@ -21,6 +21,8 @@
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getCSRFToken } from '$lib/auth-client.js';
+  import { toasts } from '$lib/stores/toast.js';
   
   /**
    * @typedef {Object} PageData
@@ -32,32 +34,26 @@
   let { data } = $props();
   
   // Create reactive derived state for user data to ensure updates during navigation
-  let user = $derived(data.user);
+  let user = $derived(data?.user || null);
   
   // Password fields
   let currentPassword = $state('');
   let newPassword = $state('');
   let confirmPassword = $state('');
   
-  // Two-factor authentication
-  let is2FAEnabled = $state(user?.security?.twoFactorEnabled || false);
-  
-  // Session tracking
-  let trackSessions = $state(user?.security?.trackSessions || true);
-  
-  // API access
-  let allowAPIAccess = $state(user?.security?.allowAPIAccess || false);
-  
-  // Email notifications for security events
-  let securityAlerts = $state(user?.security?.securityAlerts || true);
+  // Initialize security settings with defaults
+  let is2FAEnabled = $state(false);
+  let trackSessions = $state(true);
+  let allowAPIAccess = $state(false);
+  let securityAlerts = $state(true);
   
   // Update security settings when user data changes
   $effect(() => {
     if (user?.security) {
-      is2FAEnabled = user.security.twoFactorEnabled || false;
-      trackSessions = user.security.trackSessions || true;
-      allowAPIAccess = user.security.allowAPIAccess || false;
-      securityAlerts = user.security.securityAlerts || true;
+      is2FAEnabled = user.security.twoFactorEnabled ?? false;
+      trackSessions = user.security.trackSessions ?? true;
+      allowAPIAccess = user.security.allowAPIAccess ?? false;
+      securityAlerts = user.security.securityAlerts ?? true;
     }
   });
   
@@ -70,92 +66,118 @@
   let settingsSuccessMessage = $state('');
   
   /**
-   * Update password
+   * Handle password update
+   * @param {SubmitEvent} event The form submission event
+   * @returns {Promise<void>}
    */
-  async function updatePassword() {
+  async function updatePassword(event) {
+    event.preventDefault();
+    
     if (newPassword !== confirmPassword) {
-      passwordErrorMessage = 'New passwords do not match';
+      toasts.show('Passwords do not match', 'error');
       return;
     }
     
-    isSavingPassword = true;
-    passwordErrorMessage = '';
-    passwordSuccessMessage = '';
-    
     try {
-      const response = await fetch('/api/user/password', {
+      isSavingPassword = true;
+      passwordErrorMessage = '';
+      passwordSuccessMessage = '';
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      
+      // Get all existing cookies to ensure we're sending the session cookie
+      const allCookies = document.cookie;
+      console.log('Using cookies for auth:', allCookies);
+      
+      const response = await fetch('/api/auth/password', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json',
+          'Cookie': allCookies // Explicitly include cookies
         },
         body: JSON.stringify({
           currentPassword,
           newPassword
-        })
+        }),
+        credentials: 'include', // CRITICAL: Include credentials (cookies) with request
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update password');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update password');
       }
       
-      passwordSuccessMessage = 'Password updated successfully!';
+      // Success
+      toasts.show('Password updated successfully', 'success');
+      
+      // Reset form
       currentPassword = '';
       newPassword = '';
       confirmPassword = '';
+      
     } catch (error) {
-      passwordErrorMessage = error.message || 'An error occurred';
-      console.error('Failed to update password:', error);
+      toasts.show(error.message || 'Failed to update password', 'error');
     } finally {
       isSavingPassword = false;
     }
   }
   
   /**
-   * Update security settings
+   * Handle security settings update
+   * @param {SubmitEvent} event The form submission event
+   * @returns {Promise<void>}
    */
-  async function updateSecuritySettings() {
-    isSavingSettings = true;
-    settingsErrorMessage = '';
-    settingsSuccessMessage = '';
+  async function updateSecuritySettings(event) {
+    event.preventDefault();
     
     try {
-      const response = await fetch('/api/user/security', {
+      isSavingSettings = true;
+      settingsErrorMessage = '';
+      settingsSuccessMessage = '';
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      
+      // Get all existing cookies to ensure we're sending the session cookie
+      const allCookies = document.cookie;
+      console.log('Using cookies for auth:', allCookies);
+      
+      // Create settings object based on current form state
+      const securitySettings = {
+        twoFactorEnabled: is2FAEnabled,
+        trackSessions,
+        allowAPIAccess,
+        securityAlerts
+      };
+      
+      const response = await fetch('/api/auth/security-settings', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json',
+          'Cookie': allCookies // Explicitly include cookies
         },
-        body: JSON.stringify({
-          twoFactorEnabled: is2FAEnabled,
-          trackSessions,
-          allowAPIAccess,
-          securityAlerts
-        })
+        body: JSON.stringify(securitySettings),
+        credentials: 'include', // CRITICAL: Include credentials (cookies) with request
       });
       
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update security settings');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update security settings');
       }
       
-      // Update local user store with new security settings
-      $userStore = {
-        ...$userStore,
-        security: {
-          twoFactorEnabled: is2FAEnabled,
-          trackSessions,
-          allowAPIAccess,
-          securityAlerts
-        }
-      };
+      // Success
+      toasts.show('Security settings updated successfully', 'success');
       
-      // Invalidate page data to refresh
+      // Refresh page data to reflect changes
       await invalidateAll();
       
-      settingsSuccessMessage = 'Security settings updated successfully!';
     } catch (error) {
-      settingsErrorMessage = error.message || 'An error occurred';
-      console.error('Failed to update security settings:', error);
+      toasts.show(error.message || 'Failed to update security settings', 'error');
     } finally {
       isSavingSettings = false;
     }
@@ -196,7 +218,7 @@
           </div>
         {/if}
         
-        <form class="space-y-4" on:submit|preventDefault={updatePassword}>
+        <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); updatePassword(e); }}>
           <div class="space-y-2">
             <Label for="currentPassword">Current Password</Label>
             <Input id="currentPassword" type="password" bind:value={currentPassword} required />
@@ -214,7 +236,7 @@
         </form>
       </CardContent>
       <CardFooter>
-        <Button class="w-full sm:w-auto" disabled={isSavingPassword} onclick={updatePassword}>
+        <Button class="w-full sm:w-auto" disabled={isSavingPassword} onclick={(e) => { e.preventDefault(); updatePassword(e); }}>
           {isSavingPassword ? 'Updating...' : 'Update Password'}
         </Button>
       </CardFooter>
@@ -299,7 +321,7 @@
         </div>
       </CardContent>
       <CardFooter>
-        <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={updateSecuritySettings}>
+        <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={(e) => { e.preventDefault(); updateSecuritySettings(e); }}>
           {isSavingSettings ? 'Saving...' : 'Save Settings'}
         </Button>
       </CardFooter>

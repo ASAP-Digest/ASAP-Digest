@@ -6,9 +6,9 @@
 -->
 <script>
   import { onMount } from 'svelte';
-  import { getModerationQueue, approveContent, rejectContent } from '$lib/api/crawler-api.js';
+  import { getQueuedContent, approveContent, rejectContent } from '$lib/api/crawler-api.js';
   import { Button } from '$lib/components/ui/button';
-  import { Check, X, RefreshCw } from 'lucide-svelte';
+  import { Check, X, RefreshCw } from '$lib/utils/lucide-compat.js';
 
   let queue = [];
   let isLoading = true;
@@ -20,7 +20,7 @@
     isLoading = true;
     error = '';
     try {
-      queue = await getModerationQueue();
+      queue = await getQueuedContent();
     } catch (e) {
       error = e.message;
     } finally {

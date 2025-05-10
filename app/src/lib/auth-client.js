@@ -28,7 +28,7 @@ import { dev } from '$app/environment';
  * Get CSRF token from cookie and request a new one if not present
  * @returns {Promise<string>} - The CSRF token
  */
-async function getCSRFToken() {
+export async function getCSRFToken() {
     const token = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
     if (token) return token;
 

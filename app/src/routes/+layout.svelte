@@ -43,7 +43,7 @@
   import { toasts } from '$lib/stores/toast.js'; // Correctly import the store
   // Import required icons
   import { 
-    Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download 
+    Menu, X, Search, Bell, CircleUser, LayoutDashboard, Settings, LogOut, Home, Download, User 
   } from '$lib/utils/lucide-compat.js';
   import { goto, invalidateAll } from '$app/navigation'; // Import invalidateAll from correct module
   // Import the new GraphQL helper
@@ -53,6 +53,8 @@
   import { log } from '$lib/utils/log.js'; // Assuming a logging utility
   // Remove the problematic import and use a constant instead
   // import { PUBLIC_WP_API_URL } from '$env/dynamic/public'; 
+  // Import the enhanced user utils
+  import { getAvatarUrl } from '$lib/stores/user.js';
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -74,8 +76,14 @@
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
-  // Store previous user update timestamp
+  // Store previous user update timestamp and signature to avoid unnecessary toasts
   let previousUserUpdatedAt = $state($page.data.user?.updatedAt);
+  let previousUserSignature = $state($page.data.user ? JSON.stringify({
+    displayName: $page.data.user.displayName,
+    email: $page.data.user.email,
+    avatarUrl: $page.data.user.avatarUrl,
+    preferences: $page.data.user.preferences
+  }) : null);
 
   // Log user data from page store on mount AND whenever it changes
   $effect(() => {
@@ -84,16 +92,42 @@
   });
 
   // Effect to show toast on user data update (coming from invalidateAll or SSE)
+  // But ONLY when actual profile data changes, not just timestamps
   $effect(() => {
     const currentUser = $page.data.user;
-    if (currentUser?.updatedAt && currentUser.updatedAt !== previousUserUpdatedAt) {
+    
+    // Skip if no user data
+    if (!currentUser) {
+      previousUserUpdatedAt = null;
+      previousUserSignature = null;
+      return;
+    }
+    
+    // Create a signature of user data we care about, excluding timestamp
+    const currentSignature = JSON.stringify({
+      displayName: currentUser.displayName,
+      email: currentUser.email,
+      avatarUrl: currentUser.avatarUrl,
+      preferences: currentUser.preferences
+    });
+    
+    // Only show toast if the signature changed (actual data changed)
+    // AND there was a previous user (not first load)
+    if (previousUserSignature && 
+        currentSignature !== previousUserSignature &&
+        previousUserUpdatedAt) {
+      
       log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${currentUser.updatedAt}. Showing toast.`); // DEBUG
+      
       toasts.show(
         'Your profile details have been updated.', // Simpler message
         'success'
       );
-      previousUserUpdatedAt = currentUser.updatedAt;
     }
+    
+    // Always update both the timestamp and signature
+    previousUserUpdatedAt = currentUser.updatedAt;
+    previousUserSignature = currentSignature;
   });
 
   // Effects using Svelte 5 runes
@@ -275,6 +309,11 @@
     let localEventSource = null;
         console.log('[Layout Sync Listener] Setting up EventSource...');
         localEventSource = new EventSource('/api/auth/sync-stream');
+        
+        // Set global flag to indicate root SSE connection is active
+        if (typeof window !== 'undefined') {
+          window.asapDigestSseActive = true;
+        }
 
         localEventSource.onopen = () => {
           console.log('[Layout Sync Listener] EventSource connection opened.');
@@ -339,6 +378,11 @@
         if (localEventSource) {
           console.log('[Layout Sync Listener] Closing EventSource connection.');
           localEventSource.close();
+          
+          // Remove global flag when connection is closed
+          if (typeof window !== 'undefined') {
+            window.asapDigestSseActive = false;
+          }
         }
         window.removeEventListener('resize', checkMobile);
       };
@@ -516,23 +560,22 @@
             aria-haspopup="true"
           >
             <div class="h-8 w-8 overflow-hidden rounded-full bg-[hsl(var(--muted)/0.2)]">
-              <!-- Add this debug output -->
+              <!-- Consistent avatar handling for hydration -->
               {#if $page.data.user}
-                <div style="display: none;">
-                  <!-- This hidden div will help debug in the DOM -->
-                  Avatar URL debug: {$page.data.user.avatarUrl || 'No avatar URL found'}
+                {#key $page.data.user.updatedAt || 'initial-render'}
+                  <img
+                    src={getAvatarUrl($page.data.user) || '/images/default-avatar.svg'}
+                    alt={$page.data.user.displayName || 'User Avatar'}
+                    class="h-full w-full object-cover"
+                    onerror={handleImageError} 
+                  />
+                {/key}
+              {:else}
+                <!-- Default avatar fallback -->
+                <div class="h-full w-full flex items-center justify-center text-[hsl(var(--muted-foreground))]">
+                  <Icon icon={User} class="w-5 h-5" />
                 </div>
-                <!-- Add console logging when component mounts -->
-                {@html `<script>console.log('Avatar URL:', '${$page.data.user?.avatarUrl || 'No avatar URL found'}')</script>`}
               {/if}
-              
-              <!-- Update the img tag -->
-              <img
-                src={$page.data.user?.avatarUrl || 'data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%%22 height=%22100%%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%228%22 r=%225%22/%3E%3Cpath d=%22M20 21a8 8 0 0 0-16 0%22/%3E%3C/svg%3E'}
-                alt={$page.data.user?.displayName || 'User Avatar'}
-                class="h-full w-full object-cover"
-                onerror={handleImageError} 
-              />
             </div>
           </button>
           
@@ -549,6 +592,18 @@
                 <div class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">
                   {$page.data.user.email || 'user@example.com'}
                 </div>
+                <!-- Add plan display -->
+                {#if $page.data.user.plan}
+                  <div class="text-xs text-[hsl(var(--primary)/0.8)] mt-1">
+                    {#if typeof $page.data.user.plan === 'object' && $page.data.user.plan !== null}
+                      {$page.data.user.plan.name || 'Free'}
+                    {:else if typeof $page.data.user.plan === 'string'}
+                      {$page.data.user.plan}
+                    {:else}
+                      Free
+                    {/if}
+                  </div>
+                {/if}
               </div>
 
               <!-- Dashboard, Settings, Logout -->

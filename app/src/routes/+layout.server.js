@@ -81,44 +81,78 @@ export async function load(event) {
             // Get user from session
             const betterAuthUser = await auth.adapter.getUserById(authSession.userId);
             
-            // Log the raw betterAuthUser object for debugging
-            log('[Layout.server] betterAuthUser: ' + JSON.stringify(betterAuthUser));
+            log('[Layout.server] Raw betterAuthUser object: ' + JSON.stringify(betterAuthUser));
             
-            if (betterAuthUser) {
-                log('[Layout.server] User loaded from session', 'info');
+            if (betterAuthUser && typeof betterAuthUser === 'object') {
+                log('[Layout.server] User loaded from session. Checking fields...', 'info');
+                log(`[Layout.server] betterAuthUser.avatarUrl: ${betterAuthUser.avatarUrl}`);
                 
-                // Always include roles as an array
-                const userForLocals = {
+                if (Object.prototype.hasOwnProperty.call(betterAuthUser, 'plan')) {
+                    log(`[Layout.server] betterAuthUser.plan: ${JSON.stringify((/** @type {any} */ (betterAuthUser)).plan)}`);
+                } else {
+                    log('[Layout.server] betterAuthUser.plan property does not exist.');
+                }
+                if (Object.prototype.hasOwnProperty.call(betterAuthUser, 'metadata') && typeof betterAuthUser.metadata === 'object' && betterAuthUser.metadata !== null && Object.prototype.hasOwnProperty.call(betterAuthUser.metadata, 'plan')) {
+                    log(`[Layout.server] betterAuthUser.metadata.plan: ${JSON.stringify((/** @type {any} */ (betterAuthUser.metadata)).plan)}`);
+                } else {
+                    log('[Layout.server] betterAuthUser.metadata.plan property does not exist or metadata is not an object.');
+                }
+
+                let updatedAtString;
+                if (betterAuthUser.updatedAt instanceof Date) {
+                    updatedAtString = betterAuthUser.updatedAt.toISOString();
+                } else if (typeof betterAuthUser.updatedAt === 'string') {
+                    updatedAtString = betterAuthUser.updatedAt;
+                } else {
+                    updatedAtString = new Date().toISOString();
+                }
+
+                let finalPlanString = 'Free'; 
+                let rawPlanValue = null;
+                
+                if (Object.prototype.hasOwnProperty.call(betterAuthUser, 'plan') && (/** @type {any} */ (betterAuthUser)).plan !== undefined) {
+                    rawPlanValue = (/** @type {any} */ (betterAuthUser)).plan;
+                } else if (Object.prototype.hasOwnProperty.call(betterAuthUser, 'metadata') && 
+                           typeof betterAuthUser.metadata === 'object' && 
+                           betterAuthUser.metadata !== null && 
+                           Object.prototype.hasOwnProperty.call(betterAuthUser.metadata, 'plan') && 
+                           (/** @type {any} */ (betterAuthUser.metadata)).plan !== undefined) {
+                    rawPlanValue = (/** @type {any} */ (betterAuthUser.metadata)).plan;
+                }
+                
+                if (rawPlanValue && typeof rawPlanValue === 'object' && rawPlanValue !== null && Object.prototype.hasOwnProperty.call(rawPlanValue, 'name') && typeof (/** @type {any} */ (rawPlanValue)).name === 'string') {
+                    finalPlanString = (/** @type {any} */ (rawPlanValue)).name;
+                } else if (typeof rawPlanValue === 'string') {
+                    finalPlanString = rawPlanValue;
+                }
+
+                const userForLocalsAndReturn = {
                     id: betterAuthUser.id,
                     email: betterAuthUser.email,
                     displayName: betterAuthUser.display_name || betterAuthUser.username || betterAuthUser.email.split('@')[0],
-                    avatarUrl: betterAuthUser.avatarUrl,
+                    avatarUrl: betterAuthUser.avatarUrl, 
                     roles: Array.isArray(betterAuthUser.roles)
                         ? betterAuthUser.roles
-                        : Array.isArray(betterAuthUser.metadata?.roles)
+                        : (betterAuthUser.metadata && Array.isArray(betterAuthUser.metadata.roles))
                             ? betterAuthUser.metadata.roles
                             : [],
-                    // Add any other properties you need
+                    plan: finalPlanString,
+                    metadata: (typeof betterAuthUser.metadata === 'object' && betterAuthUser.metadata !== null) ? betterAuthUser.metadata : {}, 
+                    updatedAt: updatedAtString 
                 };
-                log('[Layout.server] userForLocals: ' + JSON.stringify(userForLocals));
+                log('[Layout.server] Constructed userForLocalsAndReturn: ' + JSON.stringify(userForLocalsAndReturn));
                 
-                // Prepare the object to return
-                const loaderReturn = {
-                    user: {
-                        ...userForLocals,
-                        testProp: 'should-be-visible',
-                        rolesTest: 'should-be-visible'
-                    }
-                };
-                const loaderReturnCloned = JSON.parse(JSON.stringify(loaderReturn));
-                log('[Layout.server] Loader return value (final, deep clone): ' + JSON.stringify(loaderReturnCloned));
+                // Set event.locals.user (this is for server-side use within hooks/endpoints for this request)
+                event.locals.user = userForLocalsAndReturn;
                 
-                event.locals.user = userForLocals;
-                
-                // Convert session to the format expected by App.Locals.session
+                // Convert session to the format expected by App.Locals.session and set it
                 event.locals.session = convertSessionForLocals(authSession);
                 
-                return loaderReturnCloned;
+                // Return the user object for the client-side SvelteKit data prop
+                // Ensure the returned structure matches what $page.data.user expects
+                return {
+                    user: userForLocalsAndReturn
+                };
             }
             
             log('[Layout.server] Session exists but user not found', 'warn');

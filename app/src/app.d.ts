@@ -101,6 +101,82 @@ declare global {
 		// interface Superforms {}
 		// interface PageData {}
 		// interface Platform {}
+
+		/**
+		 * Avatar source preference
+		 */
+		type AvatarPreference = 'synced' | 'profile' | 'gravatar' | 'default';
+
+		/**
+		 * User preferences object
+		 */
+		interface UserPreferences {
+			avatarSource?: AvatarPreference;
+			useGravatar?: boolean; // Legacy property
+			display?: {
+				darkMode?: boolean;
+				theme?: string;
+			};
+			notifications?: {
+				digest?: boolean;
+				push?: boolean;
+				email?: boolean;
+			};
+			tts?: {
+				voice?: string;
+				rate?: number;
+				language?: string;
+				autoPlay?: boolean;
+			};
+		}
+
+		/**
+		 * Subscription plan details
+		 */
+		interface UserPlan {
+			name: string; // Free, Spark, Pulse, Bolt
+			level?: string; // Numerical level (1-4)
+			startDate?: Date;
+			endDate?: Date;
+			trialEndDate?: Date;
+			isActive?: boolean;
+			paymentStatus?: string;
+		}
+
+		/**
+		 * User analytics and progress data
+		 */
+		interface UserStats {
+			digestsRead?: number;
+			widgetsExplored?: number;
+			lastActive?: Date;
+			usage?: {
+				digestsRemaining?: number;
+				searchesRemaining?: number;
+			};
+		}
+
+		/**
+		 * Enhanced user object
+		 */
+		interface User {
+			id: string;
+			email: string;
+			displayName?: string;
+			roles?: string[];
+			avatarUrl?: string;
+			gravatarUrl?: string;
+			preferences?: UserPreferences;
+			plan?: UserPlan | string; // Support both string (legacy) and object
+			stats?: UserStats;
+			metadata?: Record<string, any>;
+			updatedAt?: string;
+		}
+	}
+
+	// Add global properties to Window interface
+	interface Window {
+		asapDigestSseActive?: boolean;
 	}
 }
 

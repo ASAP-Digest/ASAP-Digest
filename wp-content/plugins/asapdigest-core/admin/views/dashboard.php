@@ -527,7 +527,7 @@ $last_run = get_option('asap_crawler_last_run', '');
             grid-template-columns: 1fr;
         }
     }
-</style>
+</style> 
 
 <script>
 jQuery(document).ready(function($) {
