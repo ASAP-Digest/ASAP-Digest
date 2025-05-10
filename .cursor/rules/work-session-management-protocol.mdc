@@ -74,7 +74,7 @@ F. Enter Approval Queue (EAQ)
 ### 3.1 Session Initiation (BWS)
 *(Self-correction: Explicitly mention SC v2.4+, add reasoning logging)*
 1.  **Determine Trigger Source:** BWS is triggered manually by the user or via RWS fallback.
-2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.4+) *unless* triggered by RWS fallback which has already determined the target. This involves reading `md-docs/ROADMAP_TASKS.md` and potentially recent memory via tool calls, applying rank-aware logic that parses [ PREFIX-Num ] IDs, status emojis, descriptions, and all ` • [ key:value ]` tags (e.g., rnk, due, done, src, etc.).
+2.  **Acquire Context (Status Check):** Execute "Status Check" (SC v2.4+) *unless* triggered by RWS fallback which has already determined the target. This involves reading `md-docs/ROADMAP_TASKS.md` or a priority niche roadmap `[NRM:{RoadMap_Name}]` and potentially recent memory via tool calls, applying rank-aware logic that parses [ PREFIX-Num ] IDs, status emojis, descriptions, and all ` • [ key:value ]` tags (e.g., rnk, due, done, src, etc.).
 3.  **Analyze SC Output & Select Target Task:**
     -   If triggered manually: Identify the `🎯 Current / Operational Priority` task from the *newly run* SC report. This is the `targetTask` (identified by its [ PREFIX-Num ] ID and tags).
     -   If triggered by RWS fallback: Use the `targetTask` determined by the RWS logic (v2.14), identified by its [ PREFIX-Num ] ID and tags.
