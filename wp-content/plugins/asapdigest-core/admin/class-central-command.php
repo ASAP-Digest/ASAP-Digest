@@ -20,77 +20,32 @@ if (!defined('ABSPATH')) {
 
 class ASAP_Digest_Central_Command {
     /**
-     * @var ASAP_Digest_Core Plugin instance
+     * @var ASAP_Digest_Core|null Plugin instance
      */
     private $plugin;
 
     /**
      * Constructor
+     * @param ASAP_Digest_Core|null $plugin Optionally pass the core instance to avoid recursion
      */
-    public function __construct() {
-        $this->plugin = ASAP_Digest_Core::get_instance();
-        add_action('admin_menu', [$this, 'register_menus']);
+    public function __construct($plugin = null) {
+        // Only assign if passed, do NOT call get_instance() here!
+        if ($plugin) {
+            $this->plugin = $plugin;
+        }
+        // Do NOT register admin_menu here; menu registration is centralized (per menu registration protocol)
+        // add_action('admin_menu', [$this, 'register_menus']);
         add_action('rest_api_init', [$this, 'register_api_endpoints']);
     }
 
     /**
-     * Register admin menu items
+     * Get the core plugin instance (lazy, only if needed)
+     * @return ASAP_Digest_Core
      */
-    public function register_menus() {
-        add_menu_page(
-            'ASAP Digest',
-            'ASAP Digest',
-            'manage_options',
-            'asap-digest',
-            [$this, 'render_dashboard'],
-            'dashicons-analytics',
-            25
-        );
-
-        add_submenu_page(
-            'asap-digest',
-            'Dashboard',
-            'Dashboard',
-            'manage_options',
-            'asap-digest',
-            [$this, 'render_dashboard']
-        );
-
-        add_submenu_page(
-            'asap-digest',
-            'Crawler Sources',
-            'Crawler Sources',
-            'manage_options',
-            'asap-crawler-sources',
-            [$this, 'render_sources']
-        );
-
-        add_submenu_page(
-            'asap-digest',
-            'Moderation Queue',
-            'Moderation Queue',
-            'manage_options',
-            'asap-moderation-queue',
-            [$this, 'render_moderation']
-        );
-
-        add_submenu_page(
-            'asap-digest',
-            'Analytics',
-            'Analytics',
-            'manage_options',
-            'asap-analytics',
-            [$this, 'render_analytics']
-        );
-        
-        add_submenu_page(
-            'asap-digest',
-            'AI Settings',
-            'AI Settings',
-            'manage_options',
-            'asap-ai-settings',
-            [$this, 'render_ai_settings']
-        );
+    private function get_plugin() {
+        if ($this->plugin) return $this->plugin;
+        $this->plugin = ASAP_Digest_Core::get_instance();
+        return $this->plugin;
     }
 
     /**
@@ -225,7 +180,7 @@ class ASAP_Digest_Central_Command {
         $cost_per_unit = floatval($_POST['cost_per_unit']);
         $markup_percentage = floatval($_POST['markup_percentage']);
 
-        $this->plugin->get_usage_tracker()->update_service_cost(
+        $this->get_plugin()->get_usage_tracker()->update_service_cost(
             $service_name,
             $cost_per_unit,
             $markup_percentage

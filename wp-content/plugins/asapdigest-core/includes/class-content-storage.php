@@ -18,9 +18,10 @@ class ContentStorage {
     }
 
     /**
-     * Store a normalized content item as a WP post with ACF and taxonomy.
+     * Store a normalized content item in wp_asap_ingested_content (not wp_posts).
+     * Implements deduplication (by fingerprint) and quality scoring.
      * @param array $content
-     * @return int|false WP Post ID or false on error
+     * @return int|false Ingested Content ID or false on error
      */
     public function store($content) {
         // Validate required fields
@@ -31,43 +32,102 @@ class ContentStorage {
                 return false;
             }
         }
-        $post_type = $this->post_type_map[$type] ?? 'post';
-        $post_data = [
-            'post_title'   => $content['title'],
-            'post_content' => $this->should_store_full_content($content) ? ($content['content'] ?? '') : '',
-            'post_excerpt' => $content['summary'] ?? '',
-            'post_type'    => $post_type,
-            'post_status'  => $this->determine_post_status($content),
-            'post_date'    => $content['publish_date'] ?? current_time('mysql'),
-        ];
-        // Check for existing by source_url
-        $existing_id = $this->find_by_source_url($content['source_url'] ?? '');
+        // --- [ Generate fingerprint for deduplication ] ---
+        $fingerprint = $this->generate_fingerprint($content);
+        // --- [ Check for existing by fingerprint in wp_asap_content_index ] ---
+        $existing_id = $this->find_by_fingerprint($fingerprint);
         if ($existing_id) {
-            if (!$this->should_update($existing_id, $content)) {
-                do_action('asap_digest_storage_skipped', 'no_significant_changes', $existing_id, $content);
-                return $existing_id;
-            }
-            $post_data['ID'] = $existing_id;
-            $post_id = wp_update_post($post_data);
-        } else {
-            $post_id = wp_insert_post($post_data);
+            do_action('asap_digest_storage_skipped', 'duplicate_fingerprint', $existing_id, $content);
+            return $existing_id;
         }
-        if (is_wp_error($post_id)) {
-            do_action('asap_digest_storage_error', 'wp_insert_error', $post_id->get_error_message(), $content);
+        // --- [ Calculate quality score ] ---
+        $quality_score = $this->calculate_quality_score($content);
+        // --- [ Insert into wp_asap_ingested_content ] ---
+        global $wpdb;
+        $ingested_table = $wpdb->prefix . 'asap_ingested_content';
+        $now = current_time('mysql');
+        $insert_data = [
+            'type' => $type,
+            'title' => $content['title'],
+            'content' => $this->should_store_full_content($content) ? ($content['content'] ?? '') : '',
+            'summary' => $content['summary'] ?? '',
+            'source_url' => $content['source_url'] ?? '',
+            'source_id' => $content['source_id'] ?? '',
+            'publish_date' => $content['publish_date'] ?? $now,
+            'ingestion_date' => $now,
+            'fingerprint' => $fingerprint,
+            'quality_score' => $quality_score,
+            'status' => $content['status'] ?? 'published',
+            'extra' => isset($content['extra']) ? wp_json_encode($content['extra']) : null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+        $result = $wpdb->insert($ingested_table, $insert_data);
+        if (!$result) {
+            do_action('asap_digest_storage_error', 'ingested_content_insert_error', $wpdb->last_error, $content);
             return false;
         }
-        // Update ACF fields (stub)
-        $this->update_selective_acf_fields($post_id, $content);
-        // Set taxonomies (stub)
-        $this->set_intelligent_taxonomies($post_id, $content);
-        // Store minimal metadata
-        update_post_meta($post_id, 'asap_source_url', $content['source_url'] ?? '');
-        update_post_meta($post_id, 'asap_source_id', $content['source_id'] ?? '');
-        update_post_meta($post_id, 'asap_ingestion_date', current_time('mysql'));
+        $ingested_id = intval($wpdb->insert_id);
+        // --- [ Insert into wp_asap_content_index for deduplication and scoring ] ---
+        $index_table = $wpdb->prefix . 'asap_content_index';
+        $wpdb->insert($index_table, [
+            'ingested_content_id' => $ingested_id,
+            'fingerprint' => $fingerprint,
+            'quality_score' => $quality_score,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        // Error handling for index insert
+        if ($wpdb->last_error) {
+            do_action('asap_digest_storage_error', 'index_insert_error', $wpdb->last_error, $ingested_id, $content);
+        }
         // Update storage metrics (stub)
         $this->update_storage_metrics($content['source_id'] ?? 0, $type, strlen(maybe_serialize($content)));
-        do_action('asap_digest_content_stored', $post_id, $content);
-        return $post_id;
+        do_action('asap_digest_content_stored', $ingested_id, $content);
+        return $ingested_id;
+    }
+
+    /**
+     * Generate a SHA256 fingerprint for deduplication.
+     * @param array $content
+     * @return string
+     */
+    private function generate_fingerprint($content) {
+        $fields = [
+            strtolower(trim($content['title'] ?? '')),
+            strtolower(trim($content['content'] ?? '')),
+            strtolower(trim($content['source_url'] ?? '')),
+            strtolower(trim($content['publish_date'] ?? '')),
+            strtolower(trim($content['source_id'] ?? '')),
+        ];
+        $canonical = implode('||', $fields);
+        return hash('sha256', $canonical);
+    }
+
+    /**
+     * Find existing ingested content by fingerprint (uses wp_asap_content_index).
+     * @param string $fingerprint
+     * @return int|false Ingested Content ID or false
+     */
+    private function find_by_fingerprint($fingerprint) {
+        global $wpdb;
+        $index_table = $wpdb->prefix . 'asap_content_index';
+        $sql = $wpdb->prepare("SELECT ingested_content_id FROM {$index_table} WHERE fingerprint = %s LIMIT 1", $fingerprint);
+        $id = $wpdb->get_var($sql);
+        return $id ? intval($id) : false;
+    }
+
+    /**
+     * Calculate a quality score for the content (0-100).
+     * @param array $content
+     * @return int
+     */
+    private function calculate_quality_score($content) {
+        $completeness = (!empty($content['title']) && !empty($content['content']) && !empty($content['summary'])) ? 1 : 0.5;
+        $recency = (isset($content['publish_date']) && strtotime($content['publish_date']) > strtotime('-7 days')) ? 1 : 0.5;
+        $length = (isset($content['content']) && strlen($content['content']) > 500) ? 1 : 0.5;
+        $score = 0.4 * 1 + 0.3 * $completeness + 0.2 * $recency + 0.1 * $length;
+        return round($score * 100);
     }
 
     // --- Helper methods (stubs) ---

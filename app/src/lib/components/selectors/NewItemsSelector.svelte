@@ -198,7 +198,7 @@
   // Selection logic using persistent store
   function toggleItemSelection(item) {
     if (allowMultiple) {
-      selectedItems.toggle(item);
+    selectedItems.toggle(item);
     } else {
       // Single select mode: clear all, then add
       selectedItems.clear();

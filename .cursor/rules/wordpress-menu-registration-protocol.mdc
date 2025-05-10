@@ -3,29 +3,130 @@ description:
 globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
 alwaysApply: false
 ---
-# WordPress Menu Registration Protocol
+# WordPress Menu Registration Protocol v1.1
 
-1. **Centralization**
-   - All menu registration MUST be in ONE location
-   - Use a single initialization function (e.g., `plugin_prefix_init_menus`)
-   - Register function with `admin_menu` action hook
+*(Self-correction: v1.1 - Added explicit rules against direct instantiation in callbacks to prevent recursion)*
 
-2. **Function Organization**
-   - Define ALL callback functions BEFORE menu registration
-   - Place callbacks in a dedicated section of the file
-   - Document each callback with PHPDoc comments
+## 1. Purpose
+This protocol defines the standard method for registering WordPress admin menu and submenu pages. It aims to ensure centralization, clarity, proper hooking, and prevent common issues like duplicate menus or fatal errors caused by incorrect callback handling (e.g., recursion).
 
-3. **Registration Order**
-   - Register main menu first
-   - Register submenus immediately after parent
-   - Use consistent priority values
+## 2. Core Principles
+- **Centralization:** All admin menu registrations for a plugin MUST reside in a single, designated location, typically the main plugin file or a dedicated menu registration class/function.
+- **Clarity & Readability:** Menu structure and callback assignments MUST be easy to understand and maintain.
+- **Correct Hooking:** Menus MUST be registered using the `admin_menu` action hook.
+- **Callback Safety:** Menu callbacks, especially those involving class methods, MUST be handled to prevent recursion or excessive resource usage.
 
-4. **Security & Standards**
-   - Use WordPress capabilities (e.g., 'manage_options')
-   - Never use role names directly (e.g., 'administrator')
-   - Follow WordPress naming conventions
+## 3. Protocol Steps
 
-5. **Documentation**
-   - Document menu structure in comments
-   - Include callback function references
-   - Note any dependencies
+### 3.1. Centralized Registration Point (MUST)
+1.  All `add_menu_page()` and `add_submenu_page()` calls MUST be located within a single function (e.g., `my_plugin_register_admin_menus`).
+2.  This single function MUST be hooked into `admin_menu`. Example:
+    ```php
+    add_action('admin_menu', 'my_plugin_register_admin_menus');
+    
+    function my_plugin_register_admin_menus() {
+        // All add_menu_page() and add_submenu_page() calls go here
+    }
+    ```
+3.  DO NOT scatter `add_action('admin_menu', ...)` calls across multiple files or classes for the same plugin's menus.
+
+### 3.2. Callback Function Definition (MUST)
+1.  All functions or class methods intended as callbacks for menu pages MUST be defined *before* they are used in `add_menu_page()` or `add_submenu_page()`.
+2.  Callbacks SHOULD be organized logically, either as standalone functions or methods within a relevant admin class.
+3.  Each callback function/method MUST be documented with PHPDoc comments explaining its purpose.
+
+### 3.3. Menu and Submenu Registration Order (SHOULD)
+1.  Register the main parent menu page using `add_menu_page()` first.
+2.  Register all its submenus using `add_submenu_page()` immediately after their parent.
+3.  Use consistent and logical `$position` arguments for `add_menu_page()` to control menu order.
+
+### 3.4. Callback Handling for Class Methods (CRITICAL)
+
+1.  **Avoid Direct Instantiation in Callbacks (MUST):** When a menu callback is a method of a class, DO NOT instantiate the class directly within the callback argument if that class's constructor or related methods might re-trigger WordPress core hooks (like `plugins_loaded`, `init`, or `admin_menu` itself) or lead to complex object initialization during the `admin_menu` hook's execution. This is a common source of recursion and memory exhaustion.
+
+    ```php
+    // INCORRECT - Potential for recursion if The_Admin_Class constructor does too much
+    add_submenu_page(
+        'parent-slug',
+        'My Submenu',
+        'My Submenu',
+        'manage_options',
+        'my-submenu-slug',
+        [new The_Admin_Class(), 'render_my_submenu_page_method'] // Avoid 'new' here
+    );
+    ```
+
+2.  **Use Shared Instances or Static Methods (MUST):**
+    *   **Shared Instance (Preferred for multiple callbacks from the same class):** Instantiate the admin class ONCE (e.g., in the main plugin file or via a singleton pattern) and store it in a global variable or a static property. Use this shared instance for all its method callbacks.
+
+        ```php
+        // In main plugin file or a setup function:
+        global $my_plugin_admin_object;
+        $my_plugin_admin_object = new The_Admin_Class();
+        
+        // In your menu registration function:
+        function my_plugin_register_admin_menus() {
+            global $my_plugin_admin_object;
+            add_submenu_page(
+                'parent-slug',
+                'My Submenu',
+                'My Submenu',
+                'manage_options',
+                'my-submenu-slug',
+                [$my_plugin_admin_object, 'render_my_submenu_page_method'] // Use shared instance
+            );
+        }
+        ```
+    *   **Static Methods:** If the callback method can be static, define it as such in the class and call it statically.
+
+        ```php
+        // In The_Admin_Class.php:
+        // public static function render_my_submenu_page_method() { /* ... */ }
+
+        // In your menu registration function:
+        add_submenu_page(
+            'parent-slug',
+            'My Submenu',
+            'My Submenu',
+            'manage_options',
+            'my-submenu-slug',
+            ['The_Admin_Class', 'render_my_submenu_page_method'] // Static call
+        );
+        ```
+    *   **Simple Function Callbacks:** For simple pages, a standalone function callback is often the safest.
+
+        ```php
+        // function my_plugin_render_submenu_page() { /* ... */ }
+        
+        add_submenu_page(
+            'parent-slug',
+            // ...
+            'my_plugin_render_submenu_page' // Direct function callback
+        );
+        ```
+
+### 3.5. Security and WordPress Standards (MUST)
+1.  Always use appropriate WordPress capabilities (e.g., `'manage_options'`, `'edit_posts'`) for the `$capability` argument.
+2.  NEVER use role names (e.g., `'administrator'`) directly for capability checks.
+3.  Follow WordPress coding standards and naming conventions for menu slugs, function names, and hooks. Slugs should be unique.
+
+### 3.6. Documentation (SHOULD)
+1.  Comment the menu registration block to explain the overall structure.
+2.  Ensure PHPDoc blocks for all callback functions are clear.
+3.  Note any specific dependencies or context required for a menu page to render correctly.
+
+## 4. Verification Checklist
+- [ ] Is all menu registration centralized in a single function hooked to `admin_menu`?
+- [ ] Is the `admin_menu` hook used only once for the plugin's menus?
+- [ ] Are all callback functions/methods defined before use?
+- [ ] Are class method callbacks handled using shared instances or static calls, avoiding direct `new ClassName()` in the callback argument?
+- [ ] Are appropriate capabilities used for each menu item?
+- [ ] Are menu slugs unique and follow naming conventions?
+- [ ] Are callbacks documented?
+
+## 5. Common Issues This Protocol Prevents
+- Duplicate or missing menu items.
+- "Cannot redeclare function" errors.
+- "Headers already sent" errors if callbacks output content too early.
+- **Fatal errors due to recursion or memory exhaustion caused by instantiating classes with complex constructors or hook-triggering logic directly in menu callback definitions.**
+- Incorrect user access due to improper capability checks.

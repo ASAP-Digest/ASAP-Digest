@@ -20,7 +20,8 @@ class ASAP_Digest_Admin_UI {
      * Constructor
      */
     public function __construct() {
-        add_action('admin_menu', [$this, 'register_menu_pages']);
+        // Do NOT register admin_menu here; menu registration is centralized (per menu registration protocol)
+        // add_action('admin_menu', [$this, 'register_menu_pages']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
     }
 

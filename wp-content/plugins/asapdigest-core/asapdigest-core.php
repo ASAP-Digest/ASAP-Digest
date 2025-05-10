@@ -15,34 +15,77 @@
  */
 
 if (!defined('ABSPATH')) {
+    error_log('ASAP_CORE_DEBUG: ABSPATH not defined, exiting early in asapdigest-core.php');
     exit;
 }
+error_log('ASAP_CORE_DEBUG: START of asapdigest-core.php');
 
 // Define constants
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
+error_log('ASAP_CORE_DEBUG: Constants defined');
 // Define a temporary sync secret for development server-to-server communication
 if (!defined('BETTER_AUTH_SECRET')) {
     define('BETTER_AUTH_SECRET', 'development-sync-secret-v6');
 }
+error_log('ASAP_CORE_DEBUG: BETTER_AUTH_SECRET defined/checked');
 
 // Include Better Auth configuration
+error_log('ASAP_CORE_DEBUG: Before require_once better-auth-config.php');
 require_once(plugin_dir_path(__FILE__) . 'better-auth-config.php');
+error_log('ASAP_CORE_DEBUG: After require_once better-auth-config.php');
+
 // Include the API Base Controller FIRST
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-rest-base.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-rest-base.php');
+
 // Include the new Session Check Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-session-check-controller.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-session-check-controller.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-session-check-controller.php');
+
 // Include the (Obsolete V3) Sync Token Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-sync-token-controller.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-sync-token-controller.php');
+
 // Include the NEW V4 SvelteKit Token Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-sk-token-controller.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-token-controller.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-sk-token-controller.php');
+
 // Include the NEW V5 Active Sessions Controller (True Server-to-Server)
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-active-sessions-controller.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-active-sessions-controller.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-active-sessions-controller.php');
+
 // Include the REST Auth Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-rest-auth.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-rest-auth.php');
+
 // Include the (Obsolete V3) SK User Sync Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-sk-user-sync.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-sk-user-sync.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-sk-user-sync.php');
+
 // Include the (Obsolete V3) Check Sync Token Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-check-sync-token-controller.php');
 require_once(plugin_dir_path(__FILE__) . 'includes/api/class-check-sync-token-controller.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-check-sync-token-controller.php');
+
+// Include the REST Ingested Content Controller
+error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-rest-ingested-content.php');
+require_once(plugin_dir_path(__FILE__) . 'includes/api/class-rest-ingested-content.php');
+error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-rest-ingested-content.php');
+
+// --- Ensure all core classes are loaded before admin classes (per wordpress-hook-protocol) ---
+error_log('ASAP_CORE_DEBUG: Before require_once includes/class-core.php');
+require_once plugin_dir_path(__FILE__) . 'includes/class-core.php';
+error_log('ASAP_CORE_DEBUG: After require_once includes/class-core.php');
+
+// --- Ensure all admin classes are loaded before menu registration (per wordpress-hook-protocol) ---
+require_once plugin_dir_path(__FILE__) . 'admin/class-central-command.php';
 
 load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/languages/');
 
@@ -183,6 +226,12 @@ function asap_init_core() {
         // Register its routes
         $user_details_controller->register_routes();
     }, 10); // Use default priority
+
+    // Register Ingested Content REST API controller
+    add_action('rest_api_init', function() {
+        $controller = new \ASAPDigest\Core\API\ASAP_Digest_REST_Ingested_Content();
+        $controller->register_routes();
+    }, 10);
 }
 
 // Initialize core functionality early
@@ -1278,27 +1327,31 @@ function asap_inject_sk_auth_bridge_script() {
 add_action('wp_footer', 'asap_inject_sk_auth_bridge_script');
 add_action('admin_footer', 'asap_inject_sk_auth_bridge_script'); // ADDED FOR ADMIN AREA
 
-/**
- * @description Register ASAP Digest Central Command menu and submenus
- * @return void
- * @example
- * // Called during admin_menu action
- * asap_add_central_command_menu();
- * @created 03.30.25 | 04:35 PM PDT
- */
+// --- ASAP Digest Admin Menu Registration (per wordpress-menu-registration-protocol) ---
+// All admin menu and submenu registration is centralized here.
+// Callback functions are defined below or required before registration.
+
+// Create a single shared instance for menu callbacks
+if (!isset($GLOBALS['asap_digest_central_command'])) {
+    $core_instance = \ASAPDigest\Core\ASAP_Digest_Core::get_instance();
+    $GLOBALS['asap_digest_central_command'] = new \ASAPDigest\Core\ASAP_Digest_Central_Command($core_instance);
+}
+$asap_digest_central_command = $GLOBALS['asap_digest_central_command'];
+
 function asap_add_central_command_menu() {
-    // Add the main menu item
+    global $asap_digest_central_command;
+    // Main menu
     add_menu_page(
-        '⚡️ Central Command',  // Page title
-        '⚡️ Central Command',  // Menu title
-        'manage_options',       // Capability
-        'asap-central-command', // Menu slug
-        'asap_render_central_command_dashboard', // Callback function
-        'dashicons-superhero',  // Icon
-        3                       // Position after Dashboard and Posts
+        '⚡️ Central Command',
+        '⚡️ Central Command',
+        'manage_options',
+        'asap-central-command',
+        'asap_render_central_command_dashboard',
+        'dashicons-superhero',
+        3
     );
 
-    // Add submenus
+    // Submenus (Central Command)
     add_submenu_page(
         'asap-central-command',
         'Digest Management',
@@ -1307,7 +1360,6 @@ function asap_add_central_command_menu() {
         'asap-digest-management',
         'asap_render_digest_management'
     );
-
     add_submenu_page(
         'asap-central-command',
         'User Statistics',
@@ -1316,17 +1368,14 @@ function asap_add_central_command_menu() {
         'asap-user-stats',
         'asap_render_user_stats'
     );
-
-    // Re-add Auth Settings submenu if needed, ensure callback asap_render_better_auth_settings exists
     add_submenu_page(
         'asap-central-command',
         'Better Auth Settings',
         'Auth Settings',
         'manage_options',
         'asap-auth-settings',
-        'asap_render_better_auth_settings' // Callback exists in better-auth-config.php
+        'asap_render_better_auth_settings'
     );
-
     add_submenu_page(
         'asap-central-command',
         'ASAP Settings',
@@ -1335,7 +1384,86 @@ function asap_add_central_command_menu() {
         'asap-settings',
         'asap_render_settings'
     );
+    add_submenu_page(
+        'asap-central-command',
+        'Ingested Content',
+        'Ingested Content',
+        'manage_options',
+        'asap-ingested-content',
+        function() {
+            require_once plugin_dir_path(__FILE__) . 'admin/views/ingested-content.php';
+        }
+    );
+
+    // ASAP Digest legacy/feature menus (if needed)
+    add_menu_page(
+        'ASAP Digest',
+        'ASAP Digest',
+        'manage_options',
+        'asap-digest',
+        'asap_render_central_command_dashboard',
+        'dashicons-analytics',
+        25
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Dashboard',
+        'Dashboard',
+        'manage_options',
+        'asap-digest',
+        'asap_render_central_command_dashboard'
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Crawler Sources',
+        'Crawler Sources',
+        'manage_options',
+        'asap-crawler-sources',
+        [$asap_digest_central_command, 'render_sources']
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Moderation Queue',
+        'Moderation Queue',
+        'manage_options',
+        'asap-moderation-queue',
+        [$asap_digest_central_command, 'render_moderation']
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Analytics',
+        'Analytics',
+        'manage_options',
+        'asap-analytics',
+        [$asap_digest_central_command, 'render_analytics']
+    );
+    add_submenu_page(
+        'asap-digest',
+        'AI Settings',
+        'AI Settings',
+        'manage_options',
+        'asap-ai-settings',
+        [$asap_digest_central_command, 'render_ai_settings']
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Usage Analytics',
+        'Usage Analytics',
+        'manage_options',
+        'asap-usage-analytics',
+        [$asap_digest_central_command, 'render_usage_analytics']
+    );
+    add_submenu_page(
+        'asap-digest',
+        'Service Costs',
+        'Service Costs',
+        'manage_options',
+        'asap-service-costs',
+        [$asap_digest_central_command, 'render_service_costs']
+    );
 }
+// Register the menu with admin_menu (single location, per protocol)
+add_action('admin_menu', 'asap_add_central_command_menu', 30);
 
 /**
  * Add necessary CORS headers for WPGraphQL OPTIONS preflight requests.

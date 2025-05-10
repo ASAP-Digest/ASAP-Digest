@@ -31,10 +31,29 @@ class ASAP_Digest_Usage_Tracker {
 
     /**
      * Constructor
+     * @param ASAP_Digest_Database $database_instance The database handler instance.
      */
-    public function __construct() {
-        $this->database = ASAP_Digest_Core::get_instance()->get_database();
+    public function __construct(ASAP_Digest_Database $database_instance) {
+        error_log('ASAP_USAGE_TRACKER_DEBUG: __construct() CALLED');
+        if (!$database_instance) {
+            error_log('ASAP_USAGE_TRACKER_DEBUG: CRITICAL - No database instance provided to Usage_Tracker constructor!');
+            // Optionally throw an exception or handle error appropriately
+            // For now, to prevent fatal error on null, but this indicates a deeper issue if it happens:
+            if (ASAP_Digest_Core::get_instance()) { // Last resort, but avoid if possible
+                 $this->database = ASAP_Digest_Core::get_instance()->get_database();
+                 error_log('ASAP_USAGE_TRACKER_DEBUG: Fallback to get_instance for database in Usage_Tracker. This is not ideal.');
+            } else {
+                 error_log('ASAP_USAGE_TRACKER_DEBUG: Fallback FAILED. Core instance is null.');
+                 // Cannot proceed without a database instance
+                 // throw new \Exception("ASAP_Digest_Database instance is required for ASAP_Digest_Usage_Tracker.");
+                 return; // Or handle more gracefully
+            }
+        } else {
+            $this->database = $database_instance;
+            error_log('ASAP_USAGE_TRACKER_DEBUG: Database instance received and set.');
+        }
         $this->init();
+        error_log('ASAP_USAGE_TRACKER_DEBUG: __construct() FINISHED');
     }
 
     /**

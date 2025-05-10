@@ -7,6 +7,7 @@
 class ASAP_Digest_Core_Activator {
     /**
      * Run activation tasks: create required tables for Content Ingestion & Indexing System v2
+     * Also migrates wp_posts to add asap_fingerprint and asap_quality_score columns (v2.2)
      */
     public static function activate() {
         global $wpdb;
@@ -112,11 +113,25 @@ class ASAP_Digest_Core_Activator {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        // --- [ v2.2: Create custom content index table for deduplication and quality scoring ] ---
+        $sql_content_index = "CREATE TABLE IF NOT EXISTS {$prefix}asap_content_index (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            post_id bigint(20) UNSIGNED NOT NULL,
+            fingerprint char(64) NOT NULL,
+            quality_score tinyint UNSIGNED DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY uniq_fingerprint (fingerprint),
+            UNIQUE KEY uniq_post_id (post_id)
+        ) $charset_collate;";
+
         dbDelta($sql_sources);
         dbDelta($sql_metrics);
         dbDelta($sql_storage);
         dbDelta($sql_errors);
         dbDelta($sql_moderation_log);
+        dbDelta($sql_content_index);
     }
 }
 
