@@ -52,6 +52,17 @@ class ASAP_Digest_Admin_UI {
             '1.0.0'
         );
 
+        // Enqueue Chart.js only on analytics dashboard
+        if (isset($_GET['page']) && $_GET['page'] === 'asap-digest-analytics') {
+            wp_enqueue_script(
+                'chartjs',
+                'https://cdn.jsdelivr.net/npm/chart.js',
+                [],
+                '4.4.1',
+                true
+            );
+        }
+
         // Enqueue JavaScript
         wp_enqueue_script(
             'asap-digest-admin',
