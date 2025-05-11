@@ -150,17 +150,17 @@ class ScraperAdapter implements ContentSourceAdapter {
      */
     public function fetch_content($source) {
         try {
-            // Get source configuration
+        // Get source configuration
             $config = is_string($source->config) ? maybe_unserialize($source->config) : $source->config;
             
             if (!is_array($config)) {
                 $config = [];
             }
-            
-            // Check requirements
-            if (!class_exists('DOMDocument') || !class_exists('DOMXPath')) {
-                throw new \Exception("DOM extension is required for web scraping");
-            }
+        
+        // Check requirements
+        if (!class_exists('DOMDocument') || !class_exists('DOMXPath')) {
+            throw new \Exception("DOM extension is required for web scraping");
+        }
             
             // Normalize the configuration
             $config = $this->normalize_config($config);
@@ -168,24 +168,24 @@ class ScraperAdapter implements ContentSourceAdapter {
             // Debug log
             if ($this->debug_logging) {
                 error_log("ScraperAdapter: Fetching content from {$source->url} with selector type: {$config['selector_type']}");
-            }
-            
-            // Prepare request arguments
-            $args = [
-                'timeout' => $this->timeout,
-                'headers' => $this->get_request_headers($config),
+        }
+        
+        // Prepare request arguments
+        $args = [
+            'timeout' => $this->timeout,
+            'headers' => $this->get_request_headers($config),
                 'sslverify' => true,
                 'user-agent' => !empty($config['user_agent']) ? $config['user_agent'] : $this->default_headers['User-Agent']
-            ];
-            
-            // Add authentication if configured
-            if (!empty($config['auth_type'])) {
-                $args = $this->add_authentication($args, $config);
-            }
-            
-            // Make the request
-            $response = wp_remote_get($source->url, $args);
-            
+        ];
+        
+        // Add authentication if configured
+        if (!empty($config['auth_type'])) {
+            $args = $this->add_authentication($args, $config);
+        }
+        
+        // Make the request
+        $response = wp_remote_get($source->url, $args);
+        
             // Process the response and handle errors
             $html = $this->process_response($response, $source->url);
             
@@ -301,14 +301,14 @@ class ScraperAdapter implements ContentSourceAdapter {
         
         // For XPath selectors
         if ($config['selector_type'] === 'xpath') {
-            $xpath = new \DOMXPath($dom);
-            
-            // Check if we're scraping multiple items or just the page itself
-            if (!empty($config['item_selector'])) {
-                // Scrape multiple items from the page
+        $xpath = new \DOMXPath($dom);
+        
+        // Check if we're scraping multiple items or just the page itself
+        if (!empty($config['item_selector'])) {
+            // Scrape multiple items from the page
                 return $this->scrape_multiple_items_xpath($xpath, $config, $base_url);
-            } else {
-                // Scrape the page as a single item
+        } else {
+            // Scrape the page as a single item
                 return [$this->scrape_single_page_xpath($xpath, $config, $base_url)];
             }
         }
@@ -736,16 +736,16 @@ class ScraperAdapter implements ContentSourceAdapter {
         $items = [];
         
         try {
-            $nodes = $xpath->query($config['item_selector']);
-            if ($nodes && $nodes->length > 0) {
-                foreach ($nodes as $node) {
+        $nodes = $xpath->query($config['item_selector']);
+        if ($nodes && $nodes->length > 0) {
+            foreach ($nodes as $node) {
                     // Create a context-specific XPath for this node
                     $nodeXpath = new \DOMXPath($node->ownerDocument);
                     
                     $item = $this->extract_item_with_xpath($node, $nodeXpath, $config, $base_url);
-                    if ($item) {
-                        $items[] = $item;
-                    }
+                if ($item) {
+                    $items[] = $item;
+                }
                 }
             }
         } catch (\Exception $e) {
@@ -792,16 +792,16 @@ class ScraperAdapter implements ContentSourceAdapter {
             try {
                 // Use the context node for the XPath query
                 $fieldNodes = $xpath->query($selector, $context_node);
-                if ($fieldNodes && $fieldNodes->length > 0) {
+            if ($fieldNodes && $fieldNodes->length > 0) {
                     // For URL field, handle differently
-                    if ($field === 'url') {
+                if ($field === 'url') {
                         // Try href attribute first, then src, then text content
                         $node = $fieldNodes->item(0);
                         if ($node instanceof \DOMElement) {
                             $href = $node->getAttribute('href');
                             if ($href) {
                                 $item[$field] = $this->resolve_url($href, $base_url);
-                            } else {
+                } else {
                                 $src = $node->getAttribute('src');
                                 if ($src) {
                                     $item[$field] = $this->resolve_url($src, $base_url);
@@ -839,9 +839,9 @@ class ScraperAdapter implements ContentSourceAdapter {
                     // For content field, optionally get innerHTML
                     elseif ($field === 'content') {
                         if (!empty($config['use_inner_html'])) {
-                            $html = '';
-                            $children = $fieldNodes->item(0)->childNodes;
-                            foreach ($children as $child) {
+                        $html = '';
+                        $children = $fieldNodes->item(0)->childNodes;
+                        foreach ($children as $child) {
                                 $html .= $context_node->ownerDocument->saveHTML($child);
                             }
                             // Apply content cleaning if configured
@@ -945,14 +945,14 @@ class ScraperAdapter implements ContentSourceAdapter {
         // Extract each field
         foreach ($fields as $field => $selector) {
             try {
-                $nodes = $xpath->query($selector);
-                if ($nodes && $nodes->length > 0) {
-                    if ($field === 'content' && !empty($config['use_inner_html'])) {
-                        $html = '';
-                        $children = $nodes->item(0)->childNodes;
-                        foreach ($children as $child) {
-                            $html .= $nodes->item(0)->ownerDocument->saveHTML($child);
-                        }
+            $nodes = $xpath->query($selector);
+            if ($nodes && $nodes->length > 0) {
+                if ($field === 'content' && !empty($config['use_inner_html'])) {
+                    $html = '';
+                    $children = $nodes->item(0)->childNodes;
+                    foreach ($children as $child) {
+                        $html .= $nodes->item(0)->ownerDocument->saveHTML($child);
+                    }
                         $item[$field] = $this->clean_content($html, $config);
                     } elseif ($field === 'image') {
                         // Handle image URL resolution
@@ -960,8 +960,8 @@ class ScraperAdapter implements ContentSourceAdapter {
                         if ($src) {
                             $item[$field] = $this->resolve_url($src, $base_url);
                         }
-                    } else {
-                        $item[$field] = $nodes->item(0)->textContent;
+                } else {
+                    $item[$field] = $nodes->item(0)->textContent;
                     }
                 }
             } catch (\Exception $e) {

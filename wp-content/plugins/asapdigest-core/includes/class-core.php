@@ -68,7 +68,7 @@ final class ASAP_Digest_Core {
      * @var ASAP_Digest_Core|null The single instance of the class
      */
     private static $instance = null;
-    
+
     /**
      * @var ASAP_Digest_Database Database management instance
      */
@@ -103,7 +103,7 @@ final class ASAP_Digest_Core {
      * @var Scheduler Crawler scheduler instance
      */
     public $scheduler;
-    
+
     /**
      * Ensures only one instance is loaded or can be loaded.
      * 
@@ -223,7 +223,7 @@ final class ASAP_Digest_Core {
         // Digest API
         $digest_api = new ASAP_Digest_REST_Digest();
         $digest_api->register_routes();
-        
+
         // Auth API
         $auth_api = new ASAP_Digest_REST_Auth();
         $auth_api->register_routes();
@@ -337,7 +337,7 @@ final class ASAP_Digest_Core {
             wp_schedule_event(time(), 'daily', 'asap_cleanup_data');
         }
     }
-    
+
     /**
      * Clean up old digests and notifications data
      */

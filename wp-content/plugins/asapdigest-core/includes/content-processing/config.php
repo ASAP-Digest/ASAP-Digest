@@ -59,4 +59,39 @@ if (!defined('ASAP_CONTENT_BATCH_SIZE')) {
 // How far back to look for duplicates in reporting (days)
 if (!defined('ASAP_DUPLICATES_LOOKBACK_DAYS')) {
     define('ASAP_DUPLICATES_LOOKBACK_DAYS', 30);
+}
+
+// Content storage configuration
+if (!defined('ASAP_CONTENT_STORAGE_CLASS')) {
+    define('ASAP_CONTENT_STORAGE_CLASS', 'AsapDigest\\Crawler\\ContentStorage');
+}
+
+// Whether to use enhanced quality scoring
+if (!defined('ASAP_USE_ENHANCED_QUALITY_SCORING')) {
+    define('ASAP_USE_ENHANCED_QUALITY_SCORING', true);
+}
+
+// Whether to send notifications for poor quality content
+if (!defined('ASAP_NOTIFY_POOR_QUALITY')) {
+    define('ASAP_NOTIFY_POOR_QUALITY', true);
+}
+
+// Whether to use content storage integration (saves to both tables)
+if (!defined('ASAP_USE_CONTENT_STORAGE_INTEGRATION')) {
+    define('ASAP_USE_CONTENT_STORAGE_INTEGRATION', true);
+}
+
+// Minimum readability score threshold
+if (!defined('ASAP_READABILITY_THRESHOLD')) {
+    define('ASAP_READABILITY_THRESHOLD', 40);
+}
+
+// Whether to auto-generate summaries for content that doesn't have one
+if (!defined('ASAP_AUTO_GENERATE_SUMMARIES')) {
+    define('ASAP_AUTO_GENERATE_SUMMARIES', false);
+}
+
+// Maximum content items to keep in history per source
+if (!defined('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE')) {
+    define('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE', 100);
 } 

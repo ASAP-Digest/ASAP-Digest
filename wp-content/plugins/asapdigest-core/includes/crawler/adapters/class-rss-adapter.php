@@ -118,9 +118,9 @@ class RSSAdapter implements ContentSourceAdapter {
         
         // Try to initialize the feed
         try {
-            $success = $feed->init();
+        $success = $feed->init();
             
-            if (!$success) {
+        if (!$success) {
                 throw new \Exception("Failed to initialize feed: " . $feed->error());
             }
             
@@ -128,23 +128,23 @@ class RSSAdapter implements ContentSourceAdapter {
             if ($this->detect_feed_format) {
                 $format = $this->detect_format($feed);
                 error_log("Feed format detected: {$format} for {$source->url}");
-            }
-            
-            // Get feed items
-            $feed_items = $feed->get_items(0, $this->max_items);
-            if (empty($feed_items)) {
+        }
+        
+        // Get feed items
+        $feed_items = $feed->get_items(0, $this->max_items);
+        if (empty($feed_items)) {
                 return []; // Empty feed, but not an error
+        }
+        
+        // Process items
+        $items = [];
+        foreach ($feed_items as $feed_item) {
+            $item = $this->process_feed_item($feed_item, $source);
+            if ($item) {
+                $items[] = $item;
             }
-            
-            // Process items
-            $items = [];
-            foreach ($feed_items as $feed_item) {
-                $item = $this->process_feed_item($feed_item, $source);
-                if ($item) {
-                    $items[] = $item;
-                }
-            }
-            
+        }
+        
             // Log success
             $count = count($items);
             error_log("Successfully processed {$count} items from feed: {$source->url}");
@@ -179,7 +179,7 @@ class RSSAdapter implements ContentSourceAdapter {
                             
                             $count = count($items);
                             error_log("Autodiscovery fallback succeeded with {$count} items from {$source->url}");
-                            return $items;
+        return $items;
                         }
                     }
                 } catch (\Exception $fallback_e) {
@@ -580,13 +580,13 @@ class RSSAdapter implements ContentSourceAdapter {
             // that matches the selector
             if (class_exists('DOMDocument')) {
                 try {
-                    $dom = new \DOMDocument();
-                    @$dom->loadHTML(mb_convert_encoding($item['content'], 'HTML-ENTITIES', 'UTF-8'));
-                    $xpath = new \DOMXPath($dom);
-                    $nodes = $xpath->query($config['content_selector']);
-                    if ($nodes->length > 0) {
-                        $item['content'] = $dom->saveHTML($nodes->item(0));
-                    }
+                $dom = new \DOMDocument();
+                @$dom->loadHTML(mb_convert_encoding($item['content'], 'HTML-ENTITIES', 'UTF-8'));
+                $xpath = new \DOMXPath($dom);
+                $nodes = $xpath->query($config['content_selector']);
+                if ($nodes->length > 0) {
+                    $item['content'] = $dom->saveHTML($nodes->item(0));
+                }
                 } catch (\Exception $e) {
                     error_log("DOM parsing error: " . $e->getMessage());
                 }

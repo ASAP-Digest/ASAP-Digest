@@ -21,6 +21,7 @@ require_once(dirname(__FILE__) . '/config.php');
 // Load components
 require_once(dirname(__FILE__) . '/class-content-validator.php');
 require_once(dirname(__FILE__) . '/class-content-deduplicator.php');
+require_once(dirname(__FILE__) . '/class-content-quality.php');
 require_once(dirname(__FILE__) . '/class-content-processor.php');
 
 /**
@@ -31,6 +32,12 @@ function asap_digest_init_content_processing() {
     add_action('asap_content_added', 'asap_digest_log_content_action', 10, 2);
     add_action('asap_content_updated', 'asap_digest_log_content_action', 10, 2);
     add_action('asap_content_deleted', 'asap_digest_log_content_action', 10, 2);
+    
+    // Register integration hooks for crawler
+    add_action('asap_content_crawled', 'asap_digest_process_crawled_content', 10, 1);
+    
+    // Add quality check filter
+    add_filter('asap_content_quality_check', 'asap_digest_check_content_quality', 10, 1);
 }
 
 /**
@@ -66,7 +73,7 @@ function asap_digest_log_content_action($content_id, $content_data) {
         );
     }
     
-    // You can also use WordPress error log for debugging
+    // Log to WordPress error log for debugging
     if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
         error_log(sprintf(
             'ASAP Content Action: %s, ID: %d, User: %d, Title: %s',
@@ -76,6 +83,69 @@ function asap_digest_log_content_action($content_id, $content_data) {
             isset($content_data['title']) ? $content_data['title'] : 'Unknown'
         ));
     }
+}
+
+/**
+ * Process content that has been crawled
+ *
+ * This function serves as an integration point between the crawler and content processor
+ *
+ * @param array $content_data Crawled content data
+ * @return array Processing results
+ */
+function asap_digest_process_crawled_content($content_data) {
+    $processor = asap_digest_get_content_processor();
+    
+    // Process the content
+    $process_result = $processor->process($content_data);
+    
+    // If processing successful, save the content
+    if ($process_result['success']) {
+        $save_result = $processor->save($process_result);
+        
+        if ($save_result['success']) {
+            // Successfully processed and saved
+            return [
+                'success' => true,
+                'content_id' => $save_result['content_id'],
+                'message' => 'Content successfully processed and stored',
+                'quality_score' => $process_result['data']['quality_score'],
+            ];
+        } else {
+            // Error saving
+            return [
+                'success' => false,
+                'errors' => $save_result['errors'],
+                'message' => 'Content processed but failed to save',
+            ];
+        }
+    } else {
+        // Error processing
+        return [
+            'success' => false,
+            'errors' => $process_result['errors'],
+            'message' => 'Content failed processing step',
+        ];
+    }
+}
+
+/**
+ * Check content quality (for use as a filter)
+ * 
+ * @param array $content_data Content data to check
+ * @return array Result with quality assessment
+ */
+function asap_digest_check_content_quality($content_data) {
+    $quality = new ASAP_Digest_Content_Quality($content_data);
+    $assessment = $quality->assess();
+    
+    return [
+        'passes' => $quality->passes_quality_threshold(),
+        'score' => $assessment['score'],
+        'category' => $assessment['category'],
+        'assessment' => $assessment,
+        'suggestions' => $assessment['suggestions'],
+    ];
 }
 
 /**
@@ -150,6 +220,17 @@ function asap_digest_is_duplicate($content_data, $exclude_id = 0) {
     $deduplicator = new ASAP_Digest_Content_Deduplicator();
     $fingerprint = asap_digest_generate_fingerprint($content_data);
     return $deduplicator->is_duplicate($fingerprint, $exclude_id);
+}
+
+/**
+ * Analyze content quality
+ *
+ * @param array $content_data Content data to analyze
+ * @return array Quality assessment results
+ */
+function asap_digest_analyze_content_quality($content_data) {
+    $quality = new ASAP_Digest_Content_Quality($content_data);
+    return $quality->assess();
 }
 
 /**

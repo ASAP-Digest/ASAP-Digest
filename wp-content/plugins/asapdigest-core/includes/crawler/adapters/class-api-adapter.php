@@ -143,20 +143,20 @@ class APIAdapter implements ContentSourceAdapter {
             try {
                 // Prepare request URL with pagination parameters
                 $request_url = $this->prepare_paginated_url($source->url, $pagination);
-                
-                // Prepare request arguments
-                $args = [
-                    'timeout' => $this->timeout,
-                    'headers' => $this->get_request_headers($config),
-                    'sslverify' => true
-                ];
-                
-                // Add authentication if configured
-                if (!empty($config['auth_type'])) {
-                    $args = $this->add_authentication($args, $config);
-                }
-                
-                // Make the request
+        
+        // Prepare request arguments
+        $args = [
+            'timeout' => $this->timeout,
+            'headers' => $this->get_request_headers($config),
+            'sslverify' => true
+        ];
+        
+        // Add authentication if configured
+        if (!empty($config['auth_type'])) {
+            $args = $this->add_authentication($args, $config);
+        }
+        
+        // Make the request
                 $response = wp_remote_get($request_url, $args);
                 
                 // Process response
@@ -415,7 +415,7 @@ class APIAdapter implements ContentSourceAdapter {
                     $pagination['has_more'] = $pagination['offset'] < $pagination['total_items'];
                 } else {
                     // If we don't have total info, use presence of items in response
-                    $items_path = !empty($config['items_path']) ? $config['items_path'] : '';
+        $items_path = !empty($config['items_path']) ? $config['items_path'] : '';
                     $items = $this->extract_items($response, $items_path);
                     $pagination['has_more'] = !empty($items) && count($items) >= $pagination['per_page'];
                 }
@@ -531,8 +531,8 @@ class APIAdapter implements ContentSourceAdapter {
                 if (!empty($value)) {
                     $this->rate_limit_state[$state_key] = is_numeric($value) ? (int)$value : $value;
                     break;
-                }
             }
+        }
         }
         
         // Handle Retry-After header

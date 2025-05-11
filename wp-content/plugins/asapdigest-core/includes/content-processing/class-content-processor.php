@@ -36,6 +36,13 @@ class ASAP_Digest_Content_Processor {
      * @var ASAP_Digest_Content_Deduplicator
      */
     private $deduplicator;
+    
+    /**
+     * Content quality instance
+     *
+     * @var ASAP_Digest_Content_Quality
+     */
+    private $quality;
 
     /**
      * Processing results
@@ -50,9 +57,11 @@ class ASAP_Digest_Content_Processor {
     public function __construct() {
         require_once(dirname(__FILE__) . '/class-content-validator.php');
         require_once(dirname(__FILE__) . '/class-content-deduplicator.php');
+        require_once(dirname(__FILE__) . '/class-content-quality.php');
         
         $this->validator = new ASAP_Digest_Content_Validator();
         $this->deduplicator = new ASAP_Digest_Content_Deduplicator();
+        $this->quality = new ASAP_Digest_Content_Quality();
         $this->results = [
             'success' => false,
             'errors' => [],
@@ -96,11 +105,10 @@ class ASAP_Digest_Content_Processor {
             return $this->results;
         }
         
-        // Step 3: Calculate quality score
-        $quality_score = $this->validator->calculate_quality_score();
-        
-        // Step 4: Get detailed quality assessment
-        $quality_assessment = $this->validator->get_quality_assessment();
+        // Step 3: Perform comprehensive quality assessment
+        $this->quality->set_content_data($content_data);
+        $quality_assessment = $this->quality->assess();
+        $quality_score = $quality_assessment['score'];
         
         // Optionally check if quality score is below auto-reject threshold
         if (defined('ASAP_QUALITY_SCORE_AUTO_REJECT') && $quality_score < ASAP_QUALITY_SCORE_AUTO_REJECT) {
@@ -129,6 +137,8 @@ class ASAP_Digest_Content_Processor {
                 $quality_score,
                 ASAP_QUALITY_SCORE_MINIMUM
             );
+            // Add quality improvement suggestions
+            $this->results['warnings']['suggestions'] = $quality_assessment['suggestions'];
         }
         
         return $this->results;
@@ -161,6 +171,55 @@ class ASAP_Digest_Content_Processor {
         $fingerprint = $processed_data['data']['fingerprint'];
         $quality_score = $processed_data['data']['quality_score'];
         
+        // Check if we should use ContentStorage integration
+        if (defined('ASAP_USE_CONTENT_STORAGE_INTEGRATION') && ASAP_USE_CONTENT_STORAGE_INTEGRATION) {
+            // Get the ContentStorage class name from config
+            $storage_class = defined('ASAP_CONTENT_STORAGE_CLASS') ? ASAP_CONTENT_STORAGE_CLASS : 'AsapDigest\\Crawler\\ContentStorage';
+            
+            // Check if class exists
+            if (class_exists($storage_class)) {
+                try {
+                    // Initialize storage class
+                    $storage = new $storage_class();
+                    
+                    // Add quality information to content data
+                    $content_data['quality_score'] = $quality_score;
+                    $content_data['fingerprint'] = $fingerprint;
+                    
+                    if (!empty($processed_data['data']['quality_assessment'])) {
+                        // Add quality assessment to extra data
+                        if (!isset($content_data['extra'])) {
+                            $content_data['extra'] = [];
+                        }
+                        $content_data['extra']['quality_assessment'] = $processed_data['data']['quality_assessment'];
+                    }
+                    
+                    // Store content using ContentStorage
+                    $storage_id = $update_id ? $storage->update($update_id, $content_data) : $storage->store($content_data);
+                    
+                    if ($storage_id) {
+                        $result['success'] = true;
+                        $result['content_id'] = $storage_id;
+                        
+                        // Trigger appropriate action
+                        if ($update_id) {
+                            do_action('asap_content_updated', $storage_id, $content_data);
+                        } else {
+                            do_action('asap_content_added', $storage_id, $content_data);
+                        }
+                        
+                        return $result;
+                    } else {
+                        $result['errors'][] = 'ContentStorage failed to store the content';
+                    }
+                } catch (\Exception $e) {
+                    $result['errors'][] = 'Error using ContentStorage: ' . $e->getMessage();
+                    // Fall back to default storage method
+                }
+            }
+        }
+        
+        // Default storage implementation if ContentStorage integration is disabled or failed
         // Prepare data for database
         $content_table = $wpdb->prefix . 'asap_ingested_content';
         $now = current_time('mysql');

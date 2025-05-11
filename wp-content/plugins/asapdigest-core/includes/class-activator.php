@@ -126,7 +126,7 @@ class ASAP_Digest_Activator {
             UNIQUE KEY uniq_fingerprint (fingerprint),
             UNIQUE KEY uniq_post_id (post_id)
         ) $charset_collate;";
-        
+
         // Digest Storage Table
         $sql_digests = "CREATE TABLE IF NOT EXISTS {$prefix}asap_digests (
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
