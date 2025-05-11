@@ -76,7 +76,7 @@ class ContentSourceManager {
         
         // Sources table
         $sources_sql = "CREATE TABLE {$this->sources_table} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             name varchar(191) NOT NULL,
             type varchar(50) NOT NULL,
             url varchar(255) NOT NULL,
@@ -102,8 +102,8 @@ class ContentSourceManager {
         
         // Source metrics table
         $metrics_sql = "CREATE TABLE {$this->metrics_table} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            source_id bigint(20) NOT NULL,
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) UNSIGNED NOT NULL,
             items_found int(11) NOT NULL DEFAULT 0,
             items_processed int(11) NOT NULL DEFAULT 0,
             errors int(11) NOT NULL DEFAULT 0,
@@ -117,7 +117,7 @@ class ContentSourceManager {
         
         // Crawler metrics table for overall performance
         $crawler_metrics_sql = "CREATE TABLE {$this->crawler_metrics_table} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             run_date datetime NOT NULL,
             sources_processed int(11) NOT NULL DEFAULT 0,
             items_found int(11) NOT NULL DEFAULT 0,
@@ -133,8 +133,8 @@ class ContentSourceManager {
         
         // Crawler errors table
         $errors_sql = "CREATE TABLE {$this->errors_table} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            source_id bigint(20) NOT NULL,
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            source_id bigint(20) UNSIGNED NOT NULL,
             error_type varchar(50) NOT NULL,
             message text NOT NULL,
             context longtext,

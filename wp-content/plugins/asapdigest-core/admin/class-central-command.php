@@ -157,7 +157,7 @@ class ASAP_Digest_Central_Command {
             'dashicons-superhero',
             3
         );
-
+        
         // Dashboard submenu
         add_submenu_page(
             'asap-central-command',
@@ -167,7 +167,7 @@ class ASAP_Digest_Central_Command {
             'asap-central-command',
             [$this, 'render_dashboard']
         );
-
+        
         // Content Sources submenu
         add_submenu_page(
             'asap-central-command',
@@ -177,7 +177,7 @@ class ASAP_Digest_Central_Command {
             'asap-content-sources',
             [$this, 'render_source_management']
         );
-
+        
         // Content Library submenu
         add_submenu_page(
             'asap-central-command',
@@ -237,7 +237,7 @@ class ASAP_Digest_Central_Command {
             'asap-service-costs',
             [$this, 'render_service_costs']
         );
-
+        
         // Settings submenu
         add_submenu_page(
             'asap-central-command',
@@ -274,7 +274,7 @@ class ASAP_Digest_Central_Command {
      * Render settings page
      */
     public function render_settings() {
-        include_once plugin_dir_path(__FILE__) . 'views/settings.php';
+        include_once plugin_dir_path(__FILE__) . 'views/settings-page.php';
     }
 
     /**
@@ -332,105 +332,30 @@ class ASAP_Digest_Central_Command {
      * Render Moderation Queue admin page (with AJAX-powered moderation table)
      */
     public function render_moderation() {
-        ?>
-        <div class="wrap">
-            <h1>Moderation Queue</h1>
-            <div id="asap-moderation-table"></div>
-        </div>
-        <script>
-        (function($){
-            function fetchQueue() {
-                $('#asap-moderation-table').html('<p>Loading...</p>');
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/moderation-queue',
-                    method: 'GET',
-                    success: function(data) {
-                        var html = '<table class="wp-list-table widefat fixed striped"><thead><tr><th>ID</th><th>Title</th><th>Source</th><th>Actions</th></tr></thead><tbody>';
-                        data.queue.forEach(function(item) {
-                            html += '<tr>' +
-                                '<td>' + item.id + '</td>' +
-                                '<td>' + item.title + '</td>' +
-                                '<td>' + (item.source_name || '') + '</td>' +
-                                '<td>' +
-                                    '<button class="button asap-approve" data-id="' + item.id + '">Approve</button> ' +
-                                    '<button class="button asap-reject" data-id="' + item.id + '">Reject</button> ' +
-                                    '<button class="button asap-view-log" data-id="' + item.id + '">View Log</button>' +
-                                '</td>' +
-                            '</tr>' +
-                            '<tr class="asap-log-row" id="asap-log-row-' + item.id + '" style="display:none;"><td colspan="4"><div class="asap-log-content"></div></td></tr>';
-                        });
-                        html += '</tbody></table>';
-                        $('#asap-moderation-table').html(html);
-                    }
-                });
+        $view = plugin_dir_path(__FILE__) . 'views/ingested-content.php';
+        global $wpdb;
+        $table = $wpdb->prefix . 'asap_moderation_queue';
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table))) {
+            if (file_exists($view)) {
+                include $view;
+            } else {
+                echo '<div class="wrap"><h1>Moderation Queue</h1><p>Moderation queue view not implemented yet.</p></div>';
             }
-            fetchQueue();
-            $(document).on('click', '.asap-view-log', function() {
-                var id = $(this).data('id');
-                var $logRow = $('#asap-log-row-' + id);
-                if ($logRow.is(':visible')) {
-                    $logRow.hide();
-                    return;
-                }
-                $logRow.find('.asap-log-content').html('<p>Loading log...</p>');
-                $logRow.show();
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/moderation-log/' + id,
-                    method: 'GET',
-                    success: function(data) {
-                        var log = data.log;
-                        if (!log.length) {
-                            $logRow.find('.asap-log-content').html('<em>No moderation history.</em>');
-                            return;
-                        }
-                        var logHtml = '<table class="wp-list-table widefat"><thead><tr><th>Reviewer</th><th>Action</th><th>Decision</th><th>Reason</th><th>Timestamp</th></tr></thead><tbody>';
-                        log.forEach(function(entry) {
-                            var reviewer = entry.reviewer_name || entry.reviewer || '';
-                            logHtml += '<tr>' +
-                                '<td>' + reviewer + '</td>' +
-                                '<td>' + entry.action + '</td>' +
-                                '<td>' + entry.decision + '</td>' +
-                                '<td>' + (entry.reason || '') + '</td>' +
-                                '<td>' + entry.created_at + '</td>' +
-                            '</tr>';
-                        });
-                        logHtml += '</tbody></table>';
-                        $logRow.find('.asap-log-content').html(logHtml);
-                    }
-                });
-            });
-            // Approve/Reject handlers
-            $(document).on('click', '.asap-approve', function(){
-                var id = $(this).data('id');
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/queue/approve/' + id,
-                    method: 'POST',
-                    success: function(){ fetchQueue(); },
-                    error: function(){ alert('Failed to approve content.'); }
-                });
-            });
-            $(document).on('click', '.asap-reject', function(){
-                if (!confirm('Reject this content?')) return;
-                var id = $(this).data('id');
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/queue/reject/' + id,
-                    method: 'POST',
-                    success: function(){ fetchQueue(); },
-                    error: function(){ alert('Failed to reject content.'); }
-                });
-            });
-            // Initial load
-            $(document).ready(fetchQueue);
-        })(jQuery);
-        </script>
-        <?php
+        } else {
+            echo '<div class="wrap"><h1>Moderation Queue</h1><p>The moderation queue table does not exist. This feature will be available after the next phase of implementation.</p></div>';
+        }
     }
 
     /**
      * Render Crawler Analytics admin page (with AJAX-powered metrics tables)
      */
     public function render_analytics() {
-        require_once plugin_dir_path(__FILE__) . 'views/analytics-dashboard.php';
+        $view = plugin_dir_path(__FILE__) . 'views/analytics-dashboard.php';
+        if (file_exists($view) && filesize($view) > 10) {
+            include $view;
+        } else {
+            echo '<div class="wrap"><h1>Analytics Dashboard</h1><p>This dashboard is coming soon. Analytics features will be available after the next phase of implementation.</p></div>';
+        }
     }
 
     /**
@@ -944,5 +869,35 @@ class ASAP_Digest_Central_Command {
             'message' => 'Quality settings updated successfully.',
             'settings' => $settings
         ]);
+    }
+
+    public function render_usage_analytics() {
+        $view = plugin_dir_path(__FILE__) . 'views/usage-analytics.php';
+        global $wpdb;
+        $table = $wpdb->prefix . 'asap_usage_metrics';
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table))) {
+            if (file_exists($view)) {
+                include $view;
+            } else {
+                echo '<div class="wrap"><h1>Usage Analytics</h1><p>Usage analytics view not implemented yet.</p></div>';
+            }
+        } else {
+            echo '<div class="wrap"><h1>Usage Analytics</h1><p>The usage metrics table does not exist. This feature will be available after the next phase of implementation.</p></div>';
+        }
+    }
+
+    public function render_service_costs() {
+        $view = plugin_dir_path(__FILE__) . 'views/service-costs.php';
+        global $wpdb;
+        $table = $wpdb->prefix . 'asap_service_costs';
+        if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table))) {
+            if (file_exists($view)) {
+                include $view;
+            } else {
+                echo '<div class="wrap"><h1>Service Costs</h1><p>Service costs view not implemented yet.</p></div>';
+            }
+        } else {
+            echo '<div class="wrap"><h1>Service Costs</h1><p>The service costs table does not exist. This feature will be available after the next phase of implementation.</p></div>';
+        }
     }
 } 

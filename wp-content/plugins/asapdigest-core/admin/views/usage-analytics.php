@@ -7,7 +7,7 @@
  * @file-marker Usage_Analytics_View
  */
 
-use ASAPDigest\Core\ASAP_Digest_Admin_UI;
+use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
 
 if (!defined('ABSPATH')) {
     exit;

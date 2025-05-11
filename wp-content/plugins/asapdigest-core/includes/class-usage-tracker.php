@@ -227,6 +227,7 @@ class ASAP_Digest_Usage_Tracker {
                 break;
         }
 
+        // No variables in $sql, so do NOT use $wpdb->prepare()
         $sql = "SELECT metric_type, 
                        SUM(value) as total_value, 
                        SUM(cost) as total_cost,
@@ -235,6 +236,7 @@ class ASAP_Digest_Usage_Tracker {
                 WHERE $time_sql
                 GROUP BY metric_type";
 
+        // Direct query is correct here. If you add variables, use $wpdb->prepare().
         return $wpdb->get_results($sql);
     }
 

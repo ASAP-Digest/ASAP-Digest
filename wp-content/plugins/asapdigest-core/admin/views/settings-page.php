@@ -13,7 +13,16 @@ if (!defined('ABSPATH')) {
 $database = ASAPDigest\Core\ASAP_Digest_Core::get_instance()->get_database();
 $settings = $database->get_digest_settings();
 $better_auth = ASAPDigest\Core\ASAP_Digest_Core::get_instance()->get_better_auth();
-$auth_status = $better_auth->get_auth_status();
+$auth_status = $better_auth->get_auth_settings();
+if (is_wp_error($auth_status)) {
+    $auth_settings = [
+        'session_length' => 3600,
+        'refresh_token_length' => 604800,
+        'max_sessions' => 5
+    ];
+} else {
+    $auth_settings = $auth_status['settings'];
+}
 ?>
 
 <div class="wrap asap-digest-admin">
@@ -122,7 +131,7 @@ $auth_status = $better_auth->get_auth_status();
                             <input type="number" 
                                    name="session_length" 
                                    id="session_length" 
-                                   value="<?php echo esc_attr($auth_status['settings']['session_length']); ?>"
+                                   value="<?php echo esc_attr($auth_settings['session_length']); ?>"
                                    min="1800" 
                                    max="86400" 
                                    class="small-text">
@@ -140,7 +149,7 @@ $auth_status = $better_auth->get_auth_status();
                             <input type="number" 
                                    name="refresh_token_length" 
                                    id="refresh_token_length" 
-                                   value="<?php echo esc_attr($auth_status['settings']['refresh_token_length']); ?>"
+                                   value="<?php echo esc_attr($auth_settings['refresh_token_length']); ?>"
                                    min="86400" 
                                    max="2592000" 
                                    class="small-text">
@@ -158,7 +167,7 @@ $auth_status = $better_auth->get_auth_status();
                             <input type="number" 
                                    name="max_sessions" 
                                    id="max_sessions" 
-                                   value="<?php echo esc_attr($auth_status['settings']['max_sessions']); ?>"
+                                   value="<?php echo esc_attr($auth_settings['max_sessions']); ?>"
                                    min="1" 
                                    max="10" 
                                    class="small-text">

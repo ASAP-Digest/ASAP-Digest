@@ -7,7 +7,7 @@
  * @file-marker Service_Costs_View
  */
 
-use ASAPDigest\Core\ASAP_Digest_Admin_UI;
+use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -62,7 +62,12 @@ $services = [
             $form_content .= '<input type="hidden" name="service_name" value="' . esc_attr($service_name) . '">';
 
             foreach ($form_fields as $field) {
-                $form_content .= ASAP_Digest_Admin_UI::create_form_field($field);
+                $form_content .= ASAP_Digest_Admin_UI::create_form_field(
+                    $field['name'],
+                    $field['label'],
+                    $field['type'],
+                    $field
+                );
             }
 
             $form_content .= '<p class="submit">';
