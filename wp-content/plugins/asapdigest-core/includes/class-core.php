@@ -2,8 +2,10 @@
 /**
  * ASAP Digest Core Class
  * 
+ * Main plugin singleton for initialization and central management of all components.
+ * 
  * @package ASAPDigest_Core
- * @created 03.31.25 | 03:34 PM PDT
+ * @created 04.17.25 | 11:45 AM PDT
  * @file-marker ASAP_Digest_Core
  */
 
@@ -11,10 +13,16 @@ namespace ASAPDigest\Core;
 
 use ASAPDigest\Core\API\ASAP_Digest_REST_Auth;
 use ASAPDigest\Core\API\ASAP_Digest_REST_Digest;
-use ASAPDigest\Core\ASAP_Digest_Admin_UI;
-use ASAPDigest\Core\ASAP_Digest_Better_Auth;
-use ASAPDigest\Core\ASAP_Digest_Database;
-use ASAPDigest\Core\ASAP_Digest_Usage_Tracker;
+use ASAPDigest\Core\API\ASAP_Digest_REST_Ingested_Content;
+use ASAPDigest\Core\API\Active_Sessions_Controller;
+use ASAPDigest\Core\API\Check_Sync_Token_Controller;
+use ASAPDigest\Core\API\SK_Token_Controller;
+use ASAPDigest\Core\API\SK_User_Sync;
+use ASAPDigest\Core\API\Session_Check_Controller;
+use ASAPDigest\Core\API\User_Details_Controller;
+use ASAPDigest\Crawler\ContentCrawler;
+use ASAPDigest\Crawler\ContentSourceManager;
+use ASAPDigest\Crawler\Scheduler;
 use \WP_Error;
 use function add_action;
 use function date;
@@ -50,801 +58,384 @@ error_log('ASAP_CORE_CLASS_DEBUG: Before trait session-mgmt.php require');
 require_once plugin_dir_path(dirname(__FILE__)) . 'includes/traits/session-mgmt.php';
 error_log('ASAP_CORE_CLASS_DEBUG: After trait session-mgmt.php require');
 
-class ASAP_Digest_Core {
+/**
+ * Class ASAP_Digest_Core
+ * 
+ * @since 1.0.0
+ */
+final class ASAP_Digest_Core {
     /**
      * @var ASAP_Digest_Core|null The single instance of the class
      */
     private static $instance = null;
-    private static $get_instance_call_count = 0; // DEBUG: Recursion counter
-    private static $constructor_call_count = 0; // DEBUG: Recursion counter
-
+    
     /**
      * @var ASAP_Digest_Database Database management instance
      */
-    private $database;
+    public $database;
 
     /**
      * @var ASAP_Digest_Better_Auth Better Auth integration instance
      */
-    private $better_auth;
-
-    /**
-     * @var ASAP_Digest_Admin_UI Admin UI instance
-     */
-    // private $admin_ui; // Intentionally not used directly as property for now
+    public $better_auth;
 
     /**
      * @var ASAP_Digest_Usage_Tracker Usage tracking instance
      */
-    private $usage_tracker;
+    public $usage_tracker;
+    
+    /**
+     * @var ContentSourceManager Content source manager instance
+     */
+    public $content_source_manager;
+    
+    /**
+     * @var ContentCrawler Content crawler instance
+     */
+    public $content_crawler;
+    
+    /**
+     * @var \AsapDigest\Crawler\ContentProcessor Content processor instance
+     */
+    public $content_processor;
 
     /**
+     * @var Scheduler Crawler scheduler instance
+     */
+    public $scheduler;
+    
+    /**
      * Ensures only one instance is loaded or can be loaded.
+     * 
+     * @return ASAP_Digest_Core
      */
     public static function get_instance() {
-        self::$get_instance_call_count++;
-        error_log('ASAP_CORE_CLASS_DEBUG: get_instance() CALLED (' . self::$get_instance_call_count . ' times)');
-        if (self::$get_instance_call_count > 5) { // Emergency break for deep recursion
-            error_log('ASAP_CORE_CLASS_DEBUG: EMERGENCY BREAK - get_instance() called > 5 times, potential recursion detected in get_instance itself!');
-            // debug_print_backtrace(); // Optionally print backtrace here
-            return null; // Prevent further recursion
-        }
-
         if (null === self::$instance) {
-            error_log('ASAP_CORE_CLASS_DEBUG: get_instance() - self::$instance is NULL, creating new self()');
             self::$instance = new self();
-            error_log('ASAP_CORE_CLASS_DEBUG: get_instance() - new self() CREATED');
-        } else {
-            error_log('ASAP_CORE_CLASS_DEBUG: get_instance() - self::$instance EXISTS, returning existing');
         }
         return self::$instance;
     }
 
     /**
-     * Constructor
+     * Constructor - private to enforce singleton pattern
      */
     private function __construct() {
-        self::$constructor_call_count++;
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() CALLED (' . self::$constructor_call_count . ' times)');
-        if (self::$constructor_call_count > 5) { // Emergency break for deep recursion
-            error_log('ASAP_CORE_CLASS_DEBUG: EMERGENCY BREAK - __construct() called > 5 times, potential recursion detected in constructor chain!');
-            // debug_print_backtrace(); // Optionally print backtrace here
-            return; // Prevent further recursion
-        }
-
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() - Before define_constants()');
         $this->define_constants();
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() - After define_constants(), Before load_dependencies()');
         $this->load_dependencies();
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() - After load_dependencies(), Before init_components()');
         $this->init_components();
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() - After init_components(), Before define_hooks()');
         $this->define_hooks();
-        error_log('ASAP_CORE_CLASS_DEBUG: __construct() - FINISHED');
-
-        $this->init_content_processing();
     }
 
     /**
      * Define plugin constants
      */
     private function define_constants() {
-        error_log('ASAP_CORE_CLASS_DEBUG: define_constants() CALLED');
-        if (!defined('ASAP_DIGEST_VERSION')) {
-            define('ASAP_DIGEST_VERSION', '0.1.0');
-        }
-        if (!defined('ASAP_DIGEST_PLUGIN_DIR')) {
-            define('ASAP_DIGEST_PLUGIN_DIR', plugin_dir_path(dirname(__FILE__)));
-        }
-        error_log('ASAP_CORE_CLASS_DEBUG: define_constants() FINISHED');
+        // Most constants now defined in main plugin file
     }
 
     /**
      * Load required dependencies
      */
     private function load_dependencies() {
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() CALLED');
         // Core classes
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-database.php');
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-database.php';
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-database.php');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-better-auth.php');
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-better-auth.php';
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-better-auth.php');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-admin-ui.php');
         require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin-ui.php';
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-admin-ui.php');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-usage-tracker.php');
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-central-command.php';
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-usage-tracker.php';
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-usage-tracker.php');
-
-        // API classes
-        // Note: Many API classes are already loaded in asapdigest-core.php before this class is even parsed.
-        // We only need to ensure any *additional* ones are loaded if they are direct dependencies *of Core only*.
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-rest-base.php (API) - likely already loaded');
-        // require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-base.php'; // Already loaded in main plugin file
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-rest-base.php (API)');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-rest-digest.php (API)');
+        
+        // Content Processing
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-content-processor.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-content-storage.php';
+        
+        // Crawler components
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/interfaces/class-content-source-adapter.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-rss-adapter.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-api-adapter.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-scraper-adapter.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-content-source-manager.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-content-crawler.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-scheduler.php';
+        
+        // API components - Note: Many API classes are loaded in main plugin file
         require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-digest.php';
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-rest-digest.php (API)');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-rest-auth.php (API) - likely already loaded');
-        // require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-auth.php'; // Already loaded in main plugin file
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-rest-auth.php (API)');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - Before class-session-check-controller.php (API) - likely already loaded');
-        // require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-session-check-controller.php'; // Already loaded
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() - After class-session-check-controller.php (API)');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: load_dependencies() FINISHED');
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-session-check-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sync-token-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sk-token-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-active-sessions-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-auth.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sk-user-sync.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-check-sync-token-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-user-controller.php';
+        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-ingested-content.php';
     }
 
     /**
-     * Initialize plugin components
+     * Initialize plugin components with proper dependency injection
      */
     private function init_components() {
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() CALLED');
-        // Initialize database management
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() - Before new ASAP_Digest_Database()');
+        // Core components
         $this->database = new ASAP_Digest_Database();
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() - After new ASAP_Digest_Database()');
-        
-        // Initialize Better Auth integration
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() - Before new ASAP_Digest_Better_Auth()');
         $this->better_auth = new ASAP_Digest_Better_Auth();
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() - After new ASAP_Digest_Better_Auth()');
+        $this->usage_tracker = new ASAP_Digest_Usage_Tracker($this->database);
         
-        // Do NOT instantiate ASAP_Digest_Admin_UI here; use only for static helpers (per menu registration protocol)
-        // $this->admin_ui = new ASAP_Digest_Admin_UI();
-        // error_log('ASAP_CORE_CLASS_DEBUG: init_components() - ASAP_Digest_Admin_UI NOT instantiated (correct)');
+        // Crawler components
+        $this->content_source_manager = new ContentSourceManager($this->database);
+        $this->content_processor = new \AsapDigest\Crawler\ContentProcessor($this->database);
         
-        // Initialize usage tracker
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() - Before new ASAP_Digest_Usage_Tracker(passing $this->database)');
-        if ($this->database) {
-            $this->usage_tracker = new ASAP_Digest_Usage_Tracker($this->database);
-            error_log('ASAP_CORE_CLASS_DEBUG: init_components() - After new ASAP_Digest_Usage_Tracker(with DB instance)');
-        } else {
-            error_log('ASAP_CORE_CLASS_DEBUG: init_components() - CRITICAL ERROR: $this->database is NULL before instantiating Usage_Tracker!');
-            // Handle error: maybe don't instantiate usage_tracker or throw exception
-        }
-        error_log('ASAP_CORE_CLASS_DEBUG: init_components() FINISHED');
+        // Create crawler instance with dependencies
+        $this->content_crawler = new ContentCrawler(
+            $this->content_source_manager,
+            $this->content_processor
+        );
+        
+        // Initialize scheduler with a callable to the crawler's run method
+        $this->scheduler = new Scheduler([$this->content_crawler, 'run']);
+        
+        // Admin UI components (centralized in class-central-command.php)
+        new \ASAPDigest\Core\ASAP_Digest_Central_Command();
     }
 
     /**
      * Define WordPress hooks
      */
     private function define_hooks() {
-        error_log('ASAP_CORE_CLASS_DEBUG: define_hooks() CALLED');
-        // Activation hook
-        // Note: The main activation hook is in asapdigest-core.php. This might be redundant or for a different purpose.
-        // If it's for table creation, ensure $this->database is available.
-        // register_activation_hook(ASAP_DIGEST_PLUGIN_DIR . 'asapdigest-core.php', [$this->database, 'create_tables']);
-        // error_log('ASAP_CORE_CLASS_DEBUG: define_hooks() - Activation hook for DB tables commented out for now');
-        
-        // Initialize REST API endpoints
-        error_log('ASAP_CORE_CLASS_DEBUG: define_hooks() - Before add_action rest_api_init for register_rest_routes');
+        // Register REST API endpoints
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-        error_log('ASAP_CORE_CLASS_DEBUG: define_hooks() - After add_action rest_api_init for register_rest_routes');
-        error_log('ASAP_CORE_CLASS_DEBUG: define_hooks() FINISHED');
+        
+        // Register custom post types
+        add_action('init', [$this, 'register_custom_types'], 10);
+        
+        // Register cleanup tasks
+        add_action('wp', [$this, 'schedule_cleanup'], 10);
+        
+        // Modify cookie headers for cross-domain auth
+        add_action('plugins_loaded', [$this, 'start_cookie_handling'], 0);
+        
+        // Add CORS headers filter if needed
+        // add_filter('rest_pre_serve_request', [$this, 'add_cors_headers'], 15);
     }
 
     /**
      * Register REST API routes
      */
     public function register_rest_routes() {
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() CALLED');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - Before new ASAP_Digest_REST_Digest()');
+        // Digest API
         $digest_api = new ASAP_Digest_REST_Digest();
         $digest_api->register_routes();
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - After ASAP_Digest_REST_Digest()->register_routes()');
-
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - Before new ASAP_Digest_REST_Auth()');
+        
+        // Auth API
         $auth_api = new ASAP_Digest_REST_Auth();
         $auth_api->register_routes();
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - After ASAP_Digest_REST_Auth()->register_routes()');
         
-        // Register the new session check controller
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - Before new API\Session_Check_Controller()');
-        $session_check_api = new API\Session_Check_Controller();
+        // Session check API
+        $session_check_api = new Session_Check_Controller();
         $session_check_api->register_routes();
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() - After API\Session_Check_Controller()->register_routes()');
-        error_log('ASAP_CORE_CLASS_DEBUG: register_rest_routes() FINISHED');
-    }
-
-    /**
-     * Get database instance
-     */
-    public function get_database() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_database() CALLED');
-        return $this->database;
-    }
-
-    /**
-     * Get Better Auth instance
-     */
-    public function get_better_auth() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_better_auth() CALLED');
-        return $this->better_auth;
-    }
-
-    /**
-     * Get usage tracker instance
-     */
-    public function get_usage_tracker() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_usage_tracker() CALLED');
-        return $this->usage_tracker;
-    }
-
-    /**
-     * Send a test digest to the current user
-     * 
-     * @return true|WP_Error True on success, WP_Error on failure
-     */
-    public function send_test_digest() {
-        error_log('ASAP_CORE_CLASS_DEBUG: send_test_digest() CALLED');
-        $user = wp_get_current_user();
-        if (!$user || !$user->exists()) {
-            return new WP_Error(
-                'invalid_user',
-                __('Could not determine current user.', 'asap-digest')
-            );
-        }
-
-        // Get next digest content
-        $digest_content = $this->get_next_digest_preview();
-
-        if (is_wp_error($digest_content)) {
-            return $digest_content;
-        }
-
-        // Send email
-        $subject = sprintf(
-            __('ASAP Digest Test - %s', 'asap-digest'),
-            date('Y-m-d')
-        );
-        $headers = ['Content-Type: text/html; charset=UTF-8'];
-
-        if (!wp_mail($user->user_email, $subject, $digest_content, $headers)) {
-            return new WP_Error(
-                'send_failed',
-                __('Could not send test digest email.', 'asap-digest')
-            );
-        }
-
-        return true;
-    }
-
-    /**
-     * Get preview of the next digest content
-     *
-     * @return string|WP_Error Digest content or error
-     */
-    public function get_next_digest_preview() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_next_digest_preview() CALLED');
-        // Get settings
-        $settings = $this->get_settings();
-        if (is_wp_error($settings)) {
-            return $settings;
-        }
-
-        // Get posts
-        $query_args = [
-            'post_type' => $settings['categories'],
-            'posts_per_page' => $settings['max_posts'],
-            'post_status' => 'publish'
-        ];
-        $posts = get_posts($query_args);
-
-        if (empty($posts)) {
-            return new WP_Error(
-                'no_posts',
-                __('No posts found for the digest.', 'asap-digest')
-            );
-        }
-
-        // Build digest content (simple version for preview)
-        ob_start();
-        ?>
-        <h1><?php _e('Your Next Digest', 'asap-digest'); ?></h1>
-        <ul>
-            <?php foreach ($posts as $post) : ?>
-                <li>
-                    <h2><a href="<?php echo get_permalink($post->ID); ?>"><?php echo esc_html($post->post_title); ?></a></h2>
-                    <p><?php echo esc_html(wp_trim_words($post->post_content, 50)); ?></p>
-                </li>
-            <?php endforeach; ?>
-        </ul>
-        <?php
-        return ob_get_clean();
-    }
-
-    /**
-     * Update plugin settings
-     *
-     * @param array $new_settings
-     * @return array|WP_Error Updated settings or error
-     */
-    public function update_settings($new_settings) {
-        error_log('ASAP_CORE_CLASS_DEBUG: update_settings() CALLED');
-        $current_settings = $this->get_settings();
-        if (is_wp_error($current_settings)) {
-            return $current_settings;
-        }
-
-        $validated_settings = [];
-        // Validate frequency
-        if (isset($new_settings['frequency']) && in_array($new_settings['frequency'], ['daily', 'weekly', 'monthly'])) {
-            $validated_settings['frequency'] = $new_settings['frequency'];
-        }
-        // Validate send_time (basic format check)
-        if (isset($new_settings['send_time']) && preg_match('/^\d{2}:\d{2}$/', $new_settings['send_time'])) {
-            $validated_settings['send_time'] = $new_settings['send_time'];
-        }
-        // Validate categories (ensure it's an array of strings)
-        if (isset($new_settings['categories']) && is_array($new_settings['categories'])) {
-            $validated_settings['categories'] = array_map('sanitize_text_field', $new_settings['categories']);
-        }
-        // Validate max_posts
-        if (isset($new_settings['max_posts']) && is_numeric($new_settings['max_posts']) && $new_settings['max_posts'] > 0) {
-            $validated_settings['max_posts'] = intval($new_settings['max_posts']);
-        }
-
-        $updated_settings = array_merge($current_settings, $validated_settings);
-
-        if (!update_option('asap_digest_settings', $updated_settings)) {
-            return new WP_Error(
-                'settings_update_failed',
-                __('Failed to update settings.', 'asap-digest')
-            );
-        }
-        error_log('ASAP_CORE_CLASS_DEBUG: update_settings() FINISHED - Settings updated successfully.');
-        return $updated_settings;
-    }
-
-    /**
-     * Get plugin stats
-     *
-     * @return array|WP_Error Stats or error
-     */
-    public function get_stats() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_stats() CALLED');
-        $stats = get_option('asap_digest_stats');
-        if (false === $stats) {
-            // Initialize if not found
-            $stats = [
-                'total_digests_sent' => 0,
-                'total_posts_included' => 0,
-                'last_digest_date' => null,
-            ];
-            update_option('asap_digest_stats', $stats);
-        }
-        return $stats;
-    }
-
-    /**
-     * Reset plugin settings to defaults
-     *
-     * @return array|WP_Error Default settings or error
-     */
-    public function reset_settings() {
-        error_log('ASAP_CORE_CLASS_DEBUG: reset_settings() CALLED');
-        $default_settings = [
-            'frequency' => 'daily',
-            'send_time' => '09:00',
-            'categories' => ['post'], 
-            'max_posts' => 5,      
-        ];
-        if (!update_option('asap_digest_settings', $default_settings)) {
-            return new WP_Error(
-                'settings_reset_failed',
-                __('Failed to reset settings to defaults.', 'asap-digest')
-            );
-        }
-        error_log('ASAP_CORE_CLASS_DEBUG: reset_settings() FINISHED - Settings reset to defaults.');
-        return $default_settings;
-    }
-
-    /**
-     * Get current plugin settings
-     *
-     * @return array Plugin settings
-     */
-    public function get_settings() {
-        error_log('ASAP_CORE_CLASS_DEBUG: get_settings() CALLED');
-        $defaults = [
-            'frequency' => 'daily',
-            'send_time' => '09:00',
-            'categories' => ['post'],
-            'max_posts' => 5,
-        ];
-        $settings = get_option('asap_digest_settings', $defaults);
-        // Ensure settings are merged with defaults if some are missing
-        return wp_parse_args($settings, $defaults);
-    }
-
-    /**
-     * Register admin pages and menus
-     */
-    public function register_admin_menus() {
-        // Main plugin menu
-        add_menu_page(
-            'ASAP Digest', 
-            'ASAP Digest', 
-            'manage_options', 
-            'asap-digest', 
-            array($this, 'render_admin_dashboard'),
-            'dashicons-rss',
-            30
-        );
         
-        // Dashboard submenu
-        add_submenu_page(
-            'asap-digest',
-            'Dashboard',
-            'Dashboard',
-            'manage_options',
-            'asap-digest',
-            array($this, 'render_admin_dashboard')
-        );
+        // SK Token API (NEW)
+        $sk_token_api = new SK_Token_Controller();
+        $sk_token_api->register_routes();
         
-        // Content Sources submenu
-        add_submenu_page(
-            'asap-digest',
-            'Content Sources',
-            'Content Sources',
-            'manage_options',
-            'asap-content-sources',
-            array($this, 'render_content_sources')
-        );
+        // Active Sessions API (NEW)
+        $active_sessions_api = new Active_Sessions_Controller();
+        $active_sessions_api->register_routes();
         
-        // Content Library submenu
-        add_submenu_page(
-            'asap-digest',
-            'Content Library',
-            'Content Library',
-            'manage_options',
-            'asap-content-library',
-            array($this, 'render_content_library')
-        );
+        // SK User Sync API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
+        $sk_user_sync = new SK_User_Sync();
+        $sk_user_sync->register_routes();
         
-        // API Settings submenu
-        add_submenu_page(
-            'asap-digest',
-            'API Settings',
-            'API Settings',
-            'manage_options',
-            'asap-api-settings',
-            array($this, 'render_api_settings')
-        );
+        // Check Sync Token API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
+        $check_token_controller = new Check_Sync_Token_Controller();
+        $check_token_controller->register_routes();
         
-        // Advanced Settings submenu
-        add_submenu_page(
-            'asap-digest',
-            'Advanced Settings',
-            'Advanced Settings',
-            'manage_options',
-            'asap-advanced-settings',
-            array($this, 'render_advanced_settings')
-        );
-    }
-
-    /**
-     * Render admin dashboard page
-     */
-    public function render_admin_dashboard() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/dashboard.php';
-    }
-
-    /**
-     * Render content sources admin page
-     */
-    public function render_content_sources() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/source-management.php';
-    }
-
-    /**
-     * Render content library admin page
-     */
-    public function render_content_library() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/content-library.php';
-    }
-
-    /**
-     * Render API settings admin page
-     */
-    public function render_api_settings() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/api-settings.php';
-    }
-
-    /**
-     * Render advanced settings admin page
-     */
-    public function render_advanced_settings() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/advanced-settings.php';
-    }
-
-    /**
-     * Initialize content processing components
-     */
-    public function init_content_processing() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
+        // User Details API
+        $user_details_controller = new User_Details_Controller();
+        $user_details_controller->register_routes();
         
-        // Register hooks related to content processing
-        add_action('asap_content_added', array($this, 'log_content_action'), 10, 2);
-        add_action('asap_content_updated', array($this, 'log_content_action'), 10, 2);
-        add_action('asap_content_deleted', array($this, 'log_content_action'), 10, 2);
+        // Ingested Content API
+        $ingested_content_api = new ASAP_Digest_REST_Ingested_Content();
+        $ingested_content_api->register_routes();
         
-        // Register duplicate detection hooks
-        add_action('asap_duplicate_content_detected', array($this, 'handle_duplicate_content'), 10, 3);
-    }
-
-    /**
-     * Log content actions for audit purposes
-     *
-     * @param int $content_id Content ID
-     * @param array $content_data Content data
-     */
-    public function log_content_action($content_id, $content_data) {
-        // Log to custom log table
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'asap_activity_log';
-        $action_type = current_filter(); // gets current action hook as the action type
-        $user_id = get_current_user_id();
-        
-        $wpdb->insert(
-            $table_name,
-            array(
-                'user_id' => $user_id,
-                'action_type' => $action_type,
-                'object_id' => $content_id,
-                'object_type' => 'content',
-                'details' => json_encode(array(
-                    'title' => $content_data['title'] ?? '',
-                    'type' => $content_data['type'] ?? '',
-                    'source_url' => $content_data['source_url'] ?? '',
-                )),
-                'created_at' => current_time('mysql'),
-            )
-        );
-    }
-
-    /**
-     * Handle duplicate content detection
-     *
-     * @param int $content_id Content ID
-     * @param int $duplicate_id Duplicate content ID
-     * @param string $fingerprint Content fingerprint
-     */
-    public function handle_duplicate_content($content_id, $duplicate_id, $fingerprint) {
-        // Log the duplicate detection
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'asap_activity_log';
-        $user_id = get_current_user_id();
-        
-        $wpdb->insert(
-            $table_name,
-            array(
-                'user_id' => $user_id,
-                'action_type' => 'duplicate_detected',
-                'object_id' => $content_id,
-                'object_type' => 'content',
-                'details' => json_encode(array(
-                    'duplicate_id' => $duplicate_id,
-                    'fingerprint' => $fingerprint,
-                )),
-                'created_at' => current_time('mysql'),
-            )
-        );
-        
-        // Optionally handle automatically based on settings
-        if (defined('ASAP_DEDUPE_KEEP_HIGHEST_QUALITY') && ASAP_DEDUPE_KEEP_HIGHEST_QUALITY) {
-            $this->auto_resolve_duplicate($content_id, $duplicate_id);
-        }
-    }
-
-    /**
-     * Auto-resolve duplicate content based on quality scores
-     *
-     * @param int $content_id Content ID
-     * @param int $duplicate_id Duplicate content ID
-     */
-    private function auto_resolve_duplicate($content_id, $duplicate_id) {
-        global $wpdb;
-        $content_table = $wpdb->prefix . 'asap_ingested_content';
-        
-        // Get quality scores
-        $content_score = $wpdb->get_var($wpdb->prepare(
-            "SELECT quality_score FROM $content_table WHERE id = %d",
-            $content_id
-        ));
-        
-        $duplicate_score = $wpdb->get_var($wpdb->prepare(
-            "SELECT quality_score FROM $content_table WHERE id = %d",
-            $duplicate_id
-        ));
-        
-        // Compare scores and keep the higher quality content
-        if ($content_score > $duplicate_score) {
-            // New content has higher quality, remove duplicate
-            $processor = asap_digest_get_content_processor();
-            $processor->delete($duplicate_id);
-            
-            // Log the decision
-            $this->log_auto_duplicate_resolution($content_id, $duplicate_id, 'kept_new');
-        } else {
-            // Existing content has higher or equal quality, keep it
-            $processor = asap_digest_get_content_processor();
-            $processor->delete($content_id);
-            
-            // Log the decision
-            $this->log_auto_duplicate_resolution($content_id, $duplicate_id, 'kept_existing');
-        }
-    }
-
-    /**
-     * Log auto duplicate resolution
-     *
-     * @param int $content_id Content ID
-     * @param int $duplicate_id Duplicate content ID
-     * @param string $decision Decision made (kept_new or kept_existing)
-     */
-    private function log_auto_duplicate_resolution($content_id, $duplicate_id, $decision) {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . 'asap_activity_log';
-        
-        $wpdb->insert(
-            $table_name,
-            array(
-                'user_id' => 0, // System action
-                'action_type' => 'auto_duplicate_resolved',
-                'object_id' => ($decision === 'kept_new') ? $content_id : $duplicate_id,
-                'object_type' => 'content',
-                'details' => json_encode(array(
-                    'content_id' => $content_id,
-                    'duplicate_id' => $duplicate_id,
-                    'decision' => $decision,
-                )),
-                'created_at' => current_time('mysql'),
-            )
-        );
-    }
-
-    /**
-     * Hook into WordPress init
-     */
-    public function init() {
-        // Initialize REST API
-        $this->init_rest_api();
-        
-        // Initialize admin menus
-        add_action('admin_menu', array($this, 'register_admin_menus'));
-        
-        // Initialize content processing system
-        $this->init_content_processing();
-        
-        // Initialize shortcodes
-        $this->init_shortcodes();
-        
-        // Register custom post types, taxonomies, etc.
-        $this->register_custom_types();
-        
-        // Register AJAX handlers
-        $this->register_ajax_handlers();
+        // Nonce Endpoint
+        register_rest_route('asap/v1', '/nonce', [
+            'methods' => 'GET',
+            'callback' => function($req) {
+                return rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'));
+            },
+            'permission_callback' => '__return_true'
+        ]);
     }
     
     /**
-     * Initialize REST API endpoints
-     */
-    public function init_rest_api() {
-        // Load REST API controllers
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-api.php';
-        
-        // Initialize API
-        $api = new ASAP_Digest_REST_API();
-        $api->init();
-    }
-    
-    /**
-     * Initialize shortcodes
-     */
-    public function init_shortcodes() {
-        // Load shortcode handlers
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/shortcodes/shortcodes.php';
-    }
-    
-    /**
-     * Register custom post types and taxonomies
+     * Register custom post types
      */
     public function register_custom_types() {
-        // Custom post type registration would go here
+        // Base arguments shared across all post types
+        $base_args = [
+            'public' => true,
+            'show_in_graphql' => true,
+            'supports' => ['title', 'editor', 'thumbnail'],
+            'has_archive' => true,
+            'menu_icon' => 'dashicons-admin-post',
+        ];
+
+        // Register each post type with unique GraphQL names
+        register_post_type('article', array_merge($base_args, [
+            'label' => '⚡️ - Articles',
+            'graphql_single_name' => 'Article',
+            'graphql_plural_name' => 'Articles'
+        ]));
+
+        register_post_type('podcast', array_merge($base_args, [
+            'label' => '⚡️ - Podcasts',
+            'graphql_single_name' => 'Podcast',
+            'graphql_plural_name' => 'Podcasts'
+        ]));
+
+        register_post_type('keyterm', array_merge($base_args, [
+            'label' => '⚡️ - Key Terms',
+            'graphql_single_name' => 'KeyTerm',
+            'graphql_plural_name' => 'KeyTerms'
+        ]));
+
+        register_post_type('financial', array_merge($base_args, [
+            'label' => '⚡️ - Financial Bites',
+            'graphql_single_name' => 'Financial',
+            'graphql_plural_name' => 'Financials'
+        ]));
+
+        register_post_type('xpost', array_merge($base_args, [
+            'label' => '⚡️ - X Posts',
+            'graphql_single_name' => 'XPost',
+            'graphql_plural_name' => 'XPosts'
+        ]));
+
+        register_post_type('reddit', array_merge($base_args, [
+            'label' => '⚡️ - Reddit Buzz',
+            'graphql_single_name' => 'Reddit',
+            'graphql_plural_name' => 'Reddits'
+        ]));
+
+        register_post_type('event', array_merge($base_args, [
+            'label' => '⚡️ - Events',
+            'graphql_single_name' => 'Event',
+            'graphql_plural_name' => 'Events'
+        ]));
+
+        register_post_type('polymarket', array_merge($base_args, [
+            'label' => '⚡️ - Polymarket',
+            'graphql_single_name' => 'Polymarket',
+            'graphql_plural_name' => 'Polymarkets'
+        ]));
     }
     
     /**
-     * Register AJAX handlers
+     * Schedule cleanup tasks
      */
-    public function register_ajax_handlers() {
-        // AJAX handlers registration would go here
-        add_action('wp_ajax_asap_reindex_content', array($this, 'ajax_reindex_content'));
-        add_action('wp_ajax_asap_run_source', array($this, 'ajax_run_source'));
+    public function schedule_cleanup() {
+        if (!wp_next_scheduled('asap_cleanup_data')) {
+            wp_schedule_event(time(), 'daily', 'asap_cleanup_data');
+        }
     }
     
     /**
-     * AJAX handler for reindexing content
+     * Clean up old digests and notifications data
      */
-    public function ajax_reindex_content() {
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'You do not have permission to perform this action.'));
-            return;
-        }
+    public function cleanup_data() {
+        global $wpdb;
+        $digests_table = $wpdb->prefix . 'asap_digests';
+        $notifications_table = $wpdb->prefix . 'asap_notifications';
+        $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'));
         
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_admin_nonce')) {
-            wp_send_json_error(array('message' => 'Invalid security token.'));
-            return;
-        }
+        // Secure delete queries
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM $digests_table WHERE created_at < %s",
+            $cutoff_date
+        ));
         
-        // Get batch size
-        $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 50;
-        
-        // Reindex content
-        $result = asap_digest_reindex_content($batch_size);
-        
-        // Return result
-        wp_send_json_success($result);
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM $notifications_table WHERE created_at < %s",
+            $cutoff_date
+        ));
     }
     
     /**
-     * AJAX handler for running a content source
+     * Start output buffering for cookie header modification
      */
-    public function ajax_run_source() {
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => 'You do not have permission to perform this action.'));
+    public function start_cookie_handling() {
+        // Avoid buffering during admin requests, CLI processes, or AJAX
+        if (is_admin() || (defined('WP_CLI') && WP_CLI) || wp_doing_ajax()) {
             return;
         }
         
-        // Check nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_admin_nonce')) {
-            wp_send_json_error(array('message' => 'Invalid security token.'));
-            return;
+        // Start the output buffer with our callback
+        ob_start([$this, 'modify_cookie_headers']);
+    }
+    
+    /**
+     * Modify cookie headers to work cross-domain
+     * 
+     * @param string $buffer The output buffer content
+     * @return string The original buffer content
+     */
+    public function modify_cookie_headers($buffer) {
+        // Check if headers have already been sent
+        if (headers_sent()) {
+            return $buffer;
         }
         
-        // Get source ID
-        $source_id = isset($_POST['source_id']) ? intval($_POST['source_id']) : 0;
+        // Define WP auth cookie names for quick lookup
+        $auth_cookie_names = [
+            AUTH_COOKIE => true,
+            SECURE_AUTH_COOKIE => true,
+            LOGGED_IN_COOKIE => true,
+        ];
         
-        if ($source_id <= 0) {
-            wp_send_json_error(array('message' => 'Invalid source ID.'));
-            return;
+        $final_headers = [];
+        
+        // Process all headers
+        foreach (headers_list() as $header) {
+            $header_lower = strtolower($header);
+            
+            // Check if this is a Set-Cookie header
+            if (strpos($header_lower, 'set-cookie:') === 0) {
+                // Extract cookie name
+                if (preg_match('/^Set-Cookie:\s*([^=]+)=/i', $header, $matches)) {
+                    $cookie_name = $matches[1];
+                    
+                    // Check if this is a WP auth cookie
+                    if (isset($auth_cookie_names[$cookie_name])) {
+                        // Remove existing SameSite and Secure attributes
+                        $modified_header = preg_replace('/;\s*SameSite=(Lax|Strict|None)/i', '', $header);
+                        $modified_header = preg_replace('/;\s*Secure/i', '', $modified_header);
+                        
+                        // Add required attributes
+                        $modified_header .= '; SameSite=None; Secure';
+                        
+                        $final_headers[] = $modified_header;
+                    } else {
+                        // Preserve other cookies
+                        $final_headers[] = $header;
+                    }
+                } else {
+                    // Malformed cookie header
+                    $final_headers[] = $header;
+                }
+            } else {
+                // Not a cookie header
+                $final_headers[] = $header;
+            }
         }
         
-        // Load content source manager and crawler
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-source-manager.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-crawler.php';
+        // Clear all original Set-Cookie headers
+        header_remove('Set-Cookie');
         
-        $source_manager = new AsapDigest\Crawler\ContentSourceManager();
-        $source = $source_manager->get_source($source_id);
-        
-        if (!$source) {
-            wp_send_json_error(array('message' => 'Source not found.'));
-            return;
+        // Add our modified headers
+        foreach ($final_headers as $final_header) {
+            header($final_header, false);
         }
         
-        // Run crawler
-        $processor = asap_digest_get_content_processor();
-        $crawler = new AsapDigest\Crawler\ContentCrawler($source_manager, $processor);
-        $result = $crawler->crawl_source($source);
-        
-        // Return result
-        wp_send_json_success($result);
+        return $buffer;
     }
 }
 

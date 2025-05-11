@@ -6,7 +6,7 @@ alwaysApply: false
 # Roadmap Task Syntax & Validation Protocol v1.2
 
 ## 1. Purpose
-This protocol defines the standardized syntax for individual task lines within the `md-docs/ROADMAP_TASKS.md` file. Adherence to this standard ensures consistent parsing, reporting (by `status-check.mdc`), and updating (by `update-memory`, `work-session-management-protocol.mdc`, `testing-verification-protocol.mdc`) across the VeriDX system.
+This protocol defines the standardized syntax for individual task lines within the `md-docs/ROADMAP_TASKS.md` or alternative roadmap file. Adherence to this standard ensures consistent parsing, reporting (by `status-check.mdc`), and updating (by `update-memory`, `work-session-management-protocol.mdc`, `testing-verification-protocol.mdc`) across the VeriDX system.
 
 ## 2. Standard Task Line Syntax
 

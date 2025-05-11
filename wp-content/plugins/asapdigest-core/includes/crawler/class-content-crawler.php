@@ -41,6 +41,11 @@ class ContentCrawler {
     private $run_log = [];
     
     /**
+     * @var string Last error message if any
+     */
+    private $last_error = '';
+    
+    /**
      * Constructor
      * 
      * @param ContentSourceManager $source_manager Source manager instance
@@ -131,7 +136,7 @@ class ContentCrawler {
      * @return WP_REST_Response Response object
      */
     public function api_run_crawler($request) {
-        $result = $this->run_crawl();
+        $result = $this->run();
         return rest_ensure_response($result);
     }
     
@@ -165,15 +170,69 @@ class ContentCrawler {
             'run_log' => $this->run_log,
             'last_run' => get_option('asap_crawler_last_run', ''),
             'next_run' => wp_next_scheduled('asap_run_crawler'),
-            'registered_adapters' => array_keys($this->adapters)
+            'registered_adapters' => array_keys($this->adapters),
+            'last_error' => $this->last_error
         ]);
+    }
+    
+    /**
+     * Main entry point for crawler execution.
+     * This method is the primary interface for running the crawler.
+     * 
+     * @param array $args Optional arguments to customize the crawl
+     *                    - source_ids: Array of specific source IDs to crawl
+     *                    - source_types: Array of source types to crawl (e.g., 'rss', 'api', 'scraper')
+     *                    - retry_attempts: Number of retry attempts for failed sources (default: 1)
+     *                    - limit: Maximum number of sources to process (default: 50)
+     * @return array Results of the crawl operation
+     */
+    public function run($args = []) {
+        try {
+            $this->log("Starting crawler execution with args: " . json_encode($args));
+            
+            // Prepare arguments with defaults
+            $args = wp_parse_args($args, [
+                'source_ids' => [],
+                'source_types' => [],
+                'retry_attempts' => 1,
+                'limit' => 50
+            ]);
+            
+            // Execute the crawl with the provided arguments
+            $results = $this->run_crawl($args['retry_attempts']);
+            
+            // Apply action hook for post-crawl processing
+            do_action('asap_after_crawler_run', $results, $args);
+            
+            $this->log("Crawler execution completed successfully");
+            return $results;
+        } catch (\Exception $e) {
+            $error_message = "Fatal error in crawler execution: " . $e->getMessage();
+            $this->last_error = $error_message;
+            $this->log($error_message, 'error');
+            
+            // Log the error to the database (generic source_id 0 since this is a system-level error)
+            $this->log_error(0, 'system', $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'args' => $args
+            ]);
+            
+            // Apply action hook for error handling
+            do_action('asap_crawler_execution_error', $e, $args);
+            
+            return [
+                'success' => false,
+                'message' => $error_message,
+                'exception' => $e->getMessage()
+            ];
+        }
     }
     
     /**
      * Run scheduled crawl (triggered by cron)
      */
     public function run_scheduled_crawl() {
-        $this->run_crawl();
+        $this->run();
         
         // Schedule the next run with dynamic adjustment
         $this->schedule_next_run();
@@ -326,6 +385,7 @@ class ContentCrawler {
         
         $this->is_running = true;
         $this->run_log = [];
+        $start_time = microtime(true);
         
         // Get sources that are due for crawling
         $sources = $this->source_manager->get_due_sources();
@@ -336,13 +396,21 @@ class ContentCrawler {
             'items_found' => 0,
             'items_processed' => 0,
             'errors' => 0,
-            'sources' => []
+            'sources' => [],
+            'execution_time_seconds' => 0
         ];
         
         $failed_sources = [];
         
+        // Apply filter to allow modifying the sources to crawl
+        $sources = apply_filters('asap_crawler_sources', $sources);
+        
+        $this->log("Starting crawl with " . count($sources) . " sources");
+        
         foreach ($sources as $source) {
             try {
+                $this->log("Processing source #{$source->id}: {$source->name} ({$source->type})");
+                
                 $source_result = $this->crawl_source($source);
                 $results['sources'][] = $source_result;
                 $results['sources_processed']++;
@@ -353,10 +421,25 @@ class ContentCrawler {
                 if (count($source_result['errors']) > 0) {
                     $failed_sources[] = $source;
                 }
+                
+                // Allow for a small pause between sources to prevent overloading the server
+                usleep(100000); // 100ms pause
+                
+                // Fire action after each source is processed
+                do_action('asap_after_source_crawled', $source, $source_result);
             } catch (\Exception $e) {
-                $this->log("Fatal error processing source #{$source->id}: " . $e->getMessage(), 'error');
+                $error_message = "Fatal error processing source #{$source->id}: " . $e->getMessage();
+                $this->log($error_message, 'error');
                 $results['errors']++;
                 $failed_sources[] = $source;
+                
+                // Log to error table
+                $this->log_error($source->id, 'source_crawl_fatal', $e->getMessage(), [
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                // Fire action for fatal source error
+                do_action('asap_source_crawl_fatal_error', $source, $e);
             }
         }
         
@@ -388,17 +471,34 @@ class ContentCrawler {
                     $results['items_found'] += $source_result['items_found'];
                     $results['items_processed'] += $source_result['items_processed'];
                     $results['errors'] -= count($source_result['errors']) > 0 ? 0 : 1; // Reduce error count only if retry had no errors
+                    
+                    // Fire action after retry
+                    do_action('asap_after_source_retry', $source, $source_result);
                 } catch (\Exception $e) {
-                    $this->log("Retry failed for source #{$source->id}: " . $e->getMessage(), 'error');
+                    $retry_error = "Retry failed for source #{$source->id}: " . $e->getMessage();
+                    $this->log($retry_error, 'error');
+                    
+                    // Log to error table with retry context
+                    $this->log_error($source->id, 'source_retry_failed', $e->getMessage(), [
+                        'trace' => $e->getTraceAsString(),
+                        'retry_attempt' => true
+                    ]);
                 }
             }
         }
         
+        // Calculate execution time
+        $execution_time = microtime(true) - $start_time;
+        $results['execution_time_seconds'] = round($execution_time, 2);
+        
         update_option('asap_crawler_last_run', current_time('mysql'));
+        update_option('asap_crawler_last_execution_time', $execution_time);
         $this->is_running = false;
         
         // Store crawler metrics
         $this->store_crawler_metrics($results);
+        
+        $this->log("Crawl completed in {$results['execution_time_seconds']} seconds. Processed {$results['sources_processed']} sources, found {$results['items_found']} items, processed {$results['items_processed']} items, with {$results['errors']} errors.");
         
         return $results;
     }
@@ -421,7 +521,7 @@ class ContentCrawler {
                 'items_found' => $results['items_found'],
                 'items_processed' => $results['items_processed'],
                 'errors' => $results['errors'],
-                'duration_seconds' => time() - strtotime(get_option('asap_crawler_last_run')),
+                'duration_seconds' => $results['execution_time_seconds'],
                 'created_at' => current_time('mysql')
             ]
         );
@@ -450,6 +550,8 @@ class ContentCrawler {
      * @return array Result
      */
     public function crawl_source($source) {
+        $start_time = microtime(true);
+        
         $result = [
             'source_id' => $source->id,
             'source_name' => $source->name,
@@ -457,7 +559,8 @@ class ContentCrawler {
             'started_at' => current_time('mysql'),
             'items_found' => 0,
             'items_processed' => 0,
-            'errors' => []
+            'errors' => [],
+            'execution_time_seconds' => 0
         ];
         
         try {
@@ -471,11 +574,17 @@ class ContentCrawler {
             
             $adapter = $this->adapters[$source->type];
             
+            // Apply filter to allow modifying source configuration before fetch
+            $source = apply_filters('asap_pre_source_fetch', $source);
+            
             // Fetch content using the appropriate adapter
             $items = $adapter->fetch_content($source);
             $result['items_found'] = count($items);
             
             $this->log("Found {$result['items_found']} items from source #{$source->id}");
+            
+            // Allow filtering of items before processing
+            $items = apply_filters('asap_crawler_items_pre_process', $items, $source);
             
             // Process each item
             foreach ($items as $item) {
@@ -491,6 +600,9 @@ class ContentCrawler {
                     if ($processed) {
                         $result['items_processed']++;
                     }
+                    
+                    // Fire action after item is processed
+                    do_action('asap_after_item_processed', $item, $processed, $source);
                 } catch (\Exception $e) {
                     $error = "Error processing item: " . $e->getMessage();
                     $this->log($error, 'error');
@@ -498,8 +610,15 @@ class ContentCrawler {
                     
                     // Log to error table
                     $this->log_error($source->id, 'item_processing', $e->getMessage(), $item);
+                    
+                    // Fire action for item processing error
+                    do_action('asap_item_processing_error', $item, $e, $source);
                 }
             }
+            
+            // Calculate execution time
+            $execution_time = microtime(true) - $start_time;
+            $result['execution_time_seconds'] = round($execution_time, 2);
             
             // Update source status with results
             $this->source_manager->update_source_status($source->id, true, [
@@ -507,21 +626,35 @@ class ContentCrawler {
                 'new_items' => $result['items_processed']
             ]);
             
-            $this->log("Completed crawl for source #{$source->id}. Processed {$result['items_processed']} of {$result['items_found']} items.");
+            $this->log("Completed crawl for source #{$source->id} in {$result['execution_time_seconds']} seconds. Processed {$result['items_processed']} of {$result['items_found']} items.");
             
         } catch (\Exception $e) {
+            // Calculate execution time even for failed crawls
+            $execution_time = microtime(true) - $start_time;
+            $result['execution_time_seconds'] = round($execution_time, 2);
+            
             $error = "Error crawling source #{$source->id}: " . $e->getMessage();
             $this->log($error, 'error');
             $result['errors'][] = $error;
             
             // Log to error table
-            $this->log_error($source->id, 'source_crawl', $e->getMessage());
+            $this->log_error($source->id, 'source_crawl', $e->getMessage(), [
+                'exception_class' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             // Update source status as failed
             $this->source_manager->update_source_status($source->id, false);
+            
+            // Fire action for source crawl error
+            do_action('asap_source_crawl_error', $source, $e);
         }
         
         $result['completed_at'] = current_time('mysql');
+        
+        // Fire action after source is completely processed (success or failure)
+        do_action('asap_source_crawl_complete', $source, $result);
+        
         return $result;
     }
     
@@ -532,15 +665,25 @@ class ContentCrawler {
      * @param string $type Log type (info, error)
      */
     private function log($message, $type = 'info') {
-        $this->run_log[] = [
+        $log_entry = [
             'time' => current_time('mysql'),
             'type' => $type,
             'message' => $message
         ];
         
+        $this->run_log[] = $log_entry;
+        
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log("ASAP Crawler: {$message}");
         }
+        
+        // Limit log size to avoid memory issues
+        if (count($this->run_log) > 1000) {
+            array_shift($this->run_log); // Remove oldest entry
+        }
+        
+        // Allow external logging systems to hook in
+        do_action('asap_crawler_log', $message, $type, $log_entry);
     }
     
     /**
@@ -567,6 +710,15 @@ class ContentCrawler {
                 'created_at' => current_time('mysql')
             ]
         );
+        
+        // If inserting failed, log to error_log as fallback
+        if ($wpdb->last_error) {
+            error_log("ASAP Crawler: Failed to log error to database: " . $wpdb->last_error);
+            error_log("ASAP Crawler original error: Source #{$source_id}, Type: {$error_type}, Message: {$message}");
+        }
+        
+        // Allow external error handling systems to hook in
+        do_action('asap_crawler_error_logged', $source_id, $error_type, $message, $context);
     }
     
     /**

@@ -38,8 +38,10 @@ wp-content/uploads/*
 app/src/lib/components/ui/README.md
 /md-docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
 class-environment-config.php
-/md-docs/VeriDX/VeriDX: High-Level System Documentation.md
-/md-docs/VeriDX/
+
+md-docs/{veridx}
+
+
 /md-docs/**[ F O C U S ]**
 /md-docs/deprecated
 app/cert/

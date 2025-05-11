@@ -1,13 +1,28 @@
 <?php
 /**
+ * ASAP Digest Core Activator Class
+ * 
+ * Handles database table creation and cleanup during plugin activation/deactivation.
+ * 
+ * @package ASAPDigest_Core
+ * @created 04.17.25 | 10:45 AM PDT
  * @file-marker ASAP_Digest_Core_Activator
  * @location /wp-content/plugins/asapdigest-core/includes/class-activator.php
  */
 
-class ASAP_Digest_Core_Activator {
+namespace ASAPDigest\Core;
+
+/**
+ * Class ASAP_Digest_Activator
+ * 
+ * @since 1.0.0
+ */
+class ASAP_Digest_Activator {
     /**
-     * Run activation tasks: create required tables for Content Ingestion & Indexing System v2
-     * Also migrates wp_posts to add asap_fingerprint and asap_quality_score columns (v2.2)
+     * Run activation tasks: create required tables for Content Ingestion & Indexing System
+     * 
+     * @since 1.0.0
+     * @return void
      */
     public static function activate() {
         global $wpdb;
@@ -83,20 +98,6 @@ class ASAP_Digest_Core_Activator {
         ) $charset_collate;";
 
         // Moderation Log Table
-        /**
-         * Moderation Log Table
-         * Tracks all moderation actions for content ingestion (approve/reject, reviewer, timestamp, decision, reason, content reference)
-         *
-         * Columns:
-         * - id: bigint(20) UNSIGNED, primary key
-         * - content_id: bigint(20) UNSIGNED, reference to ingested content (e.g., post ID)
-         * - source_id: bigint(20) UNSIGNED, reference to content source
-         * - action: varchar(20), moderation action (approve/reject)
-         * - reviewer: bigint(20) UNSIGNED, user ID of moderator
-         * - decision: varchar(20), decision (approved/rejected/flagged)
-         * - reason: text, optional reason/comment
-         * - created_at: datetime, timestamp of moderation action
-         */
         $sql_moderation_log = "CREATE TABLE {$prefix}asap_moderation_log (
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             content_id bigint(20) UNSIGNED NOT NULL,
@@ -113,7 +114,7 @@ class ASAP_Digest_Core_Activator {
             KEY created_at (created_at)
         ) $charset_collate;";
 
-        // --- [ v2.2: Create custom content index table for deduplication and quality scoring ] ---
+        // Content Index Table for deduplication and quality scoring
         $sql_content_index = "CREATE TABLE IF NOT EXISTS {$prefix}asap_content_index (
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             post_id bigint(20) UNSIGNED NOT NULL,
@@ -125,15 +126,67 @@ class ASAP_Digest_Core_Activator {
             UNIQUE KEY uniq_fingerprint (fingerprint),
             UNIQUE KEY uniq_post_id (post_id)
         ) $charset_collate;";
+        
+        // Digest Storage Table
+        $sql_digests = "CREATE TABLE IF NOT EXISTS {$prefix}asap_digests (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            content longtext NOT NULL,
+            share_link varchar(255) DEFAULT NULL,
+            podcast_url varchar(255) DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+        
+        // Notifications Table
+        $sql_notifications = "CREATE TABLE IF NOT EXISTS {$prefix}asap_notifications (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) UNSIGNED NOT NULL,
+            endpoint varchar(255) NOT NULL,
+            p256dh varchar(255) NOT NULL,
+            auth varchar(255) NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY endpoint (endpoint),
+            KEY user_id (user_id)
+        ) $charset_collate;";
 
+        // Execute all table creation SQL
         dbDelta($sql_sources);
         dbDelta($sql_metrics);
         dbDelta($sql_storage);
         dbDelta($sql_errors);
         dbDelta($sql_moderation_log);
         dbDelta($sql_content_index);
+        dbDelta($sql_digests);
+        dbDelta($sql_notifications);
+        
+        // Set schema version
+        update_option('asap_digest_schema_version', ASAP_DIGEST_SCHEMA_VERSION);
+        
+        // Schedule cleanup of old digests and notifications
+        if (!wp_next_scheduled('asap_cleanup_data')) {
+            wp_schedule_event(time(), 'daily', 'asap_cleanup_data');
+        }
+        
+        error_log('ASAP Digest Core: Activation complete');
     }
-}
-
-// Register activation hook
-register_activation_hook(__FILE__, ['ASAP_Digest_Core_Activator', 'activate']); 
+    
+    /**
+     * Run deactivation tasks: clean up scheduled tasks and temporary options
+     * 
+     * @since 1.0.0
+     * @return void
+     */
+    public static function deactivate() {
+        if (!defined('WP_UNINSTALL_PLUGIN')) {
+            // Remove scheduled cleanup
+            wp_clear_scheduled_hook('asap_cleanup_data');
+            
+            // Remove debug options
+            delete_option('sms_digest_time');
+            
+            error_log('ASAP Digest Core: Deactivation complete');
+        }
+    }
+} 
