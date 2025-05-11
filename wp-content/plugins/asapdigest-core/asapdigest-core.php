@@ -20,6 +20,23 @@ if (!defined('ABSPATH')) {
 }
 error_log('ASAP_CORE_DEBUG: START of asapdigest-core.php');
 
+// Load Content Processing Pipeline
+require_once plugin_dir_path(__FILE__) . 'includes/content-processing/bootstrap.php';
+
+// Initialize Content Processing tables and settings on activation
+register_activation_hook(__FILE__, 'asap_digest_activate_content_processing');
+
+/**
+ * Initialize Content Processing tables and settings on activation
+ */
+function asap_digest_activate_content_processing() {
+    // Load schema file
+    require_once plugin_dir_path(__FILE__) . 'includes/schema.php';
+    
+    // Create database tables
+    asap_digest_create_tables();
+}
+
 // Define constants
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 error_log('ASAP_CORE_DEBUG: Constants defined');

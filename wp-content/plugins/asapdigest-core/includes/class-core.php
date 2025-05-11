@@ -468,17 +468,119 @@ class ASAP_Digest_Core {
     }
 
     /**
+     * Register admin pages and menus
+     */
+    public function register_admin_menus() {
+        // Main plugin menu
+        add_menu_page(
+            'ASAP Digest', 
+            'ASAP Digest', 
+            'manage_options', 
+            'asap-digest', 
+            array($this, 'render_admin_dashboard'),
+            'dashicons-rss',
+            30
+        );
+        
+        // Dashboard submenu
+        add_submenu_page(
+            'asap-digest',
+            'Dashboard',
+            'Dashboard',
+            'manage_options',
+            'asap-digest',
+            array($this, 'render_admin_dashboard')
+        );
+        
+        // Content Sources submenu
+        add_submenu_page(
+            'asap-digest',
+            'Content Sources',
+            'Content Sources',
+            'manage_options',
+            'asap-content-sources',
+            array($this, 'render_content_sources')
+        );
+        
+        // Content Library submenu
+        add_submenu_page(
+            'asap-digest',
+            'Content Library',
+            'Content Library',
+            'manage_options',
+            'asap-content-library',
+            array($this, 'render_content_library')
+        );
+        
+        // API Settings submenu
+        add_submenu_page(
+            'asap-digest',
+            'API Settings',
+            'API Settings',
+            'manage_options',
+            'asap-api-settings',
+            array($this, 'render_api_settings')
+        );
+        
+        // Advanced Settings submenu
+        add_submenu_page(
+            'asap-digest',
+            'Advanced Settings',
+            'Advanced Settings',
+            'manage_options',
+            'asap-advanced-settings',
+            array($this, 'render_advanced_settings')
+        );
+    }
+
+    /**
+     * Render admin dashboard page
+     */
+    public function render_admin_dashboard() {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/dashboard.php';
+    }
+
+    /**
+     * Render content sources admin page
+     */
+    public function render_content_sources() {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/source-management.php';
+    }
+
+    /**
+     * Render content library admin page
+     */
+    public function render_content_library() {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/content-library.php';
+    }
+
+    /**
+     * Render API settings admin page
+     */
+    public function render_api_settings() {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/api-settings.php';
+    }
+
+    /**
+     * Render advanced settings admin page
+     */
+    public function render_advanced_settings() {
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/views/advanced-settings.php';
+    }
+
+    /**
      * Initialize content processing components
      */
     public function init_content_processing() {
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-validator.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-deduplicator.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-processor.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
         
         // Register hooks related to content processing
         add_action('asap_content_added', array($this, 'log_content_action'), 10, 2);
         add_action('asap_content_updated', array($this, 'log_content_action'), 10, 2);
         add_action('asap_content_deleted', array($this, 'log_content_action'), 10, 2);
+        
+        // Register duplicate detection hooks
+        add_action('asap_duplicate_content_detected', array($this, 'handle_duplicate_content'), 10, 3);
     }
 
     /**
@@ -488,42 +590,261 @@ class ASAP_Digest_Core {
      * @param array $content_data Content data
      */
     public function log_content_action($content_id, $content_data) {
-        // Basic logging implementation
-        $action = current_action();
-        $user_id = get_current_user_id();
-        $time = current_time('mysql');
-        
-        // Log to activity log table if available
+        // Log to custom log table
         global $wpdb;
-        $table = $wpdb->prefix . 'asap_user_activity_log';
         
-        if ($wpdb->get_var("SHOW TABLES LIKE '{$table}'") === $table) {
-            $wpdb->insert(
-                $table,
-                array(
-                    'user_id' => $user_id,
-                    'action' => $action,
-                    'object_type' => 'content',
-                    'object_id' => $content_id,
-                    'details' => wp_json_encode(array(
-                        'title' => isset($content_data['title']) ? $content_data['title'] : '',
-                        'type' => isset($content_data['type']) ? $content_data['type'] : '',
-                    )),
-                    'created_at' => $time,
-                )
-            );
+        $table_name = $wpdb->prefix . 'asap_activity_log';
+        $action_type = current_filter(); // gets current action hook as the action type
+        $user_id = get_current_user_id();
+        
+        $wpdb->insert(
+            $table_name,
+            array(
+                'user_id' => $user_id,
+                'action_type' => $action_type,
+                'object_id' => $content_id,
+                'object_type' => 'content',
+                'details' => json_encode(array(
+                    'title' => $content_data['title'] ?? '',
+                    'type' => $content_data['type'] ?? '',
+                    'source_url' => $content_data['source_url'] ?? '',
+                )),
+                'created_at' => current_time('mysql'),
+            )
+        );
+    }
+
+    /**
+     * Handle duplicate content detection
+     *
+     * @param int $content_id Content ID
+     * @param int $duplicate_id Duplicate content ID
+     * @param string $fingerprint Content fingerprint
+     */
+    public function handle_duplicate_content($content_id, $duplicate_id, $fingerprint) {
+        // Log the duplicate detection
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'asap_activity_log';
+        $user_id = get_current_user_id();
+        
+        $wpdb->insert(
+            $table_name,
+            array(
+                'user_id' => $user_id,
+                'action_type' => 'duplicate_detected',
+                'object_id' => $content_id,
+                'object_type' => 'content',
+                'details' => json_encode(array(
+                    'duplicate_id' => $duplicate_id,
+                    'fingerprint' => $fingerprint,
+                )),
+                'created_at' => current_time('mysql'),
+            )
+        );
+        
+        // Optionally handle automatically based on settings
+        if (defined('ASAP_DEDUPE_KEEP_HIGHEST_QUALITY') && ASAP_DEDUPE_KEEP_HIGHEST_QUALITY) {
+            $this->auto_resolve_duplicate($content_id, $duplicate_id);
+        }
+    }
+
+    /**
+     * Auto-resolve duplicate content based on quality scores
+     *
+     * @param int $content_id Content ID
+     * @param int $duplicate_id Duplicate content ID
+     */
+    private function auto_resolve_duplicate($content_id, $duplicate_id) {
+        global $wpdb;
+        $content_table = $wpdb->prefix . 'asap_ingested_content';
+        
+        // Get quality scores
+        $content_score = $wpdb->get_var($wpdb->prepare(
+            "SELECT quality_score FROM $content_table WHERE id = %d",
+            $content_id
+        ));
+        
+        $duplicate_score = $wpdb->get_var($wpdb->prepare(
+            "SELECT quality_score FROM $content_table WHERE id = %d",
+            $duplicate_id
+        ));
+        
+        // Compare scores and keep the higher quality content
+        if ($content_score > $duplicate_score) {
+            // New content has higher quality, remove duplicate
+            $processor = asap_digest_get_content_processor();
+            $processor->delete($duplicate_id);
+            
+            // Log the decision
+            $this->log_auto_duplicate_resolution($content_id, $duplicate_id, 'kept_new');
+        } else {
+            // Existing content has higher or equal quality, keep it
+            $processor = asap_digest_get_content_processor();
+            $processor->delete($content_id);
+            
+            // Log the decision
+            $this->log_auto_duplicate_resolution($content_id, $duplicate_id, 'kept_existing');
+        }
+    }
+
+    /**
+     * Log auto duplicate resolution
+     *
+     * @param int $content_id Content ID
+     * @param int $duplicate_id Duplicate content ID
+     * @param string $decision Decision made (kept_new or kept_existing)
+     */
+    private function log_auto_duplicate_resolution($content_id, $duplicate_id, $decision) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'asap_activity_log';
+        
+        $wpdb->insert(
+            $table_name,
+            array(
+                'user_id' => 0, // System action
+                'action_type' => 'auto_duplicate_resolved',
+                'object_id' => ($decision === 'kept_new') ? $content_id : $duplicate_id,
+                'object_type' => 'content',
+                'details' => json_encode(array(
+                    'content_id' => $content_id,
+                    'duplicate_id' => $duplicate_id,
+                    'decision' => $decision,
+                )),
+                'created_at' => current_time('mysql'),
+            )
+        );
+    }
+
+    /**
+     * Hook into WordPress init
+     */
+    public function init() {
+        // Initialize REST API
+        $this->init_rest_api();
+        
+        // Initialize admin menus
+        add_action('admin_menu', array($this, 'register_admin_menus'));
+        
+        // Initialize content processing system
+        $this->init_content_processing();
+        
+        // Initialize shortcodes
+        $this->init_shortcodes();
+        
+        // Register custom post types, taxonomies, etc.
+        $this->register_custom_types();
+        
+        // Register AJAX handlers
+        $this->register_ajax_handlers();
+    }
+    
+    /**
+     * Initialize REST API endpoints
+     */
+    public function init_rest_api() {
+        // Load REST API controllers
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-api.php';
+        
+        // Initialize API
+        $api = new ASAP_Digest_REST_API();
+        $api->init();
+    }
+    
+    /**
+     * Initialize shortcodes
+     */
+    public function init_shortcodes() {
+        // Load shortcode handlers
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/shortcodes/shortcodes.php';
+    }
+    
+    /**
+     * Register custom post types and taxonomies
+     */
+    public function register_custom_types() {
+        // Custom post type registration would go here
+    }
+    
+    /**
+     * Register AJAX handlers
+     */
+    public function register_ajax_handlers() {
+        // AJAX handlers registration would go here
+        add_action('wp_ajax_asap_reindex_content', array($this, 'ajax_reindex_content'));
+        add_action('wp_ajax_asap_run_source', array($this, 'ajax_run_source'));
+    }
+    
+    /**
+     * AJAX handler for reindexing content
+     */
+    public function ajax_reindex_content() {
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'You do not have permission to perform this action.'));
+            return;
         }
         
-        // You can also use WordPress error log for debugging
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log(sprintf(
-                'ASAP Content Action: %s, ID: %d, User: %d, Title: %s',
-                $action,
-                $content_id,
-                $user_id,
-                isset($content_data['title']) ? $content_data['title'] : 'Unknown'
-            ));
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_admin_nonce')) {
+            wp_send_json_error(array('message' => 'Invalid security token.'));
+            return;
         }
+        
+        // Get batch size
+        $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 50;
+        
+        // Reindex content
+        $result = asap_digest_reindex_content($batch_size);
+        
+        // Return result
+        wp_send_json_success($result);
+    }
+    
+    /**
+     * AJAX handler for running a content source
+     */
+    public function ajax_run_source() {
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'You do not have permission to perform this action.'));
+            return;
+        }
+        
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_admin_nonce')) {
+            wp_send_json_error(array('message' => 'Invalid security token.'));
+            return;
+        }
+        
+        // Get source ID
+        $source_id = isset($_POST['source_id']) ? intval($_POST['source_id']) : 0;
+        
+        if ($source_id <= 0) {
+            wp_send_json_error(array('message' => 'Invalid source ID.'));
+            return;
+        }
+        
+        // Load content source manager and crawler
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-source-manager.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-crawler.php';
+        
+        $source_manager = new AsapDigest\Crawler\ContentSourceManager();
+        $source = $source_manager->get_source($source_id);
+        
+        if (!$source) {
+            wp_send_json_error(array('message' => 'Source not found.'));
+            return;
+        }
+        
+        // Run crawler
+        $processor = asap_digest_get_content_processor();
+        $crawler = new AsapDigest\Crawler\ContentCrawler($source_manager, $processor);
+        $result = $crawler->crawl_source($source);
+        
+        // Return result
+        wp_send_json_success($result);
     }
 }
 

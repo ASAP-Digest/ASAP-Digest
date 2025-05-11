@@ -1,67 +1,123 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: **/admin/class-*.php, **/admin/css/*.css, **/includes/class-admin-*.php, plugin-name.php
+alwaysApply: false
 ---
-Yes, I'll create two more specific protocols for the issues we solved. I'll separate them into distinct markdown blocks that focus on the specific problems we encountered and solved.
+# WordPress Admin Style Enqueue Protocol v1.1
 
-Ran tool
-# WordPress Admin Style Enqueue Protocol v1.0
+description: Defines the standard method for organizing, registering, and loading WordPress admin CSS styles, preventing common issues like style conflicts, missing resources, and inefficient loading.
 
-## 1. Style File Organization
+*(Self-correction: v1.1 - Added CSS organization section, explicit handle naming conventions, and debug mode support)*
+
+## 1. Purpose
+This protocol establishes standards for organizing, registering, and loading WordPress admin CSS styles for plugins. It prevents common issues like style conflicts, missing resources, inefficient loading, and caching problems.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. WordPress Class Organization         │ // Class structure, namespaces
+│ 2. Universal Error Resolution Protocol  │ // Handle style loading errors
+│ 3. Cross-Protocol Communication         │ // Verification between protocols
+└─────────────────────────────────────────┘
 ```
+
+## 3. Style File Organization
+```text
 your-plugin/
 ├── admin/
 │   ├── css/
-│   │   ├── components/          # Component-specific styles
-│   │   │   ├── _cards.css
+│   │   ├── components/          # Component-specific modular styles
+│   │   │   ├── _cards.css       # Prefixed with underscore to indicate partial
 │   │   │   ├── _status.css
 │   │   │   └── _forms.css
-│   │   └── admin.css           # Main admin stylesheet
-│   └── class-admin.php         # Admin initialization
+│   │   └── admin.css           # Main admin stylesheet (imports components)
+│   └── class-admin.php         # Admin class with style enqueue methods
 ```
 
-## 2. Enqueue Implementation
+## 4. Style Handle Naming Conventions
 ```php
-class Your_Plugin_Admin {
+// Always prefix handles with plugin slug for uniqueness
+$style_handle = 'your-plugin-admin';         // Main admin styles
+$component_handle = 'your-plugin-dashboard'; // Component-specific styles
+```
+
+## 5. Enqueue Implementation
+```php
+namespace YourPlugin\Admin;
+
+class Admin {
+    /**
+     * Array of admin page hook suffixes where styles should be loaded
+     * @var array
+     */
     private $plugin_screen_hooks = [
         'toplevel_page_your-plugin',
         'your-plugin_page_subpage'
     ];
 
+    /**
+     * Register and enqueue admin-specific styles
+     * 
+     * @param string $hook The current admin page hook suffix
+     * @return void
+     */
     public function enqueue_admin_styles($hook) {
-        // 1. Early return if not on plugin pages
+        // 1. Early return if not on plugin pages (for efficiency)
         if (!in_array($hook, $this->plugin_screen_hooks)) {
             return;
         }
 
-        // 2. Enqueue with version for cache busting
+        // 2. Get plugin version for cache busting
+        $version = defined('YOUR_PLUGIN_VERSION') ? YOUR_PLUGIN_VERSION : '1.0.0';
+
+        // 3. Register and enqueue the main admin styles
         wp_enqueue_style(
-            'your-plugin-admin',
-            plugin_url('admin/css/admin.css', __FILE__),
-            [],
-            YOUR_PLUGIN_VERSION
+            'your-plugin-admin',               // Unique handle
+            plugin_dir_url(__FILE__) . 'css/admin.css', // Absolute URL
+            [],                                // Dependencies 
+            $version                           // Version for cache busting
         );
+        
+        // 4. Optionally enqueue page-specific styles
+        if ($hook === 'toplevel_page_your-plugin') {
+            wp_enqueue_style(
+                'your-plugin-dashboard',
+                plugin_dir_url(__FILE__) . 'css/components/dashboard.css',
+                ['your-plugin-admin'], // Note the dependency on main styles
+                $version
+            );
+        }
     }
 }
 
-// 3. Hook with correct priority
+// 5. Hook with appropriate priority (after theme styles)
 add_action('admin_enqueue_scripts', [$admin, 'enqueue_admin_styles'], 100);
 ```
 
-## 3. Style Loading Verification
+## 6. Style Loading Verification
 ```php
-class Your_Plugin_Admin {
+namespace YourPlugin\Admin;
+
+class Admin {
+    /**
+     * Verify our styles are properly loaded - useful for troubleshooting
+     * 
+     * @return bool Whether styles are registered and enqueued
+     */
     public function verify_styles_loaded() {
         // 1. Check if style is registered
         if (!wp_style_is('your-plugin-admin', 'registered')) {
-            error_log('Admin style not registered');
+            // Log error for debugging
+            error_log('Admin style not registered: your-plugin-admin');
             return false;
         }
 
         // 2. Check if style is enqueued
         if (!wp_style_is('your-plugin-admin', 'enqueued')) {
-            error_log('Admin style not enqueued');
+            // Log error for debugging
+            error_log('Admin style not enqueued: your-plugin-admin');
             return false;
         }
 
@@ -70,17 +126,33 @@ class Your_Plugin_Admin {
 }
 ```
 
-## 4. Debug Mode Support
+## 7. Debug Mode Support
 ```php
-class Your_Plugin_Admin {
+namespace YourPlugin\Admin;
+
+class Admin {
+    /**
+     * Enable style debugging when SCRIPT_DEBUG is true
+     * 
+     * @return void
+     */
     public function maybe_enable_debug_styles() {
         if (defined('SCRIPT_DEBUG') && SCRIPT_DEBUG) {
-            add_filter('style_loader_src', [$this, 'prevent_caching'], 10, 2);
+            // Prevent caching of styles during development
+            add_filter('style_loader_src', [$this, 'prevent_style_caching'], 10, 2);
         }
     }
 
-    public function prevent_caching($src, $handle) {
-        if ($handle === 'your-plugin-admin') {
+    /**
+     * Add timestamp to style URL to prevent caching
+     * 
+     * @param string $src The source URL of the enqueued style
+     * @param string $handle The style's registered handle
+     * @return string The modified source URL
+     */
+    public function prevent_style_caching($src, $handle) {
+        // Only modify our plugin's styles
+        if (strpos($handle, 'your-plugin-') === 0) {
             return add_query_arg('ver', time(), $src);
         }
         return $src;
@@ -88,3 +160,44 @@ class Your_Plugin_Admin {
 }
 ```
 
+## 8. Error Handling Integration
+If style loading fails, the Universal Error Resolution Protocol should be triggered:
+
+```php
+if (!$this->verify_styles_loaded()) {
+    // Log style loading failure
+    error_log('Critical style loading failure for your-plugin-admin');
+    
+    // Display admin notice
+    add_action('admin_notices', function() {
+        echo '<div class="error"><p>';
+        echo 'Plugin styles failed to load. Please check file permissions or contact support.';
+        echo '</p></div>';
+    });
+    
+    // Trigger UERP (if available in environment)
+    if (function_exists('trigger_universal_error_resolution')) {
+        trigger_universal_error_resolution(
+            'style_loading_failure',
+            'Failed to load admin styles',
+            ['handle' => 'your-plugin-admin']
+        );
+    }
+}
+```
+
+## 9. Verification Checklist
+- [ ] Styles are organized according to the recommended structure
+- [ ] Style handles are prefixed with the plugin slug for uniqueness
+- [ ] enqueue_admin_styles() is hooked to admin_enqueue_scripts
+- [ ] Screen hook filtering is implemented for efficiency
+- [ ] Version parameter is included for cache busting
+- [ ] Debug mode support is implemented
+- [ ] Verification method exists for troubleshooting
+
+## 10. Common Issues This Prevents
+- Style conflicts with other plugins due to non-prefixed selectors
+- Missing styles due to incorrect paths or hook priorities
+- Performance issues from loading styles on all admin pages
+- Caching problems from missing or incorrect versioning
+- Difficulty troubleshooting style loading failures

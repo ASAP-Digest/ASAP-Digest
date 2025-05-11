@@ -40,6 +40,8 @@ app/src/lib/components/ui/README.md
 class-environment-config.php
 /md-docs/VeriDX/VeriDX: High-Level System Documentation.md
 /md-docs/VeriDX/
+/md-docs/**[ F O C U S ]**
+/md-docs/deprecated
 app/cert/
 
 app/scripts/README.md

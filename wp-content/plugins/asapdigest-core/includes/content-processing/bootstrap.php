@@ -2,7 +2,7 @@
 /**
  * Content Processing Bootstrap
  *
- * Initializes the content processing pipeline components.
+ * Bootstraps the content processing system by loading all required components.
  *
  * @package ASAP_Digest
  * @subpackage Content_Processing
@@ -15,15 +15,18 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Load configuration
+require_once(dirname(__FILE__) . '/config.php');
+
+// Load components
+require_once(dirname(__FILE__) . '/class-content-validator.php');
+require_once(dirname(__FILE__) . '/class-content-deduplicator.php');
+require_once(dirname(__FILE__) . '/class-content-processor.php');
+
 /**
  * Initialize content processing components
  */
 function asap_digest_init_content_processing() {
-    // Include component files
-    require_once plugin_dir_path(__FILE__) . 'class-content-validator.php';
-    require_once plugin_dir_path(__FILE__) . 'class-content-deduplicator.php';
-    require_once plugin_dir_path(__FILE__) . 'class-content-processor.php';
-    
     // Register hooks related to content processing
     add_action('asap_content_added', 'asap_digest_log_content_action', 10, 2);
     add_action('asap_content_updated', 'asap_digest_log_content_action', 10, 2);
@@ -76,9 +79,9 @@ function asap_digest_log_content_action($content_id, $content_data) {
 }
 
 /**
- * Get content processor instance
- * 
- * @return ASAP_Digest_Content_Processor Content processor instance
+ * Get an instance of the content processor
+ *
+ * @return ASAP_Digest_Content_Processor
  */
 function asap_digest_get_content_processor() {
     static $processor = null;
@@ -88,6 +91,87 @@ function asap_digest_get_content_processor() {
     }
     
     return $processor;
+}
+
+/**
+ * Process content through the content processing pipeline
+ *
+ * @param array $content_data Content data to process
+ * @param int $exclude_id ID to exclude from duplication check (for updates)
+ * @return array Processing results
+ */
+function asap_digest_process_content($content_data, $exclude_id = 0) {
+    $processor = asap_digest_get_content_processor();
+    return $processor->process($content_data, $exclude_id);
+}
+
+/**
+ * Save processed content to the database
+ *
+ * @param array $processed_data Processed content data from process() method
+ * @param int $update_id Optional ID to update (if updating existing content)
+ * @return array Result with content_id on success
+ */
+function asap_digest_save_content($processed_data, $update_id = 0) {
+    $processor = asap_digest_get_content_processor();
+    return $processor->save($processed_data, $update_id);
+}
+
+/**
+ * Find content similar to the given content data
+ *
+ * @param array $content_data Content data to find similar content for
+ * @param int $limit Maximum number of similar items to return (default 5)
+ * @return array Similar content items
+ */
+function asap_digest_find_similar_content($content_data, $limit = 5) {
+    $processor = asap_digest_get_content_processor();
+    return $processor->find_similar_content($content_data, $limit);
+}
+
+/**
+ * Generate fingerprint for content data
+ *
+ * @param array $content_data Content data
+ * @return string Fingerprint
+ */
+function asap_digest_generate_fingerprint($content_data) {
+    return ASAP_Digest_Content_Validator::generate_fingerprint($content_data);
+}
+
+/**
+ * Check if content is a duplicate
+ *
+ * @param array $content_data Content data
+ * @param int $exclude_id ID to exclude from check (for updates)
+ * @return bool|int False if unique, existing ID if duplicate
+ */
+function asap_digest_is_duplicate($content_data, $exclude_id = 0) {
+    $deduplicator = new ASAP_Digest_Content_Deduplicator();
+    $fingerprint = asap_digest_generate_fingerprint($content_data);
+    return $deduplicator->is_duplicate($fingerprint, $exclude_id);
+}
+
+/**
+ * Reindex content
+ *
+ * @param int $batch_size Batch size
+ * @return array Results
+ */
+function asap_digest_reindex_content($batch_size = 50) {
+    $processor = asap_digest_get_content_processor();
+    return $processor->reindex_content($batch_size);
+}
+
+/**
+ * Generate duplicate content report
+ *
+ * @param array $args Report arguments
+ * @return array Report data
+ */
+function asap_digest_duplicate_report($args = []) {
+    $processor = asap_digest_get_content_processor();
+    return $processor->generate_duplicate_report($args);
 }
 
 // Initialize the content processing pipeline

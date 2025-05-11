@@ -1,93 +1,294 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: **/admin/css/*.css, **/admin/css/components/*.css, **/admin/scss/*.scss, **/admin/views/*.php
+alwaysApply: false
 ---
-# WordPress Admin UI Component Style Protocol
+# WordPress Admin UI Component Style Protocol v1.1
 
-## 1. Component Style Structure
+description: Defines standardized component styling patterns for WordPress admin interfaces, ensuring consistent structure, proper integration with WordPress UI, and responsive behavior.
+
+*(Self-correction: v1.1 - Added Component Documentation section, BEM integration, and enhanced accessibility guidelines)*
+
+## 1. Purpose
+This protocol establishes styling patterns for WordPress admin UI components, ensuring consistency, maintainability, and proper integration with the WordPress admin interface. It prevents issues such as style conflicts, poor responsiveness, and inconsistent UI elements.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. WordPress Admin Style Enqueue        │ // Loading styles
+│ 2. Universal Error Resolution Protocol  │ // Style-related errors
+│ 3. Strict Visual Enforcement Protocol   │ // Visual consistency checks
+└─────────────────────────────────────────┘
+```
+
+## 3. Component Style Structure (BEM Approach)
 ```css
-/* 1. Component Namespace */
+/* 1. Block - Component Root */
 .your-plugin-component {
     /* Base component styles */
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
 }
 
-/* 2. Component States */
+/* 2. Element - Component Child */
+.your-plugin-component__header {
+    /* Child element styles */
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.your-plugin-component__content {
+    /* Another child element */
+    padding: 15px;
+}
+
+/* 3. Modifier - Component State/Variant */
 .your-plugin-component--active {
     /* Active state styles */
+    border-color: #2271b1;
 }
 
-/* 3. Component Children */
-.your-plugin-component__child {
-    /* Child element styles */
+.your-plugin-component--large {
+    /* Size variant */
+    max-width: 800px;
 }
 ```
 
-## 2. WordPress Core Integration
+## 4. WordPress Admin Integration
 ```css
-/* 1. Match WordPress Admin Colors */
+/* 1. WordPress Admin Color Variables */
 .your-plugin-component {
+    /* Use WP Admin color scheme variables for better integration */
     --wp-admin-theme-color: #2271b1;
     --wp-admin-theme-color-darker-10: #185a9d;
     --wp-admin-theme-color-darker-20: #124f89;
+    
+    /* Apply these variables */
+    border-color: var(--wp-admin-theme-color);
 }
 
-/* 2. Use WordPress Admin Patterns */
+/* 2. Match WP Admin UI Patterns */
 .your-plugin-card {
+    /* Follow WP Admin UI patterns for cards/boxes */
     background: #fff;
     border: 1px solid #c3c4c7;
     box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin-top: 20px;
+    padding: 0;
+    position: relative;
+}
+
+/* 3. WordPress Core Components Integration */
+.your-plugin-ui .wp-list-table {
+    /* When integrating with core components, 
+       use minimal styling to modify only what's necessary */
+    margin-top: 10px;
 }
 ```
 
-## 3. Component Specificity Rules
+## 5. Component Specificity Rules
 ```css
 /* 1. Use Classes Over IDs */
 /* CORRECT */
-.your-plugin-status { }
+.your-plugin-status {
+    color: #1e8cbe;
+}
 
-/* INCORRECT */
-#your-plugin-status { }
+/* AVOID */
+#your-plugin-status {
+    color: #1e8cbe;
+}
 
-/* 2. Avoid Deep Nesting */
-/* CORRECT */
-.your-plugin-card__header { }
+/* 2. Avoid Deep Nesting (Max 3 levels) */
+/* CORRECT - BEM approach */
+.your-plugin-card__header__title {
+    font-weight: bold;
+}
 
-/* INCORRECT */
-.your-plugin-card .card-inner .header { }
+/* AVOID - Selector soup */
+.your-plugin-card .card-inner .header .title {
+    font-weight: bold;
+}
+
+/* 3. Prefix Selectors */
+/* CORRECT - Prefixed to avoid conflicts */
+.your-plugin-table th {
+    font-weight: normal;
+}
+
+/* AVOID - Too generic, could affect other tables */
+.admin-page table th {
+    font-weight: normal;
+}
 ```
 
-## 4. Responsive Implementation
+## 6. Responsive Implementation
 ```css
-/* 1. Use WordPress Breakpoints */
+/* 1. Use WordPress Admin Breakpoints */
+/* WordPress mobile breakpoint */
 @media screen and (max-width: 782px) {
     .your-plugin-component {
-        /* Tablet styles */
+        /* Tablet styles - Match WP behavior */
+        padding: 10px;
+    }
+    
+    .your-plugin-component__header {
+        flex-direction: column;
     }
 }
 
+/* WordPress phone breakpoint */
 @media screen and (max-width: 600px) {
     .your-plugin-component {
         /* Mobile styles */
+        padding: 5px;
+    }
+}
+
+/* 2. Responsive Approach - Mobile First */
+.your-plugin-dashboard {
+    /* Base (mobile) styles */
+    flex-direction: column;
+}
+
+@media screen and (min-width: 783px) {
+    .your-plugin-dashboard {
+        /* Desktop enhancements */
+        flex-direction: row;
     }
 }
 ```
 
-## 5. State Management
+## 7. State Management
 ```css
 /* 1. Loading States */
 .your-plugin-component--loading {
     opacity: 0.7;
     pointer-events: none;
+    position: relative;
+}
+
+.your-plugin-component--loading::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 50%;
+    border-top-color: var(--wp-admin-theme-color);
+    animation: your-plugin-loader 0.6s linear infinite;
 }
 
 /* 2. Error States */
 .your-plugin-component--error {
     border-color: #d63638;
+    background-color: rgba(214, 54, 56, 0.05);
+}
+
+.your-plugin-component--error .your-plugin-component__message {
+    color: #d63638;
 }
 
 /* 3. Success States */
 .your-plugin-component--success {
     border-color: #00a32a;
+    background-color: rgba(0, 163, 42, 0.05);
+}
+
+.your-plugin-component--success .your-plugin-component__message {
+    color: #00a32a;
 }
 ```
+
+## 8. Accessibility Enhancements
+```css
+/* 1. Focus States - Must be visible */
+.your-plugin-button:focus {
+    box-shadow: 0 0 0 1px #fff, 0 0 0 3px var(--wp-admin-theme-color);
+    outline: 1px solid transparent;
+}
+
+/* 2. Color Contrast - Ensure sufficient contrast */
+.your-plugin-text {
+    /* Minimum 4.5:1 contrast ratio for normal text */
+    color: #3c434a; /* Not #999 or similar low-contrast colors */
+}
+
+/* 3. Motion Reduction */
+@media (prefers-reduced-motion: reduce) {
+    .your-plugin-component {
+        transition-duration: 0.001ms !important;
+    }
+    
+    .your-plugin-component--loading::after {
+        animation: none !important;
+    }
+}
+```
+
+## 9. Component Documentation (NEW)
+Each component stylesheet should include documentation on its usage:
+
+```css
+/**
+ * Dashboard Card Component
+ *
+ * A reusable card component for the admin dashboard that displays
+ * statistics or status information with optional actions.
+ *
+ * HTML Structure:
+ * <div class="your-plugin-card">
+ *   <div class="your-plugin-card__header">Title</div>
+ *   <div class="your-plugin-card__content">Content</div>
+ *   <div class="your-plugin-card__footer">Actions</div>
+ * </div>
+ *
+ * Modifiers:
+ * - your-plugin-card--large: Wider card variant
+ * - your-plugin-card--error: Error state with red border
+ * - your-plugin-card--success: Success state with green border
+ */
+.your-plugin-card {
+    /* styles */
+}
+```
+
+## 10. Integration with WordPress Component Library
+When possible, leverage WordPress core components and extend as needed:
+
+```css
+/* 1. Core Button Extensions */
+.your-plugin-action-button.button {
+    /* Extend core button style while maintaining core functionality */
+    display: inline-flex;
+    align-items: center;
+}
+
+.your-plugin-action-button.button .dashicons {
+    margin-right: 5px;
+}
+```
+
+## 11. Verification Checklist
+- [ ] Components follow the BEM naming convention for clarity
+- [ ] Component styles use classes, not IDs
+- [ ] Styles integrate with WordPress admin color schemes
+- [ ] Components are responsive using WP breakpoints
+- [ ] Appropriate styles for component states (loading, error, success) exist
+- [ ] Accessibility features are implemented (focus states, color contrast)
+- [ ] Component stylesheets include usage documentation
+- [ ] Selectors are prefixed to avoid conflicts
+- [ ] Core components are extended respectfully, not overridden
+
+## 12. Common Issues This Prevents
+- Style conflicts with WordPress core or other plugins
+- Inconsistent UI components across the plugin
+- Poor responsiveness on mobile devices
+- Inaccessible components (low contrast, invisible focus states)
+- Hard-to-maintain CSS due to deep nesting
+- Unpredictable styles due to high-specificity selectors

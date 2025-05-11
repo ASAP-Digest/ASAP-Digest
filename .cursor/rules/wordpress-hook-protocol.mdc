@@ -3,168 +3,260 @@ description:
 globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
 alwaysApply: false
 ---
-# WordPress Class Organization Protocol v1.2
+# WordPress Hook Protocol v1.1
 
-*(Self-correction: Added v1.2, added Section 6 for Dependency Loading Order)*
+*(Self-correction: Added protocol version, enhanced documentation section)*
 
-Ensures consistent class organization, prevents namespace conflicts, maintains clean file structure, and enforces correct dependency loading order in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, namespace mismatches, and "Class not found" fatal errors.
+## 1. Hook Naming Conventions
+```php
+// Plugin prefix MUST be used for all hooks
+$prefix = 'your_plugin';
 
-**When to Apply:**
-- Creating new classes
-- Moving existing classes
-- Refactoring plugin structure
-- Debugging class loading issues
-- Adding `require_once` or `include_once` for class files
+// Action hooks: {prefix}_action_context[_specific_trigger]
+do_action("{$prefix}_user_registered", $user_id);
+do_action("{$prefix}_content_created", $content_id, $user_id);
+do_action("{$prefix}_settings_saved", $old_settings, $new_settings);
 
-## 1. One Class, One Location
+// Filter hooks: {prefix}_filter_target[_context]
+$title = apply_filters("{$prefix}_content_title", $title, $content_id);
+$content = apply_filters("{$prefix}_email_content", $content, $email_type);
+```
 
-Each class MUST exist in only one file location within the plugin.
+## 2. Hook Documentation
+```php
+/**
+ * Fires after a user registers through the plugin.
+ *
+ * @since 1.0.0
+ * @param int $user_id The WordPress user ID.
+ */
+do_action('your_plugin_user_registered', $user_id);
 
-````php
-// CORRECT
-// /admin/class-admin-ui.php
-namespace ASAPDigest\Admin;
-class ASAP_Digest_Admin_UI { }
+/**
+ * Filters the content title before display.
+ *
+ * @since 1.0.0
+ * @param string $title      The current content title.
+ * @param int    $content_id The content ID.
+ * @return string The modified content title.
+ */
+$title = apply_filters('your_plugin_content_title', $title, $content_id);
+```
 
-// INCORRECT - Same class defined in two locations
-// /admin/class-admin-ui.php
-// /includes/class-admin-ui.php
-````
+## 3. Hook Callback Registration
+```php
+/**
+ * Register a callback for the user registration action.
+ *
+ * @param int $user_id The user ID.
+ * @return void
+ */
+function your_plugin_handle_user_registration($user_id) {
+    // Process new user registration
+}
+add_action('your_plugin_user_registered', 'your_plugin_handle_user_registration', 10, 1);
 
-## 2. Directory Structure
+/**
+ * Filter content titles.
+ *
+ * @param string $title      The original title.
+ * @param int    $content_id The content ID.
+ * @return string The modified title.
+ */
+function your_plugin_filter_content_title($title, $content_id) {
+    // Modify the title if needed
+    return $title;
+}
+add_filter('your_plugin_content_title', 'your_plugin_filter_content_title', 10, 2);
+```
 
-Follow a logical directory structure reflecting the class's purpose.
-
-````text
-your-plugin/
-├── admin/           # Admin UI classes
-├── includes/        # Core functionality
-│   ├── api/        # API endpoints
-│   └── db/         # Database operations
-└── templates/       # View templates
-````
-
-## 3. File Paths & Requires
-
-Use `plugin_dir_path(__FILE__)` for reliable path generation when requiring files. Ensure the path points to the single correct location defined in Section 1. **See Section 6 for mandatory loading order checks.**
-
-````php
-// CORRECT
-require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
-
-// INCORRECT (Assuming the class is actually in admin/)
-// require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
-````
-
-## 4. Namespace Structure
-
-Namespaces MUST align with the directory structure relative to the plugin's root namespace (e.g., `ASAPDigest`).
-
-````php
-// CORRECT - Namespace matches directory
-// In admin/class-admin-ui.php
-namespace ASAPDigest\Admin;
-
-// In includes/api/class-rest-auth.php
-namespace ASAPDigest\API;
-
-// INCORRECT - Namespace doesn't match location
-// In admin/class-admin-ui.php
-// namespace ASAPDigest\Core; // Should be ASAPDigest\Admin
-````
-
-## 5. Class Loading & Instantiation
-
-**A. Within a Namespaced File:** Use `use` statements to import other namespaced classes.
-
-````php
-// CORRECT (Inside a file like 'includes/class-core.php' which has 'namespace ASAPDigest\Core;')
-namespace ASAPDigest\Core;
-
-use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
-use ASAPDigest\API\ASAP_Digest_REST_Auth;
-
-class Core {
+## 4. Class-Based Hook Registration
+```php
+/**
+ * Register hooks within a class.
+ */
+class Your_Plugin_Feature {
+    /**
+     * Constructor.
+     */
     public function __construct() {
-        $admin_ui = new ASAP_Digest_Admin_UI();
-        $auth = new ASAP_Digest_REST_Auth();
+        // Register actions
+        add_action('your_plugin_user_registered', [$this, 'handle_user_registration'], 10, 1);
+        
+        // Register filters
+        add_filter('your_plugin_content_title', [$this, 'filter_content_title'], 10, 2);
+    }
+    
+    /**
+     * Handle user registration.
+     *
+     * @param int $user_id The user ID.
+     * @return void
+     */
+    public function handle_user_registration($user_id) {
+        // Process new user registration
+    }
+    
+    /**
+     * Filter content titles.
+     *
+     * @param string $title      The original title.
+     * @param int    $content_id The content ID.
+     * @return string The modified title.
+     */
+    public function filter_content_title($title, $content_id) {
+        // Modify the title if needed
+        return $title;
     }
 }
+```
 
-// INCORRECT (Inside a namespaced file)
-// use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace for Admin UI class
-````
+## 5. Hook Priority
+```php
+// Early execution (before most other callbacks)
+add_action('your_plugin_init', 'your_plugin_early_init', 5);
 
-**B. From the Global Scope (Non-Namespaced Files):** When instantiating a namespaced class from a file that does **not** have its own `namespace` declaration (like the main plugin file `your-plugin.php`), you **MUST** use the fully qualified class name, preceded by a backslash (`\`). `use` statements have no effect in the global scope for instantiation.
+// Default priority
+add_action('your_plugin_init', 'your_plugin_normal_init', 10);
 
-````php
-// CORRECT (In a file without 'namespace ...;' declaration, e.g., asapdigest-core.php)
-require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';
+// Late execution (after most other callbacks)
+add_action('your_plugin_init', 'your_plugin_late_init', 20);
 
-// Instantiate and assign to variable
-$auth_instance = new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+// Very late execution (e.g., for logging or cleanup)
+add_action('your_plugin_init', 'your_plugin_cleanup', 999);
+```
 
-// OR if only constructor side-effects are needed:
-new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+## 6. Removing Hooks
+```php
+// Remove a function hook
+remove_action('your_plugin_init', 'your_plugin_early_init', 5);
 
-// INCORRECT (In a file without 'namespace ...;')
-// use ASAPDigest\API\ASAP_Digest_REST_Auth; // 'use' has no effect here for instantiation
-// $instance = new ASAP_Digest_REST_Auth(); // Leads to "Class not found" or linter error
-````
+// Remove a class method hook
+remove_action('your_plugin_init', [$instance, 'method_name'], 10);
 
-## 6. Dependency Loading Order (`require_once`) (NEW)
+// Remove all callbacks for a specific hook
+global $wp_filter;
+if (isset($wp_filter['your_plugin_init'])) {
+    unset($wp_filter['your_plugin_init']);
+}
+```
 
-When adding a `require_once` or `include_once` statement for a PHP file containing a class definition (`ChildClass.php`):
+## 7. Hook Execution
+```php
+// Execute action with no parameters
+do_action('your_plugin_init');
 
-1.  **MUST** inspect the class definition within `ChildClass.php` for an `extends ParentClass` clause. Use tools like `grep` or file reading if necessary.
-2.  If an `extends` clause exists, **MUST** verify that the file defining `ParentClass` (e.g., `includes/class-parent.php`) is already included via `require_once` at an *earlier* point in the current file or execution flow.
-3.  If `ParentClass.php` is not already included earlier, **MUST** add the `require_once plugin_dir_path(__FILE__) . 'includes/class-parent.php';` line *before* the `require_once plugin_dir_path(__FILE__) . 'includes/ChildClass.php';` line.
+// Execute action with parameters
+do_action('your_plugin_user_updated', $user_id, $old_data, $new_data);
 
-**Example:**
+// Apply filter with one parameter
+$value = apply_filters('your_plugin_option', $default_value);
 
-````php
-// CORRECT ORDER
-require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class
-require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class extends base
-require_once plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php'; // Child class extends base
+// Apply filter with multiple parameters
+$content = apply_filters('your_plugin_content', $content, $context, $user_id);
+```
 
-// INCORRECT ORDER - Would cause Fatal Error
-// require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class
-// require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class needed earlier
-````
+## 8. Conditional Hook Registration
+```php
+/**
+ * Register hooks conditionally based on context.
+ */
+function your_plugin_register_conditional_hooks() {
+    // Only register in admin context
+    if (is_admin()) {
+        add_action('admin_menu', 'your_plugin_add_menu_pages');
+    }
+    
+    // Only register for logged-in users
+    if (is_user_logged_in()) {
+        add_action('wp', 'your_plugin_init_user_features');
+    }
+    
+    // Only register for specific post types
+    if (get_post_type() === 'your_post_type') {
+        add_filter('the_content', 'your_plugin_modify_content');
+    }
+}
+add_action('init', 'your_plugin_register_conditional_hooks');
+```
 
-**Rationale:** This ensures PHP encounters and processes the parent class definition before it attempts to process a child class that depends on it, preventing "Class not found" fatal errors.
+## 9. Plugin Activation/Deactivation Hooks
+```php
+/**
+ * Register activation hook.
+ */
+function your_plugin_activate() {
+    // Initialization code
+    do_action('your_plugin_activated');
+}
+register_activation_hook(__FILE__, 'your_plugin_activate');
 
-## 7. Moving Classes
+/**
+ * Register deactivation hook.
+ */
+function your_plugin_deactivate() {
+    // Cleanup code
+    do_action('your_plugin_deactivated');
+}
+register_deactivation_hook(__FILE__, 'your_plugin_deactivate');
+```
 
-When moving a class file:
-1.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
-2.  Update all `require_once` or `include_once` paths pointing to the old location. **Ensure dependency loading order (Section 6) is maintained after moving.**
-3.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
-4.  Update all `use` statements in other files that referenced the class's old namespace.
-5.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
-6.  Document the change in `CHANGELOG.md`.
+## 10. Best Practices
+```php
+// GOOD: Pass all context in parameters
+do_action('your_plugin_user_saved', $user_id, $data);
 
-````markdown
-## [1.0.1] - 2024-03-31
-### Changed
-- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/`.
-- Updated namespace from `ASAPDigest\Core` to `ASAPDigest\Admin`.
-````
+// BAD: Rely on global state
+$GLOBALS['your_plugin_current_user'] = $user_id;
+do_action('your_plugin_user_saved');
 
-## 8. Common Issues This Prevents:
-- Fatal errors from duplicate class definitions.
-- Autoloader failures (if used) from mismatched namespaces.
-- Confusion about class locations.
-- Inconsistent plugin structure.
-- Hard-to-track class dependencies.
-- "Class not found" errors or linter warnings when instantiating from the global scope.
-- **"Class not found" fatal errors due to incorrect `require_once` order for parent/child classes.**
+// GOOD: Return modified value from filter
+add_filter('your_plugin_title', function($title) {
+    return $title . ' - Modified';
+});
 
-## 9. Verification Steps:
-1. Check for duplicate class files: `find . -name "class-*.php" | sort`.
-2. Manually verify namespaces match directory structure in key classes.
-3. Verify `require_once` paths are correct **and respect dependency order (Section 6)**.
-4. Test plugin activation and key functionality involving the classes.
-5. Check PHP error logs for "Class not found" errors.
-6. Run linters to check for "Undefined type" errors, especially in the main plugin file or other non-namespaced files.
+// BAD: Modify value by reference or global
+add_filter('your_plugin_title', function($title) {
+    $GLOBALS['your_plugin_title'] = $title . ' - Modified';
+    // No return statement
+});
+```
+
+## 11. Error Handling Integration
+```php
+/**
+ * Handle errors in hook callbacks.
+ * 
+ * @param string $hook_name  The name of the hook being executed.
+ * @param mixed  $return_value The value being filtered.
+ * @param array  $args       Hook arguments.
+ * @return mixed The filtered value.
+ */
+function your_plugin_safe_apply_filters($hook_name, $return_value, ...$args) {
+    try {
+        return apply_filters($hook_name, $return_value, ...$args);
+    } catch (Exception $e) {
+        // Log error (to error log or custom logging system)
+        error_log('Error in ' . $hook_name . ': ' . $e->getMessage());
+        
+        // Optionally trigger universal error protocol if available
+        if (function_exists('your_plugin_trigger_error_protocol')) {
+            your_plugin_trigger_error_protocol($e, 'hook_error', [
+                'hook_name' => $hook_name,
+                'arguments' => $args
+            ]);
+        }
+        
+        // Return unfiltered value as fallback
+        return $return_value;
+    }
+}
+```
+
+## 12. Documentation and Changelog
+When adding or modifying hooks:
+1. Document all hooks in a central hooks.md file
+2. Include sample usage for developers
+3. Add changelog entries for hook additions/changes
+4. Use @since tags to mark version introduction
+5. Use @deprecated tags when deprecating hooks

@@ -99,13 +99,37 @@ class ASAP_Digest_Content_Processor {
         // Step 3: Calculate quality score
         $quality_score = $this->validator->calculate_quality_score();
         
+        // Step 4: Get detailed quality assessment
+        $quality_assessment = $this->validator->get_quality_assessment();
+        
+        // Optionally check if quality score is below auto-reject threshold
+        if (defined('ASAP_QUALITY_SCORE_AUTO_REJECT') && $quality_score < ASAP_QUALITY_SCORE_AUTO_REJECT) {
+            $this->results['errors']['quality_score'] = sprintf(
+                'Content quality score (%d) is below minimum threshold (%d)',
+                $quality_score,
+                ASAP_QUALITY_SCORE_AUTO_REJECT
+            );
+            $this->results['data']['quality_assessment'] = $quality_assessment;
+            return $this->results;
+        }
+        
         // Compile final processed data
         $this->results['success'] = true;
         $this->results['data'] = [
             'content' => $content_data,
             'fingerprint' => $fingerprint,
             'quality_score' => $quality_score,
+            'quality_assessment' => $quality_assessment,
         ];
+        
+        // Add warnings for low quality score
+        if (defined('ASAP_QUALITY_SCORE_MINIMUM') && $quality_score < ASAP_QUALITY_SCORE_MINIMUM) {
+            $this->results['warnings']['quality_score'] = sprintf(
+                'Content quality score (%d) is below recommended threshold (%d)',
+                $quality_score,
+                ASAP_QUALITY_SCORE_MINIMUM
+            );
+        }
         
         return $this->results;
     }
@@ -126,8 +150,9 @@ class ASAP_Digest_Content_Processor {
             'content_id' => 0,
         ];
         
-        // Check if we have valid processed data
-        if (empty($processed_data) || empty($processed_data['data']['content'])) {
+        // Verify data structure
+        if (!isset($processed_data['success']) || !$processed_data['success'] || 
+            !isset($processed_data['data']) || !is_array($processed_data['data'])) {
             $result['errors'][] = 'Invalid processed data provided';
             return $result;
         }
@@ -135,31 +160,35 @@ class ASAP_Digest_Content_Processor {
         $content_data = $processed_data['data']['content'];
         $fingerprint = $processed_data['data']['fingerprint'];
         $quality_score = $processed_data['data']['quality_score'];
-        $now = current_time('mysql');
         
         // Prepare data for database
+        $content_table = $wpdb->prefix . 'asap_ingested_content';
+        $now = current_time('mysql');
+        
         $db_data = [
-            'type' => sanitize_text_field($content_data['type']),
-            'title' => sanitize_text_field($content_data['title']),
-            'content' => wp_kses_post($content_data['content']),
-            'summary' => isset($content_data['summary']) ? sanitize_text_field($content_data['summary']) : '',
-            'source_url' => esc_url_raw($content_data['source_url']),
-            'source_id' => isset($content_data['source_id']) ? sanitize_text_field($content_data['source_id']) : '',
-            'publish_date' => isset($content_data['publish_date']) && $content_data['publish_date'] ? $content_data['publish_date'] : $now,
+            'type' => sanitize_text_field($content_data['type'] ?? 'article'),
+            'title' => sanitize_text_field($content_data['title'] ?? ''),
+            'content' => $content_data['content'] ?? '',
+            'summary' => sanitize_text_field($content_data['summary'] ?? ''),
+            'source_url' => esc_url_raw($content_data['source_url'] ?? ''),
+            'source_id' => sanitize_text_field($content_data['source_id'] ?? ''),
             'fingerprint' => $fingerprint,
             'quality_score' => $quality_score,
-            'status' => isset($content_data['status']) ? sanitize_text_field($content_data['status']) : 'published',
+            'status' => sanitize_text_field($content_data['status'] ?? 'pending'),
             'updated_at' => $now,
         ];
         
-        // Add extra JSON field if provided
-        if (isset($content_data['extra']) && is_array($content_data['extra'])) {
-            $db_data['extra'] = wp_json_encode($content_data['extra']);
+        // Handle publish date
+        if (!empty($content_data['publish_date'])) {
+            $db_data['publish_date'] = date('Y-m-d H:i:s', strtotime($content_data['publish_date']));
         }
         
-        $content_table = $wpdb->prefix . 'asap_ingested_content';
+        // Handle extra data as JSON
+        if (!empty($content_data['extra']) && is_array($content_data['extra'])) {
+            $db_data['extra'] = json_encode($content_data['extra']);
+        }
         
-        // Update or insert
+        // Update or insert based on update_id
         if ($update_id > 0) {
             // Update existing content
             $result_query = $wpdb->update(
@@ -174,7 +203,12 @@ class ASAP_Digest_Content_Processor {
             }
             
             // Update index
-            $this->deduplicator->update_index($update_id, $fingerprint, $quality_score);
+            $index_result = $this->deduplicator->add_to_index($update_id, $fingerprint, $quality_score);
+            
+            if (!$index_result) {
+                $result['errors'][] = 'Error updating content index';
+                return $result;
+            }
             
             $result['success'] = true;
             $result['content_id'] = $update_id;
@@ -196,7 +230,14 @@ class ASAP_Digest_Content_Processor {
             $content_id = (int) $wpdb->insert_id;
             
             // Add to index
-            $this->deduplicator->add_to_index($content_id, $fingerprint, $quality_score);
+            $index_result = $this->deduplicator->add_to_index($content_id, $fingerprint, $quality_score);
+            
+            if (!$index_result) {
+                // If adding to index fails, attempt to delete the content to maintain consistency
+                $wpdb->delete($content_table, ['id' => $content_id]);
+                $result['errors'][] = 'Error adding content to index';
+                return $result;
+            }
             
             $result['success'] = true;
             $result['content_id'] = $content_id;
@@ -224,6 +265,11 @@ class ASAP_Digest_Content_Processor {
             $wpdb->prepare("SELECT * FROM {$content_table} WHERE id = %d", $content_id),
             ARRAY_A
         );
+        
+        if (!$content) {
+            // Content not found
+            return false;
+        }
         
         // Delete from index first
         $this->deduplicator->remove_from_index($content_id);
@@ -258,6 +304,14 @@ class ASAP_Digest_Content_Processor {
             ARRAY_A
         );
         
+        // Parse JSON extra data if present
+        if ($content && !empty($content['extra']) && is_string($content['extra'])) {
+            $extra = json_decode($content['extra'], true);
+            if (is_array($extra)) {
+                $content['extra'] = $extra;
+            }
+        }
+        
         return $content ?: false;
     }
 
@@ -268,5 +322,128 @@ class ASAP_Digest_Content_Processor {
      */
     public function get_results() {
         return $this->results;
+    }
+
+    /**
+     * Find similar content
+     *
+     * @param array $content_data Content data to find similar content for
+     * @param int $limit Maximum number of similar items to return (default 5)
+     * @return array Similar content items
+     */
+    public function find_similar_content($content_data, $limit = 5) {
+        // Generate fingerprint for this content
+        $fingerprint = $this->deduplicator->generate_fingerprint($content_data);
+        
+        // Get similar content by fingerprint (exact match)
+        $similar_items = $this->deduplicator->get_similar_content($fingerprint, $limit);
+        
+        // If we didn't find enough items, try more fuzzy matching
+        if (count($similar_items) < $limit) {
+            $remaining_limit = $limit - count($similar_items);
+            
+            // Find potential duplicates based on field similarity
+            $potential_duplicates = $this->deduplicator->find_potential_duplicates($content_data, $remaining_limit);
+            
+            // Filter out any exact duplicates already found
+            $existing_ids = array_column($similar_items, 'id');
+            
+            $additional_items = [];
+            foreach ($potential_duplicates as $duplicate) {
+                if (!in_array($duplicate['id'], $existing_ids)) {
+                    $additional_items[] = $duplicate;
+                    $existing_ids[] = $duplicate['id']; // Prevent duplicates
+                    
+                    // Break if we've reached our limit
+                    if (count($additional_items) >= $remaining_limit) {
+                        break;
+                    }
+                }
+            }
+            
+            // Merge additional items with exact matches
+            $similar_items = array_merge($similar_items, $additional_items);
+        }
+        
+        return $similar_items;
+    }
+
+    /**
+     * Get content statistics
+     *
+     * @return array Content statistics
+     */
+    public function get_content_stats() {
+        global $wpdb;
+        
+        $content_table = $wpdb->prefix . 'asap_ingested_content';
+        
+        // Get total content count
+        $total_count = $wpdb->get_var("SELECT COUNT(*) FROM {$content_table}");
+        
+        // Get counts by status
+        $status_counts = $wpdb->get_results(
+            "SELECT status, COUNT(*) as count FROM {$content_table} GROUP BY status",
+            ARRAY_A
+        );
+        
+        // Get counts by type
+        $type_counts = $wpdb->get_results(
+            "SELECT type, COUNT(*) as count FROM {$content_table} GROUP BY type",
+            ARRAY_A
+        );
+        
+        // Get quality score distribution
+        $quality_distribution = $wpdb->get_results(
+            "SELECT 
+                CASE 
+                    WHEN quality_score >= 90 THEN 'excellent'
+                    WHEN quality_score >= 70 THEN 'good'
+                    WHEN quality_score >= 50 THEN 'average'
+                    WHEN quality_score >= 30 THEN 'poor'
+                    ELSE 'very_poor'
+                END as quality_range,
+                COUNT(*) as count
+            FROM {$content_table}
+            GROUP BY quality_range",
+            ARRAY_A
+        );
+        
+        // Get recent content
+        $recent_content = $wpdb->get_results(
+            "SELECT id, title, type, quality_score, created_at
+            FROM {$content_table}
+            ORDER BY created_at DESC
+            LIMIT 5",
+            ARRAY_A
+        );
+        
+        return [
+            'total_count' => (int) $total_count,
+            'status_counts' => $status_counts,
+            'type_counts' => $type_counts,
+            'quality_distribution' => $quality_distribution,
+            'recent_content' => $recent_content,
+        ];
+    }
+
+    /**
+     * Reindex content
+     *
+     * @param int $batch_size Number of items to process per batch
+     * @return array Processing results
+     */
+    public function reindex_content($batch_size = 50) {
+        return $this->deduplicator->reindex_content($batch_size);
+    }
+
+    /**
+     * Generate duplicate content report
+     *
+     * @param array $args Report parameters
+     * @return array Report data
+     */
+    public function generate_duplicate_report($args = []) {
+        return $this->deduplicator->generate_duplicate_report($args);
     }
 } 

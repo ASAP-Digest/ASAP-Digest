@@ -3,202 +3,433 @@ description:
 globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, **/admin/class-*.php, **/includes/class-*.php, **/includes/api/class-*.php, **/includes/db/class-*.php, plugin-name.php, **/templates/*.php, **/admin/views/*.php, **/admin/partials/*.php, **/public/class-*.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php, **/includes/integrations/*.php, **/includes/widgets/class-*.php, **/includes/blocks/class-*.php
 alwaysApply: false
 ---
-# WordPress Method Parameter Handling
+# WordPress Method Parameter Protocol v1.1
 
-## Purpose
-This rule ensures consistent and error-free method parameter handling in WordPress plugins, particularly for static utility methods and form field generation.
+*(Self-correction: Added protocol version, enhanced parameter documentation)*
 
-## When to Apply
-- When creating new utility methods
-- When calling existing methods with parameters
-- When modifying method signatures
-- When working with form generation functions
-- When converting between array and individual parameter formats
+## 1. Purpose and Importance
 
-## Common Issues This Prevents
-1. Parameter count mismatches
-2. Array vs individual parameter confusion
-3. Missing required parameters
-4. Incorrect parameter order
-5. Type mismatches in method calls
+Method parameters are the gateway to your plugin's functionality. This protocol establishes consistent patterns for defining, documenting, validating, and interacting with method parameters in WordPress plugins. Following these standards ensures your code is robust, maintainable, self-documenting, and easier for other developers to understand and extend.
 
-## Best Practices
+## 2. Method Parameter Documentation
 
-### 1. Method Definition
+Document all method parameters clearly using PHPDoc standards. Nested parameters should be thoroughly documented with their types, requirements, and default values.
+
 ```php
-// ✅ CORRECT: Clear parameter definition with types and defaults
-public static function create_form_field(
-    string $id,
-    string $label,
-    string $type = 'text',
-    array $args = []
-) {
-    // Method implementation
-}
-
-// ❌ INCORRECT: Ambiguous parameter handling
-public static function create_form_field($params) {
-    // Method implementation
-}
-```
-
-### 2. Method Documentation
-```php
-// ✅ CORRECT: Clear parameter documentation
 /**
- * Creates a form field with specified parameters
+ * Process a content request.
+ *
+ * @since 1.0.0
+ *
+ * @param array $content_data {
+ *     Content request data.
+ *
+ *     @type string $content      Required. The content to process.
+ *     @type string $format       Optional. Output format ('html', 'json', 'text'). Default 'html'.
+ *     @type int    $word_count   Optional. Maximum word count for the content. Default 150.
+ *     @type bool   $include_meta Optional. Whether to include metadata. Default false.
+ *     @type array  $filters {
+ *         Optional. Filters to apply to the content.
+ *
+ *         @type string $relevance Optional. Relevance filter ('high', 'medium', 'low'). Default 'medium'.
+ *         @type array  $keywords  Optional. Keywords to highlight.
+ *     }
+ * }
+ * @param int   $user_id      Optional. The user ID. Default 0 (guest).
+ * @param bool  $save_history Optional. Whether to save processing history. Default true.
  * 
- * @param string $id          Field identifier
- * @param string $label       Field label text
- * @param string $type        Field type (default: 'text')
- * @param array  $args        Additional field arguments
- * @return string            Generated HTML
+ * @return array|WP_Error The generated content data or error.
  */
-
-// ❌ INCORRECT: Missing or unclear documentation
-/** Creates a form field */
+function your_plugin_process_request($content_data, $user_id = 0, $save_history = true) {
+    // Implementation
+}
 ```
 
-### 3. Method Calls
-```php
-// ✅ CORRECT: Individual parameters
-$html = ASAP_Digest_Admin_UI::create_form_field(
-    'field_id',
-    'Field Label',
-    'text',
-    ['placeholder' => 'Enter value']
-);
+## 3. Required Parameter Validation
 
-// ❌ INCORRECT: Single array parameter when method expects individual params
-$html = ASAP_Digest_Admin_UI::create_form_field([
-    'id' => 'field_id',
-    'label' => 'Field Label'
-]);
-```
+Always validate required parameters early in your methods. This prevents errors deeper in your code and provides clear feedback about missing information.
 
-### 4. Parameter Validation
 ```php
-// ✅ CORRECT: Validate required parameters
-public static function create_form_field($id, $label, $type = 'text', $args = []) {
-    if (empty($id) || empty($label)) {
-        throw new InvalidArgumentException('ID and label are required');
+/**
+ * Validate required parameters.
+ *
+ * @param array $params     Parameters to validate.
+ * @param array $required   Required parameter keys.
+ * @param bool  $return_all Whether to return all params or just validated ones.
+ * 
+ * @return array|WP_Error Validated parameters or error.
+ */
+function your_plugin_validate_params($params, $required, $return_all = true) {
+    $errors = [];
+    $validated = [];
+    
+    // Check for required parameters
+    foreach ($required as $key) {
+        if (!isset($params[$key]) || (empty($params[$key]) && $params[$key] !== 0)) {
+            $errors[] = sprintf(__('Missing required parameter: %s', 'your-plugin'), $key);
+        } else {
+            $validated[$key] = $params[$key];
+        }
     }
-    // Method implementation
-}
-
-// ❌ INCORRECT: No parameter validation
-public static function create_form_field($id, $label, $type = 'text', $args = []) {
-    // Method implementation without checks
+    
+    // If errors, return WP_Error
+    if (!empty($errors)) {
+        return new WP_Error('missing_params', __('Required parameters are missing', 'your-plugin'), $errors);
+    }
+    
+    // Return validated params or all params
+    return $return_all ? $params : $validated;
 }
 ```
 
-## Implementation Steps
+## 4. Type Validation
 
-1. **Method Definition**
-   - Clearly define all required parameters
-   - Add type hints when possible
-   - Set default values for optional parameters
-   - Use descriptive parameter names
+Always validate parameter types to ensure your methods receive the expected data format. This prevents type-related errors and unexpected behaviors.
 
-2. **Documentation**
-   - Add PHPDoc blocks for all methods
-   - Document each parameter with type and description
-   - Include usage examples
-   - Note any required parameters
-
-3. **Parameter Validation**
-   - Check required parameters at method start
-   - Validate parameter types
-   - Provide meaningful error messages
-   - Use WordPress coding standards
-
-4. **Method Calls**
-   - Match parameter count and order
-   - Respect parameter types
-   - Include all required parameters
-   - Use named arguments for clarity (PHP 8+)
-
-## Verification Steps
-
-1. Check method signature:
-   ```bash
-   grep -r "function create_form_field" .
-   ```
-
-2. Verify parameter documentation:
-   ```bash
-   grep -A 10 "@param" path/to/file.php
-   ```
-
-3. Test method calls:
-   ```php
-   // Test required parameters
-   assert(method_exists('ClassName', 'create_form_field'));
-   
-   // Test parameter validation
-   try {
-       ClassName::create_form_field('', '');
-       throw new Exception('Should have failed');
-   } catch (InvalidArgumentException $e) {
-       // Expected
-   }
-   ```
-
-## Common Patterns
-
-1. **Required Parameters First**
-   ```php
-   function method_name($required1, $required2, $optional1 = null)
-   ```
-
-2. **Type Declarations**
-   ```php
-   function method_name(string $id, string $label, array $options = [])
-   ```
-
-3. **Array Arguments Last**
-   ```php
-   function method_name($id, $label, $type = 'text', array $args = [])
-   ```
-
-4. **Validation Blocks**
-   ```php
-   if (empty($required_param)) {
-       throw new InvalidArgumentException('Required parameter missing');
-   }
-   ```
-
-## Migration Guide
-
-When converting from array parameters to individual parameters:
-
-1. Update method signature
-2. Update all method calls
-3. Add parameter validation
-4. Update documentation
-5. Test all call sites
-
-Example:
 ```php
-// Old
-function old_method($params = []) {}
+/**
+ * Validate parameter types.
+ *
+ * @param mixed  $value The value to validate.
+ * @param string $type  The expected type.
+ * @param string $param The parameter name (for error messages).
+ * 
+ * @return mixed|WP_Error The validated value or error.
+ */
+function your_plugin_validate_type($value, $type, $param) {
+    $valid = true;
+    $message = '';
+    
+    switch ($type) {
+        case 'int':
+        case 'integer':
+            if (!is_numeric($value) || (int) $value != $value) {
+                $valid = false;
+                $message = sprintf(__('%s must be an integer', 'your-plugin'), $param);
+            } else {
+                $value = (int) $value;
+            }
+            break;
+            
+        case 'string':
+            if (!is_string($value)) {
+                $valid = false;
+                $message = sprintf(__('%s must be a string', 'your-plugin'), $param);
+            }
+            break;
+            
+        case 'array':
+            if (!is_array($value)) {
+                $valid = false;
+                $message = sprintf(__('%s must be an array', 'your-plugin'), $param);
+            }
+            break;
+            
+        case 'bool':
+        case 'boolean':
+            if (!is_bool($value)) {
+                $valid = false;
+                $message = sprintf(__('%s must be a boolean', 'your-plugin'), $param);
+            }
+            break;
+            
+        case 'email':
+            if (!is_email($value)) {
+                $valid = false;
+                $message = sprintf(__('%s must be a valid email address', 'your-plugin'), $param);
+            }
+            break;
+            
+        // Add other type validations as needed
+    }
+    
+    if (!$valid) {
+        return new WP_Error('invalid_param_type', $message);
+    }
+    
+    return $value;
+}
+```
 
-// New
-function new_method($required, $optional = null) {
-    if (empty($required)) {
-        throw new InvalidArgumentException('Required parameter missing');
+## 5. Array vs. Individual Parameters
+
+Choose the appropriate parameter style based on method complexity and usage context. For methods with many parameters or optional parameters, use the array style. For simple methods with few parameters, use individual parameters.
+
+### 5.1 Array Parameter Style
+
+Array parameters are ideal for complex methods with many optional parameters or nested structures. This style is more flexible for future additions without breaking existing API calls.
+
+```php
+/**
+ * Create a new content item.
+ *
+ * @param array $args {
+ *     Content creation arguments.
+ *
+ *     @type string $title   Required. Content title.
+ *     @type string $content Required. Main content text.
+ *     @type string $status  Optional. Content status ('draft', 'publish'). Default 'draft'.
+ *     @type array  $meta    Optional. Additional metadata.
+ * }
+ * @return int|WP_Error The content ID or error.
+ */
+function your_plugin_create_content($args) {
+    // Validate required parameters
+    $params = your_plugin_validate_params($args, ['title', 'content']);
+    if (is_wp_error($params)) {
+        return $params;
+    }
+    
+    // Set defaults
+    $params = wp_parse_args($params, [
+        'status' => 'draft',
+        'meta' => [],
+    ]);
+    
+    // Implementation
+    // ...
+    
+    return $content_id;
+}
+```
+
+### 5.2 Individual Parameter Style
+
+Individual parameters are clearer for methods with few parameters or where certain parameters are always required.
+
+```php
+/**
+ * Create a new content item.
+ *
+ * @param string $title   Content title.
+ * @param string $content Main content text.
+ * @param string $status  Optional. Content status ('draft', 'publish'). Default 'draft'.
+ * @param array  $meta    Optional. Additional metadata. Default empty array.
+ * @return int|WP_Error The content ID or error.
+ */
+function your_plugin_create_content($title, $content, $status = 'draft', $meta = []) {
+    // Validate required parameters
+    if (empty($title)) {
+        return new WP_Error('missing_title', __('Title is required', 'your-plugin'));
+    }
+    
+    if (empty($content)) {
+        return new WP_Error('missing_content', __('Content is required', 'your-plugin'));
+    }
+    
+    // Implementation
+    // ...
+    
+    return $content_id;
+}
+```
+
+## 6. Value Range Validation
+
+For numerical parameters, always validate the acceptable range to prevent unexpected behaviors or performance issues.
+
+```php
+/**
+ * Validate that a value is within a specific range.
+ *
+ * @param mixed $value   The value to validate.
+ * @param mixed $min     The minimum allowed value.
+ * @param mixed $max     The maximum allowed value.
+ * @param string $param  The parameter name for error messages.
+ * @return mixed|WP_Error The validated value or error.
+ */
+function your_plugin_validate_range($value, $min, $max, $param) {
+    if ($value < $min || $value > $max) {
+        return new WP_Error(
+            'out_of_range',
+            sprintf(
+                __('%s must be between %s and %s', 'your-plugin'),
+                $param,
+                $min,
+                $max
+            )
+        );
+    }
+    
+    return $value;
+}
+
+/**
+ * Update pagination settings.
+ *
+ * @param int $per_page The number of items per page.
+ * @return bool|WP_Error True on success or error.
+ */
+function your_plugin_update_pagination($per_page) {
+    // Validate parameter type
+    $per_page = your_plugin_validate_type($per_page, 'int', 'per_page');
+    if (is_wp_error($per_page)) {
+        return $per_page;
+    }
+    
+    // Validate range
+    $per_page = your_plugin_validate_range($per_page, 5, 100, 'per_page');
+    if (is_wp_error($per_page)) {
+        return $per_page;
+    }
+    
+    // Update settings
+    update_option('your_plugin_per_page', $per_page);
+    
+    return true;
+}
+```
+
+## 7. Callback Parameters
+
+When working with callback functions, always validate that the callback is actually callable.
+
+```php
+/**
+ * Process items with a callback function.
+ *
+ * @param array    $items    The items to process.
+ * @param callable $callback The callback function.
+ * @param mixed    $context  Optional. Context to pass to the callback. Default null.
+ * @return array|WP_Error The processed items or error.
+ */
+function your_plugin_process_items($items, $callback, $context = null) {
+    // Validate items is an array
+    if (!is_array($items)) {
+        return new WP_Error('invalid_items', __('Items must be an array', 'your-plugin'));
+    }
+    
+    // Validate callback is callable
+    if (!is_callable($callback)) {
+        return new WP_Error('invalid_callback', __('Callback must be callable', 'your-plugin'));
+    }
+    
+    $results = [];
+    
+    foreach ($items as $key => $item) {
+        try {
+            $results[$key] = call_user_func($callback, $item, $context);
+        } catch (Exception $e) {
+            return new WP_Error(
+                'callback_error',
+                sprintf(
+                    __('Error processing item %s: %s', 'your-plugin'),
+                    $key,
+                    $e->getMessage()
+                )
+            );
+        }
+    }
+    
+    return $results;
+}
+```
+
+## 8. Return Values and Error Handling
+
+Always use consistent return types and leverage WP_Error for indicating failure with meaningful error messages.
+
+```php
+/**
+ * Get item data.
+ *
+ * @param int $item_id The item ID.
+ * @return array|WP_Error The item data array or error object.
+ */
+function your_plugin_get_item($item_id) {
+    // Validate item ID
+    $item_id = your_plugin_validate_type($item_id, 'int', 'item_id');
+    if (is_wp_error($item_id)) {
+        return $item_id;
+    }
+    
+    // Check if item exists
+    $exists = your_plugin_item_exists($item_id);
+    if (is_wp_error($exists)) {
+        return $exists;
+    }
+    
+    if (!$exists) {
+        return new WP_Error('item_not_found', __('Item not found', 'your-plugin'));
+    }
+    
+    // Get item data
+    $data = your_plugin_fetch_item_data($item_id);
+    if (is_wp_error($data)) {
+        return $data;
+    }
+    
+    /**
+     * Filter the item data before returning.
+     *
+     * @param array $data    The item data.
+     * @param int   $item_id The item ID.
+     */
+    return apply_filters('your_plugin_item_data', $data, $item_id);
+}
+```
+
+## 9. Universal Error Resolution Integration
+
+Integrate with the Universal Error Resolution Protocol by implementing try-catch blocks and proper error logging.
+
+```php
+/**
+ * Process content with error handling.
+ *
+ * @param array $content_data Content data.
+ * @return array|WP_Error Processed content or error.
+ */
+function your_plugin_process_content_safe($content_data) {
+    try {
+        // Validate parameters
+        $params = your_plugin_validate_params($content_data, ['content']);
+        if (is_wp_error($params)) {
+            return $params;
+        }
+        
+        // Process content
+        $result = your_plugin_process_content_internal($params);
+        
+        // Return result
+        return $result;
+    } catch (Exception $e) {
+        // Log error
+        error_log('Error processing content: ' . $e->getMessage());
+        
+        // Return error
+        return new WP_Error(
+            'content_processing_error',
+            __('An error occurred while processing content', 'your-plugin'),
+            ['exception' => $e->getMessage()]
+        );
+        
+        // Optionally trigger error protocol
+        if (function_exists('your_plugin_trigger_error_protocol')) {
+            your_plugin_trigger_error_protocol($e, 'content_error', [
+                'content_data' => $content_data
+            ]);
+        }
     }
 }
 ```
 
-## Error Prevention Checklist
+## 10. Common Mistakes to Avoid
 
-- [ ] Method has clear parameter definitions
-- [ ] Required parameters are documented
-- [ ] Parameter types are specified
-- [ ] Default values are provided for optional parameters
-- [ ] Parameter validation is implemented
-- [ ] Method calls match parameter count
-- [ ] Method calls use correct parameter types
-- [ ] Documentation includes usage examples
-- [ ] Tests verify parameter handling
+1. **Inconsistent Parameter Validation:** Always validate all user-supplied parameters.
+2. **Missing Required Parameters Check:** Validate required parameters before any processing.
+3. **Unclear Error Messages:** Provide specific, actionable error messages.
+4. **Mixed Return Types:** Be consistent with your return types and document them clearly.
+5. **Changing Parameter Requirements:** Avoid changing required parameters in updates.
+6. **Inconsistent Documentation:** Keep PHPDoc comments in sync with code.
+7. **Type Coercion Issues:** Be careful with loose comparisons and type conversions.
+8. **Not Handling Edge Cases:** Consider all possible inputs, including edge cases.
+
+## 11. Implementing These Standards
+
+1. **New Code:** All new code should follow these standards from the beginning.
+2. **Existing Code:** Gradually refactor existing code to meet these standards.
+3. **Shared Utils:** Create shared utility functions for common parameter validation tasks.
+4. **Documentation:** Keep PHPDoc comments updated when changing parameter requirements.
+5. **Error Logging:** Implement comprehensive error logging for parameter validation issues.
+6. **Testing:** Add unit tests specifically for parameter validation.

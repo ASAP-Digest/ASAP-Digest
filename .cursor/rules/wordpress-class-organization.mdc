@@ -1,22 +1,37 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: **/class-*.php, **/includes/*.php, **/admin/*.php, **/includes/api/*.php, **/includes/db/*.php, plugin-name.php, **/includes/interfaces/*.php, **/includes/traits/*.php, **/includes/abstracts/*.php
+alwaysApply: false
 ---
-# WordPress Class Organization v1.3
+# WordPress Class Organization v1.4
 
-*(Self-correction: Added v1.1, updated Section 5 with global namespace instantiation rules; v1.2 Added reasoning logging for moves; v1.3 Added Section 5.C for constructor recursion prevention)*
+description: Defines standards for organizing WordPress plugin classes including file locations, namespaces, dependencies, and instantiation patterns to prevent common fatal errors and maintainability issues.
 
-Ensures consistent class organization, prevents namespace conflicts, maintains clean file structure, and enforces correct dependency loading order and instantiation patterns in WordPress plugins. This rule helps prevent common issues like duplicate classes, incorrect file paths, namespace mismatches, and "Class not found" or memory exhaustion fatal errors.
+*(Self-correction: v1.1 - Added global namespace instantiation rules; v1.2 - Added reasoning logging for moves; v1.3 - Added constructor recursion prevention; v1.4 - Enhanced dependency injection patterns and integrated with protocol system)*
 
-**When to Apply:**
+## 1. Purpose
+This protocol defines the standard approach to class organization, namespacing, file structure, and instantiation patterns in WordPress plugins. It prevents common fatal errors such as duplicate classes, autoloader failures, namespace mismatches, and recursion issues. It also aligns with modern PHP practices while maintaining WordPress compatibility.
+
+## 2. Protocol Integration Layer
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Universal Error Resolution Protocol  │ // For class loading failures
+│ 2. PHP File Creation Protocol           │ // For new class files
+│ 3. Cross-Protocol Communication         │ // For verification between protocols
+│ 4. Critical Code Removal Protocol       │ // For safe class refactoring
+└─────────────────────────────────────────┘
+```
+
+## 3. When to Apply
 - Creating new classes
 - Moving existing classes
 - Refactoring plugin structure
 - Debugging class loading issues or fatal errors related to instantiation
 - Adding `require_once` or `include_once` for class files
 
-## 1. One Class, One Location
+## 4. One Class, One Location (MUST)
 
 Each class MUST exist in only one file location within the plugin.
 
@@ -24,177 +39,256 @@ Each class MUST exist in only one file location within the plugin.
 // CORRECT
 // /admin/class-admin-ui.php
 namespace ASAPDigest\Admin;
-class ASAP_Digest_Admin_UI { }
+class Admin_UI { }
 
 // INCORRECT - Same class defined in two locations
 // /admin/class-admin-ui.php
 // /includes/class-admin-ui.php
 ```
 
-## 2. Directory Structure
+## 5. Directory Structure (SHOULD)
 
-Follow a logical directory structure reflecting the class's purpose.
+Follow a logical directory structure reflecting the class's purpose. The recommended structure aligns with WordPress coding standards while providing organization for modern components.
 
 ```text
 your-plugin/
-├── admin/           # Admin UI classes
-├── includes/        # Core functionality
-│   ├── api/        # API endpoints
-│   └── db/         # Database operations
-└── templates/       # View templates
+├── your-plugin.php           # Main plugin file
+├── admin/                    # Admin-related classes
+│   ├── class-admin.php       # Main admin class
+│   ├── class-settings.php    # Settings page handling
+│   └── views/                # Admin view templates
+├── includes/                 # Core functionality
+│   ├── class-core.php        # Main plugin class
+│   ├── class-activator.php   # Activation handling
+│   ├── api/                  # API-related classes
+│   │   ├── class-rest-base.php
+│   │   └── class-endpoints.php
+│   ├── db/                   # Database operations
+│   ├── traits/               # Shared traits
+│   └── interfaces/           # Interfaces
+└── templates/                # Front-end templates
 ```
 
-## 3. File Paths & Requires
+## 6. File Paths & Requires (MUST)
 
-Use `plugin_dir_path(__FILE__)` for reliable path generation when requiring files. Ensure the path points to the single correct location defined in Section 1. **See Section 6 for mandatory loading order checks.**
+Use `plugin_dir_path(__FILE__)` for reliable path generation when requiring files. Ensure the path points to the single correct location defined in Section 4.
 
 ```php
-// CORRECT
+// CORRECT - Uses plugin_dir_path() for reliable paths
 require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
 
-// INCORRECT (Assuming the class is actually in admin/)
-// require_once plugin_dir_path(__FILE__) . 'includes/class-admin-ui.php';
+// INCORRECT - Unreliable path that could break on different server configurations
+// require_once __DIR__ . '/../includes/class-admin-ui.php';
+// require_once dirname(__FILE__) . '/includes/class-admin-ui.php';
 ```
 
-## 4. Namespace Structure
+## 7. Namespace Structure (MUST)
 
-Namespaces MUST align with the directory structure relative to the plugin's root namespace (e.g., `ASAPDigest`).
+Namespaces MUST align with the directory structure relative to the plugin's root namespace.
 
 ```php
-// CORRECT - Namespace matches directory
+// CORRECT - Namespace matches directory structure
 // In admin/class-admin-ui.php
-namespace ASAPDigest\Admin;
+namespace YourPlugin\Admin;
 
 // In includes/api/class-rest-auth.php
-namespace ASAPDigest\API;
+namespace YourPlugin\API;
 
-// INCORRECT - Namespace doesn't match location
+// INCORRECT - Namespace doesn't match directory location
 // In admin/class-admin-ui.php
-// namespace ASAPDigest\Core; // Should be ASAPDigest\Admin
+// namespace YourPlugin\Core; // Should be YourPlugin\Admin
 ```
 
-## 5. Class Loading & Instantiation
+## 8. Class Loading & Instantiation
 
-### A. Within a Namespaced File
+### 8.A. Within a Namespaced File (MUST)
 Use `use` statements to import other namespaced classes.
 
 ```php
-// CORRECT (Inside a file like 'includes/class-core.php' which has 'namespace ASAPDigest\Core;')
-namespace ASAPDigest\Core;
+// CORRECT (Inside a file with 'namespace YourPlugin\Core;')
+namespace YourPlugin\Core;
 
-use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
-use ASAPDigest\API\ASAP_Digest_REST_Auth;
+use YourPlugin\Admin\Admin_UI;
+use YourPlugin\API\REST_Auth;
 
 class Core {
+    private $admin_ui;
+    private $rest_auth;
+    
     public function __construct() {
-        // Example: if Admin_UI were being instantiated here
-        // $admin_ui = new ASAP_Digest_Admin_UI(); 
-        // $auth = new ASAP_Digest_REST_Auth();
+        $this->admin_ui = new Admin_UI(); 
+        $this->rest_auth = new REST_Auth();
     }
 }
 
-// INCORRECT (Inside a namespaced file)
-// use ASAPDigest\Core\ASAP_Digest_Admin_UI; // Wrong namespace for Admin UI class
+// INCORRECT - Using wrong namespace
+// use YourPlugin\Core\Admin_UI; // Wrong namespace for Admin UI class
 ```
 
-### B. From the Global Scope (Non-Namespaced Files)
-When instantiating a namespaced class from a file that does **not** have its own `namespace` declaration (like the main plugin file `your-plugin.php`), you **MUST** use the fully qualified class name, preceded by a backslash (`\`). `use` statements have no effect in the global scope for instantiation.
+### 8.B. From the Global Scope (MUST)
+When instantiating a namespaced class from a file that does **not** have its own `namespace` declaration (like the main plugin file), you **MUST** use the fully qualified class name with a leading backslash.
 
 ```php
-// CORRECT (In a file without 'namespace ...;' declaration, e.g., asapdigest-core.php)
+// CORRECT (In main plugin file without namespace declaration)
 require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';
 
-// Instantiate and assign to variable
-$auth_instance = new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+// Fully qualified class name with leading backslash
+$auth_instance = new \YourPlugin\API\REST_Auth();
 
 // OR if only constructor side-effects are needed:
-new \ASAPDigest\API\ASAP_Digest_REST_Auth();
+new \YourPlugin\API\REST_Auth();
 
-// INCORRECT (In a file without 'namespace ...;')
-// use ASAPDigest\API\ASAP_Digest_REST_Auth; // 'use' has no effect here for instantiation
-// $instance = new ASAP_Digest_REST_Auth(); // Leads to "Class not found" or linter error
+// INCORRECT - Missing backslash, will cause fatal error
+// $instance = new YourPlugin\API\REST_Auth();
+
+// INCORRECT - 'use' statements have no effect in global scope for instantiation
+// use YourPlugin\API\REST_Auth;
+// $instance = new REST_Auth(); // Leads to "Class not found" error
 ```
 
-### C. Preventing Constructor Recursion (Singleton/Dependency Anti-Patterns) (NEW)
-When a class (e.g., `DependentClass`) relies on a core singleton instance (e.g., `CoreClass::get_instance()`) or another dependency that is initialized by the `CoreClass`:
+### 8.C. Preventing Constructor Recursion (MUST)
+When a class (e.g., `DependentClass`) relies on a core singleton instance (e.g., `CoreClass::get_instance()`) or another dependency that is initialized by the `CoreClass`, avoid recursive instantiation:
 
-1.  **Anti-Pattern:** The constructor of `DependentClass` MUST NOT call `CoreClass::get_instance()` if `CoreClass` itself is responsible for instantiating `DependentClass` during `CoreClass`'s own construction phase. This creates a recursive loop if `CoreClass::get_instance()` tries to create a `new CoreClass()` while the initial `CoreClass` instance is not yet fully constructed and assigned to its static property.
+1.  **Anti-Pattern to AVOID:** The constructor of `DependentClass` MUST NOT call `CoreClass::get_instance()` if `CoreClass` itself is responsible for instantiating `DependentClass` during `CoreClass`'s own construction phase.
 
     ```php
-    // PROBLEMATIC PATTERN:
-    // In CoreClass.php
+    // PROBLEMATIC PATTERN - AVOID:
     class CoreClass {
         private static $instance;
         private $dependent;
+        
         public static function get_instance() {
             if (null === self::$instance) {
                 self::$instance = new self(); // Triggers constructor
             }
             return self::$instance;
         }
+        
         private function __construct() {
             // ... other initializations ...
             $this->dependent = new DependentClass(); // Instantiates DependentClass
         }
-        public function get_db() { /* ... */ }
     }
 
-    // In DependentClass.php
     class DependentClass {
-        private $db;
+        private $core;
+        
         public function __construct() {
-            // PROBLEM: CoreClass::get_instance() is called while CoreClass
-            // might still be in its own __construct() method from the first call.
-            // This leads to CoreClass::get_instance() trying to create a *new* CoreClass
-            // because self::$instance isn't set yet from the *outermost* perspective.
-            $core = CoreClass::get_instance(); 
-            $this->db = $core->get_db(); 
+            // PROBLEM: Creates infinite recursion
+            $this->core = CoreClass::get_instance(); 
         }
     }
     ```
 
-2.  **Correct Pattern (Dependency Injection):** `CoreClass` (or the instantiating class) should pass the required dependencies (e.g., its own instance `$this`, or a specific component like `$this->database`) to the constructor of `DependentClass`.
+2.  **Correct Pattern - Dependency Injection (MUST USE):**
 
     ```php
-    // CORRECTED PATTERN (Dependency Injection):
-    // In CoreClass.php
+    // CORRECT PATTERN:
     class CoreClass {
         private static $instance;
         private $database;
         private $dependent;
+        
         public static function get_instance() {
             if (null === self::$instance) {
                 self::$instance = new self();
             }
             return self::$instance;
         }
+        
         private function __construct() {
-            $this->database = new DatabaseConnection();
-            // ... other initializations ...
-            // Pass the already initialized database object to DependentClass
+            $this->database = new Database();
+            // Pass the already initialized dependency
             $this->dependent = new DependentClass($this->database); 
         }
-        public function get_db() { return $this->database; }
     }
 
-    // In DependentClass.php
     class DependentClass {
         private $db;
+        
         // Accept dependency via constructor
-        public function __construct(DatabaseConnection $db_instance) { 
-            $this->db = $db_instance;
+        public function __construct(Database $db) { 
+            $this->db = $db;
         }
     }
     ```
-    This ensures `DependentClass` receives a fully formed dependency and breaks the recursive instantiation cycle.
 
-## 6. Dependency Loading Order (`require_once`)
+### 8.D. Modern Dependency Injection Patterns (SHOULD)
+
+1. **Constructor Injection (Preferred):**
+   ```php
+   namespace YourPlugin\Core;
+   
+   class API_Manager {
+       private $http_client;
+       private $response_formatter;
+       
+       public function __construct(
+           HTTP_Client $http_client,
+           Response_Formatter $response_formatter
+       ) {
+           $this->http_client = $http_client;
+           $this->response_formatter = $response_formatter;
+       }
+   }
+   ```
+
+2. **Factory Methods:**
+   ```php
+   namespace YourPlugin\Core;
+   
+   class API_Client_Factory {
+       public static function create($type, array $options = []) {
+           switch ($type) {
+               case 'rest':
+                   return new REST_Client($options);
+               case 'soap':
+                   return new SOAP_Client($options);
+               default:
+                   throw new \InvalidArgumentException("Unknown client type: $type");
+           }
+       }
+   }
+   ```
+
+3. **Container Integration (Advanced):**
+   For larger plugins, consider a simple dependency injection container:
+   ```php
+   namespace YourPlugin\Core;
+   
+   class Container {
+       private $services = [];
+       private $factories = [];
+       
+       public function set($id, $service) {
+           $this->services[$id] = $service;
+       }
+       
+       public function factory($id, callable $factory) {
+           $this->factories[$id] = $factory;
+       }
+       
+       public function get($id) {
+           if (isset($this->services[$id])) {
+               return $this->services[$id];
+           }
+           
+           if (isset($this->factories[$id])) {
+               return $this->factories[$id]($this);
+           }
+           
+           throw new \Exception("Service not found: $id");
+       }
+   }
+   ```
+
+## 9. Dependency Loading Order (MUST)
 
 When adding a `require_once` or `include_once` statement for a PHP file containing a class definition (`ChildClass.php`):
 
 1.  **MUST** inspect the class definition within `ChildClass.php` for an `extends ParentClass` clause. Use tools like `grep` or file reading if necessary.
 2.  If an `extends` clause exists, **MUST** verify that the file defining `ParentClass` (e.g., `includes/class-parent.php`) is already included via `require_once` at an *earlier* point in the current file or execution flow.
-3.  If `ParentClass.php` is not already included earlier, **MUST** add the `require_once plugin_dir_path(__FILE__) . 'includes/class-parent.php';` line *before* the `require_once plugin_dir_path(__FILE__) . 'includes/ChildClass.php\';` line.
+3.  If `ParentClass.php` is not already included earlier, **MUST** add the `require_once plugin_dir_path(__FILE__) . 'includes/class-parent.php';` line *before* the `require_once plugin_dir_path(__FILE__) . 'includes/ChildClass.php';` line.
 
 **Example:**
 
@@ -202,48 +296,85 @@ When adding a `require_once` or `include_once` statement for a PHP file containi
 // CORRECT ORDER
 require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class
 require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class extends base
-require_once plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php\'; // Child class extends base
+require_once plugin_dir_path(__FILE__) . 'includes/api/class-sync-token-controller.php'; // Another child class
 
 // INCORRECT ORDER - Would cause Fatal Error
 // require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-auth.php';    // Child class
 // require_once plugin_dir_path(__FILE__) . 'includes/api/class-rest-base.php';    // Parent class needed earlier
 ```
 
-**Rationale:** This ensures PHP encounters and processes the parent class definition before it attempts to process a child class that depends on it, preventing "Class not found" fatal errors.
-
-## 7. Moving Classes
+## 10. Moving Classes (MUST)
 
 When moving a class file:
-1.  **Log Reason:** MUST document the reason for moving the class in internal logs or commit message.
-2.  Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
-3.  Update all `require_once` or `include_once` paths pointing to the old location. **Ensure dependency loading order (Section 6) and instantiation patterns (Section 5.C) are maintained after moving.**
-4.  Update the `namespace` declaration within the moved class file itself to match its new directory structure.
-5.  Update all `use` statements in other files that referenced the class's old namespace.
-6.  Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
-7.  Document the change (including reason) in `CHANGELOG.md`.
+1.  **Log Reason (MUST):** Document the reason for moving the class in internal logs, commit message, or change documentation.
+2.  **Find References:** Search the entire plugin codebase for all references to the class (`grep -r "Your_Class_Name" .`).
+3.  **Update Paths:** Update all `require_once` or `include_once` paths pointing to the old location. **Ensure dependency loading order (Section 9) and instantiation patterns (Section 8.C) are maintained after moving.**
+4.  **Update Namespace:** Update the `namespace` declaration within the moved class file itself to match its new directory structure.
+5.  **Update Use Statements:** Update all `use` statements in other files that referenced the class's old namespace.
+6.  **Update Instantiations:** Update any fully qualified instantiations (`new \Old\Namespace\Your_Class_Name()`) to use the new namespace (`new \New\Namespace\Your_Class_Name()`).
+7.  **Document Change:** Document the change (including reason) in `CHANGELOG.md`.
 
 ```markdown
 ## [1.0.1] - 2024-03-31
 ### Changed
-- Moved `ASAP_Digest_Admin_UI` from `includes/` to `admin/` to better align with responsibility.
-- Updated namespace from `ASAPDigest\Core` to `ASAPDigest\Admin`.
+- Moved `Admin_UI` from `includes/` to `admin/` to better align with responsibility.
+- Updated namespace from `YourPlugin\Core` to `YourPlugin\Admin`.
 ```
 
-## 8. Common Issues This Prevents:
-- Fatal errors from duplicate class definitions.
-- Autoloader failures (if used) from mismatched namespaces.
-- Confusion about class locations.
-- Inconsistent plugin structure.
-- Hard-to-track class dependencies.
-- "Class not found" errors or linter warnings when instantiating from the global scope.
-- **"Class not found" fatal errors due to incorrect `require_once` order for parent/child classes.**
-- **Memory exhaustion fatal errors due to recursive class instantiation during plugin load or component initialization, especially involving singleton patterns.** (NEW)
+## 11. Error Handling and Integration (SHOULD)
 
-## 9. Verification Steps:
-1. Check for duplicate class files: `find . -name "class-*.php" | sort`.
-2. Manually verify namespaces match directory structure in key classes.
-3. Verify `require_once` paths are correct **and respect dependency order (Section 6)**.
-4. **Review constructors of core/service classes to ensure they use dependency injection rather than direct `::get_instance()` calls for dependencies they themselves initialize (Section 5.C).** (NEW)
-5. Test plugin activation and key functionality involving the classes.
-6. Check PHP error logs for "Class not found" or memory exhaustion errors.
-7. Run linters to check for "Undefined type" errors, especially in the main plugin file or other non-namespaced files.
+Include standard error handling for class loading failures:
+
+```php
+// In main plugin file or class loader
+try {
+    require_once plugin_dir_path(__FILE__) . 'includes/class-core.php';
+    // More requires...
+} catch (\Throwable $e) {
+    // Log the error
+    error_log('Plugin class loading error: ' . $e->getMessage());
+    
+    // Add admin notice
+    add_action('admin_notices', function() use ($e) {
+        ?>
+        <div class="error">
+            <p><?php echo esc_html('Plugin class loading error: ' . $e->getMessage()); ?></p>
+        </div>
+        <?php
+    });
+    
+    // Trigger UERP if available
+    if (function_exists('trigger_universal_error_resolution')) {
+        trigger_universal_error_resolution(
+            'class_loading_failure',
+            $e->getMessage(),
+            ['trace' => $e->getTraceAsString()]
+        );
+    }
+    
+    // Prevent further execution
+    return;
+}
+```
+
+## 12. Common Issues This Prevents
+- Fatal errors from duplicate class definitions
+- Autoloader failures from mismatched namespaces
+- Confusion about class locations
+- Inconsistent plugin structure
+- Hard-to-track class dependencies
+- "Class not found" errors or linter warnings when instantiating from the global scope
+- "Class not found" fatal errors due to incorrect `require_once` order for parent/child classes
+- Memory exhaustion fatal errors due to recursive class instantiation during plugin load
+
+## 13. Verification Checklist
+- [ ] Each class exists in only one file location
+- [ ] Directory structure follows logical organization based on class purpose
+- [ ] File requires use `plugin_dir_path(__FILE__)` for reliable paths
+- [ ] Namespaces match directory structure
+- [ ] Class instantiations follow correct patterns for their context (namespaced vs. global scope)
+- [ ] Dependencies are injected rather than retrieved via singleton in constructors
+- [ ] Parent classes are required before child classes
+- [ ] Class moves are fully documented with reasoning
+- [ ] Error handling is implemented for class loading
+- [ ] No signs of constructor recursion or circular dependencies

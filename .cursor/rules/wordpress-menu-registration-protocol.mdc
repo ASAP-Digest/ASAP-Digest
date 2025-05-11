@@ -5,128 +5,574 @@ alwaysApply: false
 ---
 # WordPress Menu Registration Protocol v1.1
 
-*(Self-correction: v1.1 - Added explicit rules against direct instantiation in callbacks to prevent recursion)*
+*(Self-correction: Added protocol version, enhanced security section)*
 
-## 1. Purpose
-This protocol defines the standard method for registering WordPress admin menu and submenu pages. It aims to ensure centralization, clarity, proper hooking, and prevent common issues like duplicate menus or fatal errors caused by incorrect callback handling (e.g., recursion).
-
-## 2. Core Principles
-- **Centralization:** All admin menu registrations for a plugin MUST reside in a single, designated location, typically the main plugin file or a dedicated menu registration class/function.
-- **Clarity & Readability:** Menu structure and callback assignments MUST be easy to understand and maintain.
-- **Correct Hooking:** Menus MUST be registered using the `admin_menu` action hook.
-- **Callback Safety:** Menu callbacks, especially those involving class methods, MUST be handled to prevent recursion or excessive resource usage.
-
-## 3. Protocol Steps
-
-### 3.1. Centralized Registration Point (MUST)
-1.  All `add_menu_page()` and `add_submenu_page()` calls MUST be located within a single function (e.g., `my_plugin_register_admin_menus`).
-2.  This single function MUST be hooked into `admin_menu`. Example:
-    ```php
-    add_action('admin_menu', 'my_plugin_register_admin_menus');
-    
-    function my_plugin_register_admin_menus() {
-        // All add_menu_page() and add_submenu_page() calls go here
-    }
-    ```
-3.  DO NOT scatter `add_action('admin_menu', ...)` calls across multiple files or classes for the same plugin's menus.
-
-### 3.2. Callback Function Definition (MUST)
-1.  All functions or class methods intended as callbacks for menu pages MUST be defined *before* they are used in `add_menu_page()` or `add_submenu_page()`.
-2.  Callbacks SHOULD be organized logically, either as standalone functions or methods within a relevant admin class.
-3.  Each callback function/method MUST be documented with PHPDoc comments explaining its purpose.
-
-### 3.3. Menu and Submenu Registration Order (SHOULD)
-1.  Register the main parent menu page using `add_menu_page()` first.
-2.  Register all its submenus using `add_submenu_page()` immediately after their parent.
-3.  Use consistent and logical `$position` arguments for `add_menu_page()` to control menu order.
-
-### 3.4. Callback Handling for Class Methods (CRITICAL)
-
-1.  **Avoid Direct Instantiation in Callbacks (MUST):** When a menu callback is a method of a class, DO NOT instantiate the class directly within the callback argument if that class's constructor or related methods might re-trigger WordPress core hooks (like `plugins_loaded`, `init`, or `admin_menu` itself) or lead to complex object initialization during the `admin_menu` hook's execution. This is a common source of recursion and memory exhaustion.
-
-    ```php
-    // INCORRECT - Potential for recursion if The_Admin_Class constructor does too much
-    add_submenu_page(
-        'parent-slug',
-        'My Submenu',
-        'My Submenu',
-        'manage_options',
-        'my-submenu-slug',
-        [new The_Admin_Class(), 'render_my_submenu_page_method'] // Avoid 'new' here
+## 1. Menu Registration Structure
+```php
+/**
+ * Register plugin admin menus.
+ *
+ * @return void
+ */
+function your_plugin_register_admin_menus() {
+    // Main menu
+    add_menu_page(
+        __('Your Plugin', 'your-plugin'),              // Page title
+        __('Your Plugin', 'your-plugin'),              // Menu title
+        'manage_options',                              // Capability
+        'your-plugin',                                 // Menu slug
+        'your_plugin_render_main_admin_page',          // Callback function
+        'dashicons-admin-generic',                     // Icon
+        30                                             // Position
     );
-    ```
+    
+    // Submenu pages
+    add_submenu_page(
+        'your-plugin',                                 // Parent slug
+        __('Dashboard', 'your-plugin'),                // Page title
+        __('Dashboard', 'your-plugin'),                // Menu title
+        'manage_options',                              // Capability
+        'your-plugin',                                 // Menu slug (same as parent for first submenu)
+        'your_plugin_render_main_admin_page'           // Callback function
+    );
+    
+    add_submenu_page(
+        'your-plugin',                                 // Parent slug
+        __('Settings', 'your-plugin'),                 // Page title
+        __('Settings', 'your-plugin'),                 // Menu title
+        'manage_options',                              // Capability
+        'your-plugin-settings',                        // Menu slug
+        'your_plugin_render_settings_page'             // Callback function
+    );
+}
+add_action('admin_menu', 'your_plugin_register_admin_menus');
+```
 
-2.  **Use Shared Instances or Static Methods (MUST):**
-    *   **Shared Instance (Preferred for multiple callbacks from the same class):** Instantiate the admin class ONCE (e.g., in the main plugin file or via a singleton pattern) and store it in a global variable or a static property. Use this shared instance for all its method callbacks.
-
-        ```php
-        // In main plugin file or a setup function:
-        global $my_plugin_admin_object;
-        $my_plugin_admin_object = new The_Admin_Class();
+## 2. Class-Based Menu Registration
+```php
+/**
+ * Admin menu handler class.
+ */
+class Your_Plugin_Admin_Menu {
+    /**
+     * Register all admin menus and submenu pages.
+     *
+     * @return void
+     */
+    public function register_menus() {
+        // Main menu
+        add_menu_page(
+            __('Your Plugin', 'your-plugin'),          // Page title
+            __('Your Plugin', 'your-plugin'),          // Menu title
+            'manage_options',                          // Capability
+            'your-plugin',                             // Menu slug
+            [$this, 'render_main_page'],               // Callback
+            'dashicons-admin-generic',                 // Icon
+            30                                         // Position
+        );
         
-        // In your menu registration function:
-        function my_plugin_register_admin_menus() {
-            global $my_plugin_admin_object;
-            add_submenu_page(
-                'parent-slug',
-                'My Submenu',
-                'My Submenu',
-                'manage_options',
-                'my-submenu-slug',
-                [$my_plugin_admin_object, 'render_my_submenu_page_method'] // Use shared instance
+        // Submenu pages
+        add_submenu_page(
+            'your-plugin',                             // Parent slug
+            __('Dashboard', 'your-plugin'),            // Page title
+            __('Dashboard', 'your-plugin'),            // Menu title
+            'manage_options',                          // Capability
+            'your-plugin',                             // Menu slug (same as parent)
+            [$this, 'render_main_page']                // Callback
+        );
+        
+        add_submenu_page(
+            'your-plugin',                             // Parent slug
+            __('Settings', 'your-plugin'),             // Page title
+            __('Settings', 'your-plugin'),             // Menu title
+            'manage_options',                          // Capability
+            'your-plugin-settings',                    // Menu slug
+            [$this, 'render_settings_page']            // Callback
+        );
+    }
+    
+    /**
+     * Render the main admin page.
+     *
+     * @return void
+     */
+    public function render_main_page() {
+        // Verify current user can access the page
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'your-plugin'));
+        }
+        
+        // Include the view file
+        include plugin_dir_path(__FILE__) . 'views/main-page.php';
+    }
+    
+    /**
+     * Render the settings page.
+     *
+     * @return void
+     */
+    public function render_settings_page() {
+        // Verify current user can access the page
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.', 'your-plugin'));
+        }
+        
+        // Include the view file
+        include plugin_dir_path(__FILE__) . 'views/settings-page.php';
+    }
+}
+
+// Initialize and register
+$admin_menu = new Your_Plugin_Admin_Menu();
+add_action('admin_menu', [$admin_menu, 'register_menus']);
+```
+
+## 3. Page Security Verification
+```php
+/**
+ * Verify user capabilities before rendering admin pages.
+ *
+ * @param string $capability The WordPress capability required.
+ * @return void
+ */
+function your_plugin_verify_admin_access($capability = 'manage_options') {
+    // Check user capabilities
+    if (!current_user_can($capability)) {
+        wp_die(
+            __('You do not have sufficient permissions to access this page.', 'your-plugin'),
+            403
+        );
+    }
+    
+    // Verify nonce for form processing if applicable
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Check if nonce exists
+        if (!isset($_REQUEST['_wpnonce'])) {
+            wp_die(
+                __('Security verification failed: Nonce is missing.', 'your-plugin'),
+                403
             );
         }
-        ```
-    *   **Static Methods:** If the callback method can be static, define it as such in the class and call it statically.
-
-        ```php
-        // In The_Admin_Class.php:
-        // public static function render_my_submenu_page_method() { /* ... */ }
-
-        // In your menu registration function:
-        add_submenu_page(
-            'parent-slug',
-            'My Submenu',
-            'My Submenu',
-            'manage_options',
-            'my-submenu-slug',
-            ['The_Admin_Class', 'render_my_submenu_page_method'] // Static call
-        );
-        ```
-    *   **Simple Function Callbacks:** For simple pages, a standalone function callback is often the safest.
-
-        ```php
-        // function my_plugin_render_submenu_page() { /* ... */ }
         
-        add_submenu_page(
-            'parent-slug',
-            // ...
-            'my_plugin_render_submenu_page' // Direct function callback
-        );
-        ```
+        $nonce = $_REQUEST['_wpnonce'];
+        if (!wp_verify_nonce($nonce, 'your_plugin_admin_action')) {
+            wp_die(
+                __('Security verification failed. Please try again.', 'your-plugin'),
+                403
+            );
+        }
+        
+        // Additional security: Referer check
+        check_admin_referer('your_plugin_admin_action');
+    }
+}
 
-### 3.5. Security and WordPress Standards (MUST)
-1.  Always use appropriate WordPress capabilities (e.g., `'manage_options'`, `'edit_posts'`) for the `$capability` argument.
-2.  NEVER use role names (e.g., `'administrator'`) directly for capability checks.
-3.  Follow WordPress coding standards and naming conventions for menu slugs, function names, and hooks. Slugs should be unique.
+/**
+ * Render settings page with security verification.
+ *
+ * @return void
+ */
+function your_plugin_render_settings_page() {
+    // Verify user access
+    your_plugin_verify_admin_access('manage_options');
+    
+    // Now safe to render page
+    include plugin_dir_path(__FILE__) . 'views/settings-page.php';
+}
+```
 
-### 3.6. Documentation (SHOULD)
-1.  Comment the menu registration block to explain the overall structure.
-2.  Ensure PHPDoc blocks for all callback functions are clear.
-3.  Note any specific dependencies or context required for a menu page to render correctly.
+## 4. Menu Sections & Tabs
+```php
+/**
+ * Render tabbed interface for admin pages.
+ *
+ * @param string $current_tab The currently active tab slug.
+ * @return void
+ */
+function your_plugin_render_admin_tabs($current_tab = 'general') {
+    $tabs = [
+        'general' => __('General', 'your-plugin'),
+        'api' => __('API Settings', 'your-plugin'),
+        'integrations' => __('Integrations', 'your-plugin'),
+        'logs' => __('System Logs', 'your-plugin'),
+    ];
+    
+    echo '<h2 class="nav-tab-wrapper wp-clearfix">';
+    
+    foreach ($tabs as $tab => $name) {
+        $class = ($tab === $current_tab) ? ' nav-tab-active' : '';
+        echo '<a href="?page=your-plugin-settings&tab=' . esc_attr($tab) . '" class="nav-tab' . esc_attr($class) . '">' . esc_html($name) . '</a>';
+    }
+    
+    echo '</h2>';
+}
 
-## 4. Verification Checklist
-- [ ] Is all menu registration centralized in a single function hooked to `admin_menu`?
-- [ ] Is the `admin_menu` hook used only once for the plugin's menus?
-- [ ] Are all callback functions/methods defined before use?
-- [ ] Are class method callbacks handled using shared instances or static calls, avoiding direct `new ClassName()` in the callback argument?
-- [ ] Are appropriate capabilities used for each menu item?
-- [ ] Are menu slugs unique and follow naming conventions?
-- [ ] Are callbacks documented?
+/**
+ * Process and route to the correct settings tab view.
+ *
+ * @return void
+ */
+function your_plugin_render_settings_page() {
+    // Verify user access
+    your_plugin_verify_admin_access('manage_options');
+    
+    // Get current tab, sanitize input
+    $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
+    
+    // Validate tab exists in our defined set
+    $valid_tabs = ['general', 'api', 'integrations', 'logs'];
+    if (!in_array($current_tab, $valid_tabs)) {
+        $current_tab = 'general'; // Default to general if invalid tab requested
+    }
+    
+    // Render header and tabs
+    echo '<div class="wrap">';
+    echo '<h1>' . esc_html__('Your Plugin Settings', 'your-plugin') . '</h1>';
+    
+    your_plugin_render_admin_tabs($current_tab);
+    
+    // Render tab content
+    $tab_file = plugin_dir_path(__FILE__) . 'views/settings-' . $current_tab . '.php';
+    if (file_exists($tab_file)) {
+        include $tab_file;
+    } else {
+        // Fallback to general if file doesn't exist
+        include plugin_dir_path(__FILE__) . 'views/settings-general.php';
+    }
+    
+    echo '</div>';
+}
+```
 
-## 5. Common Issues This Protocol Prevents
-- Duplicate or missing menu items.
-- "Cannot redeclare function" errors.
-- "Headers already sent" errors if callbacks output content too early.
-- **Fatal errors due to recursion or memory exhaustion caused by instantiating classes with complex constructors or hook-triggering logic directly in menu callback definitions.**
-- Incorrect user access due to improper capability checks.
+## 5. Custom Menu Capabilities
+```php
+/**
+ * Register custom capabilities for the plugin.
+ *
+ * @return void
+ */
+function your_plugin_register_capabilities() {
+    // Get administrator role
+    $admin = get_role('administrator');
+    
+    // Add custom capabilities
+    if ($admin) {
+        $admin->add_cap('your_plugin_manage_settings');
+        $admin->add_cap('your_plugin_view_analytics');
+        $admin->add_cap('your_plugin_manage_content');
+    }
+}
+register_activation_hook(__FILE__, 'your_plugin_register_capabilities');
+
+/**
+ * Remove custom capabilities when plugin is uninstalled.
+ *
+ * @return void
+ */
+function your_plugin_remove_capabilities() {
+    // Get administrator role
+    $admin = get_role('administrator');
+    
+    // Remove custom capabilities
+    if ($admin) {
+        $admin->remove_cap('your_plugin_manage_settings');
+        $admin->remove_cap('your_plugin_view_analytics');
+        $admin->remove_cap('your_plugin_manage_content');
+    }
+}
+register_uninstall_hook(__FILE__, 'your_plugin_remove_capabilities');
+
+/**
+ * Use custom capabilities in menu registration.
+ */
+function your_plugin_register_admin_menus() {
+    // Main menu with custom capability
+    add_menu_page(
+        __('Your Plugin', 'your-plugin'),
+        __('Your Plugin', 'your-plugin'),
+        'your_plugin_manage_settings',  // Custom capability
+        'your-plugin',
+        'your_plugin_render_main_admin_page',
+        'dashicons-admin-generic',
+        30
+    );
+    
+    // Analytics submenu with specific capability
+    add_submenu_page(
+        'your-plugin',
+        __('Analytics', 'your-plugin'),
+        __('Analytics', 'your-plugin'),
+        'your_plugin_view_analytics',  // Custom capability
+        'your-plugin-analytics',
+        'your_plugin_render_analytics_page'
+    );
+    
+    // Content manager with specific capability
+    add_submenu_page(
+        'your-plugin',
+        __('Content Manager', 'your-plugin'),
+        __('Content Manager', 'your-plugin'),
+        'your_plugin_manage_content',  // Custom capability
+        'your-plugin-content',
+        'your_plugin_render_content_page'
+    );
+}
+```
+
+## 6. Settings Registration
+```php
+/**
+ * Register plugin settings.
+ *
+ * @return void
+ */
+function your_plugin_register_settings() {
+    // Register a setting group
+    register_setting(
+        'your_plugin_options',               // Option group
+        'your_plugin_options',               // Option name
+        [
+            'sanitize_callback' => 'your_plugin_sanitize_options',
+            'default' => [
+                'api_key' => '',
+                'daily_limit' => 10
+            ]
+        ]
+    );
+    
+    // Add a settings section
+    add_settings_section(
+        'your_plugin_general_section',       // Section ID
+        __('General Settings', 'your-plugin'), // Title
+        'your_plugin_render_general_section', // Callback
+        'your-plugin-settings'               // Page
+    );
+    
+    // Add settings fields
+    add_settings_field(
+        'your_plugin_api_key',               // Field ID
+        __('API Key', 'your-plugin'),        // Title
+        'your_plugin_render_api_key_field',  // Callback
+        'your-plugin-settings',              // Page
+        'your_plugin_general_section'        // Section
+    );
+    
+    add_settings_field(
+        'your_plugin_daily_limit',           // Field ID
+        __('Daily Limit', 'your-plugin'),    // Title
+        'your_plugin_render_daily_limit_field', // Callback
+        'your-plugin-settings',              // Page
+        'your_plugin_general_section'        // Section
+    );
+}
+add_action('admin_init', 'your_plugin_register_settings');
+
+/**
+ * Sanitize and validate settings.
+ * 
+ * @param array $input The settings being saved.
+ * @return array Sanitized settings.
+ */
+function your_plugin_sanitize_options($input) {
+    $sanitized = [];
+    
+    // API Key (sanitize as text)
+    if (isset($input['api_key'])) {
+        $sanitized['api_key'] = sanitize_text_field($input['api_key']);
+    }
+    
+    // Daily Limit (sanitize and validate as integer between 1-100)
+    if (isset($input['daily_limit'])) {
+        $limit = absint($input['daily_limit']);
+        $sanitized['daily_limit'] = min(max($limit, 1), 100);
+    }
+    
+    return $sanitized;
+}
+
+/**
+ * Render a settings field.
+ *
+ * @return void
+ */
+function your_plugin_render_api_key_field() {
+    $options = get_option('your_plugin_options');
+    $api_key = $options['api_key'] ?? '';
+    
+    echo '<input type="text" id="your_plugin_api_key" name="your_plugin_options[api_key]" value="' . esc_attr($api_key) . '" class="regular-text">';
+    echo '<p class="description">' . esc_html__('Enter your API key for external services.', 'your-plugin') . '</p>';
+}
+```
+
+## 7. Integrating Settings with Admin Pages
+```php
+/**
+ * Complete settings page implementation.
+ *
+ * @return void
+ */
+function your_plugin_render_settings_page() {
+    // Verify user access
+    your_plugin_verify_admin_access('manage_options');
+    
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html__('Your Plugin Settings', 'your-plugin'); ?></h1>
+        
+        <form method="post" action="options.php">
+            <?php
+                // Output security fields
+                settings_fields('your_plugin_options');
+                
+                // Output setting sections
+                do_settings_sections('your-plugin-settings');
+                
+                // Output save button
+                submit_button();
+            ?>
+        </form>
+    </div>
+    <?php
+}
+```
+
+## 8. Admin Notices Integration
+```php
+/**
+ * Display admin notices for settings pages.
+ *
+ * @return void
+ */
+function your_plugin_admin_notices() {
+    $screen = get_current_screen();
+    
+    // Only on plugin admin pages
+    if (!$screen || strpos($screen->id, 'your-plugin') === false) {
+        return;
+    }
+    
+    // Check for success message
+    if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php echo esc_html__('Settings saved successfully.', 'your-plugin'); ?></p>
+        </div>
+        <?php
+    }
+    
+    // Check for API key configuration
+    $options = get_option('your_plugin_options');
+    if (empty($options['api_key']) && $screen->id === 'toplevel_page_your-plugin') {
+        ?>
+        <div class="notice notice-warning is-dismissible">
+            <p>
+                <?php 
+                    echo esc_html__('API key not configured. ', 'your-plugin');
+                    echo '<a href="' . esc_url(admin_url('admin.php?page=your-plugin-settings')) . '">';
+                    echo esc_html__('Configure now', 'your-plugin');
+                    echo '</a>';
+                ?>
+            </p>
+        </div>
+        <?php
+    }
+}
+add_action('admin_notices', 'your_plugin_admin_notices');
+```
+
+## 9. Menu Icon & Branding
+```php
+/**
+ * Add plugin admin styles.
+ *
+ * @return void
+ */
+function your_plugin_admin_styles() {
+    $screen = get_current_screen();
+    
+    // Only on plugin admin pages
+    if (!$screen || strpos($screen->id, 'your-plugin') === false) {
+        return;
+    }
+    
+    // Add custom icon using inline CSS if needed
+    ?>
+    <style type="text/css">
+        /* Custom menu icon styling */
+        #adminmenu .toplevel_page_your-plugin .wp-menu-image {
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 20px auto;
+        }
+        
+        /* Add custom page header */
+        .your-plugin-header {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2271b1;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Custom form styling */
+        .your-plugin-form .form-table th {
+            width: 200px;
+        }
+    </style>
+    <?php
+}
+add_action('admin_head', 'your_plugin_admin_styles');
+```
+
+## 10. Plugin Option Links
+```php
+/**
+ * Add settings link to plugin actions.
+ *
+ * @param array $links Plugin action links.
+ * @return array Modified plugin action links.
+ */
+function your_plugin_plugin_action_links($links) {
+    $settings_link = '<a href="' . admin_url('admin.php?page=your-plugin-settings') . '">' . __('Settings', 'your-plugin') . '</a>';
+    
+    // Add settings link to the beginning of the array
+    array_unshift($links, $settings_link);
+    
+    return $links;
+}
+add_filter('plugin_action_links_your-plugin/your-plugin.php', 'your_plugin_plugin_action_links');
+```
+
+## 11. Error Handling Integration
+```php
+/**
+ * Handle errors in admin page rendering.
+ * 
+ * @param callable $callback The callback function to execute.
+ * @param array    $args     Arguments to pass to the callback.
+ * @return mixed The callback result or error handling output.
+ */
+function your_plugin_safe_admin_render($callback, ...$args) {
+    try {
+        return call_user_func_array($callback, $args);
+    } catch (Exception $e) {
+        // Log error
+        error_log('Error in admin page: ' . $e->getMessage());
+        
+        // Display user-friendly error
+        echo '<div class="notice notice-error"><p>';
+        echo esc_html__('An error occurred while rendering this page. Please try again or contact support.', 'your-plugin');
+        echo '</p></div>';
+        
+        // Trigger error protocol if available
+        if (function_exists('your_plugin_trigger_error_protocol')) {
+            your_plugin_trigger_error_protocol($e, 'admin_render_error', [
+                'callback' => $callback,
+                'arguments' => $args
+            ]);
+        }
+        
+        return null;
+    }
+}
+```
