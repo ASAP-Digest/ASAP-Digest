@@ -149,48 +149,98 @@ class ASAP_Digest_Central_Command {
     public function register_menus() {
         // Main menu
         add_menu_page(
-            __('ASAP Digest', 'asapdigest-core'),
-            __('ASAP Digest', 'asapdigest-core'),
+            __('⚡️ Central Command', 'asapdigest-core'),
+            __('⚡️ Central Command', 'asapdigest-core'),
             'manage_options',
-            'asap-digest',
+            'asap-central-command',
             [$this, 'render_dashboard'],
-            'dashicons-rss',
-            30
+            'dashicons-superhero',
+            3
         );
-        
+
         // Dashboard submenu
         add_submenu_page(
-            'asap-digest',
+            'asap-central-command',
             __('Dashboard', 'asapdigest-core'),
             __('Dashboard', 'asapdigest-core'),
             'manage_options',
-            'asap-digest',
+            'asap-central-command',
             [$this, 'render_dashboard']
         );
-        
+
         // Content Sources submenu
         add_submenu_page(
-            'asap-digest',
+            'asap-central-command',
             __('Content Sources', 'asapdigest-core'),
             __('Content Sources', 'asapdigest-core'),
             'manage_options',
             'asap-content-sources',
             [$this, 'render_source_management']
         );
-        
+
         // Content Library submenu
         add_submenu_page(
-            'asap-digest',
+            'asap-central-command',
             __('Content Library', 'asapdigest-core'),
             __('Content Library', 'asapdigest-core'),
             'manage_options',
             'asap-content-library',
             [$this, 'render_content_library']
         );
-        
+
+        // Moderation Queue submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Moderation Queue', 'asapdigest-core'),
+            __('Moderation Queue', 'asapdigest-core'),
+            'manage_options',
+            'asap-moderation-queue',
+            [$this, 'render_moderation']
+        );
+
+        // Analytics submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Analytics', 'asapdigest-core'),
+            __('Analytics', 'asapdigest-core'),
+            'manage_options',
+            'asap-analytics',
+            [$this, 'render_analytics']
+        );
+
+        // AI Settings submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('AI Settings', 'asapdigest-core'),
+            __('AI Settings', 'asapdigest-core'),
+            'manage_options',
+            'asap-ai-settings',
+            [$this, 'render_ai_settings']
+        );
+
+        // Usage Analytics submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Usage Analytics', 'asapdigest-core'),
+            __('Usage Analytics', 'asapdigest-core'),
+            'manage_options',
+            'asap-usage-analytics',
+            [$this, 'render_usage_analytics']
+        );
+
+        // Service Costs submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Service Costs', 'asapdigest-core'),
+            __('Service Costs', 'asapdigest-core'),
+            'manage_options',
+            'asap-service-costs',
+            [$this, 'render_service_costs']
+        );
+
         // Settings submenu
         add_submenu_page(
-            'asap-digest',
+            'asap-central-command',
             __('Settings', 'asapdigest-core'),
             __('Settings', 'asapdigest-core'),
             'manage_options',

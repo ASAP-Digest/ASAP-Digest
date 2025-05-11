@@ -28,38 +28,10 @@ class ASAP_Digest_Admin_UI {
     /**
      * Register admin menu pages
      */
-    public function register_menu_pages() {
-        // Main menu page
-        add_menu_page(
-            __('ASAP Digest', 'asap-digest'),
-            __('ASAP Digest', 'asap-digest'),
-            'manage_options',
-            'asap-digest',
-            [$this, 'render_main_page'],
-            'dashicons-rss',
-            30
-        );
-
-        // Settings submenu
-        add_submenu_page(
-            'asap-digest',
-            __('Settings', 'asap-digest'),
-            __('Settings', 'asap-digest'),
-            'manage_options',
-            'asap-digest-settings',
-            [$this, 'render_settings_page']
-        );
-
-        // Stats submenu
-        add_submenu_page(
-            'asap-digest',
-            __('Statistics', 'asap-digest'),
-            __('Statistics', 'asap-digest'),
-            'manage_options',
-            'asap-digest-stats',
-            [$this, 'render_stats_page']
-        );
-    }
+    // Removed per protocol: menu registration is centralized in Central_Command
+    // public function register_menu_pages() {
+    //     ...
+    // }
 
     /**
      * Enqueue admin assets
