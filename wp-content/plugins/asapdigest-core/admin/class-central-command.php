@@ -82,6 +82,12 @@ class ASAP_Digest_Central_Command {
             'permission_callback' => function() { return current_user_can('manage_options'); }
         ]);
         
+        register_rest_route('asap/v1', '/crawler/sources/(?P<id>\d+)/run', [
+            'methods' => 'POST',
+            'callback' => [ $this, 'api_run_source' ],
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ]);
+        
         register_rest_route('asap/v1', '/crawler/queue', [
             'methods' => 'GET',
             'callback' => [ $this, 'api_get_moderation_queue' ],
@@ -121,6 +127,18 @@ class ASAP_Digest_Central_Command {
         register_rest_route('asap/v1', '/crawler/moderation-metrics', [
             'methods' => 'GET',
             'callback' => [ $this, 'api_get_moderation_metrics' ],
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ]);
+        
+        register_rest_route('asap/v1', '/crawler/quality-settings', [
+            'methods' => 'GET',
+            'callback' => [ $this, 'api_get_quality_settings' ],
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ]);
+        
+        register_rest_route('asap/v1', '/crawler/quality-settings', [
+            'methods' => 'POST',
+            'callback' => [ $this, 'api_update_quality_settings' ],
             'permission_callback' => function() { return current_user_can('manage_options'); }
         ]);
     }
@@ -180,11 +198,14 @@ class ASAP_Digest_Central_Command {
         $cost_per_unit = floatval($_POST['cost_per_unit']);
         $markup_percentage = floatval($_POST['markup_percentage']);
 
-        $this->get_plugin()->get_usage_tracker()->update_service_cost(
-            $service_name,
-            $cost_per_unit,
-            $markup_percentage
-        );
+        $usage_tracker = $this->get_plugin()->usage_tracker;
+        if ($usage_tracker) {
+            $usage_tracker->update_service_cost(
+                $service_name,
+                $cost_per_unit,
+                $markup_percentage
+            );
+        }
 
         add_settings_error(
             'asap_messages',
@@ -198,125 +219,8 @@ class ASAP_Digest_Central_Command {
      * Render Source Management admin page (with AJAX-powered CRUD table)
      */
     public function render_sources() {
-        ?>
-        <div class="wrap">
-            <h1>Source Management</h1>
-            <button id="asap-add-source" class="button button-primary">Add New Source</button>
-            <div id="asap-sources-table"></div>
-            <div id="asap-source-modal" style="display:none;"></div>
-        </div>
-        <script>
-        (function($){
-            function fetchSources() {
-                $('#asap-sources-table').html('<p>Loading...</p>');
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/sources',
-                    method: 'GET',
-                    success: function(data) {
-                        renderTable(data.sources || []);
-                    },
-                    error: function() {
-                        $('#asap-sources-table').html('<p class="notice notice-error">Failed to load sources.</p>');
-                    }
-                });
-            }
-            function renderTable(sources) {
-                if (!sources.length) {
-                    $('#asap-sources-table').html('<p>No sources found.</p>');
-                    return;
-                }
-                var html = '<table class="wp-list-table widefat fixed striped"><thead><tr>' +
-                    '<th>Name</th><th>Type</th><th>URL</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-                sources.forEach(function(src) {
-                    html += '<tr data-id="'+src.id+'">' +
-                        '<td>'+esc(src.name)+'</td>' +
-                        '<td>'+esc(src.type)+'</td>' +
-                        '<td>'+esc(src.url)+'</td>' +
-                        '<td>'+(src.active ? 'Active' : 'Inactive')+'</td>' +
-                        '<td>' +
-                            '<button class="button asap-edit-source">Edit</button> ' +
-                            '<button class="button asap-delete-source">Delete</button>' +
-                        '</td>' +
-                    '</tr>';
-                });
-                html += '</tbody></table>';
-                $('#asap-sources-table').html(html);
-            }
-            function esc(str) {
-                return String(str).replace(/[&<>"']/g, function(c) {
-                    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c];
-                });
-            }
-            // Add/Edit modal logic (simplified for brevity)
-            function showSourceModal(source) {
-                var isEdit = !!source;
-                var modal = $('#asap-source-modal');
-                var html = '<div class="asap-modal"><h2>'+(isEdit?'Edit':'Add')+' Source</h2>' +
-                    '<form id="asap-source-form">' +
-                    '<input type="hidden" name="id" value="'+(source?source.id:'')+'">' +
-                    '<p><label>Name<br><input type="text" name="name" value="'+(source?esc(source.name):'')+'" required></label></p>' +
-                    '<p><label>Type<br><input type="text" name="type" value="'+(source?esc(source.type):'')+'" required></label></p>' +
-                    '<p><label>URL<br><input type="url" name="url" value="'+(source?esc(source.url):'')+'" required></label></p>' +
-                    '<p><label>Status<br><select name="active"><option value="1"'+(source&&source.active?' selected':'')+'>Active</option><option value="0"'+(source&&!source.active?' selected':'')+'>Inactive</option></select></label></p>' +
-                    '<p><button type="submit" class="button button-primary">'+(isEdit?'Update':'Add')+'</button> <button type="button" class="button asap-cancel-modal">Cancel</button></p>' +
-                    '</form></div>';
-                modal.html(html).show();
-            }
-            // Event handlers
-            $(document).on('click', '#asap-add-source', function(){ showSourceModal(); });
-            $(document).on('click', '.asap-edit-source', function(){
-                var id = $(this).closest('tr').data('id');
-                var row = $(this).closest('tr');
-                showSourceModal({
-                    id: id,
-                    name: row.find('td:eq(0)').text(),
-                    type: row.find('td:eq(1)').text(),
-                    url: row.find('td:eq(2)').text(),
-                    active: row.find('td:eq(3)').text() === 'Active'
-                });
-            });
-            $(document).on('click', '.asap-delete-source', function(){
-                if (!confirm('Delete this source?')) return;
-                var id = $(this).closest('tr').data('id');
-                $.ajax({
-                    url: '/wp-json/asap/v1/crawler/sources/' + id,
-                    method: 'DELETE',
-                    success: function(){ fetchSources(); },
-                    error: function(){ alert('Failed to delete source.'); }
-                });
-            });
-            $(document).on('submit', '#asap-source-form', function(e){
-                e.preventDefault();
-                var form = $(this);
-                var id = form.find('input[name="id"]').val();
-                var data = {
-                    name: form.find('input[name="name"]').val(),
-                    type: form.find('input[name="type"]').val(),
-                    url: form.find('input[name="url"]').val(),
-                    active: form.find('select[name="active"]').val()
-                };
-                var method = id ? 'PUT' : 'POST';
-                var url = '/wp-json/asap/v1/crawler/sources' + (id ? '/' + id : '');
-                $.ajax({
-                    url: url,
-                    method: method,
-                    contentType: 'application/json',
-                    data: JSON.stringify(data),
-                    success: function(){ $('#asap-source-modal').hide(); fetchSources(); },
-                    error: function(){ alert('Failed to save source.'); }
-                });
-            });
-            $(document).on('click', '.asap-cancel-modal', function(){ $('#asap-source-modal').hide(); });
-            // Initial load
-            $(document).ready(fetchSources);
-        })(jQuery);
-        </script>
-        <style>
-        .asap-modal { background: #fff; border: 1px solid #ccd0d4; padding: 24px; max-width: 400px; margin: 40px auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .asap-modal h2 { margin-top: 0; }
-        #asap-source-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.2); z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        </style>
-        <?php
+        // Load our view from the views directory
+        require_once plugin_dir_path(__FILE__) . 'views/source-management.php';
     }
 
     /**
@@ -797,6 +701,143 @@ class ASAP_Digest_Central_Command {
             'total_items' => intval($total_items),
             'total_pages' => intval($total_pages),
             'current_page' => $page
+        ]);
+    }
+
+    /**
+     * API endpoint to run a crawler for a specific source
+     * 
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Response object
+     */
+    public function api_run_source($request) {
+        $source_id = intval($request['id'] ?? 0);
+        
+        if (!$source_id) {
+            return new \WP_Error('invalid_source', 'Invalid source ID', ['status' => 400]);
+        }
+        
+        // Get the source
+        $source_manager = new ContentSourceManager();
+        $source = $source_manager->get_source($source_id);
+        
+        if (!$source) {
+            return new \WP_Error('source_not_found', 'Source not found', ['status' => 404]);
+        }
+        
+        // Get the content processor
+        $processor = new \AsapDigest\Crawler\ContentProcessor($this->get_plugin()->database);
+        
+        // Get the crawler
+        $crawler = new \AsapDigest\Crawler\ContentCrawler($source_manager, $processor);
+        
+        // Run crawler for this source
+        $result = $crawler->crawl_source($source);
+        
+        if (!$result) {
+            return new \WP_Error('crawl_failed', 'Failed to crawl source', ['status' => 500]);
+        }
+        
+        return rest_ensure_response([
+            'success' => true,
+            'message' => sprintf(
+                'Source crawled successfully. Processed %d items, stored %d items.',
+                $result['items_processed'] ?? 0,
+                $result['items_stored'] ?? 0
+            ),
+            'result' => $result
+        ]);
+    }
+
+    /**
+     * API endpoint to get quality settings
+     * 
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Response object
+     */
+    public function api_get_quality_settings($request) {
+        // Get quality settings from options
+        $settings = get_option('asap_content_quality_settings', [
+            'min_quality_score' => defined('ASAP_QUALITY_SCORE_MINIMUM') ? ASAP_QUALITY_SCORE_MINIMUM : 50,
+            'auto_approve_threshold' => defined('ASAP_QUALITY_SCORE_EXCELLENT') ? ASAP_QUALITY_SCORE_EXCELLENT : 90,
+            'rules' => [
+                'completeness' => [
+                    'weight' => 0.3,
+                    'title_min_length' => 10,
+                    'content_min_length' => 100,
+                    'requires_image' => false
+                ],
+                'readability' => [
+                    'weight' => 0.2,
+                    'min_score' => 60
+                ],
+                'relevance' => [
+                    'weight' => 0.3,
+                    'keyword_match' => true
+                ],
+                'freshness' => [
+                    'weight' => 0.1,
+                    'max_age_days' => 30
+                ],
+                'enrichment' => [
+                    'weight' => 0.1,
+                    'require_metadata' => false
+                ]
+            ]
+        ]);
+        
+        return rest_ensure_response(['settings' => $settings]);
+    }
+
+    /**
+     * API endpoint to update quality settings
+     * 
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Response object
+     */
+    public function api_update_quality_settings($request) {
+        $settings = $request->get_json_params();
+        
+        if (!is_array($settings)) {
+            return new \WP_Error('invalid_settings', 'Invalid settings format', ['status' => 400]);
+        }
+        
+        // Validate minimum quality score
+        if (isset($settings['min_quality_score'])) {
+            $settings['min_quality_score'] = max(0, min(100, intval($settings['min_quality_score'])));
+        }
+        
+        // Validate auto-approve threshold
+        if (isset($settings['auto_approve_threshold'])) {
+            $settings['auto_approve_threshold'] = max(0, min(100, intval($settings['auto_approve_threshold'])));
+        }
+        
+        // Validate rule weights (ensure they sum to 1.0)
+        $total_weight = 0;
+        if (isset($settings['rules'])) {
+            foreach ($settings['rules'] as $rule => $config) {
+                if (isset($config['weight'])) {
+                    $total_weight += floatval($config['weight']);
+                }
+            }
+            
+            // Normalize weights if they don't sum to 1.0
+            if ($total_weight > 0 && abs($total_weight - 1.0) > 0.01) {
+                foreach ($settings['rules'] as $rule => $config) {
+                    if (isset($config['weight'])) {
+                        $settings['rules'][$rule]['weight'] = floatval($config['weight']) / $total_weight;
+                    }
+                }
+            }
+        }
+        
+        // Save settings
+        update_option('asap_content_quality_settings', $settings);
+        
+        return rest_ensure_response([
+            'success' => true,
+            'message' => 'Quality settings updated successfully.',
+            'settings' => $settings
         ]);
     }
 } 

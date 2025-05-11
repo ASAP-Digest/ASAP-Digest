@@ -74,6 +74,7 @@ function log(message, level = 'info') {
  */
 export async function syncWordPressUserAndCreateSession(wpUserDetails) {
 	try {
+		log(`Starting syncWordPressUserAndCreateSession with data: ${JSON.stringify(wpUserDetails)}`, 'info');
 		const { wpUserId, email, username, name, avatarUrl, roles = [] } = wpUserDetails;
 
 		if (!wpUserId) {

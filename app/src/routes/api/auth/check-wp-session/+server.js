@@ -98,87 +98,103 @@ export async function POST(event) {
 			// Make server-to-server request to WordPress
 			// Ensure the URL ends correctly with wp-json if needed and has proper path for get-active-sessions
 			const baseApiUrl = WP_API_URL.endsWith('/wp-json') 
-			? WP_API_URL 
+				? WP_API_URL 
 				: WP_API_URL.endsWith('/') 
 					? `${WP_API_URL}wp-json` 
-			: `${WP_API_URL}/wp-json`;
+					: `${WP_API_URL}/wp-json`;
 			
 			const wpEndpointUrl = `${baseApiUrl}/asap/v1/get-active-sessions`;
 		
 			log(`[API /check-wp-session] Making server request to: ${wpEndpointUrl}`);
 
-			const wpResponse = await fetch(wpEndpointUrl, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-ASAP-Sync-Secret': SYNC_SECRET,
-					'X-ASAP-Request-Source': 'sveltekit-server'
-			},
-				body: JSON.stringify({
-					requestSource: 'sk-server',
-					timestamp: Date.now()
-				}),
-			signal: controller.signal
-		});
+			try {
+				const wpResponse = await fetch(wpEndpointUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-ASAP-Sync-Secret': 'development-sync-secret-v6', // Fixed value to match WordPress
+						'X-ASAP-Request-Source': 'sveltekit-server'
+					},
+					body: JSON.stringify({
+						requestSource: 'sk-server',
+						timestamp: Date.now()
+					}),
+					signal: controller.signal
+				});
 
-		clearTimeout(timeoutId);
+				clearTimeout(timeoutId);
 
-			if (!wpResponse.ok) {
-				const errorText = await wpResponse.text();
-				log(`[API /check-wp-session] WP request failed: ${errorText}`, 'error');
-				return json({ success: false, error: 'wp_request_failed' });
-			}
-
-			const wpResult = await wpResponse.json();
-
-			// Process WP Response
-			if (wpResult.success && wpResult.activeSessions?.length > 0) {
-				// Get first active session user data
-				const wpUserData = wpResult.activeSessions[0];
-				log(`[API /check-wp-session] Processing WP user ${wpUserData.username}`);
-
-				// Verify user exists or create new user
-				const session = await syncWordPressUserAndCreateSession(wpUserData);
-
-				if (session) {
-					// Set Better Auth session cookie using event.cookies API instead of headers
-					// This provides more consistent behavior across environments
-					event.cookies.set('better_auth_session', session.token, {
-						path: '/',
-						httpOnly: true,
-						sameSite: 'lax',
-						secure: true,
-						maxAge: 30 * 24 * 60 * 60 // 30 days
-					});
-
-					// Log successful session creation with session details
-					log(`[API /check-wp-session] Session created successfully with token length: ${session.token.length}. Cookie set using cookies API.`, 'info');
-					
-					// Log avatar URL for debugging
-					if (wpUserData.avatarUrl) {
-						log(`[API /check-wp-session] User has avatarUrl: ${wpUserData.avatarUrl}`);
-					} else {
-						log(`[API /check-wp-session] No avatarUrl found for user ${wpUserData.username}`);
-					}
-					
-					return json({
-						success: true,
-						user: {
-							id: session.userId,
-							email: wpUserData.email,
-							displayName: wpUserData.displayName || wpUserData.username,
-							avatarUrl: wpUserData.avatarUrl || '',
-							roles: wpUserData.roles || []
-						}
-					});
-				} else {
-					log('[API /check-wp-session] SK session creation failed', 'error');
-					return json({ success: false, error: 'sk_sync_failed' });
+				// Basic check for HTML responses (which would indicate an error)
+				const contentType = wpResponse.headers.get('content-type');
+				if (contentType && contentType.includes('text/html')) {
+					const errorHtml = await wpResponse.text();
+					log(`[API /check-wp-session] Error: WP returned HTML instead of JSON. Content-Type: ${contentType}`, 'error');
+					log(`[API /check-wp-session] HTML response start: ${errorHtml.substring(0, 200)}...`, 'error');
+					return json({ success: false, error: 'wp_returned_html', htmlStart: errorHtml.substring(0, 100) });
 				}
-			} else {
-				const errorReason = wpResult.error || 'no_active_wp_sessions';
-				log(`[API /check-wp-session] No active WP sessions found: ${errorReason}`, 'warn');
-				return json({ success: false, error: errorReason });
+
+				if (!wpResponse.ok) {
+					const errorText = await wpResponse.text();
+					log(`[API /check-wp-session] WP request failed: ${errorText}`, 'error');
+					return json({ success: false, error: 'wp_request_failed' });
+				}
+
+				const wpResult = await wpResponse.json();
+
+				// Process WP Response
+				if (wpResult.success && wpResult.activeSessions?.length > 0) {
+					// Get first active session user data
+					const wpUserData = wpResult.activeSessions[0];
+					log(`[API /check-wp-session] Processing WP user ${wpUserData.username}`);
+
+					// Verify user exists or create new user
+					const session = await syncWordPressUserAndCreateSession(wpUserData);
+
+					if (session) {
+						// Set Better Auth session cookie using event.cookies API instead of headers
+						// This provides more consistent behavior across environments
+						event.cookies.set('better_auth_session', session.token, {
+							path: '/',
+							httpOnly: true,
+							sameSite: 'lax',
+							secure: true,
+							maxAge: 30 * 24 * 60 * 60 // 30 days
+						});
+
+						// Log successful session creation with session details
+						log(`[API /check-wp-session] Session created successfully with token length: ${session.token.length}. Cookie set using cookies API.`, 'info');
+						
+						// Log avatar URL for debugging
+						if (wpUserData.avatarUrl) {
+							log(`[API /check-wp-session] User has avatarUrl: ${wpUserData.avatarUrl}`);
+						} else {
+							log(`[API /check-wp-session] No avatarUrl found for user ${wpUserData.username}`);
+						}
+						
+						return json({
+							success: true,
+							user: {
+								id: session.userId,
+								email: wpUserData.email,
+								displayName: wpUserData.displayName || wpUserData.username,
+								avatarUrl: wpUserData.avatarUrl || '',
+								roles: wpUserData.roles || []
+							}
+						});
+					} else {
+						log('[API /check-wp-session] SK session creation failed', 'error');
+						return json({ success: false, error: 'sk_sync_failed' });
+					}
+				} else {
+					const errorReason = wpResult.error || 'no_active_wp_sessions';
+					log(`[API /check-wp-session] No active WP sessions found: ${errorReason}`, 'warn');
+					return json({ success: false, error: errorReason });
+				}
+			} catch (fetchError) {
+				// Handle fetch-specific errors
+				const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+				log(`[API /check-wp-session] Fetch error: ${errorMessage}`, 'error');
+				return json({ success: false, error: 'wp_fetch_error', message: errorMessage });
 			}
 		} else {
 			// This is for requests coming directly from WordPress
@@ -187,8 +203,8 @@ export async function POST(event) {
 			log('[API /check-wp-session] Non-browser request received, expected shared secret auth');
 			return json({ success: false, error: 'direct_access_not_supported' });
 		}
-
 	} catch (error) {
+		// Handle all other errors
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		log(`[API /check-wp-session] Error: ${errorMessage}`, 'error');
 		return json({ success: false, error: 'wp_request_error', message: errorMessage });

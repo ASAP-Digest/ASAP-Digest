@@ -19,7 +19,6 @@ use ASAPDigest\Core\API\Check_Sync_Token_Controller;
 use ASAPDigest\Core\API\SK_Token_Controller;
 use ASAPDigest\Core\API\SK_User_Sync;
 use ASAPDigest\Core\API\Session_Check_Controller;
-use ASAPDigest\Core\API\User_Details_Controller;
 use ASAPDigest\Crawler\ContentCrawler;
 use ASAPDigest\Crawler\ContentSourceManager;
 use ASAPDigest\Crawler\Scheduler;
@@ -95,7 +94,7 @@ final class ASAP_Digest_Core {
     public $content_crawler;
     
     /**
-     * @var \AsapDigest\Crawler\ContentProcessor Content processor instance
+     * @var \ASAP_Digest_Content_Processor Content processor instance
      */
     public $content_processor;
 
@@ -134,40 +133,46 @@ final class ASAP_Digest_Core {
     }
 
     /**
-     * Load required dependencies
+     * Load dependencies
+     *
+     * @return void
      */
     private function load_dependencies() {
-        // Core classes
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-database.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-better-auth.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin-ui.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-central-command.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-usage-tracker.php';
+        // Core files
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-activator.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-database.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-content-storage.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-better-auth.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-usage-tracker.php';
         
-        // Content Processing
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-content-processor.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-content-storage.php';
+        // API files
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-base.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-auth.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-digest.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-ingested-content.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-active-sessions-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-session-check-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-sk-token-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-sk-user-sync.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-check-sync-token-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/controllers/class-auth-webhook-controller.php';
         
-        // Crawler components
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/interfaces/class-content-source-adapter.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-rss-adapter.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-api-adapter.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/adapters/class-scraper-adapter.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-content-source-manager.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-content-crawler.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/crawler/class-scheduler.php';
+        // Authentication files
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/auth/bootstrap.php';
         
-        // API components - Note: Many API classes are loaded in main plugin file
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-digest.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-session-check-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sync-token-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sk-token-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-active-sessions-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-auth.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-sk-user-sync.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-check-sync-token-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-user-controller.php';
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-ingested-content.php';
+        // Content processing
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
+        
+        // Crawler
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-source-manager.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-crawler.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-scheduler.php';
+        
+        // Admin
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-central-command.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-admin-ui.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class/class-admin-ajax.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/ajax-handlers.php';
     }
 
     /**
@@ -181,7 +186,7 @@ final class ASAP_Digest_Core {
         
         // Crawler components
         $this->content_source_manager = new ContentSourceManager($this->database);
-        $this->content_processor = new \AsapDigest\Crawler\ContentProcessor($this->database);
+        $this->content_processor = new \ASAP_Digest_Content_Processor();
         
         // Create crawler instance with dependencies
         $this->content_crawler = new ContentCrawler(
@@ -220,50 +225,67 @@ final class ASAP_Digest_Core {
      * Register REST API routes
      */
     public function register_rest_routes() {
-        // Digest API
-        $digest_api = new ASAP_Digest_REST_Digest();
-        $digest_api->register_routes();
+        error_log('ASAP_CORE_DEBUG: Registering REST routes');
+        
+        // Suppress PHP errors from contaminating the API response
+        add_filter('rest_suppress_error_output', function() {
+            return true;
+        }, 10, 1);
+        
+        try {
+            // Digest API
+            $digest_api = new ASAP_Digest_REST_Digest();
+            $digest_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Digest API routes');
 
-        // Auth API
-        $auth_api = new ASAP_Digest_REST_Auth();
-        $auth_api->register_routes();
-        
-        // Session check API
-        $session_check_api = new Session_Check_Controller();
-        $session_check_api->register_routes();
-        
-        // SK Token API (NEW)
-        $sk_token_api = new SK_Token_Controller();
-        $sk_token_api->register_routes();
-        
-        // Active Sessions API (NEW)
-        $active_sessions_api = new Active_Sessions_Controller();
-        $active_sessions_api->register_routes();
-        
-        // SK User Sync API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
-        $sk_user_sync = new SK_User_Sync();
-        $sk_user_sync->register_routes();
-        
-        // Check Sync Token API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
-        $check_token_controller = new Check_Sync_Token_Controller();
-        $check_token_controller->register_routes();
-        
-        // User Details API
-        $user_details_controller = new User_Details_Controller();
-        $user_details_controller->register_routes();
-        
-        // Ingested Content API
-        $ingested_content_api = new ASAP_Digest_REST_Ingested_Content();
-        $ingested_content_api->register_routes();
-        
-        // Nonce Endpoint
-        register_rest_route('asap/v1', '/nonce', [
-            'methods' => 'GET',
-            'callback' => function($req) {
-                return rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'));
-            },
-            'permission_callback' => '__return_true'
-        ]);
+            // Auth API
+            $auth_api = new ASAP_Digest_REST_Auth();
+            $auth_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Auth API routes');
+            
+            // Session check API
+            $session_check_api = new Session_Check_Controller();
+            $session_check_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Session Check API routes');
+            
+            // SK Token API (NEW)
+            $sk_token_api = new SK_Token_Controller();
+            $sk_token_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered SK Token API routes');
+            
+            // Active Sessions API (NEW)
+            $active_sessions_api = new Active_Sessions_Controller();
+            $active_sessions_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Active Sessions API routes');
+            
+            // SK User Sync API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
+            $sk_user_sync = new SK_User_Sync();
+            $sk_user_sync->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered SK User Sync API routes');
+            
+            // Check Sync Token API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
+            $check_token_controller = new Check_Sync_Token_Controller();
+            $check_token_controller->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Check Sync Token API routes');
+            
+            // Ingested Content API
+            $ingested_content_api = new ASAP_Digest_REST_Ingested_Content();
+            $ingested_content_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Ingested Content API routes');
+            
+            // Nonce Endpoint
+            register_rest_route('asap/v1', '/nonce', [
+                'methods' => 'GET',
+                'callback' => function($req) {
+                    return rest_ensure_response(wp_create_nonce($req->get_param('action') ?: 'wp_rest'));
+                },
+                'permission_callback' => '__return_true'
+            ]);
+            error_log('ASAP_CORE_DEBUG: Registered Nonce API endpoint');
+        } catch (\Throwable $e) {
+            error_log('ASAP_CORE_DEBUG: Error registering REST routes: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            error_log('ASAP_CORE_DEBUG: Stack trace: ' . $e->getTraceAsString());
+        }
     }
     
     /**
@@ -436,6 +458,33 @@ final class ASAP_Digest_Core {
         }
         
         return $buffer;
+    }
+
+    /**
+     * Get database instance
+     * 
+     * @return ASAP_Digest_Database The database instance
+     */
+    public function get_database() {
+        return $this->database;
+    }
+
+    /**
+     * Get usage tracker instance
+     * 
+     * @return ASAP_Digest_Usage_Tracker The usage tracker instance
+     */
+    public function get_usage_tracker() {
+        return $this->usage_tracker;
+    }
+
+    /**
+     * Get Better Auth instance
+     * 
+     * @return ASAP_Digest_Better_Auth The Better Auth instance
+     */
+    public function get_better_auth() {
+        return $this->better_auth;
     }
 }
 

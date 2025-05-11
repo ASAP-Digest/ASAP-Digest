@@ -6,7 +6,7 @@
  * @created 03.31.25 | 03:34 PM PDT
  */
 
-namespace ASAPDigest\Core;
+namespace ASAPDigest\Admin;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -77,7 +77,7 @@ class ASAP_Digest_Admin_UI {
             'asap-digest-admin',
             plugin_dir_url(dirname(__FILE__)) . 'admin/css/admin.css',
             [],
-            ASAP_DIGEST_VERSION
+            '1.0.0'
         );
 
         // Enqueue JavaScript
@@ -85,7 +85,7 @@ class ASAP_Digest_Admin_UI {
             'asap-digest-admin',
             plugin_dir_url(dirname(__FILE__)) . 'admin/js/admin.js',
             ['jquery'],
-            ASAP_DIGEST_VERSION,
+            '1.0.0',
             true
         );
 
@@ -124,21 +124,21 @@ class ASAP_Digest_Admin_UI {
      * Render main page
      */
     public function render_main_page() {
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/views/main-page.php';
+        require_once \ASAP_DIGEST_PLUGIN_DIR . 'admin/views/main-page.php';
     }
 
     /**
      * Render settings page
      */
     public function render_settings_page() {
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/views/settings-page.php';
+        require_once \ASAP_DIGEST_PLUGIN_DIR . 'admin/views/settings-page.php';
     }
 
     /**
      * Render stats page
      */
     public function render_stats_page() {
-        require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/views/stats-page.php';
+        require_once \ASAP_DIGEST_PLUGIN_DIR . 'admin/views/stats-page.php';
     }
 
     /**

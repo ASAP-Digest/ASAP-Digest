@@ -18,6 +18,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Active_Sessions_Controller extends ASAP_Digest_REST_Base {
 
+    public function __construct() {
+        // Suppress PHP errors from appearing in REST API output
+        add_filter('rest_suppress_error_output', '__return_true');
+    }
+
     /**
      * Register routes for the controller
      */
@@ -98,156 +103,164 @@ class Active_Sessions_Controller extends ASAP_Digest_REST_Base {
         
         error_log('[ASAP S2S] Starting active sessions retrieval');
 
-        // Get request parameters
-        $params = $request->get_json_params();
-        $request_source = isset( $params['requestSource'] ) ? sanitize_text_field( $params['requestSource'] ) : 'unknown';
-        $timestamp = isset( $params['timestamp'] ) ? intval( $params['timestamp'] ) : 0;
-        
-        // Log the request details
-        error_log( sprintf( 
-            '[ASAP S2S] Processing active sessions request. Source: %s, Timestamp: %s, Raw Params: %s', 
-            $request_source,
-            $timestamp ? date( 'Y-m-d H:i:s', $timestamp / 1000 ) : 'invalid',
-            json_encode($params)
-        ));
-
-        // Query the database for users with active sessions
-        error_log('[ASAP S2S] Querying database for users with session_tokens meta');
-        $query = $wpdb->prepare(
-            "SELECT DISTINCT user_id FROM {$wpdb->usermeta} 
-            WHERE meta_key = %s AND meta_value LIKE %s 
-            ORDER BY umeta_id DESC LIMIT 10",
-            'session_tokens',
-            '%'
-        );
-        error_log('[ASAP S2S] Running query: ' . $query);
-        
-        $active_user_ids = $wpdb->get_col($query);
-        
-        if ( empty( $active_user_ids ) ) {
-            error_log( '[ASAP S2S] No active WordPress sessions found in database query.' );
-            return rest_ensure_response( array(
-                'success' => false,
-                'error' => 'no_active_wp_sessions'
+        try {
+            // Get request parameters
+            $params = $request->get_json_params();
+            $request_source = isset( $params['requestSource'] ) ? sanitize_text_field( $params['requestSource'] ) : 'unknown';
+            $timestamp = isset( $params['timestamp'] ) ? intval( $params['timestamp'] ) : 0;
+            
+            // Log the request details
+            error_log( sprintf( 
+                '[ASAP S2S] Processing active sessions request. Source: %s, Timestamp: %s, Raw Params: %s', 
+                $request_source,
+                $timestamp ? date( 'Y-m-d H:i:s', $timestamp / 1000 ) : 'invalid',
+                json_encode($params)
             ));
-        }
 
-        // Log found users
-        error_log( sprintf( 
-            '[ASAP S2S] Found %d potentially active users with IDs: %s', 
-            count( $active_user_ids ),
-            implode(', ', $active_user_ids)
-        ));
+            // Query the database for users with active sessions
+            error_log('[ASAP S2S] Querying database for users with session_tokens meta');
+            $query = $wpdb->prepare(
+                "SELECT DISTINCT user_id FROM {$wpdb->usermeta} 
+                WHERE meta_key = %s AND meta_value LIKE %s 
+                ORDER BY umeta_id DESC LIMIT 10",
+                'session_tokens',
+                '%'
+            );
+            error_log('[ASAP S2S] Running query: ' . $query);
+            
+            $active_user_ids = $wpdb->get_col($query);
+            
+            if ( empty( $active_user_ids ) ) {
+                error_log( '[ASAP S2S] No active WordPress sessions found in database query.' );
+                return rest_ensure_response( array(
+                    'success' => false,
+                    'error' => 'no_active_wp_sessions'
+                ));
+            }
 
-        // Get auto-sync roles setting
-        $auto_sync_roles = get_option( 'asap_better_auth_auto_sync_roles', array( 'administrator' ) );
-        error_log('[ASAP S2S] Auto-sync roles configuration: ' . implode(', ', $auto_sync_roles));
-        
-        // Prepare active session data for users who should be synced based on roles
-        $active_sessions = array();
-        
-        foreach ( $active_user_ids as $user_id ) {
-            error_log('[ASAP S2S] Processing user ID: ' . $user_id);
+            // Log found users
+            error_log( sprintf( 
+                '[ASAP S2S] Found %d potentially active users with IDs: %s', 
+                count( $active_user_ids ),
+                implode(', ', $active_user_ids)
+            ));
+
+            // Get auto-sync roles setting
+            $auto_sync_roles = get_option( 'asap_better_auth_auto_sync_roles', array( 'administrator' ) );
+            error_log('[ASAP S2S] Auto-sync roles configuration: ' . implode(', ', $auto_sync_roles));
             
-            $user = get_userdata( $user_id );
+            // Prepare active session data for users who should be synced based on roles
+            $active_sessions = array();
             
-            if ( ! $user ) {
-                error_log('[ASAP S2S] User ID ' . $user_id . ' not found in WordPress');
-                continue;
-            }
-            
-            error_log('[ASAP S2S] User found: ' . $user->user_login . ' with roles: ' . implode(', ', $user->roles));
-            
-            // Verify this user has active sessions
-            $sessions = get_user_meta( $user_id, 'session_tokens', true );
-            
-            if ( empty( $sessions ) || ! is_array( $sessions ) ) {
-                error_log('[ASAP S2S] User ' . $user->user_login . ' has no active session tokens');
-                continue;
-            }
-            
-            error_log('[ASAP S2S] User ' . $user->user_login . ' has ' . count($sessions) . ' session tokens');
-            
-            // Check if any sessions are recent/active
-            $has_recent_session = false;
-            $expiration_timestamps = [];
-            
-            foreach ( $sessions as $session ) {
-                if ( isset( $session['expiration'] ) ) {
-                    $expiration_timestamps[] = date('Y-m-d H:i:s', $session['expiration']);
-                    if ( $session['expiration'] > time() ) {
-                        $has_recent_session = true;
-                        error_log('[ASAP S2S] User ' . $user->user_login . ' has an active session expiring at: ' . date('Y-m-d H:i:s', $session['expiration']));
+            foreach ( $active_user_ids as $user_id ) {
+                error_log('[ASAP S2S] Processing user ID: ' . $user_id);
+                
+                $user = get_userdata( $user_id );
+                
+                if ( ! $user ) {
+                    error_log('[ASAP S2S] User ID ' . $user_id . ' not found in WordPress');
+                    continue;
+                }
+                
+                error_log('[ASAP S2S] User found: ' . $user->user_login . ' with roles: ' . implode(', ', $user->roles));
+                
+                // Verify this user has active sessions
+                $sessions = get_user_meta( $user_id, 'session_tokens', true );
+                
+                if ( empty( $sessions ) || ! is_array( $sessions ) ) {
+                    error_log('[ASAP S2S] User ' . $user->user_login . ' has no active session tokens');
+                    continue;
+                }
+                
+                error_log('[ASAP S2S] User ' . $user->user_login . ' has ' . count($sessions) . ' session tokens');
+                
+                // Check if any sessions are recent/active
+                $has_recent_session = false;
+                $expiration_timestamps = [];
+                
+                foreach ( $sessions as $session ) {
+                    if ( isset( $session['expiration'] ) ) {
+                        $expiration_timestamps[] = date('Y-m-d H:i:s', $session['expiration']);
+                        if ( $session['expiration'] > time() ) {
+                            $has_recent_session = true;
+                            error_log('[ASAP S2S] User ' . $user->user_login . ' has an active session expiring at: ' . date('Y-m-d H:i:s', $session['expiration']));
+                        }
                     }
                 }
-            }
-            
-            if ( ! $has_recent_session ) {
-                error_log('[ASAP S2S] User ' . $user->user_login . ' has no recent/valid sessions. Expirations: ' . implode(', ', $expiration_timestamps));
-                continue;
-            }
-            
-            // Check if user should be synced based on role settings
-            $should_sync = false;
-            $matching_roles = [];
-            
-            foreach ( $user->roles as $role ) {
-                if ( in_array( $role, $auto_sync_roles ) ) {
-                    $should_sync = true;
-                    $matching_roles[] = $role;
+                
+                if ( ! $has_recent_session ) {
+                    error_log('[ASAP S2S] User ' . $user->user_login . ' has no recent/valid sessions. Expirations: ' . implode(', ', $expiration_timestamps));
+                    continue;
                 }
+                
+                // Check if user should be synced based on role settings
+                $should_sync = false;
+                $matching_roles = [];
+                
+                foreach ( $user->roles as $role ) {
+                    if ( in_array( $role, $auto_sync_roles ) ) {
+                        $should_sync = true;
+                        $matching_roles[] = $role;
+                    }
+                }
+                
+                if ( ! $should_sync ) {
+                    error_log( sprintf( 
+                        '[ASAP S2S] User %s has role(s) %s that is not in auto-sync roles %s. Skipping.', 
+                        $user->user_login, 
+                        implode(', ', $user->roles),
+                        implode(', ', $auto_sync_roles)
+                    ));
+                    continue;
+                }
+                
+                error_log('[ASAP S2S] User ' . $user->user_login . ' qualifies for sync based on roles: ' . implode(', ', $matching_roles));
+                
+                // If we get here, the user has active sessions and should be synced
+                $userdata = array(
+                    'wpUserId'    => $user_id,
+                    'username'    => $user->user_login,
+                    'email'       => $user->user_email,
+                    'displayName' => $user->display_name,
+                    'firstName'   => get_user_meta( $user_id, 'first_name', true ),
+                    'lastName'    => get_user_meta( $user_id, 'last_name', true ),
+                    'roles'       => $user->roles,
+                    'avatarUrl'   => get_avatar_url( $user_id, array( 'size' => 96 ) ),
+                    'metadata'    => array(
+                        'registered' => $user->user_registered,
+                        'nicename'   => $user->user_nicename,
+                    ),
+                );
+                
+                error_log('[ASAP S2S] Adding user data for ' . $user->user_login . ' to response: ' . json_encode($userdata));
+                $active_sessions[] = $userdata;
             }
             
-            if ( ! $should_sync ) {
-                error_log( sprintf( 
-                    '[ASAP S2S] User %s has role(s) %s that is not in auto-sync roles %s. Skipping.', 
-                    $user->user_login, 
-                    implode(', ', $user->roles),
-                    implode(', ', $auto_sync_roles)
+            if ( empty( $active_sessions ) ) {
+                error_log( '[ASAP S2S] No eligible active sessions found after filtering by role.' );
+                return rest_ensure_response( array(
+                    'success' => false,
+                    'error' => 'no_eligible_active_sessions'
                 ));
-                continue;
             }
             
-            error_log('[ASAP S2S] User ' . $user->user_login . ' qualifies for sync based on roles: ' . implode(', ', $matching_roles));
+            error_log( sprintf( 
+                '[ASAP S2S] Returning %d active sessions data (users: %s)', 
+                count( $active_sessions ),
+                implode(', ', array_column($active_sessions, 'username'))
+            ));
             
-            // If we get here, the user has active sessions and should be synced
-            $userdata = array(
-                'wpUserId'    => $user_id,
-                'username'    => $user->user_login,
-                'email'       => $user->user_email,
-                'displayName' => $user->display_name,
-                'firstName'   => get_user_meta( $user_id, 'first_name', true ),
-                'lastName'    => get_user_meta( $user_id, 'last_name', true ),
-                'roles'       => $user->roles,
-                'avatarUrl'   => get_avatar_url( $user_id, array( 'size' => 96 ) ),
-                'metadata'    => array(
-                    'registered' => $user->user_registered,
-                    'nicename'   => $user->user_nicename,
-                ),
-            );
-            
-            error_log('[ASAP S2S] Adding user data for ' . $user->user_login . ' to response: ' . json_encode($userdata));
-            $active_sessions[] = $userdata;
-        }
-        
-        if ( empty( $active_sessions ) ) {
-            error_log( '[ASAP S2S] No eligible active sessions found after filtering by role.' );
+            return rest_ensure_response( array(
+                'success' => true,
+                'activeSessions' => $active_sessions,
+                'timestamp' => time(),
+            ));
+        } catch ( \Exception $e ) {
+            error_log( '[ASAP S2S] Error: ' . $e->getMessage() );
             return rest_ensure_response( array(
                 'success' => false,
-                'error' => 'no_eligible_active_sessions'
+                'error' => 'internal_error'
             ));
         }
-        
-        error_log( sprintf( 
-            '[ASAP S2S] Returning %d active sessions data (users: %s)', 
-            count( $active_sessions ),
-            implode(', ', array_column($active_sessions, 'username'))
-        ));
-        
-        return rest_ensure_response( array(
-            'success' => true,
-            'activeSessions' => $active_sessions,
-            'timestamp' => time(),
-        ));
     }
 } 

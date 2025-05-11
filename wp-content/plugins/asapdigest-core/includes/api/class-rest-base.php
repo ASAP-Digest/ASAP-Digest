@@ -2,8 +2,10 @@
 /**
  * ASAP Digest REST API Base Controller
  * 
+ * Base controller class for all REST API endpoints.
+ * 
  * @package ASAPDigest_Core
- * @created 03.31.25 | 03:34 PM PDT
+ * @created 05.16.25 | 03:37 PM PDT
  * @file-marker ASAP_Digest_REST_Base
  */
 
@@ -17,6 +19,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * REST API Base Controller class
+ * 
+ * Provides common functionality for all REST API controllers
+ * 
+ * @since 2.2.0
+ */
 abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
     /**
      * @var string API namespace
@@ -32,6 +41,8 @@ abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
      * Constructor
      */
     public function __construct() {
+        // Suppress PHP errors from appearing in REST API output
+        add_filter('rest_suppress_error_output', '__return_true');
         $this->init();
     }
 
@@ -44,37 +55,78 @@ abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
 
     /**
      * Register routes
+     * 
+     * This method should be implemented by child classes to register routes
+     * 
+     * @return void
      */
     public function register_routes() {
-        // Child classes must implement this method
+        // Child classes should override this method
     }
 
     /**
-     * Check if a given request has admin access
+     * Check read permission
+     * 
+     * @param mixed $request Request object
+     * @return bool True if user can read, false otherwise
      */
-    public function admin_permissions_check($request) {
-        if (!current_user_can('manage_options')) {
-            return new WP_Error(
-                'rest_forbidden',
-                __('Sorry, you are not allowed to do that.', 'asap-digest'),
-                ['status' => rest_authorization_required_code()]
-            );
-        }
-        return true;
+    public function check_read_permission($request) {
+        return current_user_can('read');
     }
 
     /**
-     * Check if a given request has valid authentication
+     * Check create/edit permission
+     * 
+     * @param mixed $request Request object
+     * @return bool True if user can edit posts, false otherwise
      */
-    public function permissions_check($request) {
-        if (!is_user_logged_in()) {
-            return new WP_Error(
-                'rest_not_logged_in',
-                __('You must be logged in to do this.', 'asap-digest'),
-                ['status' => rest_authorization_required_code()]
-            );
-        }
-        return true;
+    public function check_edit_permission($request) {
+        return current_user_can('edit_posts');
+    }
+
+    /**
+     * Check admin permission
+     * 
+     * @param mixed $request Request object
+     * @return bool True if user is admin, false otherwise
+     */
+    public function check_admin_permission($request) {
+        return current_user_can('manage_options');
+    }
+
+    /**
+     * Format item for response
+     * 
+     * @param mixed $item Item to format
+     * @param string $context Context (view, edit, etc)
+     * @return array Formatted item
+     */
+    protected function format_item_for_response($item, $context = 'view') {
+        return (array) $item;
+    }
+
+    /**
+     * Get item schema
+     * 
+     * @return array Schema array
+     */
+    public function get_item_schema() {
+        return [
+            '$schema' => 'http://json-schema.org/draft-04/schema#',
+            'title' => 'asap_' . $this->rest_base,
+            'type' => 'object',
+            'properties' => []
+        ];
+    }
+
+    /**
+     * Prepare item for database
+     * 
+     * @param array $request_data Request data
+     * @return array|WP_Error Data or error
+     */
+    protected function prepare_item_for_database($request_data) {
+        return $request_data;
     }
 
     /**
