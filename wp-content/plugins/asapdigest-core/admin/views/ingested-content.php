@@ -1,266 +1,203 @@
 <?php
 /**
- * Ingested Content Admin View
- * Enhanced UI for managing ingested content (CRUD)
- * @file-marker ASAP_Digest_Admin_Ingested_Content_View
+ * Admin View: Ingested Content Management
+ *
+ * @package ASAPDigest_Core
+ * @since 2.3.0
  */
-if (!defined('ABSPATH')) exit;
 
-// Include content processing bootstrap
-require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/content-processing/bootstrap.php';
-
-global $wpdb;
-$table = $wpdb->prefix . 'asap_ingested_content';
-$index_table = $wpdb->prefix . 'asap_content_index';
-$success = '';
-$error = '';
-$processor = asap_digest_get_content_processor();
-
-// Check for edit action via GET parameters
-$edit_item = null;
-if (isset($_GET['action']) && $_GET['action'] === 'edit' && !empty($_GET['id'])) {
-    $record_id = intval($_GET['id']);
-    $edit_item = $processor->get_content($record_id);
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
 }
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && current_user_can('manage_options')) {
-    // Delete action
-    if (isset($_POST['delete_record'])) {
-        $record_id = intval($_POST['record_id']);
-        $result = $processor->delete($record_id);
-        
-        if ($result) {
-            $success = 'Content deleted successfully.';
-        } else {
-            $error = 'Deletion error: Unable to delete content.';
-        }
-    }
-    // Update action
-    else if (isset($_POST['update_record']) && !empty($_POST['record_id'])) {
-        $record_id = intval($_POST['record_id']);
-        
-        // Prepare content data
-        $content_data = array(
-            'type' => sanitize_text_field($_POST['type'] ?? ''),
-            'title' => sanitize_text_field($_POST['title'] ?? ''),
-            'content' => wp_kses_post($_POST['content'] ?? ''),
-            'summary' => sanitize_text_field($_POST['summary'] ?? ''),
-            'source_url' => esc_url_raw($_POST['source_url'] ?? ''),
-            'source_id' => sanitize_text_field($_POST['source_id'] ?? ''),
-            'publish_date' => sanitize_text_field($_POST['publish_date'] ?? ''),
-            'status' => sanitize_text_field($_POST['status'] ?? 'published'),
-        );
-        
-        // Process and validate content
-        $process_result = $processor->process($content_data, $record_id);
-        
-        if (!$process_result['success']) {
-            // Show validation errors
-            $error = 'Validation error: ';
-            if (!empty($process_result['errors'])) {
-                $error .= implode(', ', array_values($process_result['errors']));
-            } else {
-                $error .= 'Unknown validation error';
-            }
-        } else {
-            // Save processed content
-            $save_result = $processor->save($process_result, $record_id);
-            
-            if ($save_result['success']) {
-                $success = 'Content updated successfully. Quality score: ' . $process_result['data']['quality_score'];
-                $edit_item = null;
-            } else {
-                $error = 'Database error: ' . implode(', ', $save_result['errors']);
-            }
-        }
-    }
-    // Insert new content action
-    else {
-        // Prepare content data
-        $content_data = array(
-            'type' => sanitize_text_field($_POST['type'] ?? ''),
-            'title' => sanitize_text_field($_POST['title'] ?? ''),
-            'content' => wp_kses_post($_POST['content'] ?? ''),
-            'summary' => sanitize_text_field($_POST['summary'] ?? ''),
-            'source_url' => esc_url_raw($_POST['source_url'] ?? ''),
-            'source_id' => sanitize_text_field($_POST['source_id'] ?? ''),
-            'publish_date' => sanitize_text_field($_POST['publish_date'] ?? ''),
-            'status' => sanitize_text_field($_POST['status'] ?? 'published'),
-        );
-        
-        // Process and validate content
-        $process_result = $processor->process($content_data);
-        
-        if (!$process_result['success']) {
-            // Show validation errors
-            $error = 'Validation error: ';
-            if (!empty($process_result['errors'])) {
-                $error .= implode(', ', array_values($process_result['errors']));
-            } else {
-                $error .= 'Unknown validation error';
-            }
-        } else {
-            // Save processed content
-            $save_result = $processor->save($process_result);
-            
-            if ($save_result['success']) {
-                $success = 'Content added successfully. Quality score: ' . $process_result['data']['quality_score'];
-            } else {
-                $error = 'Database error: ' . implode(', ', $save_result['errors']);
-            }
-        }
-    }
-}
+// Enqueue scripts and styles
+wp_enqueue_style('asap-content-library', plugin_dir_url(dirname(__FILE__)) . 'css/content-library.css', [], '2.3.0');
+wp_enqueue_script('asap-content-library', plugin_dir_url(dirname(__FILE__)) . 'js/content-library.js', ['jquery'], '2.3.0', true);
 
-// Fetch recent ingested content with optional search filtering
-$search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
-if($search) {
-    $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE title LIKE %s ORDER BY created_at DESC", '%' . $wpdb->esc_like($search) . '%'), ARRAY_A);
-} else {
-    $items = $wpdb->get_results("SELECT * FROM {$table} ORDER BY created_at DESC LIMIT 20", ARRAY_A);
-}
+// Localize script with AJAX URL and nonce
+wp_localize_script('asap-content-library', 'asapDigestAdmin', [
+    'ajaxurl' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('asap_digest_content_nonce'),
+]);
+
+// Content types
+$content_types = [
+    'article' => __('Article', 'asapdigest-core'),
+    'news' => __('News', 'asapdigest-core'),
+    'blog' => __('Blog Post', 'asapdigest-core'),
+    'podcast' => __('Podcast', 'asapdigest-core'),
+    'video' => __('Video', 'asapdigest-core'),
+];
+
+// Statuses
+$statuses = [
+    'pending' => __('Pending', 'asapdigest-core'),
+    'approved' => __('Approved', 'asapdigest-core'),
+    'rejected' => __('Rejected', 'asapdigest-core'),
+    'processing' => __('Processing', 'asapdigest-core'),
+];
+
+// Quality score ranges
+$quality_ranges = [
+    '0' => __('All Quality Levels', 'asapdigest-core'),
+    '90' => __('Excellent (90+)', 'asapdigest-core'),
+    '70' => __('Good (70+)', 'asapdigest-core'),
+    '50' => __('Average (50+)', 'asapdigest-core'),
+    '30' => __('Poor (30+)', 'asapdigest-core'),
+];
 ?>
+
 <div class="wrap">
-    <h1>Ingested Content</h1>
-    <?php if ($success): ?>
-        <div class="notice notice-success"><p><?php echo esc_html($success); ?></p></div>
-    <?php elseif ($error): ?>
-        <div class="notice notice-error"><p><?php echo esc_html($error); ?></p></div>
-    <?php endif; ?>
-    
-    <!-- Search Form -->
-    <form method="get" action="">
-        <input type="hidden" name="page" value="asap-ingested-content" />
-        <input type="text" name="s" placeholder="Search by Title..." value="<?php echo isset($_GET['s']) ? esc_attr($_GET['s']) : ''; ?>" />
-        <input type="submit" class="button" value="Search" />
-        <?php if(isset($_GET['s']) && $_GET['s'] !== ''): ?>
-            <a href="<?php echo admin_url('admin.php?page=asap-ingested-content'); ?>" class="button">Clear</a>
-        <?php endif; ?>
-    </form>
-    
-    <?php if ($edit_item): ?>
-        <h2>Edit Content</h2>
-    <?php else: ?>
-        <h2>Add New Content</h2>
-    <?php endif; ?>
-    <form method="post" action="">
-        <?php if ($edit_item): ?>
-            <input type="hidden" name="record_id" value="<?php echo intval($edit_item['id']); ?>">
-        <?php endif; ?>
-        <table class="form-table">
-            <tr>
-                <th><label for="type">Type</label></th>
-                <td>
-                    <select name="type" id="type" required>
-                        <option value="article" <?php selected(($edit_item['type'] ?? ($_POST['type'] ?? 'article')), 'article'); ?>>Article</option>
-                        <option value="podcast" <?php selected(($edit_item['type'] ?? ($_POST['type'] ?? '')), 'podcast'); ?>>Podcast</option>
-                        <option value="video" <?php selected(($edit_item['type'] ?? ($_POST['type'] ?? '')), 'video'); ?>>Video</option>
-                        <option value="other" <?php selected(($edit_item['type'] ?? ($_POST['type'] ?? '')), 'other'); ?>>Other</option>
+    <h1 class="wp-heading-inline"><?php _e('Content Library', 'asapdigest-core'); ?></h1>
+    <hr class="wp-header-end">
+
+    <div id="form-messages"></div>
+
+    <div class="content-library-wrap">
+        <!-- Filters -->
+        <div class="form-filters">
+            <div class="search-box">
+                <input type="search" id="content-search" placeholder="<?php esc_attr_e('Search content...', 'asapdigest-core'); ?>">
+            </div>
+            
+            <div>
+                <select id="content-type-filter">
+                    <option value=""><?php _e('All Types', 'asapdigest-core'); ?></option>
+                    <?php foreach ($content_types as $type => $label) : ?>
+                        <option value="<?php echo esc_attr($type); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div>
+                <select id="content-status-filter">
+                    <option value=""><?php _e('All Statuses', 'asapdigest-core'); ?></option>
+                    <?php foreach ($statuses as $status => $label) : ?>
+                        <option value="<?php echo esc_attr($status); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div>
+                <select id="content-quality-filter">
+                    <?php foreach ($quality_ranges as $min => $label) : ?>
+                        <option value="<?php echo esc_attr($min); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Bulk Actions -->
+        <div class="tablenav top">
+            <div class="tablenav-bulk">
+                <form id="bulk-action-form" method="post">
+                    <div class="select-all-wrap">
+                        <input type="checkbox" id="select-all">
+                        <label for="select-all" class="screen-reader-text">Select all items</label>
+                    </div>
+                    
+                    <select class="actions-select" name="bulk_action">
+                        <option value=""><?php _e('Bulk Actions', 'asapdigest-core'); ?></option>
+                        <option value="approve"><?php _e('Approve', 'asapdigest-core'); ?></option>
+                        <option value="reject"><?php _e('Reject', 'asapdigest-core'); ?></option>
+                        <option value="pending"><?php _e('Mark as Pending', 'asapdigest-core'); ?></option>
+                        <option value="delete"><?php _e('Delete', 'asapdigest-core'); ?></option>
                     </select>
-                    <br /><small>Select the content type. Default is Article.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="title">Title</label></th>
-                <td>
-                    <input name="title" id="title" type="text" placeholder="Enter content title" value="<?php echo esc_attr($edit_item['title'] ?? ($_POST['title'] ?? '')); ?>" required>
-                    <br /><small>Provide a descriptive title for the content.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="content">Content</label></th>
-                <td>
-                    <textarea name="content" id="content" rows="4" cols="60" placeholder="Enter full content here" required><?php echo esc_textarea($edit_item['content'] ?? ($_POST['content'] ?? '')); ?></textarea>
-                    <br /><small>Enter the main body of the content.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="summary">Summary</label></th>
-                <td>
-                    <input name="summary" id="summary" type="text" placeholder="Optional summary" value="<?php echo esc_attr($edit_item['summary'] ?? ($_POST['summary'] ?? '')); ?>">
-                    <br /><small>Optionally provide a short summary or excerpt.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="source_url">Source URL</label></th>
-                <td>
-                    <input name="source_url" id="source_url" type="url" placeholder="https://example.com/source" value="<?php echo esc_attr($edit_item['source_url'] ?? ($_POST['source_url'] ?? '')); ?>" required>
-                    <br /><small>Enter the original URL of the source content.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="source_id">Source ID</label></th>
-                <td>
-                    <input name="source_id" id="source_id" type="text" placeholder="Source system ID" value="<?php echo esc_attr($edit_item['source_id'] ?? ($_POST['source_id'] ?? '')); ?>">
-                    <br /><small>Unique identifier from the source system.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="publish_date">Publish Date</label></th>
-                <td>
-                    <input name="publish_date" id="publish_date" type="datetime-local" placeholder="YYYY-MM-DDTHH:MM" value="<?php echo esc_attr($edit_item['publish_date'] ?? ($_POST['publish_date'] ?? '')); ?>">
-                    <br /><small>Specify when the content was originally published.</small>
-                </td>
-            </tr>
-            <tr>
-                <th><label for="status">Status</label></th>
-                <td>
-                    <select name="status" id="status" required>
-                        <option value="published" <?php selected(($edit_item['status'] ?? ($_POST['status'] ?? 'published')), 'published'); ?>>Published</option>
-                        <option value="pending" <?php selected(($edit_item['status'] ?? ($_POST['status'] ?? '')), 'pending'); ?>>Pending</option>
-                        <option value="rejected" <?php selected(($edit_item['status'] ?? ($_POST['status'] ?? '')), 'rejected'); ?>>Rejected</option>
-                    </select>
-                    <br /><small>Select the content status.</small>
-                </td>
-            </tr>
+                    
+                    <button type="submit" class="button action" disabled><?php _e('Apply', 'asapdigest-core'); ?></button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Content Table -->
+        <table class="wp-list-table widefat fixed striped content-library-table" id="content-library-table">
+            <thead>
+                <tr>
+                    <th class="check-column">
+                        <span class="screen-reader-text"><?php _e('Select All', 'asapdigest-core'); ?></span>
+                    </th>
+                    <th><?php _e('Title', 'asapdigest-core'); ?></th>
+                    <th style="width: 80px;"><?php _e('Type', 'asapdigest-core'); ?></th>
+                    <th style="width: 80px;"><?php _e('Status', 'asapdigest-core'); ?></th>
+                    <th style="width: 100px;"><?php _e('Quality', 'asapdigest-core'); ?></th>
+                    <th style="width: 120px;"><?php _e('Source', 'asapdigest-core'); ?></th>
+                    <th style="width: 120px;"><?php _e('Published', 'asapdigest-core'); ?></th>
+                    <th style="width: 120px;"><?php _e('Ingested', 'asapdigest-core'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="8" class="no-items"><?php _e('Loading content...', 'asapdigest-core'); ?></td>
+                </tr>
+            </tbody>
         </table>
-        <?php if ($edit_item): ?>
-            <?php submit_button('Update Content', 'primary', 'update_record'); ?>
-            <a href="<?php echo admin_url('admin.php?page=asap-ingested-content'); ?>" class="button">Cancel Editing</a>
-        <?php else: ?>
-            <?php submit_button('Add Content'); ?>
-        <?php endif; ?>
-    </form>
-    <h2>Recent Ingested Content</h2>
-    <table class="widefat fixed striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Quality Score</th>
-                <th>Source URL</th>
-                <th>Publish Date</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if ($items): ?>
-                <?php foreach ($items as $item): ?>
-                    <tr>
-                        <td><?php echo intval($item['id']); ?></td>
-                        <td><?php echo esc_html($item['type']); ?></td>
-                        <td><?php echo esc_html($item['title']); ?></td>
-                        <td><?php echo esc_html($item['status']); ?></td>
-                        <td><?php echo esc_html($item['quality_score']); ?></td>
-                        <td><a href="<?php echo esc_url($item['source_url']); ?>" target="_blank">link</a></td>
-                        <td><?php echo esc_html($item['publish_date']); ?></td>
-                        <td><?php echo esc_html($item['created_at']); ?></td>
-                        <td>
-                            <a href="<?php echo admin_url('admin.php?page=asap-ingested-content&action=edit&id=' . intval($item['id'])); ?>" class="button">Edit</a>
-                            <form method="post" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this content?');">
-                                <input type="hidden" name="record_id" value="<?php echo intval($item['id']); ?>">
-                                <?php submit_button('Delete', 'delete', 'delete_record', false); ?>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <tr><td colspan="9">No content found.</td></tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+        
+        <!-- Pagination -->
+        <div class="tablenav bottom">
+            <div class="tablenav-pages">
+                <span class="displaying-num"></span>
+                <span class="pagination-links"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content Detail Modal -->
+<div id="content-detail-modal" class="asap-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><?php _e('Content Details', 'asapdigest-core'); ?></h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h2 class="content-detail-title"></h2>
+            <div class="content-detail-content"></div>
+            
+            <div class="content-detail-actions">
+                <div class="left-actions">
+                    <a href="#" target="_blank" class="button view-original"><?php _e('View Original', 'asapdigest-core'); ?></a>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" class="button approve-content-btn"><?php _e('Approve', 'asapdigest-core'); ?></button>
+                    <button type="button" class="button reject-content-btn"><?php _e('Reject', 'asapdigest-core'); ?></button>
+                    <button type="button" class="button delete-content-btn"><?php _e('Delete', 'asapdigest-core'); ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="confirm-modal" class="asap-modal confirm-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><?php _e('Confirm Deletion', 'asapdigest-core'); ?></h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="confirm-text"><?php _e('Are you sure you want to delete this content? This action cannot be undone.', 'asapdigest-core'); ?></p>
+            <div class="action-buttons">
+                <button type="button" class="button modal-close"><?php _e('Cancel', 'asapdigest-core'); ?></button>
+                <button type="button" id="confirm-delete-btn" class="button button-primary"><?php _e('Yes, Delete', 'asapdigest-core'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div id="bulk-confirm-modal" class="asap-modal confirm-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><?php _e('Confirm Bulk Action', 'asapdigest-core'); ?></h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="confirm-text"><?php _e('Are you sure you want to delete the selected items? This action cannot be undone.', 'asapdigest-core'); ?></p>
+            <div class="action-buttons">
+                <button type="button" class="button modal-close"><?php _e('Cancel', 'asapdigest-core'); ?></button>
+                <button type="button" id="confirm-bulk-delete-btn" class="button button-primary"><?php _e('Yes, Delete', 'asapdigest-core'); ?></button>
+            </div>
+        </div>
+    </div>
 </div> 

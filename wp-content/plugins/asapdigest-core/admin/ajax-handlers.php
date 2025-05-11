@@ -39,294 +39,252 @@ add_action('init', 'asap_digest_init_ajax_handlers');
  * Get content details for the content library modal
  */
 function asap_digest_ajax_get_content_details() {
-    // Check permissions
+    // Check admin capabilities
     if (!current_user_can('manage_options')) {
-        wp_send_json_error(['message' => 'Permission denied']);
-        exit;
+        wp_send_json_error(['message' => 'Insufficient permissions'], 403);
+        return;
     }
     
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_content_library_nonce')) {
-        wp_send_json_error(['message' => 'Invalid security token']);
-        exit;
-    }
+    // Security check
+    check_ajax_referer('asap_digest_content_nonce', 'nonce');
     
     // Get content ID
     $content_id = isset($_POST['content_id']) ? intval($_POST['content_id']) : 0;
     
     if ($content_id <= 0) {
         wp_send_json_error(['message' => 'Invalid content ID']);
-        exit;
+        return;
     }
     
-    // Load content processor
-    require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
-    $processor = asap_digest_get_content_processor();
-    
     // Get content details
-    $content = $processor->get_content($content_id);
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'asap_ingested_content';
+    
+    $content = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table_name} WHERE id = %d", $content_id));
     
     if (!$content) {
         wp_send_json_error(['message' => 'Content not found']);
-        exit;
+        return;
     }
     
-    // Format some fields for display
-    if (!empty($content['publish_date'])) {
-        $content['publish_date'] = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($content['publish_date']));
-    }
+    // Format dates
+    $publish_date = !empty($content->publish_date) ? date('Y-m-d', strtotime($content->publish_date)) : '';
+    $created_at = !empty($content->created_at) ? date('Y-m-d H:i', strtotime($content->created_at)) : '';
     
-    if (!empty($content['created_at'])) {
-        $content['created_at'] = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($content['created_at']));
-    }
-    
-    // Get quality assessment if available
-    if (!empty($content['content'])) {
-        $validator = new ASAP_Digest_Content_Validator($content);
-        $content['quality_assessment'] = $validator->get_quality_assessment();
-    }
-    
-    wp_send_json_success($content);
+    // Send response
+    wp_send_json_success([
+        'id' => $content->id,
+        'title' => $content->title,
+        'content' => $content->content,
+        'summary' => $content->summary,
+        'type' => $content->type,
+        'status' => $content->status,
+        'quality_score' => $content->quality_score,
+        'source_url' => $content->source_url,
+        'source_id' => $content->source_id,
+        'publish_date' => $publish_date,
+        'created_at' => $created_at,
+    ]);
 }
+add_action('wp_ajax_asap_get_content_details', 'asap_digest_ajax_get_content_details');
 
 /**
  * Search content for the content library
  */
 function asap_digest_ajax_search_content() {
-    // Check permissions
+    // Check admin capabilities
     if (!current_user_can('manage_options')) {
-        wp_send_json_error(['message' => 'Permission denied']);
-        exit;
+        wp_send_json_error(['message' => 'Insufficient permissions'], 403);
+        return;
     }
     
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_content_library_nonce')) {
-        wp_send_json_error(['message' => 'Invalid security token']);
-        exit;
-    }
+    // Security check
+    check_ajax_referer('asap_digest_content_nonce', 'nonce');
     
-    // Get search parameters
+    // Parse request parameters
     $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
     $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : '';
     $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
     $min_quality = isset($_POST['min_quality']) ? intval($_POST['min_quality']) : 0;
     $page = isset($_POST['page']) ? max(1, intval($_POST['page'])) : 1;
-    $per_page = isset($_POST['per_page']) ? min(100, intval($_POST['per_page'])) : 20;
+    $per_page = isset($_POST['per_page']) ? min(100, max(10, intval($_POST['per_page']))) : 20;
     
-    // Build query
+    // Calculate offset
+    $offset = ($page - 1) * $per_page;
+    
+    // Query the database
     global $wpdb;
-    $table = $wpdb->prefix . 'asap_ingested_content';
+    $table_name = $wpdb->prefix . 'asap_ingested_content';
     
+    // Build where clauses
     $where = [];
     $params = [];
     
-    // Filter by search term
     if (!empty($search)) {
-        $where[] = '(title LIKE %s OR content LIKE %s)';
-        $search_term = '%' . $wpdb->esc_like($search) . '%';
-        $params[] = $search_term;
-        $params[] = $search_term;
+        $where[] = "(title LIKE %s OR content LIKE %s)";
+        $params[] = '%' . $wpdb->esc_like($search) . '%';
+        $params[] = '%' . $wpdb->esc_like($search) . '%';
     }
     
-    // Filter by type
     if (!empty($type)) {
-        $where[] = 'type = %s';
+        $where[] = "type = %s";
         $params[] = $type;
     }
     
-    // Filter by status
     if (!empty($status)) {
-        $where[] = 'status = %s';
+        $where[] = "status = %s";
         $params[] = $status;
     }
     
-    // Filter by minimum quality score
     if ($min_quality > 0) {
-        $where[] = 'quality_score >= %d';
+        $where[] = "quality_score >= %d";
         $params[] = $min_quality;
     }
     
-    // Build WHERE clause
+    // Combine where clauses
     $where_sql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     
-    // Count total items
-    $count_query = "SELECT COUNT(*) FROM $table $where_sql";
-    if (!empty($params)) {
-        $count_query = $wpdb->prepare($count_query, $params);
+    // Count query
+    $count_sql = "SELECT COUNT(*) FROM {$table_name} {$where_sql}";
+    $total_items = $wpdb->get_var($wpdb->prepare($count_sql, $params));
+    
+    // Main query
+    $sql = "SELECT * FROM {$table_name} {$where_sql} ORDER BY created_at DESC LIMIT %d OFFSET %d";
+    $all_params = array_merge($params, [$per_page, $offset]);
+    $items = $wpdb->get_results($wpdb->prepare($sql, $all_params));
+    
+    // Process items for display
+    $processed_items = [];
+    foreach ($items as $item) {
+        // Extract hostname from source URL
+        $source_hostname = '';
+        if (!empty($item->source_url)) {
+            $url_parts = parse_url($item->source_url);
+            $source_hostname = isset($url_parts['host']) ? $url_parts['host'] : '';
+            // Remove 'www.' if present
+            $source_hostname = preg_replace('/^www\./', '', $source_hostname);
+        }
+        
+        // Format dates
+        $publish_date = !empty($item->publish_date) ? date('Y-m-d', strtotime($item->publish_date)) : '';
+        $created_at = !empty($item->created_at) ? date('Y-m-d H:i', strtotime($item->created_at)) : '';
+        
+        // Add to processed items
+        $processed_items[] = [
+            'id' => $item->id,
+            'title' => $item->title,
+            'type' => $item->type,
+            'status' => $item->status,
+            'quality_score' => $item->quality_score,
+            'source_url' => $item->source_url,
+            'source_hostname' => $source_hostname,
+            'publish_date' => $item->publish_date,
+            'publish_date_formatted' => $publish_date,
+            'created_at' => $item->created_at,
+            'created_at_formatted' => $created_at,
+        ];
     }
-    $total_items = $wpdb->get_var($count_query);
     
     // Calculate pagination
     $total_pages = ceil($total_items / $per_page);
-    $offset = ($page - 1) * $per_page;
     
-    // Get items
-    $orderby = 'created_at';
-    $order = 'DESC';
-    
-    $query = "SELECT * FROM $table $where_sql ORDER BY $orderby $order LIMIT %d OFFSET %d";
-    $params[] = $per_page;
-    $params[] = $offset;
-    
-    $prepared_query = $wpdb->prepare($query, $params);
-    $items = $wpdb->get_results($prepared_query, ARRAY_A);
-    
-    // Format items for response
-    foreach ($items as &$item) {
-        // Format dates
-        if (!empty($item['publish_date'])) {
-            $item['publish_date_formatted'] = date_i18n(get_option('date_format'), strtotime($item['publish_date']));
-        }
-        
-        if (!empty($item['created_at'])) {
-            $item['created_at_formatted'] = date_i18n(get_option('date_format'), strtotime($item['created_at']));
-        }
-        
-        // Truncate content for preview
-        if (!empty($item['content'])) {
-            $item['content_preview'] = wp_trim_words(wp_strip_all_tags($item['content']), 30, '...');
-        }
-        
-        // Parse source URL hostname
-        if (!empty($item['source_url'])) {
-            $parsed_url = parse_url($item['source_url']);
-            $item['source_hostname'] = $parsed_url['host'] ?? '';
-        }
-    }
-    
+    // Send response
     wp_send_json_success([
-        'items' => $items,
-        'total' => (int) $total_items,
-        'total_pages' => (int) $total_pages,
-        'current_page' => (int) $page,
+        'items' => $processed_items,
+        'total_items' => $total_items,
+        'total_pages' => $total_pages,
+        'current_page' => $page,
+        'per_page' => $per_page,
     ]);
 }
+add_action('wp_ajax_asap_search_content', 'asap_digest_ajax_search_content');
 
 /**
  * Handle bulk actions for content library
  */
 function asap_digest_ajax_bulk_action_content() {
-    // Check permissions
+    // Check admin capabilities
     if (!current_user_can('manage_options')) {
-        wp_send_json_error(['message' => 'Permission denied']);
-        exit;
+        wp_send_json_error(['message' => 'Insufficient permissions'], 403);
+        return;
     }
     
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'asap_content_library_nonce')) {
-        wp_send_json_error(['message' => 'Invalid security token']);
-        exit;
+    // Security check
+    check_ajax_referer('asap_digest_content_nonce', 'nonce');
+    
+    // Get parameters
+    $bulk_action = isset($_POST['bulk_action']) ? sanitize_text_field($_POST['bulk_action']) : '';
+    $content_ids = isset($_POST['content_ids']) ? array_map('intval', (array) $_POST['content_ids']) : [];
+    
+    if (empty($bulk_action) || empty($content_ids)) {
+        wp_send_json_error(['message' => 'Missing required parameters']);
+        return;
     }
     
-    // Get action and content IDs
-    $action = isset($_POST['action']) ? sanitize_text_field($_POST['action']) : '';
-    $content_ids = isset($_POST['content_ids']) ? array_map('intval', $_POST['content_ids']) : [];
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'asap_ingested_content';
+    $affected = 0;
+    $message = '';
     
-    if (empty($action) || empty($content_ids)) {
-        wp_send_json_error(['message' => 'Invalid action or no content selected']);
-        exit;
-    }
-    
-    // Load content processor
-    require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
-    $processor = asap_digest_get_content_processor();
-    
-    $results = [
-        'success' => 0,
-        'failed' => 0,
-        'message' => '',
-    ];
-    
-    // Process action
-    switch ($action) {
+    // Process based on action
+    switch ($bulk_action) {
         case 'delete':
-            foreach ($content_ids as $content_id) {
-                if ($processor->delete($content_id)) {
-                    $results['success']++;
-                } else {
-                    $results['failed']++;
+            // Delete content
+            foreach ($content_ids as $id) {
+                $deleted = $wpdb->delete($table_name, ['id' => $id], ['%d']);
+                if ($deleted) {
+                    $affected++;
                 }
             }
-            
-            $results['message'] = sprintf(
-                _n(
-                    '%d item deleted successfully.',
-                    '%d items deleted successfully.',
-                    $results['success'],
-                    'asap-digest'
-                ),
-                $results['success']
-            );
-            
-            if ($results['failed'] > 0) {
-                $results['message'] .= ' ' . sprintf(
-                    _n(
-                        '%d item failed to delete.',
-                        '%d items failed to delete.',
-                        $results['failed'],
-                        'asap-digest'
-                    ),
-                    $results['failed']
-                );
-            }
+            $message = sprintf(_n('%d item deleted successfully.', '%d items deleted successfully.', $affected, 'asapdigest-core'), $affected);
             break;
             
         case 'change_status':
+            // Change status
             $new_status = isset($_POST['new_status']) ? sanitize_text_field($_POST['new_status']) : '';
             
-            if (empty($new_status)) {
-                wp_send_json_error(['message' => 'No status specified']);
-                exit;
+            if (empty($new_status) || !in_array($new_status, ['approved', 'rejected', 'pending', 'processing'])) {
+                wp_send_json_error(['message' => 'Invalid status']);
+                return;
             }
             
-            global $wpdb;
-            $table = $wpdb->prefix . 'asap_ingested_content';
-            
-            foreach ($content_ids as $content_id) {
-                $result = $wpdb->update(
-                    $table,
+            foreach ($content_ids as $id) {
+                $updated = $wpdb->update(
+                    $table_name,
                     ['status' => $new_status],
-                    ['id' => $content_id]
+                    ['id' => $id],
+                    ['%s'],
+                    ['%d']
                 );
                 
-                if ($result !== false) {
-                    $results['success']++;
-                } else {
-                    $results['failed']++;
+                if ($updated) {
+                    $affected++;
                 }
             }
             
-            $results['message'] = sprintf(
+            $message = sprintf(
                 _n(
-                    'Status changed to "%s" for %d item.',
-                    'Status changed to "%s" for %d items.',
-                    $results['success'],
-                    'asap-digest'
+                    '%d item marked as %s successfully.',
+                    '%d items marked as %s successfully.',
+                    $affected,
+                    'asapdigest-core'
                 ),
-                $new_status,
-                $results['success']
+                $affected,
+                $new_status
             );
-            
-            if ($results['failed'] > 0) {
-                $results['message'] .= ' ' . sprintf(
-                    _n(
-                        '%d item failed to update.',
-                        '%d items failed to update.',
-                        $results['failed'],
-                        'asap-digest'
-                    ),
-                    $results['failed']
-                );
-            }
             break;
             
         default:
-            wp_send_json_error(['message' => 'Unsupported action']);
-            exit;
+            wp_send_json_error(['message' => 'Invalid action']);
+            return;
     }
     
-    wp_send_json_success($results);
+    wp_send_json_success([
+        'affected' => $affected,
+        'message' => $message,
+    ]);
 }
+add_action('wp_ajax_asap_bulk_action_content', 'asap_digest_ajax_bulk_action_content');
 
 /**
  * Handle reindexing content
@@ -785,4 +743,547 @@ function asap_digest_ajax_save_quality_settings() {
         'message' => 'Quality settings updated successfully',
         'settings' => $sanitized_settings,
     ]);
-} 
+}
+
+/**
+ * AJAX Handler: Get Content Sources
+ */
+function asap_digest_ajax_get_content_sources() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Parse request parameters
+    $search = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+    $type = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : '';
+    $status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : '';
+    $offset = isset($_GET['offset']) ? intval($_GET['offset']) : 0;
+    $limit = isset($_GET['limit']) ? min(intval($_GET['limit']), 100) : 50;
+    $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'name';
+    $order = isset($_GET['order']) && strtolower($_GET['order']) === 'desc' ? 'DESC' : 'ASC';
+    
+    // Get source manager instance
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    
+    // Build query args
+    $args = [
+        'search' => $search,
+        'type' => $type,
+        'status' => $status,
+        'offset' => $offset,
+        'limit' => $limit,
+        'orderby' => $orderby,
+        'order' => $order,
+    ];
+    
+    // Get content sources and total count
+    $sources = $source_manager->get_sources($args);
+    $total = $source_manager->count_sources([
+        'search' => $search,
+        'type' => $type,
+        'status' => $status,
+    ]);
+    
+    // Format for response
+    $formatted_sources = [];
+    foreach ($sources as $source) {
+        $formatted_sources[] = [
+            'id' => intval($source['id']),
+            'name' => $source['name'],
+            'type' => $source['type'],
+            'url' => $source['url'],
+            'frequency' => $source['frequency'],
+            'status' => $source['status'],
+            'last_fetch' => $source['last_fetch'],
+            'health' => $source['health'],
+            'items_count' => intval($source['items_count']),
+            'configuration' => json_decode($source['configuration'], true),
+            'created_at' => $source['created_at'],
+            'updated_at' => $source['updated_at'],
+        ];
+    }
+    
+    // Return response
+    wp_send_json_success([
+        'sources' => $formatted_sources,
+        'total' => $total,
+        'limit' => $limit,
+        'offset' => $offset,
+    ]);
+}
+add_action('wp_ajax_asap_digest_get_content_sources', 'asap_digest_ajax_get_content_sources');
+
+/**
+ * AJAX Handler: Get Single Content Source
+ */
+function asap_digest_ajax_get_content_source() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Get source ID
+    $source_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    
+    if (!$source_id) {
+        wp_send_json_error([
+            'message' => 'Missing source ID',
+            'code' => 'missing_id',
+        ], 400);
+        return;
+    }
+    
+    // Get source manager instance
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    
+    // Get content source
+    $source = $source_manager->get_source($source_id);
+    
+    if (!$source) {
+        wp_send_json_error([
+            'message' => 'Content source not found',
+            'code' => 'not_found',
+        ], 404);
+        return;
+    }
+    
+    // Format for response
+    $formatted_source = [
+        'id' => intval($source['id']),
+        'name' => $source['name'],
+        'type' => $source['type'],
+        'url' => $source['url'],
+        'frequency' => $source['frequency'],
+        'status' => $source['status'],
+        'last_fetch' => $source['last_fetch'],
+        'health' => $source['health'],
+        'items_count' => intval($source['items_count']),
+        'configuration' => json_decode($source['configuration'], true),
+        'created_at' => $source['created_at'],
+        'updated_at' => $source['updated_at'],
+    ];
+    
+    // Return response
+    wp_send_json_success($formatted_source);
+}
+add_action('wp_ajax_asap_digest_get_content_source', 'asap_digest_ajax_get_content_source');
+
+/**
+ * AJAX Handler: Add Content Source
+ */
+function asap_digest_ajax_add_content_source() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Parse request data
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$data) {
+        wp_send_json_error([
+            'message' => 'Invalid request data',
+            'code' => 'invalid_data',
+        ], 400);
+        return;
+    }
+    
+    // Validate required fields
+    $required_fields = ['name', 'type', 'url', 'frequency'];
+    foreach ($required_fields as $field) {
+        if (!isset($data[$field]) || empty($data[$field])) {
+            wp_send_json_error([
+                'message' => "Missing required field: {$field}",
+                'code' => 'missing_field',
+            ], 400);
+            return;
+        }
+    }
+    
+    // Sanitize and validate data
+    $source_data = [
+        'name' => sanitize_text_field($data['name']),
+        'type' => sanitize_text_field($data['type']),
+        'url' => esc_url_raw($data['url']),
+        'frequency' => sanitize_text_field($data['frequency']),
+        'status' => isset($data['status']) ? sanitize_text_field($data['status']) : 'active',
+    ];
+    
+    // Validate URL format (basic check)
+    if (!filter_var($source_data['url'], FILTER_VALIDATE_URL)) {
+        wp_send_json_error([
+            'message' => 'Invalid URL format',
+            'code' => 'invalid_url',
+        ], 400);
+        return;
+    }
+    
+    // Validate source type
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    $valid_types = $source_manager->get_supported_source_types();
+    
+    if (!in_array($source_data['type'], array_keys($valid_types))) {
+        wp_send_json_error([
+            'message' => 'Invalid source type',
+            'code' => 'invalid_type',
+            'valid_types' => $valid_types,
+        ], 400);
+        return;
+    }
+    
+    // Validate frequency
+    $valid_frequencies = ['hourly', 'twicedaily', 'daily', 'weekly'];
+    
+    if (!in_array($source_data['frequency'], $valid_frequencies)) {
+        wp_send_json_error([
+            'message' => 'Invalid frequency',
+            'code' => 'invalid_frequency',
+            'valid_frequencies' => $valid_frequencies,
+        ], 400);
+        return;
+    }
+    
+    // Handle configuration (JSON)
+    if (isset($data['configuration']) && is_array($data['configuration'])) {
+        $source_data['configuration'] = json_encode($data['configuration']);
+    } else {
+        $source_data['configuration'] = '{}';
+    }
+    
+    // Add content source
+    $source_id = $source_manager->add_source($source_data);
+    
+    if (!$source_id) {
+        wp_send_json_error([
+            'message' => 'Failed to add content source',
+            'code' => 'add_failed',
+        ], 500);
+        return;
+    }
+    
+    // Get the new source
+    $source = $source_manager->get_source($source_id);
+    
+    // Format for response
+    $formatted_source = [
+        'id' => intval($source['id']),
+        'name' => $source['name'],
+        'type' => $source['type'],
+        'url' => $source['url'],
+        'frequency' => $source['frequency'],
+        'status' => $source['status'],
+        'last_fetch' => $source['last_fetch'],
+        'health' => $source['health'],
+        'items_count' => intval($source['items_count']),
+        'configuration' => json_decode($source['configuration'], true),
+        'created_at' => $source['created_at'],
+        'updated_at' => $source['updated_at'],
+    ];
+    
+    // Return response
+    wp_send_json_success([
+        'message' => 'Content source added successfully',
+        'source' => $formatted_source,
+    ]);
+}
+add_action('wp_ajax_asap_digest_add_content_source', 'asap_digest_ajax_add_content_source');
+
+/**
+ * AJAX Handler: Update Content Source
+ */
+function asap_digest_ajax_update_content_source() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Parse request data
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$data) {
+        wp_send_json_error([
+            'message' => 'Invalid request data',
+            'code' => 'invalid_data',
+        ], 400);
+        return;
+    }
+    
+    // Validate source ID
+    if (!isset($data['id']) || empty($data['id'])) {
+        wp_send_json_error([
+            'message' => 'Missing source ID',
+            'code' => 'missing_id',
+        ], 400);
+        return;
+    }
+    
+    $source_id = intval($data['id']);
+    
+    // Initialize source data
+    $source_data = [];
+    
+    // Sanitize and validate data
+    if (isset($data['name'])) {
+        $source_data['name'] = sanitize_text_field($data['name']);
+    }
+    
+    if (isset($data['url'])) {
+        $url = esc_url_raw($data['url']);
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            wp_send_json_error([
+                'message' => 'Invalid URL format',
+                'code' => 'invalid_url',
+            ], 400);
+            return;
+        }
+        $source_data['url'] = $url;
+    }
+    
+    if (isset($data['type'])) {
+        $type = sanitize_text_field($data['type']);
+        $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+        $valid_types = $source_manager->get_supported_source_types();
+        
+        if (!in_array($type, array_keys($valid_types))) {
+            wp_send_json_error([
+                'message' => 'Invalid source type',
+                'code' => 'invalid_type',
+                'valid_types' => $valid_types,
+            ], 400);
+            return;
+        }
+        $source_data['type'] = $type;
+    }
+    
+    if (isset($data['frequency'])) {
+        $frequency = sanitize_text_field($data['frequency']);
+        $valid_frequencies = ['hourly', 'twicedaily', 'daily', 'weekly'];
+        
+        if (!in_array($frequency, $valid_frequencies)) {
+            wp_send_json_error([
+                'message' => 'Invalid frequency',
+                'code' => 'invalid_frequency',
+                'valid_frequencies' => $valid_frequencies,
+            ], 400);
+            return;
+        }
+        $source_data['frequency'] = $frequency;
+    }
+    
+    if (isset($data['status'])) {
+        $source_data['status'] = sanitize_text_field($data['status']);
+    }
+    
+    // Handle configuration (JSON)
+    if (isset($data['configuration']) && is_array($data['configuration'])) {
+        $source_data['configuration'] = json_encode($data['configuration']);
+    }
+    
+    // Get source manager instance
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    
+    // Check if source exists
+    $existing_source = $source_manager->get_source($source_id);
+    
+    if (!$existing_source) {
+        wp_send_json_error([
+            'message' => 'Content source not found',
+            'code' => 'not_found',
+        ], 404);
+        return;
+    }
+    
+    // Update content source
+    $success = $source_manager->update_source($source_id, $source_data);
+    
+    if (!$success) {
+        wp_send_json_error([
+            'message' => 'Failed to update content source',
+            'code' => 'update_failed',
+        ], 500);
+        return;
+    }
+    
+    // Get the updated source
+    $source = $source_manager->get_source($source_id);
+    
+    // Format for response
+    $formatted_source = [
+        'id' => intval($source['id']),
+        'name' => $source['name'],
+        'type' => $source['type'],
+        'url' => $source['url'],
+        'frequency' => $source['frequency'],
+        'status' => $source['status'],
+        'last_fetch' => $source['last_fetch'],
+        'health' => $source['health'],
+        'items_count' => intval($source['items_count']),
+        'configuration' => json_decode($source['configuration'], true),
+        'created_at' => $source['created_at'],
+        'updated_at' => $source['updated_at'],
+    ];
+    
+    // Return response
+    wp_send_json_success([
+        'message' => 'Content source updated successfully',
+        'source' => $formatted_source,
+    ]);
+}
+add_action('wp_ajax_asap_digest_update_content_source', 'asap_digest_ajax_update_content_source');
+
+/**
+ * AJAX Handler: Delete Content Source
+ */
+function asap_digest_ajax_delete_content_source() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Get source ID
+    $source_id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+    
+    if (!$source_id) {
+        wp_send_json_error([
+            'message' => 'Missing source ID',
+            'code' => 'missing_id',
+        ], 400);
+        return;
+    }
+    
+    // Get source manager instance
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    
+    // Check if source exists
+    $existing_source = $source_manager->get_source($source_id);
+    
+    if (!$existing_source) {
+        wp_send_json_error([
+            'message' => 'Content source not found',
+            'code' => 'not_found',
+        ], 404);
+        return;
+    }
+    
+    // Delete content source
+    $success = $source_manager->delete_source($source_id);
+    
+    if (!$success) {
+        wp_send_json_error([
+            'message' => 'Failed to delete content source',
+            'code' => 'delete_failed',
+        ], 500);
+        return;
+    }
+    
+    // Return response
+    wp_send_json_success([
+        'message' => 'Content source deleted successfully',
+        'id' => $source_id,
+    ]);
+}
+add_action('wp_ajax_asap_digest_delete_content_source', 'asap_digest_ajax_delete_content_source');
+
+/**
+ * AJAX Handler: Manual Trigger Content Crawler
+ */
+function asap_digest_ajax_trigger_content_crawler() {
+    // Check admin capabilities
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error([
+            'message' => 'Insufficient permissions',
+            'code' => 'permission_denied',
+        ], 403);
+        return;
+    }
+    
+    // Security check
+    check_ajax_referer('asap_digest_sources_nonce', 'nonce');
+    
+    // Get source ID
+    $source_id = isset($_REQUEST['id']) ? intval($_REQUEST['id']) : 0;
+    
+    // Get source manager instance
+    $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
+    
+    // Check if source exists (if ID provided)
+    if ($source_id) {
+        $existing_source = $source_manager->get_source($source_id);
+        
+        if (!$existing_source) {
+            wp_send_json_error([
+                'message' => 'Content source not found',
+                'code' => 'not_found',
+            ], 404);
+            return;
+        }
+    }
+    
+    // Get content crawler instance
+    $content_crawler = \AsapDigest\Crawler\ContentCrawler::get_instance();
+    
+    try {
+        // Trigger crawler for specific source or all sources
+        if ($source_id) {
+            // Run crawler for specific source
+            $result = $content_crawler->run(['source_id' => $source_id]);
+            $message = "Crawler triggered successfully for source ID: {$source_id}";
+        } else {
+            // Run crawler for all active sources
+            $result = $content_crawler->run(['status' => 'active']);
+            $message = "Crawler triggered successfully for all active sources";
+        }
+        
+        // Return response
+        wp_send_json_success([
+            'message' => $message,
+            'result' => $result,
+        ]);
+    } catch (\Exception $e) {
+        // Log error
+        error_log('ASAP Digest Crawler Error: ' . $e->getMessage());
+        
+        // Return error response
+        wp_send_json_error([
+            'message' => 'Failed to trigger content crawler: ' . $e->getMessage(),
+            'code' => 'crawler_error',
+        ], 500);
+    }
+}
+add_action('wp_ajax_asap_digest_trigger_content_crawler', 'asap_digest_ajax_trigger_content_crawler'); 

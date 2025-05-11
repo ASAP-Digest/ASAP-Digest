@@ -16,6 +16,13 @@ use AsapDigest\Crawler\Adapters\ScraperAdapter;
  */
 class ContentCrawler {
     /**
+     * Single instance of the class
+     *
+     * @var ContentCrawler
+     */
+    private static $instance = null;
+    
+    /**
      * @var ContentSourceManager Source manager instance
      */
     private $source_manager;
@@ -46,10 +53,31 @@ class ContentCrawler {
     private $last_error = '';
     
     /**
+     * Get the singleton instance
+     *
+     * @return ContentCrawler
+     */
+    public static function get_instance() {
+        if (self::$instance === null) {
+            // Get dependencies
+            $source_manager = ContentSourceManager::get_instance();
+            
+            // Load content processor
+            if (!function_exists('asap_digest_get_content_processor')) {
+                require_once plugin_dir_path(dirname(__FILE__)) . 'content-processing/bootstrap.php';
+            }
+            $processor = asap_digest_get_content_processor();
+            
+            self::$instance = new self($source_manager, $processor);
+        }
+        return self::$instance;
+    }
+    
+    /**
      * Constructor
-     * 
-     * @param ContentSourceManager $source_manager Source manager instance
-     * @param ContentProcessor $content_processor Content processor instance
+     *
+     * @param ContentSourceManager $source_manager Content source manager
+     * @param object $content_processor Content processor
      */
     public function __construct($source_manager, $content_processor) {
         $this->source_manager = $source_manager;

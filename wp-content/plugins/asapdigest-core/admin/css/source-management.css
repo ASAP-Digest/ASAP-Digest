@@ -1,0 +1,364 @@
+/**
+ * ASAP Digest Content Source Management
+ * 
+ * Styles for the source management UI in the WordPress admin.
+ * 
+ * @package ASAPDigest_Core
+ * @since 2.3.0
+ */
+
+/* Source Management Container */
+.source-management-wrap {
+    position: relative;
+    margin: 20px 0;
+}
+
+/* Loading Indicator */
+.source-management-wrap.loading:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 10;
+}
+
+.source-management-wrap.loading:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 2px solid #2271b1;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: asap-spinner 0.8s linear infinite;
+    z-index: 11;
+}
+
+@keyframes asap-spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Source List Table */
+.source-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.source-list-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.source-list-table td {
+    padding: 10px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.source-list-table tr:hover {
+    background-color: #f6f7f7;
+}
+
+.source-list-table .no-items {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #777;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: #edfaef;
+    color: #0a7d33;
+}
+
+.status-paused {
+    background-color: #fcf9e8;
+    color: #996600;
+}
+
+.status-inactive {
+    background-color: #f1f1f1;
+    color: #777;
+}
+
+.status-good {
+    background-color: #edfaef;
+    color: #0a7d33;
+}
+
+.status-warning {
+    background-color: #fcf9e8;
+    color: #996600;
+}
+
+.status-error {
+    background-color: #fcf0f1;
+    color: #d63638;
+}
+
+/* Forms and Filters */
+.form-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.form-filters .search-box {
+    flex: 1;
+    min-width: 200px;
+}
+
+.form-filters select {
+    min-width: 150px;
+}
+
+/* Modals */
+.asap-modal {
+    display: none;
+    position: fixed;
+    z-index: 100000;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+}
+
+.asap-modal.open {
+    display: block;
+}
+
+.modal-dialog {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-close {
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #777;
+}
+
+.modal-body {
+    padding: 20px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #ddd;
+    text-align: right;
+}
+
+/* Form Layout */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-section {
+    margin-bottom: 20px;
+}
+
+.form-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.config-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.form-field {
+    margin-bottom: 15px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-field input[type="text"],
+.form-field input[type="url"],
+.form-field select,
+.form-field textarea {
+    width: 100%;
+}
+
+.form-field .description {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* Utils */
+.text-right {
+    text-align: right;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.mt-4 {
+    margin-top: 20px;
+}
+
+/* Buttons */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.button.loading {
+    position: relative;
+    pointer-events: none;
+    color: transparent !important;
+}
+
+.button.loading:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: asap-spinner 0.8s linear infinite;
+}
+
+.button.success {
+    background-color: #00a32a;
+    border-color: #00a32a;
+    color: #fff;
+}
+
+.button.error {
+    background-color: #d63638;
+    border-color: #d63638;
+    color: #fff;
+}
+
+/* Messages */
+#form-messages {
+    padding: 10px 15px;
+    margin: 10px 0;
+    border-left: 4px solid;
+    display: none;
+}
+
+#form-messages.success {
+    background-color: #edfaef;
+    border-color: #00a32a;
+}
+
+#form-messages.error {
+    background-color: #fcf0f1;
+    border-color: #d63638;
+}
+
+/* Confirmation Modal */
+.confirm-modal .modal-dialog {
+    max-width: 500px;
+}
+
+.confirm-modal .modal-body {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.confirm-modal .confirm-text {
+    margin-bottom: 20px;
+}
+
+/* Pagination */
+.tablenav {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+}
+
+.tablenav-pages {
+    display: flex;
+    align-items: center;
+}
+
+.pagination-links {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pagination-links a,
+.pagination-links .tablenav-pages-navspan {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 5px;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.pagination-links .current-page {
+    background-color: #f6f7f7;
+    font-weight: 600;
+}
+
+.paging-input {
+    margin: 0 5px;
+} 

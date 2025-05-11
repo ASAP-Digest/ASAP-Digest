@@ -12,6 +12,13 @@ namespace AsapDigest\Crawler;
  */
 class ContentSourceManager {
     /**
+     * Single instance of the class
+     *
+     * @var ContentSourceManager
+     */
+    private static $instance = null;
+    
+    /**
      * @var string Sources table name
      */
     private $sources_table;
@@ -30,6 +37,18 @@ class ContentSourceManager {
      * @var string Crawler errors table name
      */
     private $errors_table;
+    
+    /**
+     * Get the singleton instance
+     *
+     * @return ContentSourceManager
+     */
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
     
     /**
      * Constructor
@@ -400,5 +419,19 @@ class ContentSourceManager {
             ORDER BY created_at DESC",
             $start_date
         ));
+    }
+    
+    /**
+     * Get supported source types
+     *
+     * @return array Array of supported source types
+     */
+    public function get_supported_source_types() {
+        return [
+            'rss' => __('RSS Feed', 'asapdigest-core'),
+            'api' => __('API Endpoint', 'asapdigest-core'),
+            'scraper' => __('Web Scraper', 'asapdigest-core'),
+            'webhook' => __('Webhook', 'asapdigest-core'),
+        ];
     }
 } 

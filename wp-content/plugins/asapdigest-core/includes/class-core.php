@@ -234,18 +234,18 @@ final class ASAP_Digest_Core {
         
         try {
             // Digest API
-            $digest_api = new ASAP_Digest_REST_Digest();
-            $digest_api->register_routes();
+        $digest_api = new ASAP_Digest_REST_Digest();
+        $digest_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Digest API routes');
 
             // Auth API
-            $auth_api = new ASAP_Digest_REST_Auth();
-            $auth_api->register_routes();
+        $auth_api = new ASAP_Digest_REST_Auth();
+        $auth_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Auth API routes');
-            
+        
             // Session check API
             $session_check_api = new Session_Check_Controller();
-            $session_check_api->register_routes();
+        $session_check_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Session Check API routes');
             
             // SK Token API (NEW)

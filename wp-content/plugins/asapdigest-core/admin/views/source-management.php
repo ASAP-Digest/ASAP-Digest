@@ -1,10 +1,9 @@
 <?php
 /**
- * Content Source Management Admin View
+ * Admin View: Content Source Management
  *
- * @package ASAP_Digest
- * @subpackage Admin
- * @since 2.2.0
+ * @package ASAPDigest_Core
+ * @since 2.3.0
  */
 
 // Exit if accessed directly
@@ -12,835 +11,366 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Load content source manager class if not already loaded
-require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/crawler/class-content-source-manager.php';
+// Enqueue scripts and styles
+wp_enqueue_style('asap-source-management', plugin_dir_url(dirname(__FILE__)) . 'css/source-management.css', [], '2.3.0');
+wp_enqueue_script('asap-source-management', plugin_dir_url(dirname(__FILE__)) . 'js/source-management.js', ['jquery'], '2.3.0', true);
 
-// Initialize source manager
-$source_manager = new AsapDigest\Crawler\ContentSourceManager();
+// Localize script with AJAX URL and nonce
+wp_localize_script('asap-source-management', 'asapDigestAdmin', [
+    'ajaxurl' => admin_url('admin-ajax.php'),
+    'sources_nonce' => wp_create_nonce('asap_digest_sources_nonce'),
+]);
 
-// Get current sources
-$sources = $source_manager->load_sources();
+// Source types
+$source_types = [
+    'rss' => __('RSS Feed', 'asapdigest-core'),
+    'api' => __('API Endpoint', 'asapdigest-core'),
+    'scraper' => __('Web Scraper', 'asapdigest-core'),
+    'webhook' => __('Webhook', 'asapdigest-core'),
+];
 
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Check nonce
-    check_admin_referer('asap_digest_source_management');
-    
-    // Handle source actions (add, edit, delete)
-    if (isset($_POST['action']) && $_POST['action'] === 'add_source') {
-        // Validate and sanitize input
-        $name = sanitize_text_field($_POST['name'] ?? '');
-        $type = sanitize_text_field($_POST['type'] ?? '');
-        $url = esc_url_raw($_POST['url'] ?? '');
-        $active = isset($_POST['active']) ? 1 : 0;
-        $fetch_interval = intval($_POST['fetch_interval'] ?? 3600);
-        
-        // Basic config
-        $config = [
-            'title_selector' => sanitize_text_field($_POST['title_selector'] ?? ''),
-            'content_selector' => sanitize_text_field($_POST['content_selector'] ?? ''),
-            'date_selector' => sanitize_text_field($_POST['date_selector'] ?? ''),
-            'author_selector' => sanitize_text_field($_POST['author_selector'] ?? ''),
-            'image_selector' => sanitize_text_field($_POST['image_selector'] ?? ''),
-        ];
-        
-        // Content types
-        $content_types = $_POST['content_types'] ?? [];
-        $content_types = array_map('sanitize_text_field', $content_types);
-        
-        // Additional config fields based on source type
-        if ($type === 'api') {
-            $config['auth_type'] = sanitize_text_field($_POST['auth_type'] ?? 'none');
-            $config['api_key'] = sanitize_text_field($_POST['api_key'] ?? '');
-            $config['auth_header'] = sanitize_text_field($_POST['auth_header'] ?? '');
-            $config['pagination'] = isset($_POST['pagination']) ? 1 : 0;
-            $config['items_per_page'] = intval($_POST['items_per_page'] ?? 10);
-        }
-        
-        // Add new source
-        $source_data = [
-            'name' => $name,
-            'type' => $type,
-            'url' => $url,
-            'config' => $config,
-            'content_types' => $content_types,
-            'active' => $active,
-            'fetch_interval' => $fetch_interval,
-        ];
-        
-        $result = $source_manager->add_source($source_data);
-        
-        if ($result) {
-            echo '<div class="notice notice-success"><p>Content source added successfully!</p></div>';
-        } else {
-            echo '<div class="notice notice-error"><p>Error adding content source.</p></div>';
-        }
-        
-        // Refresh sources list
-        $sources = $source_manager->load_sources();
-    } elseif (isset($_POST['action']) && $_POST['action'] === 'edit_source' && isset($_POST['source_id'])) {
-        $source_id = intval($_POST['source_id']);
-        
-        // Similar validation and sanitization as add_source
-        $name = sanitize_text_field($_POST['name'] ?? '');
-        $type = sanitize_text_field($_POST['type'] ?? '');
-        $url = esc_url_raw($_POST['url'] ?? '');
-        $active = isset($_POST['active']) ? 1 : 0;
-        $fetch_interval = intval($_POST['fetch_interval'] ?? 3600);
-        
-        // Basic config
-        $config = [
-            'title_selector' => sanitize_text_field($_POST['title_selector'] ?? ''),
-            'content_selector' => sanitize_text_field($_POST['content_selector'] ?? ''),
-            'date_selector' => sanitize_text_field($_POST['date_selector'] ?? ''),
-            'author_selector' => sanitize_text_field($_POST['author_selector'] ?? ''),
-            'image_selector' => sanitize_text_field($_POST['image_selector'] ?? ''),
-        ];
-        
-        // Content types
-        $content_types = $_POST['content_types'] ?? [];
-        $content_types = array_map('sanitize_text_field', $content_types);
-        
-        // Additional config fields based on source type
-        if ($type === 'api') {
-            $config['auth_type'] = sanitize_text_field($_POST['auth_type'] ?? 'none');
-            $config['api_key'] = sanitize_text_field($_POST['api_key'] ?? '');
-            $config['auth_header'] = sanitize_text_field($_POST['auth_header'] ?? '');
-            $config['pagination'] = isset($_POST['pagination']) ? 1 : 0;
-            $config['items_per_page'] = intval($_POST['items_per_page'] ?? 10);
-        }
-        
-        // Update source
-        $source_data = [
-            'name' => $name,
-            'type' => $type,
-            'url' => $url,
-            'config' => $config,
-            'content_types' => $content_types,
-            'active' => $active,
-            'fetch_interval' => $fetch_interval,
-        ];
-        
-        $result = $source_manager->update_source($source_id, $source_data);
-        
-        if ($result) {
-            echo '<div class="notice notice-success"><p>Content source updated successfully!</p></div>';
-        } else {
-            echo '<div class="notice notice-error"><p>Error updating content source.</p></div>';
-        }
-        
-        // Refresh sources list
-        $sources = $source_manager->load_sources();
-    }
-}
+// Frequencies
+$frequencies = [
+    'hourly' => __('Hourly', 'asapdigest-core'),
+    'twicedaily' => __('Twice Daily', 'asapdigest-core'),
+    'daily' => __('Daily', 'asapdigest-core'),
+    'weekly' => __('Weekly', 'asapdigest-core'),
+];
 
-// Handle run source action
-if (isset($_GET['action']) && $_GET['action'] === 'run' && isset($_GET['id'])) {
-    $source_id = intval($_GET['id']);
-    $source = $source_manager->get_source($source_id);
-    
-    if ($source) {
-        // Load content crawler
-        require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/crawler/class-content-crawler.php';
-        require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/content-processing/class-content-processor.php';
-        
-        $processor = new ASAP_Digest_Content_Processor();
-        $crawler = new AsapDigest\Crawler\ContentCrawler($source_manager, $processor);
-        
-        // Run crawler for this source
-        $result = $crawler->crawl_source($source);
-        
-        if ($result && $result['items_processed'] > 0) {
-            echo '<div class="notice notice-success"><p>Content source crawled successfully! Processed ' . $result['items_processed'] . ' items.</p></div>';
-        } elseif ($result) {
-            echo '<div class="notice notice-warning"><p>Content source crawled with no new items found.</p></div>';
-        } else {
-            echo '<div class="notice notice-error"><p>Error crawling content source.</p></div>';
-        }
-    }
-}
-
-// Handle delete source action
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && isset($_GET['_wpnonce'])) {
-    $source_id = intval($_GET['id']);
-    
-    // Verify nonce
-    if (wp_verify_nonce($_GET['_wpnonce'], 'delete_source_' . $source_id)) {
-        $result = $source_manager->delete_source($source_id);
-        
-        if ($result) {
-            echo '<div class="notice notice-success"><p>Content source deleted successfully!</p></div>';
-        } else {
-            echo '<div class="notice notice-error"><p>Error deleting content source.</p></div>';
-        }
-        
-        // Refresh sources list
-        $sources = $source_manager->load_sources();
-    } else {
-        echo '<div class="notice notice-error"><p>Invalid security token.</p></div>';
-    }
-}
-
-// Handle reindex action (for content processing)
-if (isset($_GET['page']) && $_GET['page'] === 'asap-content-sources' && isset($_GET['action']) && $_GET['action'] === 'reindex') {
-    require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/content-processing/class-content-processor.php';
-    
-    $processor = new ASAP_Digest_Content_Processor();
-    $result = $processor->reindex_content(50); // Process 50 items
-    
-    if ($result && $result['processed'] > 0) {
-        echo '<div class="notice notice-success"><p>' . $result['message'] . '</p></div>';
-    } else {
-        echo '<div class="notice notice-info"><p>No content needed reindexing.</p></div>';
-    }
-}
-
-// Output the admin page
+// Statuses
+$statuses = [
+    'active' => __('Active', 'asapdigest-core'),
+    'paused' => __('Paused', 'asapdigest-core'),
+    'inactive' => __('Inactive', 'asapdigest-core'),
+];
 ?>
+
 <div class="wrap">
-    <h1 class="wp-heading-inline">Content Sources</h1>
-    <a href="#" class="page-title-action" onclick="document.getElementById('add-source-form').style.display='block'; return false;">Add New Source</a>
-    
-    <div class="notice notice-info">
-        <p>Manage your content sources for the ASAP Digest Content Ingestion System (CIS). Add, edit, or delete sources and run the crawler manually to fetch content.</p>
-    </div>
-    
-    <!-- Tab navigation -->
-    <nav class="nav-tab-wrapper wp-clearfix">
-        <a href="?page=asap-content-sources" class="nav-tab <?php echo !isset($_GET['tab']) ? 'nav-tab-active' : ''; ?>">Sources</a>
-        <a href="?page=asap-content-sources&tab=metrics" class="nav-tab <?php echo isset($_GET['tab']) && $_GET['tab'] === 'metrics' ? 'nav-tab-active' : ''; ?>">Metrics</a>
-        <a href="?page=asap-content-sources&tab=processing" class="nav-tab <?php echo isset($_GET['tab']) && $_GET['tab'] === 'processing' ? 'nav-tab-active' : ''; ?>">Processing Tools</a>
-    </nav>
-    
-    <div class="tab-content">
-        <?php
-        // Display different content based on tab
-        $current_tab = $_GET['tab'] ?? 'sources';
-        
-        if ($current_tab === 'metrics') {
-            // Metrics tab
-            ?>
-            <h2>Content Source Metrics</h2>
-            <div class="metrics-dashboard">
-                <div class="metrics-card">
-                    <h3>Total Sources</h3>
-                    <div class="metric-value"><?php echo count($sources); ?></div>
-                </div>
-                
-                <div class="metrics-card">
-                    <h3>Active Sources</h3>
-                    <div class="metric-value">
-                        <?php 
-                        $active_count = 0;
-                        foreach ($sources as $source) {
-                            if ($source->active) {
-                                $active_count++;
-                            }
-                        }
-                        echo $active_count; 
-                        ?>
-                    </div>
-                </div>
-                
-                <div class="metrics-card">
-                    <h3>Content Items</h3>
-                    <div class="metric-value">
-                        <?php 
-                        global $wpdb;
-                        $total_items = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}asap_ingested_content");
-                        echo $total_items ?: 0; 
-                        ?>
-                    </div>
-                </div>
+    <h1 class="wp-heading-inline"><?php _e('Content Source Management', 'asapdigest-core'); ?></h1>
+    <a href="#" id="add-source-btn" class="page-title-action"><?php _e('Add New Source', 'asapdigest-core'); ?></a>
+    <hr class="wp-header-end">
+
+    <div id="form-messages"></div>
+
+    <div class="source-management-wrap">
+        <!-- Filters -->
+        <div class="form-filters">
+            <div class="search-box">
+                <input type="search" id="source-search" placeholder="<?php esc_attr_e('Search sources...', 'asapdigest-core'); ?>">
             </div>
             
-            <h3>Source Performance</h3>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th>Source</th>
-                        <th>Type</th>
-                        <th>Last Fetched</th>
-                        <th>Fetch Count</th>
-                        <th>Success Rate</th>
-                        <th>Avg. Items per Fetch</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($sources as $source): ?>
-                    <tr>
-                        <td><?php echo esc_html($source->name); ?></td>
-                        <td><?php echo esc_html($source->type); ?></td>
-                        <td><?php echo $source->last_fetch ? date('Y-m-d H:i:s', $source->last_fetch) : 'Never'; ?></td>
-                        <td><?php echo intval($source->fetch_count); ?></td>
-                        <td>
-                            <?php
-                            // Calculate success rate
-                            global $wpdb;
-                            $total_errors = $wpdb->get_var($wpdb->prepare(
-                                "SELECT COUNT(*) FROM {$wpdb->prefix}asap_crawler_errors WHERE source_id = %d",
-                                $source->id
-                            ));
-                            
-                            $success_rate = $source->fetch_count > 0 ? 
-                                round((($source->fetch_count - $total_errors) / $source->fetch_count) * 100) : 0;
-                            
-                            echo "{$success_rate}%";
-                            ?>
-                        </td>
-                        <td>
-                            <?php
-                            // Calculate average items per fetch
-                            global $wpdb;
-                            $total_items = $wpdb->get_var($wpdb->prepare(
-                                "SELECT SUM(items_stored) FROM {$wpdb->prefix}asap_source_metrics WHERE source_id = %d",
-                                $source->id
-                            ));
-                            
-                            $avg_items = $source->fetch_count > 0 ? 
-                                round($total_items / $source->fetch_count, 2) : 0;
-                            
-                            echo $avg_items;
-                            ?>
-                        </td>
-                    </tr>
+            <div>
+                <select id="source-type-filter">
+                    <option value=""><?php _e('All Types', 'asapdigest-core'); ?></option>
+                    <?php foreach ($source_types as $type => $label) : ?>
+                        <option value="<?php echo esc_attr($type); ?>"><?php echo esc_html($label); ?></option>
                     <?php endforeach; ?>
-                </tbody>
-            </table>
-            <?php
-        } elseif ($current_tab === 'processing') {
-            // Processing tools tab
-            ?>
-            <h2>Content Processing Tools</h2>
-            
-            <div class="card" style="max-width: 600px;">
-                <h3>Reindex Content</h3>
-                <p>Reindex existing content to ensure all items have fingerprints and quality scores. This is useful after upgrading to a new version with enhanced fingerprinting or quality scoring.</p>
-                <a href="?page=asap-content-sources&tab=processing&action=reindex" class="button button-primary">Run Reindexing (Batch)</a>
+                </select>
             </div>
             
-            <div class="card" style="max-width: 600px; margin-top: 20px;">
-                <h3>Duplicate Detection Report</h3>
-                <p>Generate a report of duplicate content in the system. This helps identify content that may need to be merged or removed.</p>
+            <div>
+                <select id="source-status-filter">
+                    <option value=""><?php _e('All Statuses', 'asapdigest-core'); ?></option>
+                    <?php foreach ($statuses as $status => $label) : ?>
+                        <option value="<?php echo esc_attr($status); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Sources Table -->
+        <table class="wp-list-table widefat fixed striped source-list-table" id="source-list-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;"><?php _e('ID', 'asapdigest-core'); ?></th>
+                    <th><?php _e('Name', 'asapdigest-core'); ?></th>
+                    <th style="width: 100px;"><?php _e('Type', 'asapdigest-core'); ?></th>
+                    <th style="width: 80px;"><?php _e('Status', 'asapdigest-core'); ?></th>
+                    <th style="width: 80px;"><?php _e('Health', 'asapdigest-core'); ?></th>
+                    <th style="width: 80px;"><?php _e('Items', 'asapdigest-core'); ?></th>
+                    <th style="width: 150px;"><?php _e('Last Run', 'asapdigest-core'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7" class="no-items"><?php _e('Loading sources...', 'asapdigest-core'); ?></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        <div class="tablenav bottom">
+            <div class="tablenav-pages">
+                <span class="displaying-num"></span>
+                <span class="pagination-links"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Source Modal -->
+<div id="source-modal" class="asap-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><?php _e('Add Content Source', 'asapdigest-core'); ?></h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="source-form">
+                <!-- Hidden source ID for edit mode -->
+                <input type="hidden" name="source_id" value="">
                 
-                <form method="get" action="">
-                    <input type="hidden" name="page" value="asap-content-sources">
-                    <input type="hidden" name="tab" value="processing">
-                    <input type="hidden" name="action" value="duplicates">
-                    
-                    <table class="form-table">
-                        <tr>
-                            <th><label for="min_duplicates">Minimum Duplicates</label></th>
-                            <td>
-                                <input type="number" name="min_duplicates" id="min_duplicates" value="2" min="2" max="10">
-                                <p class="description">Minimum number of duplicate instances to include in report</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th><label for="limit">Result Limit</label></th>
-                            <td>
-                                <input type="number" name="limit" id="limit" value="50" min="10" max="100">
-                                <p class="description">Maximum number of duplicate sets to return</p>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <p><input type="submit" class="button button-primary" value="Generate Report"></p>
-                </form>
-                
-                <?php
-                // Display duplicate report if requested
-                if (isset($_GET['action']) && $_GET['action'] === 'duplicates') {
-                    require_once plugin_dir_path(dirname(dirname(__FILE__))) . 'includes/content-processing/class-content-processor.php';
-                    
-                    $processor = new ASAP_Digest_Content_Processor();
-                    
-                    $args = [
-                        'min_duplicates' => intval($_GET['min_duplicates'] ?? 2),
-                        'limit' => intval($_GET['limit'] ?? 50),
-                    ];
-                    
-                    $report = $processor->generate_duplicate_report($args);
-                    
-                    if (empty($report)) {
-                        echo '<div class="notice notice-info"><p>No duplicate content found.</p></div>';
-                    } else {
-                        echo '<h3>Duplicate Content Report</h3>';
-                        echo '<p>Found ' . count($report) . ' sets of duplicate content.</p>';
+                <div class="form-grid">
+                    <!-- Basic Info Section -->
+                    <div class="form-section">
+                        <h4 class="mb-0"><?php _e('Basic Information', 'asapdigest-core'); ?></h4>
                         
-                        foreach ($report as $index => $duplicate_set) {
-                            echo '<div class="duplicate-set">';
-                            echo '<h4>Duplicate Set #' . ($index + 1) . ' (' . $duplicate_set['count'] . ' instances)</h4>';
-                            echo '<p>First seen: ' . $duplicate_set['first_seen'] . '</p>';
-                            echo '<p>Latest seen: ' . $duplicate_set['latest_seen'] . '</p>';
-                            
-                            echo '<table class="wp-list-table widefat fixed striped">';
-                            echo '<thead><tr><th>ID</th><th>Title</th><th>Source URL</th><th>Date</th><th>Quality</th></tr></thead>';
-                            echo '<tbody>';
-                            
-                            foreach ($duplicate_set['instances'] as $instance) {
-                                echo '<tr>';
-                                echo '<td>' . esc_html($instance['id']) . '</td>';
-                                echo '<td>' . esc_html($instance['title']) . '</td>';
-                                echo '<td><a href="' . esc_url($instance['source_url']) . '" target="_blank">' . esc_url($instance['source_url']) . '</a></td>';
-                                echo '<td>' . esc_html($instance['publish_date']) . '</td>';
-                                echo '<td>' . esc_html($instance['quality_score']) . '</td>';
-                                echo '</tr>';
-                            }
-                            
-                            echo '</tbody></table>';
-                            echo '</div>';
-                        }
-                    }
-                }
-                ?>
-            </div>
-            <?php
-        } else {
-            // Default sources tab
-            ?>
-            <!-- Sources table -->
-            <table class="wp-list-table widefat fixed striped" style="margin-top: 20px;">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Type</th>
-                        <th>URL</th>
-                        <th>Status</th>
-                        <th>Last Fetch</th>
-                        <th>Interval</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($sources)): ?>
-                        <tr>
-                            <td colspan="7">No content sources found. Add your first source to get started!</td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($sources as $source): ?>
-                            <tr>
-                                <td><?php echo esc_html($source->name); ?></td>
-                                <td><?php echo esc_html($source->type); ?></td>
-                                <td><?php echo esc_url($source->url); ?></td>
-                                <td><?php echo $source->active ? '<span class="status-active">Active</span>' : '<span class="status-inactive">Inactive</span>'; ?></td>
-                                <td><?php echo $source->last_fetch ? date('Y-m-d H:i:s', $source->last_fetch) : 'Never'; ?></td>
-                                <td><?php echo human_time_diff(0, $source->fetch_interval); ?></td>
-                                <td>
-                                    <a href="?page=asap-content-sources&action=edit&id=<?php echo $source->id; ?>" class="button button-small">Edit</a>
-                                    <a href="?page=asap-content-sources&action=run&id=<?php echo $source->id; ?>" class="button button-small button-primary">Run</a>
-                                    <a href="?page=asap-content-sources&action=delete&id=<?php echo $source->id; ?>&_wpnonce=<?php echo wp_create_nonce('delete_source_' . $source->id); ?>" class="button button-small button-danger" onclick="return confirm('Are you sure you want to delete this source?');">Delete</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-            <?php
-        }
-        ?>
-    </div>
-    
-    <!-- Add Source Form (hidden by default) -->
-    <div id="add-source-form" style="display: none; margin-top: 20px; padding: 20px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,0.04); border: 1px solid #ccd0d4;">
-        <h2>Add New Content Source</h2>
-        
-        <form method="post" action="">
-            <?php wp_nonce_field('asap_digest_source_management'); ?>
-            <input type="hidden" name="action" value="add_source">
-            
-            <table class="form-table">
-                <tr>
-                    <th><label for="name">Source Name</label></th>
-                    <td>
-                        <input type="text" name="name" id="name" class="regular-text" required>
-                        <p class="description">A descriptive name for this content source</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="type">Source Type</label></th>
-                    <td>
-                        <select name="type" id="type" required>
-                            <option value="">Select Type</option>
-                            <option value="rss">RSS Feed</option>
-                            <option value="api">API Endpoint</option>
-                            <option value="scraper">Web Scraper</option>
-                        </select>
-                        <p class="description">The type of content source determines how content is fetched</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="url">URL</label></th>
-                    <td>
-                        <input type="url" name="url" id="url" class="regular-text" required>
-                        <p class="description">The URL of the content source (RSS feed URL, API endpoint, or website URL to scrape)</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="active">Active</label></th>
-                    <td>
-                        <input type="checkbox" name="active" id="active" value="1" checked>
-                        <label for="active">Include this source in scheduled crawls</label>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label for="fetch_interval">Fetch Interval</label></th>
-                    <td>
-                        <select name="fetch_interval" id="fetch_interval">
-                            <option value="1800">30 Minutes</option>
-                            <option value="3600" selected>1 Hour</option>
-                            <option value="7200">2 Hours</option>
-                            <option value="14400">4 Hours</option>
-                            <option value="21600">6 Hours</option>
-                            <option value="43200">12 Hours</option>
-                            <option value="86400">24 Hours</option>
-                        </select>
-                        <p class="description">How often to check for new content</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th><label>Content Types</label></th>
-                    <td>
-                        <label><input type="checkbox" name="content_types[]" value="article" checked> Articles</label><br>
-                        <label><input type="checkbox" name="content_types[]" value="news"> News</label><br>
-                        <label><input type="checkbox" name="content_types[]" value="blog"> Blog Posts</label><br>
-                        <label><input type="checkbox" name="content_types[]" value="podcast"> Podcasts</label><br>
-                        <label><input type="checkbox" name="content_types[]" value="video"> Videos</label><br>
-                        <p class="description">Types of content to fetch from this source</p>
-                    </td>
-                </tr>
-                
-                <!-- Selector fields for scraper sources -->
-                <tr class="scraper-field" style="display: none;">
-                    <th><label for="title_selector">Title Selector</label></th>
-                    <td>
-                        <input type="text" name="title_selector" id="title_selector" class="regular-text">
-                        <p class="description">CSS selector for title (e.g., "h1.entry-title")</p>
-                    </td>
-                </tr>
-                <tr class="scraper-field" style="display: none;">
-                    <th><label for="content_selector">Content Selector</label></th>
-                    <td>
-                        <input type="text" name="content_selector" id="content_selector" class="regular-text">
-                        <p class="description">CSS selector for content (e.g., "div.entry-content")</p>
-                    </td>
-                </tr>
-                <tr class="scraper-field" style="display: none;">
-                    <th><label for="date_selector">Date Selector</label></th>
-                    <td>
-                        <input type="text" name="date_selector" id="date_selector" class="regular-text">
-                        <p class="description">CSS selector for publication date (e.g., "time.entry-date")</p>
-                    </td>
-                </tr>
-                <tr class="scraper-field" style="display: none;">
-                    <th><label for="author_selector">Author Selector</label></th>
-                    <td>
-                        <input type="text" name="author_selector" id="author_selector" class="regular-text">
-                        <p class="description">CSS selector for author (e.g., "span.author")</p>
-                    </td>
-                </tr>
-                <tr class="scraper-field" style="display: none;">
-                    <th><label for="image_selector">Image Selector</label></th>
-                    <td>
-                        <input type="text" name="image_selector" id="image_selector" class="regular-text">
-                        <p class="description">CSS selector for featured image (e.g., "img.featured")</p>
-                    </td>
-                </tr>
-                
-                <!-- API config fields -->
-                <tr class="api-field" style="display: none;">
-                    <th><label for="auth_type">Authentication Type</label></th>
-                    <td>
-                        <select name="auth_type" id="auth_type">
-                            <option value="none">None</option>
-                            <option value="api_key">API Key</option>
-                            <option value="bearer">Bearer Token</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr class="api-field" style="display: none;">
-                    <th><label for="api_key">API Key / Token</label></th>
-                    <td>
-                        <input type="text" name="api_key" id="api_key" class="regular-text">
-                    </td>
-                </tr>
-                <tr class="api-field" style="display: none;">
-                    <th><label for="auth_header">Auth Header Name</label></th>
-                    <td>
-                        <input type="text" name="auth_header" id="auth_header" class="regular-text" placeholder="X-API-Key">
-                        <p class="description">For API Key auth, specify the header name (default: X-API-Key)</p>
-                    </td>
-                </tr>
-                <tr class="api-field" style="display: none;">
-                    <th><label for="pagination">Supports Pagination</label></th>
-                    <td>
-                        <input type="checkbox" name="pagination" id="pagination" value="1">
-                    </td>
-                </tr>
-                <tr class="api-field" style="display: none;">
-                    <th><label for="items_per_page">Items Per Page</label></th>
-                    <td>
-                        <input type="number" name="items_per_page" id="items_per_page" min="1" max="100" value="10">
-                    </td>
-                </tr>
-            </table>
-            
-            <p class="submit">
-                <input type="submit" name="submit" id="submit" class="button button-primary" value="Add Source">
-                <button type="button" class="button" onclick="document.getElementById('add-source-form').style.display='none';">Cancel</button>
-            </p>
-        </form>
-    </div>
-    
-    <!-- Edit Source Form (if editing) -->
-    <?php if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])): ?>
-        <?php
-        $source_id = intval($_GET['id']);
-        $source = $source_manager->get_source($source_id);
-        
-        if ($source):
-            // Parse serialized config and content types
-            $config = maybe_unserialize($source->config);
-            $content_types = maybe_unserialize($source->content_types);
-            
-            if (!is_array($config)) {
-                $config = [];
-            }
-            
-            if (!is_array($content_types)) {
-                $content_types = [];
-            }
-        ?>
-        <div id="edit-source-form" style="margin-top: 20px; padding: 20px; background: #fff; box-shadow: 0 1px 1px rgba(0,0,0,0.04); border: 1px solid #ccd0d4;">
-            <h2>Edit Content Source</h2>
-            
-            <form method="post" action="">
-                <?php wp_nonce_field('asap_digest_source_management'); ?>
-                <input type="hidden" name="action" value="edit_source">
-                <input type="hidden" name="source_id" value="<?php echo $source_id; ?>">
-                
-                <table class="form-table">
-                    <tr>
-                        <th><label for="name">Source Name</label></th>
-                        <td>
-                            <input type="text" name="name" id="name" class="regular-text" value="<?php echo esc_attr($source->name); ?>" required>
-                            <p class="description">A descriptive name for this content source</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="type">Source Type</label></th>
-                        <td>
-                            <select name="type" id="type" required>
-                                <option value="rss" <?php selected($source->type, 'rss'); ?>>RSS Feed</option>
-                                <option value="api" <?php selected($source->type, 'api'); ?>>API Endpoint</option>
-                                <option value="scraper" <?php selected($source->type, 'scraper'); ?>>Web Scraper</option>
+                        <div class="form-field">
+                            <label for="source-name"><?php _e('Source Name', 'asapdigest-core'); ?> <span class="required">*</span></label>
+                            <input type="text" id="source-name" name="name" required>
+                            <p class="description"><?php _e('A descriptive name for this content source', 'asapdigest-core'); ?></p>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="source-type"><?php _e('Source Type', 'asapdigest-core'); ?> <span class="required">*</span></label>
+                            <select id="source-type" name="type" required>
+                                <?php foreach ($source_types as $type => $label) : ?>
+                                    <option value="<?php echo esc_attr($type); ?>"><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
                             </select>
-                            <p class="description">The type of content source determines how content is fetched</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="url">URL</label></th>
-                        <td>
-                            <input type="url" name="url" id="url" class="regular-text" value="<?php echo esc_url($source->url); ?>" required>
-                            <p class="description">The URL of the content source (RSS feed URL, API endpoint, or website URL to scrape)</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="active">Active</label></th>
-                        <td>
-                            <input type="checkbox" name="active" id="active" value="1" <?php checked($source->active, 1); ?>>
-                            <label for="active">Include this source in scheduled crawls</label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="fetch_interval">Fetch Interval</label></th>
-                        <td>
-                            <select name="fetch_interval" id="fetch_interval">
-                                <option value="1800" <?php selected($source->fetch_interval, 1800); ?>>30 Minutes</option>
-                                <option value="3600" <?php selected($source->fetch_interval, 3600); ?>>1 Hour</option>
-                                <option value="7200" <?php selected($source->fetch_interval, 7200); ?>>2 Hours</option>
-                                <option value="14400" <?php selected($source->fetch_interval, 14400); ?>>4 Hours</option>
-                                <option value="21600" <?php selected($source->fetch_interval, 21600); ?>>6 Hours</option>
-                                <option value="43200" <?php selected($source->fetch_interval, 43200); ?>>12 Hours</option>
-                                <option value="86400" <?php selected($source->fetch_interval, 86400); ?>>24 Hours</option>
-                            </select>
-                            <p class="description">How often to check for new content</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label>Content Types</label></th>
-                        <td>
-                            <label><input type="checkbox" name="content_types[]" value="article" <?php checked(in_array('article', $content_types), true); ?>> Articles</label><br>
-                            <label><input type="checkbox" name="content_types[]" value="news" <?php checked(in_array('news', $content_types), true); ?>> News</label><br>
-                            <label><input type="checkbox" name="content_types[]" value="blog" <?php checked(in_array('blog', $content_types), true); ?>> Blog Posts</label><br>
-                            <label><input type="checkbox" name="content_types[]" value="podcast" <?php checked(in_array('podcast', $content_types), true); ?>> Podcasts</label><br>
-                            <label><input type="checkbox" name="content_types[]" value="video" <?php checked(in_array('video', $content_types), true); ?>> Videos</label><br>
-                            <p class="description">Types of content to fetch from this source</p>
-                        </td>
-                    </tr>
+                        </div>
+                    </div>
                     
-                    <!-- Selector fields for scraper sources -->
-                    <tr class="scraper-field" style="<?php echo $source->type !== 'scraper' ? 'display: none;' : ''; ?>">
-                        <th><label for="title_selector">Title Selector</label></th>
-                        <td>
-                            <input type="text" name="title_selector" id="title_selector" class="regular-text" value="<?php echo esc_attr($config['title_selector'] ?? ''); ?>">
-                            <p class="description">CSS selector for title (e.g., "h1.entry-title")</p>
-                        </td>
-                    </tr>
-                    <tr class="scraper-field" style="<?php echo $source->type !== 'scraper' ? 'display: none;' : ''; ?>">
-                        <th><label for="content_selector">Content Selector</label></th>
-                        <td>
-                            <input type="text" name="content_selector" id="content_selector" class="regular-text" value="<?php echo esc_attr($config['content_selector'] ?? ''); ?>">
-                            <p class="description">CSS selector for content (e.g., "div.entry-content")</p>
-                        </td>
-                    </tr>
-                    <tr class="scraper-field" style="<?php echo $source->type !== 'scraper' ? 'display: none;' : ''; ?>">
-                        <th><label for="date_selector">Date Selector</label></th>
-                        <td>
-                            <input type="text" name="date_selector" id="date_selector" class="regular-text" value="<?php echo esc_attr($config['date_selector'] ?? ''); ?>">
-                            <p class="description">CSS selector for publication date (e.g., "time.entry-date")</p>
-                        </td>
-                    </tr>
-                    <tr class="scraper-field" style="<?php echo $source->type !== 'scraper' ? 'display: none;' : ''; ?>">
-                        <th><label for="author_selector">Author Selector</label></th>
-                        <td>
-                            <input type="text" name="author_selector" id="author_selector" class="regular-text" value="<?php echo esc_attr($config['author_selector'] ?? ''); ?>">
-                            <p class="description">CSS selector for author (e.g., "span.author")</p>
-                        </td>
-                    </tr>
-                    <tr class="scraper-field" style="<?php echo $source->type !== 'scraper' ? 'display: none;' : ''; ?>">
-                        <th><label for="image_selector">Image Selector</label></th>
-                        <td>
-                            <input type="text" name="image_selector" id="image_selector" class="regular-text" value="<?php echo esc_attr($config['image_selector'] ?? ''); ?>">
-                            <p class="description">CSS selector for featured image (e.g., "img.featured")</p>
-                        </td>
-                    </tr>
-                    
-                    <!-- API config fields -->
-                    <tr class="api-field" style="<?php echo $source->type !== 'api' ? 'display: none;' : ''; ?>">
-                        <th><label for="auth_type">Authentication Type</label></th>
-                        <td>
-                            <select name="auth_type" id="auth_type">
-                                <option value="none" <?php selected(($config['auth_type'] ?? 'none'), 'none'); ?>>None</option>
-                                <option value="api_key" <?php selected(($config['auth_type'] ?? 'none'), 'api_key'); ?>>API Key</option>
-                                <option value="bearer" <?php selected(($config['auth_type'] ?? 'none'), 'bearer'); ?>>Bearer Token</option>
+                    <!-- Schedule Section -->
+                    <div class="form-section">
+                        <h4 class="mb-0"><?php _e('Schedule & Status', 'asapdigest-core'); ?></h4>
+                        
+                        <div class="form-field">
+                            <label for="source-frequency"><?php _e('Crawl Frequency', 'asapdigest-core'); ?></label>
+                            <select id="source-frequency" name="frequency">
+                                <?php foreach ($frequencies as $freq => $label) : ?>
+                                    <option value="<?php echo esc_attr($freq); ?>"><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
                             </select>
-                        </td>
-                    </tr>
-                    <tr class="api-field" style="<?php echo $source->type !== 'api' ? 'display: none;' : ''; ?>">
-                        <th><label for="api_key">API Key / Token</label></th>
-                        <td>
-                            <input type="text" name="api_key" id="api_key" class="regular-text" value="<?php echo esc_attr($config['api_key'] ?? ''); ?>">
-                        </td>
-                    </tr>
-                    <tr class="api-field" style="<?php echo $source->type !== 'api' ? 'display: none;' : ''; ?>">
-                        <th><label for="auth_header">Auth Header Name</label></th>
-                        <td>
-                            <input type="text" name="auth_header" id="auth_header" class="regular-text" placeholder="X-API-Key" value="<?php echo esc_attr($config['auth_header'] ?? ''); ?>">
-                            <p class="description">For API Key auth, specify the header name (default: X-API-Key)</p>
-                        </td>
-                    </tr>
-                    <tr class="api-field" style="<?php echo $source->type !== 'api' ? 'display: none;' : ''; ?>">
-                        <th><label for="pagination">Supports Pagination</label></th>
-                        <td>
-                            <input type="checkbox" name="pagination" id="pagination" value="1" <?php checked(($config['pagination'] ?? 0), 1); ?>>
-                        </td>
-                    </tr>
-                    <tr class="api-field" style="<?php echo $source->type !== 'api' ? 'display: none;' : ''; ?>">
-                        <th><label for="items_per_page">Items Per Page</label></th>
-                        <td>
-                            <input type="number" name="items_per_page" id="items_per_page" min="1" max="100" value="<?php echo intval($config['items_per_page'] ?? 10); ?>">
-                        </td>
-                    </tr>
-                </table>
-                
-                <p class="submit">
-                    <input type="submit" name="submit" id="submit" class="button button-primary" value="Update Source">
-                    <a href="?page=asap-content-sources" class="button">Cancel</a>
-                </p>
+                            <p class="description"><?php _e('How often to check for new content', 'asapdigest-core'); ?></p>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="source-status"><?php _e('Status', 'asapdigest-core'); ?></label>
+                            <select id="source-status" name="status">
+                                <?php foreach ($statuses as $status => $label) : ?>
+                                    <option value="<?php echo esc_attr($status); ?>"><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- URL Section (Full Width) -->
+                    <div class="form-section full-width">
+                        <div class="form-field">
+                            <label for="source-url"><?php _e('Source URL', 'asapdigest-core'); ?> <span class="required">*</span></label>
+                            <input type="url" id="source-url" name="url" required>
+                            <p class="description"><?php _e('URL of the content source (RSS feed, API endpoint, or webpage)', 'asapdigest-core'); ?></p>
+                        </div>
+                    </div>
+                    
+                    <!-- Type-specific Configuration Fields -->
+                    <div class="form-section full-width config-fields">
+                        <!-- RSS Feed Config -->
+                        <div class="config-section" data-type="rss">
+                            <h4><?php _e('RSS Feed Configuration', 'asapdigest-core'); ?></h4>
+                            
+                            <div class="form-field">
+                                <label>
+                                    <input type="checkbox" name="configuration[use_autodiscovery]" value="1">
+                                    <?php _e('Use Feed Autodiscovery', 'asapdigest-core'); ?>
+                                </label>
+                                <p class="description"><?php _e('Try to discover the feed URL if the provided URL is a regular webpage', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="rss-items-limit"><?php _e('Maximum Items', 'asapdigest-core'); ?></label>
+                                <input type="number" id="rss-items-limit" name="configuration[items_limit]" min="1" max="100" value="20">
+                                <p class="description"><?php _e('Maximum number of items to process per crawl', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label>
+                                    <input type="checkbox" name="configuration[full_content]" value="1">
+                                    <?php _e('Fetch Full Content', 'asapdigest-core'); ?>
+                                </label>
+                                <p class="description"><?php _e('Attempt to fetch full content if RSS feed only contains summaries', 'asapdigest-core'); ?></p>
+                            </div>
+                        </div>
+                        
+                        <!-- API Endpoint Config -->
+                        <div class="config-section" data-type="api">
+                            <h4><?php _e('API Configuration', 'asapdigest-core'); ?></h4>
+                            
+                            <div class="form-field">
+                                <label for="api-method"><?php _e('Request Method', 'asapdigest-core'); ?></label>
+                                <select id="api-method" name="configuration[method]">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-auth-type"><?php _e('Authentication Type', 'asapdigest-core'); ?></label>
+                                <select id="api-auth-type" name="configuration[auth_type]">
+                                    <option value="none"><?php _e('None', 'asapdigest-core'); ?></option>
+                                    <option value="basic"><?php _e('Basic Auth', 'asapdigest-core'); ?></option>
+                                    <option value="token"><?php _e('Bearer Token', 'asapdigest-core'); ?></option>
+                                    <option value="api_key"><?php _e('API Key', 'asapdigest-core'); ?></option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-auth-header"><?php _e('Auth Header Name', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-auth-header" name="configuration[auth_header]" placeholder="Authorization">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-auth-value"><?php _e('Auth Value', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-auth-value" name="configuration[auth_value]" placeholder="Token xyz123">
+                                <p class="description"><?php _e('For Basic Auth, use username:password format', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-items-path"><?php _e('Items JSON Path', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-items-path" name="configuration[items_path]" placeholder="data.items">
+                                <p class="description"><?php _e('JSON path to the array of items (e.g., data.items, results)', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-title-key"><?php _e('Title Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-title-key" name="configuration[title_key]" placeholder="title">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-content-key"><?php _e('Content Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-content-key" name="configuration[content_key]" placeholder="content">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-url-key"><?php _e('URL Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-url-key" name="configuration[url_key]" placeholder="url">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-date-key"><?php _e('Date Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-date-key" name="configuration[date_key]" placeholder="published_at">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="api-id-key"><?php _e('ID Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="api-id-key" name="configuration[id_key]" placeholder="id">
+                            </div>
+                        </div>
+                        
+                        <!-- Web Scraper Config -->
+                        <div class="config-section" data-type="scraper">
+                            <h4><?php _e('Web Scraper Configuration', 'asapdigest-core'); ?></h4>
+                            
+                            <div class="form-field">
+                                <label for="scraper-title-selector"><?php _e('Title Selector', 'asapdigest-core'); ?></label>
+                                <input type="text" id="scraper-title-selector" name="configuration[title_selector]" placeholder="h1.entry-title">
+                                <p class="description"><?php _e('CSS selector for the title element', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="scraper-content-selector"><?php _e('Content Selector', 'asapdigest-core'); ?></label>
+                                <input type="text" id="scraper-content-selector" name="configuration[content_selector]" placeholder="div.entry-content">
+                                <p class="description"><?php _e('CSS selector for the content element', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="scraper-date-selector"><?php _e('Date Selector', 'asapdigest-core'); ?></label>
+                                <input type="text" id="scraper-date-selector" name="configuration[date_selector]" placeholder="time.published">
+                                <p class="description"><?php _e('CSS selector for the publication date element', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label>
+                                    <input type="checkbox" name="configuration[use_js_rendering]" value="1">
+                                    <?php _e('Use JavaScript Rendering', 'asapdigest-core'); ?>
+                                </label>
+                                <p class="description"><?php _e('Enable for sites that load content with JavaScript (may be slower)', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="scraper-user-agent"><?php _e('User Agent', 'asapdigest-core'); ?></label>
+                                <input type="text" id="scraper-user-agent" name="configuration[user_agent]" placeholder="Mozilla/5.0...">
+                                <p class="description"><?php _e('Custom User-Agent header to use for requests', 'asapdigest-core'); ?></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Webhook Config -->
+                        <div class="config-section" data-type="webhook">
+                            <h4><?php _e('Webhook Configuration', 'asapdigest-core'); ?></h4>
+                            
+                            <div class="form-field">
+                                <label for="webhook-secret"><?php _e('Webhook Secret', 'asapdigest-core'); ?></label>
+                                <input type="text" id="webhook-secret" name="configuration[webhook_secret]">
+                                <p class="description"><?php _e('Secret key to verify webhook signatures', 'asapdigest-core'); ?></p>
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="webhook-title-key"><?php _e('Title Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="webhook-title-key" name="configuration[title_key]" placeholder="title">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="webhook-content-key"><?php _e('Content Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="webhook-content-key" name="configuration[content_key]" placeholder="content">
+                            </div>
+                            
+                            <div class="form-field">
+                                <label for="webhook-url-key"><?php _e('URL Field', 'asapdigest-core'); ?></label>
+                                <input type="text" id="webhook-url-key" name="configuration[url_key]" placeholder="url">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
-        <?php endif; ?>
-    <?php endif; ?>
+        <div class="modal-footer">
+            <button type="button" class="button modal-close"><?php _e('Cancel', 'asapdigest-core'); ?></button>
+            <button type="submit" form="source-form" class="button button-primary"><?php _e('Save Source', 'asapdigest-core'); ?></button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="asap-modal confirm-modal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><?php _e('Confirm Deletion', 'asapdigest-core'); ?></h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="confirm-text"><?php _e('Are you sure you want to delete this source? This action cannot be undone.', 'asapdigest-core'); ?></p>
+            <div class="action-buttons">
+                <button type="button" class="button modal-close"><?php _e('Cancel', 'asapdigest-core'); ?></button>
+                <button type="button" id="confirm-delete-btn" class="button button-primary button-large"><?php _e('Yes, Delete', 'asapdigest-core'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle modal close buttons
+jQuery(document).ready(function($) {
+    // Close modal when clicking X or Cancel
+    $('.modal-close').on('click', function() {
+        $(this).closest('.asap-modal').removeClass('open');
+    });
     
-    <!-- Add styles for the admin page -->
-    <style>
-        .status-active {
-            color: green;
-            font-weight: bold;
+    // Close modal when clicking outside
+    $('.asap-modal').on('click', function(e) {
+        if ($(e.target).hasClass('asap-modal')) {
+            $(this).removeClass('open');
         }
-        .status-inactive {
-            color: gray;
-        }
-        .button-danger {
-            color: #a00 !important;
-        }
-        .button-danger:hover {
-            color: #dc3232 !important;
-        }
-        
-        /* Metrics dashboard */
-        .metrics-dashboard {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .metrics-card {
-            background: #fff;
-            border: 1px solid #ccd0d4;
-            padding: 20px;
-            min-width: 180px;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.04);
-        }
-        .metrics-card h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 14px;
-            color: #23282d;
-        }
-        .metric-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2271b1;
-        }
-        
-        /* Duplicate report styling */
-        .duplicate-set {
-            margin-bottom: 30px;
-            background: #f9f9f9;
-            padding: 15px;
-            border: 1px solid #ccd0d4;
-        }
-        .duplicate-set h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-    </style>
-    
-    <!-- Add JavaScript for source type field toggling -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const typeSelector = document.getElementById('type');
-            
-            if (typeSelector) {
-                typeSelector.addEventListener('change', function() {
-                    const scraperFields = document.querySelectorAll('.scraper-field');
-                    const apiFields = document.querySelectorAll('.api-field');
-                    
-                    // Hide all first
-                    scraperFields.forEach(field => field.style.display = 'none');
-                    apiFields.forEach(field => field.style.display = 'none');
-                    
-                    // Show relevant fields based on selection
-                    if (this.value === 'scraper') {
-                        scraperFields.forEach(field => field.style.display = '');
-                    } else if (this.value === 'api') {
-                        apiFields.forEach(field => field.style.display = '');
-                    }
-                });
-            }
-        });
-    </script>
-</div> 
+    });
+});
+</script> 

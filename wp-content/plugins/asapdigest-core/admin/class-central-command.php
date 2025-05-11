@@ -144,24 +144,87 @@ class ASAP_Digest_Central_Command {
     }
 
     /**
-     * Render main dashboard
+     * Register admin menus
+     */
+    public function register_menus() {
+        // Main menu
+        add_menu_page(
+            __('ASAP Digest', 'asapdigest-core'),
+            __('ASAP Digest', 'asapdigest-core'),
+            'manage_options',
+            'asap-digest',
+            [$this, 'render_dashboard'],
+            'dashicons-rss',
+            30
+        );
+        
+        // Dashboard submenu
+        add_submenu_page(
+            'asap-digest',
+            __('Dashboard', 'asapdigest-core'),
+            __('Dashboard', 'asapdigest-core'),
+            'manage_options',
+            'asap-digest',
+            [$this, 'render_dashboard']
+        );
+        
+        // Content Sources submenu
+        add_submenu_page(
+            'asap-digest',
+            __('Content Sources', 'asapdigest-core'),
+            __('Content Sources', 'asapdigest-core'),
+            'manage_options',
+            'asap-content-sources',
+            [$this, 'render_source_management']
+        );
+        
+        // Content Library submenu
+        add_submenu_page(
+            'asap-digest',
+            __('Content Library', 'asapdigest-core'),
+            __('Content Library', 'asapdigest-core'),
+            'manage_options',
+            'asap-content-library',
+            [$this, 'render_content_library']
+        );
+        
+        // Settings submenu
+        add_submenu_page(
+            'asap-digest',
+            __('Settings', 'asapdigest-core'),
+            __('Settings', 'asapdigest-core'),
+            'manage_options',
+            'asap-settings',
+            [$this, 'render_settings']
+        );
+    }
+
+    /**
+     * Render dashboard page
      */
     public function render_dashboard() {
-        require_once plugin_dir_path(__FILE__) . 'views/dashboard.php';
+        include_once plugin_dir_path(__FILE__) . 'views/dashboard.php';
     }
 
     /**
-     * Render usage analytics page
+     * Render source management page
      */
-    public function render_usage_analytics() {
-        require_once plugin_dir_path(__FILE__) . 'views/usage-analytics.php';
+    public function render_source_management() {
+        include_once plugin_dir_path(__FILE__) . 'views/source-management.php';
     }
 
     /**
-     * Render service costs page
+     * Render content library page
      */
-    public function render_service_costs() {
-        require_once plugin_dir_path(__FILE__) . 'views/service-costs.php';
+    public function render_content_library() {
+        include_once plugin_dir_path(__FILE__) . 'views/ingested-content.php';
+    }
+
+    /**
+     * Render settings page
+     */
+    public function render_settings() {
+        include_once plugin_dir_path(__FILE__) . 'views/settings.php';
     }
 
     /**
@@ -213,14 +276,6 @@ class ASAP_Digest_Central_Command {
             __('Service cost updated successfully.', 'asap-digest'),
             'success'
         );
-    }
-
-    /**
-     * Render Source Management admin page (with AJAX-powered CRUD table)
-     */
-    public function render_sources() {
-        // Load our view from the views directory
-        require_once plugin_dir_path(__FILE__) . 'views/source-management.php';
     }
 
     /**
