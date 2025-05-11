@@ -1,3 +1,4 @@
+/**
  * ASAP Digest Content Library
  * 
  * JavaScript for managing ingested content in the WordPress admin.
@@ -586,6 +587,4 @@
         ContentLibrary.init();
     });
 
-})(jQuery); 
-/**
- 
+})(jQuery);

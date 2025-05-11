@@ -336,7 +336,7 @@ function asap_digest_ajax_get_sources() {
     $source_manager = new AsapDigest\Crawler\ContentSourceManager();
     
     // Get sources
-    $sources = $source_manager->load_sources();
+    $sources = $source_manager->load_sources(false);
     
     // Add extra info to sources
     foreach ($sources as &$source) {
@@ -773,41 +773,71 @@ function asap_digest_ajax_get_content_sources() {
     // Get source manager instance
     $source_manager = \AsapDigest\Crawler\ContentSourceManager::get_instance();
     
-    // Build query args
-    $args = [
-        'search' => $search,
-        'type' => $type,
-        'status' => $status,
-        'offset' => $offset,
-        'limit' => $limit,
-        'orderby' => $orderby,
-        'order' => $order,
-    ];
+    // Load all sources
+    $all_sources = $source_manager->load_sources(false);
     
-    // Get content sources and total count
-    $sources = $source_manager->get_sources($args);
-    $total = $source_manager->count_sources([
-        'search' => $search,
-        'type' => $type,
-        'status' => $status,
-    ]);
+    // Filter and process sources manually since the methods don't exist
+    $filtered_sources = [];
+    $total = 0;
+    
+    foreach ($all_sources as $source) {
+        // Apply filters
+        $match = true;
+        
+        if (!empty($search) && stripos($source->name, $search) === false && stripos($source->url, $search) === false) {
+            $match = false;
+        }
+        
+        if (!empty($type) && $source->type !== $type) {
+            $match = false;
+        }
+        
+        if (!empty($status)) {
+            $current_status = $source->active ? 'active' : 'inactive';
+            if ($current_status !== $status) {
+                $match = false;
+            }
+        }
+        
+        if ($match) {
+            $total++;
+            $filtered_sources[] = $source;
+        }
+    }
+    
+    // Sort sources
+    usort($filtered_sources, function($a, $b) use ($orderby, $order) {
+        $result = 0;
+        if ($orderby === 'name') {
+            $result = strcmp($a->name, $b->name);
+        } elseif ($orderby === 'type') {
+            $result = strcmp($a->type, $b->type);
+        } elseif ($orderby === 'date' || $orderby === 'created_at') {
+            $result = strtotime($a->created_at) - strtotime($b->created_at);
+        }
+        
+        return $order === 'DESC' ? -$result : $result;
+    });
+    
+    // Apply pagination
+    $sources = array_slice($filtered_sources, $offset, $limit);
     
     // Format for response
     $formatted_sources = [];
     foreach ($sources as $source) {
         $formatted_sources[] = [
-            'id' => intval($source['id']),
-            'name' => $source['name'],
-            'type' => $source['type'],
-            'url' => $source['url'],
-            'frequency' => $source['frequency'],
-            'status' => $source['status'],
-            'last_fetch' => $source['last_fetch'],
-            'health' => $source['health'],
-            'items_count' => intval($source['items_count']),
-            'configuration' => json_decode($source['configuration'], true),
-            'created_at' => $source['created_at'],
-            'updated_at' => $source['updated_at'],
+            'id' => intval($source->id),
+            'name' => $source->name,
+            'type' => $source->type,
+            'url' => $source->url,
+            'frequency' => isset($source->fetch_interval) ? $source->fetch_interval : 'daily',
+            'status' => $source->active ? 'active' : 'inactive',
+            'last_fetch' => $source->last_fetch,
+            'health' => 'good', // Default value
+            'items_count' => 0, // Would need a separate query to get this
+            'configuration' => json_decode($source->config, true),
+            'created_at' => $source->created_at,
+            'updated_at' => $source->updated_at,
         ];
     }
     

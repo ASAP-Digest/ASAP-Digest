@@ -241,10 +241,16 @@ trait Session_Mgmt {
      */
     public function setup_session_cleanup_hook() {
         // Schedule daily cleanup if not already scheduled
-        if (!wp_next_scheduled('asap_digest_cleanup_sessions')) {
-            wp_schedule_event(time(), 'daily', 'asap_digest_cleanup_sessions');
+        if (!wp_next_scheduled('asapdigest_cleanup_sessions')) {
+            wp_schedule_event(time(), 'daily', 'asapdigest_cleanup_sessions');
         }
 
-        add_action('asap_digest_cleanup_sessions', [$this, 'cleanup_expired_sessions']);
+        /**
+         * Register the hook handler for session cleanup
+         * 
+         * The 'asapdigest_cleanup_sessions' hook is triggered once daily via WP-Cron
+         * to clean up expired user sessions from the database.
+         */
+        add_action('asapdigest_cleanup_sessions', [$this, 'cleanup_expired_sessions']);
     }
 } 
