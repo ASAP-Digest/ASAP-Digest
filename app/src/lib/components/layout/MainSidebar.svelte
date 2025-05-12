@@ -1,5 +1,6 @@
 <script>
   import { page } from '$app/stores';
+  import { browser } from '$app/environment';
   import { 
     Home, 
     Calendar, 
@@ -37,6 +38,7 @@
   import { Button } from '$lib/components/ui/button';
   import Icon from "$lib/components/ui/icon/icon.svelte";
   import { user as userStore } from '$lib/stores/user.js';
+  import { setTheme, theme } from '$lib/stores/theme.js';
 
   /**
    * @typedef {Object} IconObject
@@ -509,6 +511,120 @@
       get active() { return path.startsWith('/admin/content-crawler') }
     }
   ];
+
+  // Store the current theme value 
+  let currentTheme = $state('default');
+
+  // Subscribe to theme changes and log for debugging
+  onMount(() => {
+    // Check current theme from localStorage on mount
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+          currentTheme = savedTheme;
+          console.log('Initial theme from localStorage:', currentTheme);
+        }
+      }
+    } catch (error) {
+      console.error('Error reading theme from localStorage:', error);
+    }
+
+    // Subscribe to theme changes
+    const unsubscribeTheme = theme.subscribe(value => {
+      console.log("Theme changed in sidebar:", value);
+      currentTheme = value;
+    });
+    
+    return () => {
+      if (unsubscribeTheme) unsubscribeTheme();
+    };
+  });
+
+  // Add direct theme button function with visual feedback
+  /**
+   * Apply theme and provide direct feedback for debugging
+   * @param {import('$lib/stores/theme.js').ThemeValue} themeValue - The theme to apply
+   */
+  function applyTheme(themeValue) {
+    console.log('🎨 Button clicked! Applying theme:', themeValue);
+    try {
+      // Set local theme state for immediate UI update
+      currentTheme = themeValue;
+      
+      // Apply theme through the store
+      setTheme(themeValue);
+      
+      // Visual feedback when clicked
+      const button = document.activeElement;
+      if (button && button.classList) {
+        button.classList.add('theme-button-clicked');
+        setTimeout(() => button.classList.remove('theme-button-clicked'), 300);
+      }
+    } catch (error) {
+      console.error('Error applying theme:', error);
+    }
+  }
+
+  // Add theme dropdown toggle state
+  let themeDropdownOpen = $state(false);
+  // Reference to the theme toggle button
+  /** @type {HTMLButtonElement | null} */
+  let themeToggleButton = $state(null);
+  // Theme dropdown position
+  /** @type {{ top: number, left: number }} */
+  let themeDropdownPosition = $state({ top: 0, left: 0 });
+
+  // Toggle theme dropdown
+  function toggleThemeDropdown(event) {
+    event.stopPropagation();
+    themeDropdownOpen = !themeDropdownOpen;
+    
+    // If opening, calculate position
+    if (themeDropdownOpen) {
+      // Use setTimeout to ensure DOM update first
+      setTimeout(calculateThemeDropdownPosition, 0);
+    }
+  }
+
+  // Close dropdown when clicking outside
+  function closeThemeDropdown() {
+    themeDropdownOpen = false;
+  }
+
+  /**
+   * Calculate position for the floating theme dropdown
+   */
+  function calculateThemeDropdownPosition() {
+    if (!themeToggleButton) return;
+    
+    const buttonRect = themeToggleButton.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Default: position to the right of the toggle button
+    let left = buttonRect.right + 16; // 16px offset
+    let top = buttonRect.top - 10; // Align slightly above the button
+    
+    // Check if dropdown would go off the right edge of the viewport
+    // If so, position to the left of the toggle button
+    if (left + 256 > viewportWidth) { // 256px is approx dropdown width
+      left = buttonRect.left - 256 - 16; // 16px offset
+    }
+    
+    // If that would go off the left edge, center it below the button
+    if (left < 16) {
+      left = Math.max(16, buttonRect.left - 128 + buttonRect.width / 2); // center alignment
+      top = buttonRect.bottom + 16; // position below
+    }
+    
+    // Ensure dropdown stays within the viewport vertically
+    if (top + 320 > viewportHeight) { // 320px is approx max dropdown height
+      top = Math.max(16, viewportHeight - 320 - 16);
+    }
+    
+    themeDropdownPosition = { top, left };
+  }
 </script>
 
 <style lang="postcss">
@@ -842,7 +958,7 @@
 	
 	/* Ensure avatar dropdown has proper z-index and visibility */
 	.avatar-dropdown {
-		z-index: 1200;
+		z-index: var(--z-dropdown);
 		box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08);
 		border-radius: 1rem;
 		background: hsl(var(--background));
@@ -852,7 +968,43 @@
 		max-width: 90vw;
 		margin-top: 0.5rem;
 		animation: fadeIn 0.18s cubic-bezier(0.4,0,0.2,1);
+		pointer-events: auto !important;
 	}
+
+	/* Force pointer events for all dropdown elements */
+	.avatar-dropdown * {
+		pointer-events: auto !important;
+	}
+
+	/* Theme button styles but WITH NO CHECKMARK */
+	.theme-button {
+		cursor: pointer !important;
+		z-index: var(--z-theme-buttons) !important;
+		position: relative !important;
+		overflow: visible !important;
+		transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease !important;
+	}
+
+	.theme-button::after {
+		display: none !important; /* Force-remove all checkmarks */
+		content: none !important; /* Double make sure no checkmarks */
+	}
+
+	.theme-button:hover {
+		transform: scale(1.05);
+		opacity: 0.95;
+	}
+
+	.theme-button:active {
+		transform: scale(0.95);
+	}
+
+	/* Animation for avatar dropdown */
+	@keyframes fadeIn {
+		from { opacity: 0; transform: translateY(-10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+
 	.avatar-dropdown .dropdown-item {
 		display: flex;
 		align-items: center;
@@ -863,15 +1015,26 @@
 		color: hsl(var(--sidebar-foreground));
 		transition: background 0.15s, color 0.15s;
 	}
+
 	.avatar-dropdown .dropdown-item:hover {
 		background: hsl(var(--surface-2));
 		color: hsl(var(--brand));
 	}
+
 	.avatar-dropdown .sidebar-icon {
 		min-width: 1.25rem;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	.theme-button.active-theme {
+		/* Make active theme buttons visually distinct */
+		border: 2px solid hsl(var(--brand));
+		/* Adjust padding to compensate for thicker border */
+		padding: calc(0.25rem - 1px);
+		/* Add a subtle ring/glow effect */
+		box-shadow: 0 0 0 2px hsl(var(--brand) / 0.2);
 	}
 </style>
 
@@ -1082,16 +1245,45 @@
               <div class="text-[0.75rem] font-semibold mb-2">Preferences</div>
               <div class="flex justify-between items-center mb-2">
                 <div>Theme</div>
-                <div class="flex space-x-1">
-                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--background))] border border-[hsl(var(--border))] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Light theme">
+                <div class="flex space-x-1" style="pointer-events:auto;">
+                  <button 
+                    type="button" 
+                    style={currentTheme === 'light' ? 'background-color: hsl(var(--brand) / 0.3); width: 24px; height: 24px; border-radius: 4px; padding: 4px;' : 'background-color: transparent; width: 24px; height: 24px; border-radius: 4px; padding: 4px; border: 1px solid hsl(var(--border));'}
+                    aria-label="Light theme" 
+                    onclick={() => applyTheme('light')}
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                   </button>
-                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--muted))] border border-[hsl(var(--muted-foreground)/0.2)]" aria-label="Dark theme">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[hsl(var(--background))]"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                  <button 
+                    type="button" 
+                    style={currentTheme === 'dark' || currentTheme === 'default' ? 'background-color: hsl(var(--brand) / 0.3); width: 24px; height: 24px; border-radius: 4px; padding: 4px;' : 'background-color: transparent; width: 24px; height: 24px; border-radius: 4px; padding: 4px; border: 1px solid hsl(var(--border));'}
+                    aria-label="Dark theme" 
+                    onclick={() => applyTheme('dark')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                   </button>
-                  <button class="p-1 rounded-[0.375rem] bg-[hsl(var(--muted)/0.2)] border border-[hsl(var(--border))] dark:bg-[hsl(var(--muted)/0.2)] dark:border-[hsl(var(--muted-foreground)/0.2)]" aria-label="System theme">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <button 
+                    type="button" 
+                    style={currentTheme === 'system' ? 'background-color: hsl(var(--brand) / 0.3); width: 24px; height: 24px; border-radius: 4px; padding: 4px;' : 'background-color: transparent; width: 24px; height: 24px; border-radius: 4px; padding: 4px; border: 1px solid hsl(var(--border));'}
+                    aria-label="System theme" 
+                    onclick={() => applyTheme('system')}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
                   </button>
+                  <div class="relative inline-block">
+                    <button 
+                      type="button" 
+                      style={currentTheme === 'new' || currentTheme === 'nightwave' ? 'background-color: hsl(var(--brand) / 0.3); width: 24px; height: 24px; border-radius: 4px; padding: 4px;' : 'background-color: transparent; width: 24px; height: 24px; border-radius: 4px; padding: 4px; border: 1px solid hsl(var(--border));'}
+                      aria-label="More themes" 
+                      aria-expanded={themeDropdownOpen}
+                      aria-haspopup="true"
+                      onclick={toggleThemeDropdown}
+                      bind:this={themeToggleButton}
+                      data-theme-toggle
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="flex items-center justify-between">
@@ -1115,3 +1307,16 @@
     </Footer>
   </Root>
 </div> 
+
+<!-- Render the theme dropdown portal directly in the document body when open -->
+{#if themeDropdownOpen && browser}
+  <div style={`position: fixed; top: ${themeDropdownPosition.top}px; left: ${themeDropdownPosition.left}px; z-index: 10000;`}>
+    {#await import('$lib/components/ui/theme-dropdown/theme-dropdown.svelte') then module}
+      <svelte:component 
+        this={module.default} 
+        floating={true} 
+        onClose={closeThemeDropdown} 
+      />
+    {/await}
+  </div>
+{/if} 

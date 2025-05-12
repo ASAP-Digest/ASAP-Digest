@@ -6,6 +6,7 @@
 
 namespace AsapDigest\Crawler;
 
+use ASAPDigest\Core\ErrorLogger;
 use AsapDigest\Crawler\Adapters\APIAdapter;
 use AsapDigest\Crawler\Adapters\RSSAdapter;
 use AsapDigest\Crawler\Adapters\ScraperAdapter;
@@ -13,6 +14,14 @@ use AsapDigest\Crawler\Adapters\ScraperAdapter;
 /**
  * Main orchestrator for the content crawling process.
  * Manages source selection, adapter routing, and crawl scheduling.
+ *
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  */
 class ContentCrawler {
     /**
@@ -238,12 +247,15 @@ class ContentCrawler {
             $error_message = "Fatal error in crawler execution: " . $e->getMessage();
             $this->last_error = $error_message;
             $this->log($error_message, 'error');
-            
-            // Log the error to the database (generic source_id 0 since this is a system-level error)
-            $this->log_error(0, 'system', $e->getMessage(), [
+            /**
+             * Log system-level crawler error to the error log table using ErrorLogger utility.
+             * Context: 'crawler', error_type: 'system', severity: 'critical'.
+             * This ensures all fatal crawler errors are queryable and alertable in the admin UI.
+             */
+            ErrorLogger::log('crawler', 'system', $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
                 'args' => $args
-            ]);
+            ], 'critical');
             
             // Apply action hook for error handling
             do_action('asap_crawler_execution_error', $e, $args);
@@ -460,11 +472,15 @@ class ContentCrawler {
                 $this->log($error_message, 'error');
                 $results['errors']++;
                 $failed_sources[] = $source;
-                
-                // Log to error table
-                $this->log_error($source->id, 'source_crawl_fatal', $e->getMessage(), [
-                    'trace' => $e->getTraceAsString()
-                ]);
+                /**
+                 * Log fatal source crawl error to the error log table using ErrorLogger utility.
+                 * Context: 'crawler', error_type: 'source_crawl_fatal', severity: 'error'.
+                 * This allows admins to track which sources are failing and why.
+                 */
+                ErrorLogger::log('crawler', 'source_crawl_fatal', $e->getMessage(), [
+                    'trace' => $e->getTraceAsString(),
+                    'source_id' => $source->id
+                ], 'error');
                 
                 // Fire action for fatal source error
                 do_action('asap_source_crawl_fatal_error', $source, $e);
@@ -507,10 +523,16 @@ class ContentCrawler {
                     $this->log($retry_error, 'error');
                     
                     // Log to error table with retry context
-                    $this->log_error($source->id, 'source_retry_failed', $e->getMessage(), [
+                    /**
+                     * Log retry failure for a source to the error log table using ErrorLogger utility.
+                     * Context: 'crawler', error_type: 'source_retry_failed', severity: 'error'.
+                     * Includes retry_attempt flag for troubleshooting repeated failures.
+                     */
+                    ErrorLogger::log('crawler', 'source_retry_failed', $e->getMessage(), [
                         'trace' => $e->getTraceAsString(),
-                        'retry_attempt' => true
-                    ]);
+                        'retry_attempt' => true,
+                        'source_id' => $source->id
+                    ], 'error');
                 }
             }
         }
@@ -637,7 +659,7 @@ class ContentCrawler {
                     $result['errors'][] = $error;
                     
                     // Log to error table
-                    $this->log_error($source->id, 'item_processing', $e->getMessage(), $item);
+                    ErrorLogger::log('crawler', 'item_processing', $e->getMessage(), $item, 'error');
                     
                     // Fire action for item processing error
                     do_action('asap_item_processing_error', $item, $e, $source);
@@ -666,10 +688,16 @@ class ContentCrawler {
             $result['errors'][] = $error;
             
             // Log to error table
-            $this->log_error($source->id, 'source_crawl', $e->getMessage(), [
+            /**
+             * Log source crawl error to the error log table using ErrorLogger utility.
+             * Context: 'crawler', error_type: 'source_crawl', severity: 'error'.
+             * Includes exception class and stack trace for debugging.
+             */
+            ErrorLogger::log('crawler', 'source_crawl', $e->getMessage(), [
                 'exception_class' => get_class($e),
-                'trace' => $e->getTraceAsString()
-            ]);
+                'trace' => $e->getTraceAsString(),
+                'source_id' => $source->id
+            ], 'error');
             
             // Update source status as failed
             $this->source_manager->update_source_status($source->id, false);
@@ -712,41 +740,6 @@ class ContentCrawler {
         
         // Allow external logging systems to hook in
         do_action('asap_crawler_log', $message, $type, $log_entry);
-    }
-    
-    /**
-     * Log an error to the database
-     * 
-     * @param int $source_id Source ID
-     * @param string $error_type Error type
-     * @param string $message Error message
-     * @param array $context Optional error context
-     */
-    private function log_error($source_id, $error_type, $message, $context = []) {
-        global $wpdb;
-        
-        $table = $wpdb->prefix . 'asap_crawler_errors';
-        
-        $wpdb->insert(
-            $table,
-            [
-                'source_id' => $source_id,
-                'error_type' => $error_type,
-                'message' => $message,
-                'context' => is_array($context) ? json_encode($context) : $context,
-                'severity' => 'error',
-                'created_at' => current_time('mysql')
-            ]
-        );
-        
-        // If inserting failed, log to error_log as fallback
-        if ($wpdb->last_error) {
-            error_log("ASAP Crawler: Failed to log error to database: " . $wpdb->last_error);
-            error_log("ASAP Crawler original error: Source #{$source_id}, Type: {$error_type}, Message: {$message}");
-        }
-        
-        // Allow external error handling systems to hook in
-        do_action('asap_crawler_error_logged', $source_id, $error_type, $message, $context);
     }
     
     /**

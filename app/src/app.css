@@ -4,10 +4,8 @@
 ===============================================================
 */
 @import "tailwindcss";
-/* Preflight styles are usually included automatically by the above import in v4 */
+/* Preflight styles are included automatically by the above import in v4 */
 
-@tailwind base;
-@tailwind components;
 @tailwind utilities;
 
 /* 
@@ -40,6 +38,10 @@
 */
 
 @layer base {
+  /* ===============================================================
+     BASE/DEFAULT THEME (Dark Mode)
+     This is the default theme when no data-theme attribute is present
+     =============================================================== */
   :root {
     /* Golden Ratio Value */
     --phi: 1.618;
@@ -136,22 +138,6 @@
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* Legacy mappings for backward compatibility */
-    --background: var(--canvas-base);
-    --foreground: var(--canvas-fg);
-    --primary: var(--brand);
-    --primary-foreground: var(--brand-fg);
-    --secondary: var(--accent);
-    --secondary-foreground: var(--accent-fg);
-    --card: var(--surface-1);
-    --card-foreground: var(--text-1);
-    --popover: var(--surface-1);
-    --popover-foreground: var(--text-1);
-    --muted: var(--surface-2);
-    --muted-foreground: var(--text-2);
-    --destructive: var(--functional-error);
-    --destructive-foreground: var(--functional-error-fg);
     
     /* Neon Glow */
     --glow-sm: 0 0 2px;
@@ -183,10 +169,247 @@
     
     /* Active menu item - toned down background */
     --active-menu-bg: 326 100% 60% / 0.3; /* Brand with 30% opacity */
+
+    /* Theme name for display in UI */
+    --theme-name: "Dark Mode";
+    --theme-icon: "🌙";
   }
 
-  .dark {
-    /* Dark mode is our default, no adjustments needed */
+  /* ===============================================================
+     LIGHT THEME
+     A light theme opposite of the dark theme.
+     Activated with data-theme="light"
+     =============================================================== */
+  :root[data-theme="light"] {
+    /* 1. Canvas (Base Background/Text) */
+    --canvas-base: 210 40% 96%;       /* Light gray-blue */
+    --canvas-fg: 220 13% 10%;         /* Dark Blue-Gray (reverse of dark theme) */
+
+    /* 2. Brand (Primary Identity) */
+    --brand: 326 85% 50%;             /* Deeper pink (more visible on light bg) */
+    --brand-fg: 210 40% 96%;          /* Light background */
+    --brand-hover: 326 100% 60%;      /* Brighter Pink for hover */
+
+    /* 3. Accent (Secondary Highlight) */
+    --accent: 175 90% 45%;            /* Deeper cyan (more visible on light bg) */
+    --accent-fg: 210 40% 96%;         /* Light background */
+    --accent-hover: 175 98% 60%;      /* Brighter cyan for hover */
+
+    /* 4. Link (Interactive Elements) */
+    --link: 326 85% 45%;              /* Deeper pink for better contrast on light */
+    --link-fg: 210 40% 96%;           /* Light background for text on link bg */
+    --link-hover: 326 100% 55%;       /* Brighter pink for hover */
+
+    /* 5. Visited (Visited Links Only) */
+    --visited: 326 70% 40%;           /* Darker visited links for contrast */
+    --visited-fg: 210 40% 96%;        /* Light background */
+
+    /* Functional Feedback States */
+    --functional-error: 0 85% 50%;          /* Deeper Red for light bg */
+    --functional-error-fg: 210 40% 96%;     /* Light text on error */
+    --functional-success: 145 85% 40%;      /* Deeper Green for light bg */
+    --functional-success-fg: 210 40% 96%;   /* Light text on success */
+
+    /* Surfaces (Backgrounds) */
+    --surface-1: var(--canvas-base);            /* Primary background */
+    --surface-2: 210 40% 88%;                  /* Slightly darker for cards */
+    --surface-3: 210 40% 82%;                  /* Even darker for emphasis */
+
+    /* Text Hierarchy */
+    --text-1: var(--canvas-fg);                /* Primary text */
+    --text-2: 220 13% 25%;                    /* Secondary/Muted text */
+    --text-3: 220 13% 40%;                    /* Tertiary/Hint text */
+    --text-disabled: 220 13% 60%;             /* Disabled text */
+
+    /* UI Elements */
+    --border: 210 40% 70%;                    /* Subtle border */
+    --input-bg: 210 40% 92%;                  /* Input background */
+    --input-border: var(--border);
+    --input-border-focus: hsl(var(--ring));   /* Use ring color for focus border */
+    --ring: var(--link);                      /* Focus ring */
+
+    /* Shadows - darker for light theme to be visible */
+    --shadow-color: 220 13% 10%;              /* Dark color for shadows */
+    --shadow-strength-sm: 0.06;               /* Opacity for small shadow */
+    --shadow-strength-md: 0.1;                /* Opacity for medium shadow */
+    --shadow-strength-lg: 0.14;               /* Opacity for large shadow */
+    /* Keep same shadow definitions, they'll use the updated color/strength */
+
+    /* Sidebar-specific variables */
+    --sidebar-background: 210 40% 92%;         /* Slightly darker than canvas */
+    --sidebar-foreground: var(--text-1);
+    --sidebar-border: var(--border);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--brand-fg);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-fg);
+    --sidebar-muted: 210 40% 85%;             /* Muted sidebar elements */
+    --sidebar-muted-foreground: var(--text-2);
+    --sidebar-ring: var(--ring);
+    
+    /* Active menu item - toned down background */
+    --active-menu-bg: 326 85% 50% / 0.2;      /* Brand with opacity */
+
+    /* Theme name for display in UI */
+    --theme-name: "Light Mode";
+    --theme-icon: "☀️";
+  }
+
+  /* ===============================================================
+     DARK THEME (Explicit)
+     This is the same as the default theme, but explicitly for 
+     when data-theme="dark" is set
+     =============================================================== */
+  :root[data-theme="dark"] {
+    /* Variables from default :root theme */
+    /* Canvas (Base Background/Text) */
+    --canvas-base: 220 13% 10%;       /* Dark Blue-Gray */
+    --canvas-fg: 210 40% 98%;         /* Off-White */
+    
+    /* All other variables remain the same as default theme */
+    /* ... */
+
+    /* Theme name for display in UI */
+    --theme-name: "Dark Mode";
+    --theme-icon: "🌙";
+  }
+
+  /* ===============================================================
+     NEW AMETHYST/BLUE THEME
+     To enable: document.documentElement.setAttribute('data-theme', 'new')
+     =============================================================== */
+  :root[data-theme="new"] {
+    --canvas-base: 263 95% 6%;        /* Deep dark purple */
+    --canvas-fg: 240 2% 83%;          /* Soft light gray */
+    --brand: 270 98% 71%;             /* Vibrant amethyst */
+    --brand-fg: 240 2% 83%;           /* Use same as canvas-fg for contrast */
+    --brand-hover: 270 98% 80%;       /* Lighter amethyst for hover */
+    --accent: 205 89% 48%;            /* Bright blue */
+    --accent-fg: 263 95% 6%;          /* Use dark purple for contrast */
+    --accent-hover: 205 89% 60%;      /* Lighter blue for hover */
+    --link: 205 89% 48%;              /* Blue for links */
+    --link-fg: 240 2% 83%;            /* Use same as canvas-fg */
+    --link-hover: 205 89% 60%;        /* Lighter blue for hover */
+    --visited: 270 60% 40%;           /* Muted amethyst for visited links */
+    --visited-fg: 240 2% 83%;         /* Use same as canvas-fg */
+    /* Functional Feedback States (reuse existing or adjust as needed) */
+    --functional-error: 0 90% 60%;
+    --functional-error-fg: 240 2% 83%;
+    --functional-success: 145 100% 60%;
+    --functional-success-fg: 263 95% 6%;
+    /* Surfaces */
+    --surface-1: 263 95% 10%;         /* Slightly lighter than base */
+    --surface-2: 263 95% 16%;         /* Lighter for cards/modals */
+    --surface-3: 263 95% 22%;         /* Even lighter */
+    /* Text Hierarchy */
+    --text-1: var(--canvas-fg);
+    --text-2: 240 2% 70%;
+    --text-3: 240 2% 55%;
+    --text-disabled: 240 2% 40%;
+    /* UI Elements */
+    --border: 205 89% 30%;
+    --input-bg: 263 95% 16%;
+    --input-border: var(--border);
+    --input-border-focus: hsl(var(--ring));
+    --input-ring: var(--link);
+    /* Shadows */
+    --shadow-color: 0 0% 0%;
+    --shadow-strength-sm: 0.1;
+    --shadow-strength-md: 0.15;
+    --shadow-strength-lg: 0.2;
+    /* Sidebar-specific variables */
+    --sidebar-background: var(--surface-1);
+    --sidebar-foreground: var(--text-1);
+    --sidebar-border: var(--border);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--brand-fg);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-fg);
+    --sidebar-muted: var(--surface-3);
+    --sidebar-muted-foreground: var(--text-2);
+    --sidebar-ring: var(--ring);
+    --active-menu-bg: 270 98% 71% / 0.3; /* Brand with 30% opacity */
+
+    /* Theme name for display in UI */
+    --theme-name: "Amethyst";
+    --theme-icon: "💜";
+  }
+
+  /* ===============================================================
+     NIGHTWAVE THEME - Black background with electric blue accents
+     To enable: document.documentElement.setAttribute('data-theme', 'nightwave')
+     =============================================================== */
+  :root[data-theme="nightwave"] {
+    /* Base Canvas */
+    --canvas-base: 220 13% 5%;        /* Near-black */
+    --canvas-fg: 210 15% 90%;         /* Light grey text */
+    
+    /* Brand (Electric Blue) */
+    --brand: 195 100% 55%;            /* Electric blue */
+    --brand-fg: 210 40% 98%;          /* White text on blue */
+    --brand-hover: 195 100% 65%;      /* Lighter blue for hover */
+    
+    /* Accent (Purple) */
+    --accent: 280 100% 65%;           /* Vibrant purple */
+    --accent-fg: 210 40% 98%;         /* White text on purple */
+    --accent-hover: 280 100% 75%;     /* Lighter purple for hover */
+    
+    /* Link (Uses brand colors) */
+    --link: var(--brand);               
+    --link-fg: var(--brand-fg);        
+    --link-hover: var(--brand-hover);  
+    
+    /* Visited */
+    --visited: 270 70% 60%;           /* Desaturated purple */
+    --visited-fg: 210 40% 98%;
+    
+    /* Surfaces */
+    --surface-1: 220 13% 8%;          /* Slightly lighter than base */
+    --surface-2: 220 13% 12%;         /* Charcoal - Secondary surfaces */
+    --surface-3: 220 13% 18%;         /* Lighter charcoal - Tertiary surfaces */
+    
+    /* Text Hierarchy */
+    --text-1: var(--canvas-fg);       /* Primary text */
+    --text-2: 210 15% 75%;            /* Secondary/Muted text */
+    --text-3: 210 15% 60%;            /* Tertiary/Hint text */
+    --text-disabled: 210 15% 45%;     /* Disabled text */
+    
+    /* Functional Feedback States */
+    --functional-error: 0 90% 60%;    /* Neon Red */
+    --functional-error-fg: 210 40% 98%; /* White text */
+    --functional-success: 145 100% 60%; /* Neon Green */
+    --functional-success-fg: 220 13% 10%; /* Dark text */
+    
+    /* UI Elements */
+    --border: 220 13% 25%;            /* Visible borders */
+    --input-bg: 220 13% 8%;           /* Dark input background */
+    --input-border: var(--border);
+    --input-border-focus: hsl(var(--ring));
+    --input-ring: var(--link);
+    
+    /* Shadows - More intense for dramatic effect */
+    --shadow-color: 220 50% 2%;
+    --shadow-strength-sm: 0.15;
+    --shadow-strength-md: 0.25;
+    --shadow-strength-lg: 0.35;
+    
+    /* Sidebar-specific variables */
+    --sidebar-background: 220 13% 8%; /* Slightly lighter than main canvas */
+    --sidebar-foreground: 210 15% 90%; /* Same as canvas-fg */
+    --sidebar-border: 220 13% 20%;    /* Subtle border */
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--brand-fg);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-fg);
+    --sidebar-muted: var(--surface-3);
+    --sidebar-muted-foreground: var(--text-2);
+    --sidebar-ring: var(--ring);
+    --sidebar-highlight: 195 100% 55%; /* Electric blue for highlights */
+    --active-menu-bg: 195 100% 55% / 0.3; /* Brand with 30% opacity */
+
+    /* Theme name for display in UI */
+    --theme-name: "Nightwave";
+    --theme-icon: "🌊";
   }
 
   /* Focus states */
@@ -609,4 +832,81 @@ body.sidebar-collapsed .sidebar-icon svg {
     /* Original radius values */
     --radius: var(--radius-md);
   }
+}
+
+/* ===============================================================
+   NEW TEST THEME: Purple/Amethyst/Blue (toggle with data-theme="new")
+   To enable: document.documentElement.setAttribute('data-theme', 'new')
+   =============================================================== */
+:root[data-theme="new"] {
+  --canvas-base: 263 95% 6%;        /* Deep dark purple */
+  --canvas-fg: 240 2% 83%;          /* Soft light gray */
+  --brand: 270 98% 71%;             /* Vibrant amethyst */
+  --brand-fg: 240 2% 83%;           /* Use same as canvas-fg for contrast */
+  --brand-hover: 270 98% 80%;       /* Lighter amethyst for hover */
+  --accent: 205 89% 48%;            /* Bright blue */
+  --accent-fg: 263 95% 6%;          /* Use dark purple for contrast */
+  --accent-hover: 205 89% 60%;      /* Lighter blue for hover */
+  --link: 205 89% 48%;              /* Blue for links */
+  --link-fg: 240 2% 83%;            /* Use same as canvas-fg */
+  --link-hover: 205 89% 60%;        /* Lighter blue for hover */
+  --visited: 270 60% 40%;           /* Muted amethyst for visited links */
+  --visited-fg: 240 2% 83%;         /* Use same as canvas-fg */
+  /* Functional Feedback States (reuse existing or adjust as needed) */
+  --functional-error: 0 90% 60%;
+  --functional-error-fg: 240 2% 83%;
+  --functional-success: 145 100% 60%;
+  --functional-success-fg: 263 95% 6%;
+  /* Surfaces */
+  --surface-1: 263 95% 10%;         /* Slightly lighter than base */
+  --surface-2: 263 95% 16%;         /* Lighter for cards/modals */
+  --surface-3: 263 95% 22%;         /* Even lighter */
+  /* Text Hierarchy */
+  --text-1: var(--canvas-fg);
+  --text-2: 240 2% 70%;
+  --text-3: 240 2% 55%;
+  --text-disabled: 240 2% 40%;
+  /* UI Elements */
+  --border: 205 89% 30%;
+  --input-bg: 263 95% 16%;
+  --input-border: var(--border);
+  --input-border-focus: hsl(var(--ring));
+  --input-ring: var(--link);
+  /* Shadows */
+  --shadow-color: 0 0% 0%;
+  --shadow-strength-sm: 0.1;
+  --shadow-strength-md: 0.15;
+  --shadow-strength-lg: 0.2;
+  /* Sidebar-specific variables */
+  --sidebar-background: var(--surface-1);
+  --sidebar-foreground: var(--text-1);
+  --sidebar-border: var(--border);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-fg);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-fg);
+  --sidebar-muted: var(--surface-3);
+  --sidebar-muted-foreground: var(--text-2);
+  --sidebar-ring: var(--ring);
+  --active-menu-bg: 270 98% 71% / 0.3; /* Brand with 30% opacity */
+}
+
+/* Visual feedback for theme button clicks */
+.theme-button-clicked {
+  transform: scale(0.9);
+  opacity: 0.8;
+  transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out;
+}
+
+/* Higher z-index for dropdowns and interactive elements */
+:root {
+  --z-dropdown: 9000;
+  --z-sidebar-tooltip: 9100;
+  --z-sidebar-trigger: 9200;
+  --z-theme-buttons: 9300;
+  --z-header: 9400;
+  --z-overlay: 9500;
+  --z-modal: 9600;
+  --z-toasts: 9700;
+  --z-max: 9999;
 }

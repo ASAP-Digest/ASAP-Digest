@@ -84,6 +84,11 @@ $anthropic_models = [
     'claude-3-sonnet' => 'Claude 3 Sonnet',
     'claude-3-haiku' => 'Claude 3 Haiku',
 ];
+
+// Ensure the settings group is registered to avoid 'not in the allowed options list' error
+add_action('admin_init', function() {
+    register_setting('asap_ai_settings', 'asap_ai_settings');
+});
 ?>
 
 <div class="wrap">
@@ -91,36 +96,38 @@ $anthropic_models = [
     
     <p>Configure your AI providers and settings for content enhancement features.</p>
     
-    <form method="post" action="">
-        <?php wp_nonce_field('asap_ai_settings', 'asap_ai_nonce'); ?>
-        
-        <div class="asap-settings-container">
-            <h2>Provider API Keys</h2>
-            <p>Enter your API keys for the providers you want to use.</p>
-            
+    <h2>AI Provider Configuration</h2>
+    <form method="post" action="options.php">
+        <?php settings_fields('asap_ai_settings'); ?>
+        <?php $opts = get_option('asap_ai_settings', []); ?>
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="asap_ai_openai_key">OpenAI API Key</label></th>
-                    <td>
-                        <input type="password" name="asap_ai_openai_key" id="asap_ai_openai_key" value="<?php echo esc_attr($openai_key); ?>" class="regular-text">
-                        <p class="description">Your OpenAI API key for GPT models.</p>
+                <th scope="row"><label for="asap_ai_provider">Provider</label></th>
+                <td>
+                    <select name="asap_ai_settings[provider]" id="asap_ai_provider">
+                        <option value="openai" <?php selected($opts['provider'] ?? '', 'openai'); ?>>OpenAI</option>
+                        <option value="anthropic" <?php selected($opts['provider'] ?? '', 'anthropic'); ?>>Anthropic</option>
+                        <!-- Add more providers as needed -->
+                    </select>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="asap_ai_huggingface_key">Hugging Face API Key</label></th>
+                <th scope="row"><label for="asap_ai_api_key">API Key</label></th>
                     <td>
-                        <input type="password" name="asap_ai_huggingface_key" id="asap_ai_huggingface_key" value="<?php echo esc_attr($huggingface_key); ?>" class="regular-text">
-                        <p class="description">Your Hugging Face API key for transformer models.</p>
+                    <input type="password" name="asap_ai_settings[api_key]" id="asap_ai_api_key" value="<?php echo esc_attr($opts['api_key'] ?? ''); ?>" size="40" autocomplete="off" />
+                    <button type="button" class="button" onclick="asapTestAIConnection()">Test Connection</button>
+                    <span id="ai-test-result"></span>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="asap_ai_anthropic_key">Anthropic API Key</label></th>
+                <th scope="row">Enable AI Provider</th>
                     <td>
-                        <input type="password" name="asap_ai_anthropic_key" id="asap_ai_anthropic_key" value="<?php echo esc_attr($anthropic_key); ?>" class="regular-text">
-                        <p class="description">Your Anthropic API key for Claude models.</p>
+                    <input type="checkbox" name="asap_ai_settings[enabled]" value="1" <?php checked($opts['enabled'] ?? false, true); ?> />
                     </td>
                 </tr>
             </table>
+        <?php submit_button('Save AI Settings'); ?>
+    </form>
             
             <h2>Model Configuration</h2>
             <p>Select the specific models to use for each provider.</p>
@@ -201,8 +208,6 @@ $anthropic_models = [
             <p class="submit">
                 <input type="submit" name="asap_ai_submit" class="button button-primary" value="Save AI Settings">
             </p>
-        </div>
-    </form>
 </div>
 
 <style>
@@ -301,4 +306,45 @@ jQuery(document).ready(function($) {
         });
     }
 });
+
+function asapTestAIConnection() {
+    var provider = document.getElementById('asap_ai_provider').value;
+    var apiKey = document.getElementById('asap_ai_api_key').value;
+    var nonce = typeof asapDigestAdmin !== 'undefined' ? asapDigestAdmin.nonce : '';
+    var resultSpan = document.getElementById('ai-test-result');
+    resultSpan.textContent = 'Testing...';
+    var data = new FormData();
+    data.append('action', 'asap_test_ai_connection');
+    data.append('provider', provider);
+    data.append('api_key', apiKey);
+    data.append('nonce', nonce);
+
+    // Log the data being sent
+    console.log('Testing AI Connection with data:', {
+        action: data.get('action'),
+        provider: data.get('provider'),
+        apiKeyLength: data.get('api_key') ? data.get('api_key').length : 0, // Log length, not the key
+        nonce: data.get('nonce')
+    });
+
+    fetch(ajaxurl, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(json) {
+        if (json.success) {
+            resultSpan.textContent = json.data.message || 'Connection successful!';
+            resultSpan.style.color = 'green';
+        } else {
+            resultSpan.textContent = json.data && json.data.message ? json.data.message : 'Connection failed.';
+            resultSpan.style.color = 'red';
+        }
+    })
+    .catch(function(err) {
+        resultSpan.textContent = 'AJAX error: ' + err;
+        resultSpan.style.color = 'red';
+    });
+}
 </script> 

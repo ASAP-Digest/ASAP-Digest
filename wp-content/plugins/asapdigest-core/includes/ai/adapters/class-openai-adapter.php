@@ -344,4 +344,42 @@ class OpenAIAdapter implements AIProviderAdapter {
         
         return $data;
     }
+    
+    /**
+     * Test connection to OpenAI API
+     * @return bool
+     */
+    public function test_connection() {
+        error_log('[ASAP OpenAIAdapter] Attempting test connection.');
+        $api_key = $this->api_key;
+        if (!$api_key) {
+            error_log('[ASAP OpenAIAdapter] Test connection failed: API key missing.');
+            throw new \Exception('API key is missing.');
+        }
+        error_log('[ASAP OpenAIAdapter] API Key present (length: ' . strlen($api_key) . '). Making request to OpenAI.');
+        $response = wp_remote_get('https://api.openai.com/v1/models', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $api_key,
+            ],
+            'timeout' => 15,
+        ]);
+
+        if (is_wp_error($response)) {
+            error_log('[ASAP OpenAIAdapter] Test connection WP_Error: ' . $response->get_error_message());
+            throw new \Exception('Connection failed: ' . $response->get_error_message());
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+        error_log('[ASAP OpenAIAdapter] Test connection response code: ' . $response_code);
+        error_log('[ASAP OpenAIAdapter] Test connection response body: ' . $response_body);
+
+        if ($response_code === 200) {
+            error_log('[ASAP OpenAIAdapter] Test connection successful.');
+            return true;
+        }
+
+        error_log('[ASAP OpenAIAdapter] Test connection failed with code: ' . $response_code);
+        throw new \Exception('Connection failed with status code: ' . $response_code . ' - ' . $response_body);
+    }
 } 

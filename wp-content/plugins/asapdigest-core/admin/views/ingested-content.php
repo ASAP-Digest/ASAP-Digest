@@ -154,6 +154,44 @@ $quality_ranges = [
             <h2 class="content-detail-title"></h2>
             <div class="content-detail-content"></div>
             
+            <?php if (!empty($content['ai_metadata'])): ?>
+                <?php $ai = json_decode($content['ai_metadata'], true); ?>
+                <div class="content-ai-metadata">
+                    <h3>AI-Enriched Data</h3>
+                    <?php if (!empty($ai['summary'])): ?>
+                        <div class="ai-summary"><strong>Summary:</strong> <?php echo esc_html($ai['summary']); ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($ai['entities'])): ?>
+                        <div class="ai-entities"><strong>Entities:</strong>
+                            <ul>
+                                <?php foreach ($ai['entities'] as $entity): ?>
+                                    <li><?php echo esc_html(is_array($entity) ? ($entity['entity'] ?? $entity['name'] ?? json_encode($entity)) : $entity); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($ai['classifications'])): ?>
+                        <div class="ai-classifications"><strong>Classifications:</strong>
+                            <ul>
+                                <?php foreach ($ai['classifications'] as $class): ?>
+                                    <li><?php echo esc_html(is_array($class) ? ($class['category'] ?? $class['label'] ?? json_encode($class)) : $class); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($ai['keywords'])): ?>
+                        <div class="ai-keywords"><strong>Keywords:</strong>
+                            <ul>
+                                <?php foreach ($ai['keywords'] as $kw): ?>
+                                    <li><?php echo esc_html(is_array($kw) ? ($kw['keyword'] ?? $kw['term'] ?? json_encode($kw)) : $kw); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+                    <button class="button" onclick="asapReEnrichAI(<?php echo (int)$content['id']; ?>)">Re-Run AI Enrichment</button>
+                </div>
+            <?php endif; ?>
+            
             <div class="content-detail-actions">
                 <div class="left-actions">
                     <a href="#" target="_blank" class="button view-original"><?php _e('View Original', 'asapdigest-core'); ?></a>
@@ -200,4 +238,63 @@ $quality_ranges = [
             </div>
         </div>
     </div>
-</div> 
+</div>
+
+<script>
+function asapReEnrichAI(contentId) {
+    var nonce = typeof asapDigestAdmin !== 'undefined' ? asapDigestAdmin.nonce : '';
+    var modal = document.getElementById('content-detail-modal');
+    var aiSection = modal ? modal.querySelector('.content-ai-metadata') : null;
+    if (aiSection) {
+        aiSection.innerHTML = '<em>Re-enriching with AI, please wait...</em>';
+    }
+    var data = new FormData();
+    data.append('action', 'asap_reenrich_content_ai');
+    data.append('content_id', contentId);
+    data.append('nonce', nonce);
+    fetch(ajaxurl, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(json) {
+        if (json.success && json.data && json.data.ai_metadata) {
+            var ai = json.data.ai_metadata;
+            var html = '<h3>AI-Enriched Data</h3>';
+            if (ai.summary) html += '<div class="ai-summary"><strong>Summary:</strong> ' + ai.summary + '</div>';
+            if (ai.entities && ai.entities.length) {
+                html += '<div class="ai-entities"><strong>Entities:</strong><ul>';
+                ai.entities.forEach(function(entity) {
+                    html += '<li>' + (entity.entity || entity.name || JSON.stringify(entity)) + '</li>';
+                });
+                html += '</ul></div>';
+            }
+            if (ai.classifications && ai.classifications.length) {
+                html += '<div class="ai-classifications"><strong>Classifications:</strong><ul>';
+                ai.classifications.forEach(function(cls) {
+                    html += '<li>' + (cls.category || cls.label || JSON.stringify(cls)) + '</li>';
+                });
+                html += '</ul></div>';
+            }
+            if (ai.keywords && ai.keywords.length) {
+                html += '<div class="ai-keywords"><strong>Keywords:</strong><ul>';
+                ai.keywords.forEach(function(kw) {
+                    html += '<li>' + (kw.keyword || kw.term || JSON.stringify(kw)) + '</li>';
+                });
+                html += '</ul></div>';
+            }
+            html += '<button class="button" onclick="asapReEnrichAI(' + contentId + ')">Re-Run AI Enrichment</button>';
+            if (aiSection) aiSection.innerHTML = html;
+        } else {
+            var msg = (json.data && json.data.message) ? json.data.message : 'AI enrichment failed.';
+            if (aiSection) aiSection.innerHTML = '<span style="color:red;">' + msg + '</span>';
+            else alert(msg);
+        }
+    })
+    .catch(function(err) {
+        if (aiSection) aiSection.innerHTML = '<span style="color:red;">AJAX error: ' + err + '</span>';
+        else alert('AJAX error: ' + err);
+    });
+}
+</script> 

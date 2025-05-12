@@ -14,6 +14,7 @@ namespace ASAPDigest\Core\API;
 use WP_Error;
 use WP_REST_Controller;
 use function rest_ensure_response;
+use ASAPDigest\Core\ErrorLogger;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -24,6 +25,13 @@ if (!defined('ABSPATH')) {
  * 
  * Provides common functionality for all REST API controllers
  * 
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  * @since 2.2.0
  */
 abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
@@ -144,6 +152,14 @@ abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
      * Prepare error response
      */
     protected function prepare_error_response($code, $message, $status = 400) {
+        /**
+         * Log REST API error using ErrorLogger utility.
+         * Context: 'rest_base', error_type: $code, severity: 'error'.
+         * Includes message and status for debugging.
+         */
+        ErrorLogger::log('rest_base', $code, $message, [
+            'status' => $status
+        ], 'error');
         return $this->prepare_response(
             new WP_Error($code, $message, ['status' => $status]),
             true
@@ -156,6 +172,15 @@ abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
     protected function validate_params($params, $required = []) {
         foreach ($required as $param) {
             if (!isset($params[$param]) || empty($params[$param])) {
+                /**
+                 * Log missing required parameter using ErrorLogger utility.
+                 * Context: 'rest_base', error_type: 'missing_param', severity: 'warning'.
+                 * Includes missing param and params for debugging.
+                 */
+                ErrorLogger::log('rest_base', 'missing_param', 'Missing required parameter: ' . $param, [
+                    'missing_param' => $param,
+                    'params' => $params
+                ], 'warning');
                 return $this->prepare_error_response(
                     'missing_param',
                     sprintf(__('Missing required parameter: %s', 'asap-digest'), $param)

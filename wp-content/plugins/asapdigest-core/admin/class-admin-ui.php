@@ -77,7 +77,7 @@ class ASAP_Digest_Admin_UI {
             'asap-digest-admin',
             'asapDigestAdmin',
             [
-                'nonce' => wp_create_nonce('asap_digest_admin'),
+                'nonce' => wp_create_nonce('asap_digest_content_nonce'),
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'i18n' => [
                     'confirmReset' => __('Are you sure you want to reset all settings?', 'asap-digest'),
@@ -95,9 +95,18 @@ class ASAP_Digest_Admin_UI {
      */
     private function is_plugin_page($hook) {
         $plugin_pages = [
-            'toplevel_page_asap-digest',
-            'asap-digest_page_asap-digest-settings',
-            'asap-digest_page_asap-digest-stats'
+            'toplevel_page_asap-digest', // This seems to be an old/different top-level page
+            'asap-digest_page_asap-digest-settings', // This also seems part of an old structure
+            'asap-digest_page_asap-digest-stats',    // This also seems part of an old structure
+            'toplevel_page_asap-central-command', // Main page for Central Command
+            'asap-central-command_page_asap-content-sources',
+            'asap-central-command_page_asap-content-library',
+            'asap-central-command_page_asap-moderation-queue',
+            'asap-central-command_page_asap-analytics',
+            'asap-central-command_page_asap-ai-settings', // <-- ADDED THIS LINE
+            'asap-central-command_page_asap-usage-analytics',
+            'asap-central-command_page_asap-service-costs',
+            'asap-central-command_page_asap-settings' // General settings under Central Command
         ];
 
         return in_array($hook, $plugin_pages);

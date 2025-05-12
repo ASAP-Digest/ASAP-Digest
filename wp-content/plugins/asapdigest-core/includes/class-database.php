@@ -547,6 +547,21 @@ class ASAP_Digest_Database {
             
             dbDelta($sql_ba_wp_user_map);
 
+            // Error Log Table (wp_asap_error_log)
+            $sql_error_log = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_error_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                context VARCHAR(64) NOT NULL,
+                error_type VARCHAR(64) NOT NULL,
+                message TEXT NOT NULL,
+                data LONGTEXT,
+                severity VARCHAR(16) NOT NULL DEFAULT 'error',
+                created_at DATETIME NOT NULL,
+                INDEX idx_context (context),
+                INDEX idx_severity (severity),
+                INDEX idx_created_at (created_at)
+            ) {$charset_collate};";
+            dbDelta($sql_error_log);
+
             // Update schema version
             update_option('asap_digest_schema_version', ASAP_DIGEST_SCHEMA_VERSION);
 
@@ -760,4 +775,24 @@ class ASAP_Digest_Database {
             $ba_user_id
         ));
     }
+
+    /**
+     * Create the error log table (wp_asap_error_log)
+     *
+     * Table schema:
+     *   - id: INT AUTO_INCREMENT PRIMARY KEY
+     *   - context: VARCHAR(64) — Subsystem or feature context (e.g. 'crawler', 'ai', 'api')
+     *   - error_type: VARCHAR(64) — Short error type or code (e.g. 'db_error', 'api_failure')
+     *   - message: TEXT — Human-readable error message
+     *   - data: LONGTEXT — JSON-encoded structured data (stack trace, args, etc)
+     *   - severity: VARCHAR(16) — Severity: 'info', 'warning', 'error', 'critical'
+     *   - created_at: DATETIME — Timestamp of error occurrence (UTC)
+     *
+     * Purpose:
+     *   This table provides a unified, queryable log of all significant errors and warnings across plugin subsystems.
+     *   It is used by the ErrorLogger utility and error monitoring UI.
+     *
+     * Usage:
+     *   Use ErrorLogger::log() to insert errors. Query this table for admin error monitoring and alerting.
+     */
 } 

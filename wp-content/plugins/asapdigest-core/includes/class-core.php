@@ -123,6 +123,7 @@ final class ASAP_Digest_Core {
         $this->load_dependencies();
         $this->init_components();
         $this->define_hooks();
+        add_action('admin_init', [ $this, 'register_ai_settings_group' ]);
     }
 
     /**
@@ -485,6 +486,50 @@ final class ASAP_Digest_Core {
      */
     public function get_better_auth() {
         return $this->better_auth;
+    }
+
+    /**
+     * Send a test digest (AJAX handler delegation)
+     * @return WP_Error Always returns error (TODO: implement or delegate)
+     */
+    public function send_test_digest() {
+        return new \WP_Error('not_implemented', __('send_test_digest not implemented in core.', 'asap-digest'));
+    }
+    /**
+     * Get next digest preview (AJAX handler delegation)
+     * @return WP_Error Always returns error (TODO: implement or delegate)
+     */
+    public function get_next_digest_preview() {
+        return new \WP_Error('not_implemented', __('get_next_digest_preview not implemented in core.', 'asap-digest'));
+    }
+    /**
+     * Update settings (AJAX handler delegation)
+     * @param array $settings
+     * @return WP_Error Always returns error (TODO: implement or delegate)
+     */
+    public function update_settings($settings) {
+        return new \WP_Error('not_implemented', __('update_settings not implemented in core.', 'asap-digest'));
+    }
+    /**
+     * Get usage stats (AJAX handler delegation)
+     * @return array|WP_Error
+     */
+    public function get_stats() {
+        return $this->usage_tracker ? $this->usage_tracker->get_stats() : new \WP_Error('no_usage_tracker', __('Usage tracker not available.', 'asap-digest'));
+    }
+    /**
+     * Reset settings (AJAX handler delegation)
+     * @return WP_Error Always returns error (TODO: implement or delegate)
+     */
+    public function reset_settings() {
+        return new \WP_Error('not_implemented', __('reset_settings not implemented in core.', 'asap-digest'));
+    }
+
+    /**
+     * Register AI settings group for Settings API
+     */
+    public function register_ai_settings_group() {
+        register_setting('asap_ai_settings', 'asap_ai_settings');
     }
 }
 

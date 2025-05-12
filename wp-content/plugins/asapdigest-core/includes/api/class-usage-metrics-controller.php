@@ -2,6 +2,13 @@
 /**
  * Usage Metrics & Analytics REST API Controller
  *
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  * @package ASAPDigest_Core
  * @created 05.07.25 | 04:00 PM PDT
  * @file-marker Usage_Metrics_Controller
@@ -14,6 +21,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+use ASAPDigest\Core\ErrorLogger;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_REST_Server;
@@ -105,7 +113,15 @@ class Usage_Metrics_Controller {
                 'error' => null
             ], 200);
         } catch (\Exception $e) {
-            $this->log_error('usage-metrics', $e->getMessage(), $params);
+            /**
+             * Log DB error using ErrorLogger utility.
+             * Context: 'usage_metrics', error_type: 'db_error', severity: 'error'.
+             * Includes exception message, SQL, and params for debugging.
+             */
+            ErrorLogger::log('usage_metrics', 'db_error', $e->getMessage(), [
+                'sql' => $sql,
+                'params' => $params
+            ], 'error');
             return new \WP_REST_Response([
                 'success' => false,
                 'data' => null,
@@ -154,7 +170,15 @@ class Usage_Metrics_Controller {
                 'error' => null
             ], 200);
         } catch (\Exception $e) {
-            $this->log_error('cost-analysis', $e->getMessage(), $params);
+            /**
+             * Log DB error using ErrorLogger utility.
+             * Context: 'cost_analysis', error_type: 'db_error', severity: 'error'.
+             * Includes exception message, SQL, and params for debugging.
+             */
+            ErrorLogger::log('cost_analysis', 'db_error', $e->getMessage(), [
+                'sql' => $sql,
+                'params' => $params
+            ], 'error');
             return new \WP_REST_Response([
                 'success' => false,
                 'data' => null,
@@ -175,6 +199,15 @@ class Usage_Metrics_Controller {
         $required = ['service', 'usage', 'timestamp'];
         $missing = array_filter($required, function($k) use ($body) { return empty($body[$k]); });
         if ($missing) {
+            /**
+             * Log missing required fields using ErrorLogger utility.
+             * Context: 'service_tracking', error_type: 'missing_param', severity: 'warning'.
+             * Includes missing fields and body for debugging.
+             */
+            ErrorLogger::log('service_tracking', 'missing_param', 'Missing required fields: ' . implode(', ', $missing), [
+                'missing_fields' => $missing,
+                'body' => $body
+            ], 'warning');
             return new \WP_REST_Response([
                 'success' => false,
                 'data' => null,
@@ -201,6 +234,7 @@ class Usage_Metrics_Controller {
                     'service'   => $fields['service'],
                     'cost'      => $cost,
                     'timestamp' => $fields['timestamp'],
+                    'user_id'   => $fields['user_id'],
                 ]);
             }
             if ($inserted) {
@@ -213,31 +247,21 @@ class Usage_Metrics_Controller {
                 throw new \Exception('Insert failed.');
             }
         } catch (\Exception $e) {
-            $this->log_error('service-tracking', $e->getMessage(), $body);
+            /**
+             * Log DB error using ErrorLogger utility.
+             * Context: 'service_tracking', error_type: 'db_error', severity: 'error'.
+             * Includes exception message, fields, and body for debugging.
+             */
+            ErrorLogger::log('service_tracking', 'db_error', $e->getMessage(), [
+                'fields' => $fields,
+                'body' => $body
+            ], 'error');
             return new \WP_REST_Response([
                 'success' => false,
                 'data' => null,
                 'error' => $e->getMessage()
             ], 500);
         }
-    }
-
-    /**
-     * Log errors to the asap_error_log table.
-     *
-     * @param string $context
-     * @param string $message
-     * @param array $data
-     */
-    protected function log_error($context, $message, $data = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'asap_error_log';
-        $wpdb->insert($table, [
-            'context'   => sanitize_text_field($context),
-            'message'   => sanitize_text_field($message),
-            'data'      => maybe_serialize($data),
-            'timestamp' => current_time('mysql', 1),
-        ]);
     }
 }
 

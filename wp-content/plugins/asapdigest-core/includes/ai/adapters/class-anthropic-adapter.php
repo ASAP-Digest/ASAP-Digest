@@ -40,6 +40,11 @@ class AnthropicAdapter implements AIProviderAdapter {
     private $timeout = 60;
     
     /**
+     * @var string|null Last raw response for debugging
+     */
+    private $last_response = null;
+    
+    /**
      * Constructor
      * 
      * @param array $options Configuration options
@@ -269,7 +274,6 @@ class AnthropicAdapter implements AIProviderAdapter {
      */
     private function messages_request($data) {
         $endpoint = $this->api_endpoint . '/messages';
-        
         $args = [
             'method' => 'POST',
             'timeout' => $this->timeout,
@@ -280,13 +284,11 @@ class AnthropicAdapter implements AIProviderAdapter {
             ],
             'body' => json_encode($data),
         ];
-        
         $response = wp_remote_post($endpoint, $args);
-        
+        $this->last_response = is_wp_error($response) ? $response->get_error_message() : wp_remote_retrieve_body($response);
         if (is_wp_error($response)) {
             throw new \Exception('API request failed: ' . $response->get_error_message());
         }
-        
         $response_code = wp_remote_retrieve_response_code($response);
         if ($response_code !== 200) {
             $body = wp_remote_retrieve_body($response);
@@ -294,14 +296,67 @@ class AnthropicAdapter implements AIProviderAdapter {
             $error_message = isset($error_data['error']['message']) ? $error_data['error']['message'] : "API returned error code: {$response_code}";
             throw new \Exception($error_message);
         }
-        
         $body = wp_remote_retrieve_body($response);
+        $this->last_response = $body;
         $data = json_decode($body, true);
-        
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new \Exception('Invalid JSON response: ' . json_last_error_msg());
         }
-        
         return $data;
+    }
+    
+    /**
+     * Test connection to Anthropic API
+     * @return bool
+     */
+    public function test_connection() {
+        error_log('[ASAP AnthropicAdapter] Attempting test connection.');
+        $api_key = $this->api_key;
+        if (!$api_key) {
+            error_log('[ASAP AnthropicAdapter] Test connection failed: API key missing.');
+            throw new \Exception('API key is missing.');
+        }
+        error_log('[ASAP AnthropicAdapter] API Key present (length: ' . strlen($api_key) . '). Making request to Anthropic.');
+        $response = wp_remote_post('https://api.anthropic.com/v1/messages', [
+            'method'  => 'POST',
+            'headers' => [
+                'x-api-key'        => $api_key,
+                'anthropic-version' => '2023-06-01',
+                'Content-Type'     => 'application/json'
+            ],
+            'body'    => json_encode([
+                'model' => 'claude-3-haiku-20240307', // Smallest model for a light test
+                'max_tokens' => 10,
+                'messages' => [['role' => 'user', 'content' => 'Hello']]
+            ]),
+            'timeout' => 15, // Added timeout
+        ]);
+
+        $this->last_response = wp_remote_retrieve_body($response); // Store for debugging
+        error_log('[ASAP AnthropicAdapter] Raw test connection response: ' . $this->last_response);
+
+        if (is_wp_error($response)) {
+            error_log('[ASAP AnthropicAdapter] Test connection WP_Error: ' . $response->get_error_message());
+            throw new \Exception('Connection failed: ' . $response->get_error_message());
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        error_log('[ASAP AnthropicAdapter] Test connection response code: ' . $response_code);
+
+        if ($response_code === 200) {
+            error_log('[ASAP AnthropicAdapter] Test connection successful.');
+            return true;
+        }
+
+        error_log('[ASAP AnthropicAdapter] Test connection failed with code: ' . $response_code);
+        throw new \Exception('Connection failed with status code: ' . $response_code . ' - ' . $this->last_response);
+    }
+    
+    /**
+     * Get the last raw response (for debugging)
+     * @return string|null
+     */
+    public function get_last_response() {
+        return $this->last_response;
     }
 } 

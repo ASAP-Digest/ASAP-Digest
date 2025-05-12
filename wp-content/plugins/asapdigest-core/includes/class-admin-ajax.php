@@ -14,6 +14,7 @@ use function check_ajax_referer;
 use function current_user_can;
 use function wp_send_json_error;
 use function wp_send_json_success;
+use ASAPDigest\Core\ErrorLogger;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -49,6 +50,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $result = $this->core->send_test_digest();
         if (is_wp_error($result)) {
+            /**
+             * Log test digest error using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'send_test_failed', severity: 'error'.
+             * Includes error message for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'send_test_failed', $result->get_error_message(), [], 'error');
             wp_send_json_error([
                 'message' => $result->get_error_message()
             ]);
@@ -67,6 +74,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $preview = $this->core->get_next_digest_preview();
         if (is_wp_error($preview)) {
+            /**
+             * Log preview error using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'preview_next_failed', severity: 'error'.
+             * Includes error message for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'preview_next_failed', $preview->get_error_message(), [], 'error');
             wp_send_json_error([
                 'message' => $preview->get_error_message()
             ]);
@@ -98,6 +111,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $result = $this->core->update_settings($settings);
         if (is_wp_error($result)) {
+            /**
+             * Log save settings error using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'save_settings_failed', severity: 'error'.
+             * Includes error message and settings for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'save_settings_failed', $result->get_error_message(), [ 'settings' => $settings ], 'error');
             wp_send_json_error([
                 'message' => $result->get_error_message()
             ]);
@@ -116,6 +135,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $format = filter_input(INPUT_POST, 'format', FILTER_SANITIZE_STRING);
         if (!in_array($format, ['csv', 'json'])) {
+            /**
+             * Log invalid export format using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'invalid_export_format', severity: 'warning'.
+             * Includes format for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'invalid_export_format', 'Invalid export format', [ 'format' => $format ], 'warning');
             wp_send_json_error([
                 'message' => __('Invalid export format.', 'asap-digest')
             ]);
@@ -123,6 +148,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $stats = $this->core->get_stats();
         if (is_wp_error($stats)) {
+            /**
+             * Log export stats error using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'export_stats_failed', severity: 'error'.
+             * Includes error message for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'export_stats_failed', $stats->get_error_message(), [], 'error');
             wp_send_json_error([
                 'message' => $stats->get_error_message()
             ]);
@@ -151,6 +182,12 @@ class ASAP_Digest_Admin_Ajax {
 
         $result = $this->core->reset_settings();
         if (is_wp_error($result)) {
+            /**
+             * Log reset settings error using ErrorLogger utility.
+             * Context: 'admin_ajax', error_type: 'reset_settings_failed', severity: 'error'.
+             * Includes error message for debugging.
+             */
+            ErrorLogger::log('admin_ajax', 'reset_settings_failed', $result->get_error_message(), [], 'error');
             wp_send_json_error([
                 'message' => $result->get_error_message()
             ]);

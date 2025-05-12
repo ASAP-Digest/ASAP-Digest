@@ -6,11 +6,21 @@
 
 namespace AsapDigest\AI;
 
+use ASAPDigest\Core\ErrorLogger;
+
 /**
  * AI Service Manager
  * 
  * Manages AI service providers, selects the appropriate provider for each task,
  * and provides a unified interface for AI operations.
+ *
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  */
 class AIServiceManager {
     /**
@@ -190,12 +200,33 @@ class AIServiceManager {
     public function summarize($text, $options = []) {
         $provider = $this->get_provider_for_task('summarize');
         if (!$provider) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for summarization', [
+                'task' => 'summarize',
+                'options' => $options
+            ], 'error');
             throw new \Exception("No AI provider available for summarization");
         }
-        
         $this->track_usage('summarize', $provider, strlen($text));
-        
-        return $provider->summarize($text, $options);
+        try {
+            return $provider->summarize($text, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'summarize',
+                'options' => $options,
+                'text_length' => strlen($text)
+            ], 'critical');
+            throw $e;
+        }
     }
     
     /**
@@ -208,12 +239,33 @@ class AIServiceManager {
     public function extract_entities($text, $options = []) {
         $provider = $this->get_provider_for_task('extract_entities');
         if (!$provider) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for entity extraction', [
+                'task' => 'extract_entities',
+                'options' => $options
+            ], 'error');
             throw new \Exception("No AI provider available for entity extraction");
         }
-        
         $this->track_usage('extract_entities', $provider, strlen($text));
-        
-        return $provider->extract_entities($text, $options);
+        try {
+            return $provider->extract_entities($text, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'extract_entities',
+                'options' => $options,
+                'text_length' => strlen($text)
+            ], 'critical');
+            throw $e;
+        }
     }
     
     /**
@@ -227,12 +279,35 @@ class AIServiceManager {
     public function classify($text, $categories = [], $options = []) {
         $provider = $this->get_provider_for_task('classify');
         if (!$provider) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task, categories, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for classification', [
+                'task' => 'classify',
+                'categories' => $categories,
+                'options' => $options
+            ], 'error');
             throw new \Exception("No AI provider available for classification");
         }
-        
         $this->track_usage('classify', $provider, strlen($text));
-        
-        return $provider->classify($text, $categories, $options);
+        try {
+            return $provider->classify($text, $categories, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, categories, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'classify',
+                'categories' => $categories,
+                'options' => $options,
+                'text_length' => strlen($text)
+            ], 'critical');
+            throw $e;
+        }
     }
     
     /**
@@ -245,12 +320,33 @@ class AIServiceManager {
     public function generate_keywords($text, $options = []) {
         $provider = $this->get_provider_for_task('generate_keywords');
         if (!$provider) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for keyword generation', [
+                'task' => 'generate_keywords',
+                'options' => $options
+            ], 'error');
             throw new \Exception("No AI provider available for keyword generation");
         }
-        
         $this->track_usage('generate_keywords', $provider, strlen($text));
-        
-        return $provider->generate_keywords($text, $options);
+        try {
+            return $provider->generate_keywords($text, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'generate_keywords',
+                'options' => $options,
+                'text_length' => strlen($text)
+            ], 'critical');
+            throw $e;
+        }
     }
     
     /**
@@ -263,12 +359,33 @@ class AIServiceManager {
     public function process_image($image_url, $options = []) {
         $provider = $this->get_provider_for_task('process_image');
         if (!$provider || !method_exists($provider, 'process_image')) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for image processing', [
+                'task' => 'process_image',
+                'options' => $options
+            ], 'error');
             throw new \Exception("No AI provider available for image processing");
         }
-        
         $this->track_usage('process_image', $provider, 1); // Count 1 image
-        
-        return $provider->process_image($image_url, $options);
+        try {
+            return $provider->process_image($image_url, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'process_image',
+                'options' => $options,
+                'image_url' => $image_url
+            ], 'critical');
+            throw $e;
+        }
     }
     
     /**

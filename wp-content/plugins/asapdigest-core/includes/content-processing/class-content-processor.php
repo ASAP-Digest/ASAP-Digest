@@ -5,6 +5,13 @@
  * Central hub for content processing pipeline that ties together validation,
  * deduplication, and quality scoring.
  *
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  * @package ASAP_Digest
  * @subpackage Content_Processing
  * @since 2.2.0
@@ -15,6 +22,8 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+use ASAPDigest\Core\ErrorLogger;
 
 /**
  * Content Processor class
@@ -91,6 +100,15 @@ class ASAP_Digest_Content_Processor {
         
         if (!$is_valid) {
             $this->results['errors'] = $this->validator->get_errors();
+            /**
+             * Log validation failure using ErrorLogger utility.
+             * Context: 'content_processing', error_type: 'validation_failed', severity: 'warning'.
+             * Includes validation errors and content data for debugging.
+             */
+            ErrorLogger::log('content_processing', 'validation_failed', 'Content validation failed', [
+                'errors' => $this->validator->get_errors(),
+                'content_data' => $content_data
+            ], 'warning');
             return $this->results;
         }
         
@@ -102,6 +120,16 @@ class ASAP_Digest_Content_Processor {
             $duplicate_details = $this->deduplicator->get_duplicate_details($duplicate_id);
             $this->results['errors']['duplicate'] = 'Content duplicate found (ID: ' . $duplicate_id . ')';
             $this->results['data']['duplicate'] = $duplicate_details;
+            /**
+             * Log deduplication failure using ErrorLogger utility.
+             * Context: 'content_processing', error_type: 'duplicate', severity: 'warning'.
+             * Includes duplicate ID, details, and content data for debugging.
+             */
+            ErrorLogger::log('content_processing', 'duplicate', 'Content duplicate found', [
+                'duplicate_id' => $duplicate_id,
+                'duplicate_details' => $duplicate_details,
+                'content_data' => $content_data
+            ], 'warning');
             return $this->results;
         }
         
@@ -109,6 +137,39 @@ class ASAP_Digest_Content_Processor {
         $this->quality->set_content_data($content_data);
         $quality_assessment = $this->quality->assess();
         $quality_score = $quality_assessment['score'];
+        
+        // Step 4: AI enrichment (summarization, entities, classification, keywords)
+        $ai_metadata = [
+            'summary' => '',
+            'entities' => [],
+            'classifications' => [],
+            'keywords' => []
+        ];
+        try {
+            require_once dirname(__FILE__, 2) . '/ai/class-ai-service-manager.php';
+            $ai_manager = new \AsapDigest\AI\AIServiceManager();
+            // Summarize
+            $ai_metadata['summary'] = $ai_manager->summarize($content_data['content']);
+        } catch (\Exception $e) {
+            ErrorLogger::log('ai_enrichment', 'summarize_error', $e->getMessage(), ['content_data' => $content_data], 'warning');
+        }
+        try {
+            $ai_metadata['entities'] = $ai_manager->extract_entities($content_data['content']);
+        } catch (\Exception $e) {
+            ErrorLogger::log('ai_enrichment', 'entities_error', $e->getMessage(), ['content_data' => $content_data], 'warning');
+        }
+        try {
+            $ai_metadata['classifications'] = $ai_manager->classify($content_data['content'], []);
+        } catch (\Exception $e) {
+            ErrorLogger::log('ai_enrichment', 'classify_error', $e->getMessage(), ['content_data' => $content_data], 'warning');
+        }
+        try {
+            $ai_metadata['keywords'] = $ai_manager->generate_keywords($content_data['content']);
+        } catch (\Exception $e) {
+            ErrorLogger::log('ai_enrichment', 'keywords_error', $e->getMessage(), ['content_data' => $content_data], 'warning');
+        }
+        // Store AI metadata as JSON
+        $content_data['ai_metadata'] = json_encode($ai_metadata);
         
         // Optionally check if quality score is below auto-reject threshold
         if (defined('ASAP_QUALITY_SCORE_AUTO_REJECT') && $quality_score < ASAP_QUALITY_SCORE_AUTO_REJECT) {
@@ -118,6 +179,16 @@ class ASAP_Digest_Content_Processor {
                 ASAP_QUALITY_SCORE_AUTO_REJECT
             );
             $this->results['data']['quality_assessment'] = $quality_assessment;
+            /**
+             * Log quality score auto-reject using ErrorLogger utility.
+             * Context: 'content_processing', error_type: 'quality_score', severity: 'warning'.
+             * Includes score, threshold, and content data for debugging.
+             */
+            ErrorLogger::log('content_processing', 'quality_score', 'Content quality score below threshold', [
+                'score' => $quality_score,
+                'threshold' => ASAP_QUALITY_SCORE_AUTO_REJECT,
+                'content_data' => $content_data
+            ], 'warning');
             return $this->results;
         }
         
@@ -164,28 +235,32 @@ class ASAP_Digest_Content_Processor {
         if (!isset($processed_data['success']) || !$processed_data['success'] || 
             !isset($processed_data['data']) || !is_array($processed_data['data'])) {
             $result['errors'][] = 'Invalid processed data provided';
+            /**
+             * Log invalid processed data using ErrorLogger utility.
+             * Context: 'content_processing', error_type: 'invalid_processed_data', severity: 'error'.
+             * Includes processed_data and update_id for debugging.
+             */
+            ErrorLogger::log('content_processing', 'invalid_processed_data', 'Invalid processed data provided to save()', [
+                'processed_data' => $processed_data,
+                'update_id' => $update_id
+            ], 'error');
             return $result;
         }
-        
         $content_data = $processed_data['data']['content'];
         $fingerprint = $processed_data['data']['fingerprint'];
         $quality_score = $processed_data['data']['quality_score'];
-        
         // Check if we should use ContentStorage integration
         if (defined('ASAP_USE_CONTENT_STORAGE_INTEGRATION') && ASAP_USE_CONTENT_STORAGE_INTEGRATION) {
             // Get the ContentStorage class name from config
             $storage_class = defined('ASAP_CONTENT_STORAGE_CLASS') ? ASAP_CONTENT_STORAGE_CLASS : 'AsapDigest\\Crawler\\ContentStorage';
-            
             // Check if class exists
             if (class_exists($storage_class)) {
                 try {
                     // Initialize storage class
                     $storage = new $storage_class();
-                    
                     // Add quality information to content data
                     $content_data['quality_score'] = $quality_score;
                     $content_data['fingerprint'] = $fingerprint;
-                    
                     if (!empty($processed_data['data']['quality_assessment'])) {
                         // Add quality assessment to extra data
                         if (!isset($content_data['extra'])) {
@@ -193,118 +268,149 @@ class ASAP_Digest_Content_Processor {
                         }
                         $content_data['extra']['quality_assessment'] = $processed_data['data']['quality_assessment'];
                     }
-                    
                     // Store content using ContentStorage
                     $storage_id = $update_id ? $storage->update($update_id, $content_data) : $storage->store($content_data);
-                    
                     if ($storage_id) {
                         $result['success'] = true;
                         $result['content_id'] = $storage_id;
-                        
-                        // Trigger appropriate action
-                        if ($update_id) {
-                            do_action('asap_content_updated', $storage_id, $content_data);
-                        } else {
-                            do_action('asap_content_added', $storage_id, $content_data);
-                        }
-                        
-                        return $result;
                     } else {
-                        $result['errors'][] = 'ContentStorage failed to store the content';
+                        $result['errors'][] = 'Failed to store content using ContentStorage';
+                        /**
+                         * Log storage failure using ErrorLogger utility.
+                         * Context: 'content_processing', error_type: 'storage_failed', severity: 'error'.
+                         * Includes content_data and update_id for debugging.
+                         */
+                        ErrorLogger::log('content_processing', 'storage_failed', 'Failed to store content using ContentStorage', [
+                            'content_data' => $content_data,
+                            'update_id' => $update_id
+                        ], 'error');
                     }
                 } catch (\Exception $e) {
-                    $result['errors'][] = 'Error using ContentStorage: ' . $e->getMessage();
-                    // Fall back to default storage method
+                    $result['errors'][] = 'Exception during ContentStorage: ' . $e->getMessage();
+                    /**
+                     * Log ContentStorage exception using ErrorLogger utility.
+                     * Context: 'content_processing', error_type: 'storage_exception', severity: 'critical'.
+                     * Includes exception message, stack trace, content_data, and update_id for debugging.
+                     */
+                    ErrorLogger::log('content_processing', 'storage_exception', $e->getMessage(), [
+                        'trace' => $e->getTraceAsString(),
+                        'content_data' => $content_data,
+                        'update_id' => $update_id
+                    ], 'critical');
                 }
+            } else {
+                $result['errors'][] = 'ContentStorage class not found: ' . $storage_class;
+                /**
+                 * Log missing ContentStorage class using ErrorLogger utility.
+                 * Context: 'content_processing', error_type: 'storage_class_missing', severity: 'error'.
+                 * Includes storage_class and content_data for debugging.
+                 */
+                ErrorLogger::log('content_processing', 'storage_class_missing', 'ContentStorage class not found', [
+                    'storage_class' => $storage_class,
+                    'content_data' => $content_data
+                ], 'error');
             }
-        }
-        
-        // Default storage implementation if ContentStorage integration is disabled or failed
-        // Prepare data for database
-        $content_table = $wpdb->prefix . 'asap_ingested_content';
-        $now = current_time('mysql');
-        
-        $db_data = [
-            'type' => sanitize_text_field($content_data['type'] ?? 'article'),
-            'title' => sanitize_text_field($content_data['title'] ?? ''),
-            'content' => $content_data['content'] ?? '',
-            'summary' => sanitize_text_field($content_data['summary'] ?? ''),
-            'source_url' => esc_url_raw($content_data['source_url'] ?? ''),
-            'source_id' => sanitize_text_field($content_data['source_id'] ?? ''),
-            'fingerprint' => $fingerprint,
-            'quality_score' => $quality_score,
-            'status' => sanitize_text_field($content_data['status'] ?? 'pending'),
-            'updated_at' => $now,
-        ];
-        
-        // Handle publish date
-        if (!empty($content_data['publish_date'])) {
-            $db_data['publish_date'] = date('Y-m-d H:i:s', strtotime($content_data['publish_date']));
-        }
-        
-        // Handle extra data as JSON
-        if (!empty($content_data['extra']) && is_array($content_data['extra'])) {
-            $db_data['extra'] = json_encode($content_data['extra']);
-        }
-        
-        // Update or insert based on update_id
-        if ($update_id > 0) {
-            // Update existing content
-            $result_query = $wpdb->update(
-                $content_table,
-                $db_data,
-                ['id' => $update_id]
-            );
-            
-            if ($result_query === false) {
-                $result['errors'][] = 'Database error updating content: ' . $wpdb->last_error;
-                return $result;
-            }
-            
-            // Update index
-            $index_result = $this->deduplicator->add_to_index($update_id, $fingerprint, $quality_score);
-            
-            if (!$index_result) {
-                $result['errors'][] = 'Error updating content index';
-                return $result;
-            }
-            
-            $result['success'] = true;
-            $result['content_id'] = $update_id;
-            
-            // Trigger update action
-            do_action('asap_content_updated', $update_id, $db_data);
         } else {
-            // Insert new content
-            $db_data['ingestion_date'] = $now;
-            $db_data['created_at'] = $now;
-            
-            $result_query = $wpdb->insert($content_table, $db_data);
-            
-            if ($result_query === false) {
-                $result['errors'][] = 'Database error inserting content: ' . $wpdb->last_error;
-                return $result;
+            // Default storage implementation if ContentStorage integration is disabled or failed
+            // Prepare data for database
+            try {
+                $content_table = $wpdb->prefix . 'asap_ingested_content';
+                $now = current_time('mysql');
+                
+                $db_data = [
+                    'type' => sanitize_text_field($content_data['type'] ?? 'article'),
+                    'title' => sanitize_text_field($content_data['title'] ?? ''),
+                    'content' => $content_data['content'] ?? '',
+                    'summary' => sanitize_text_field($content_data['summary'] ?? ''),
+                    'source_url' => esc_url_raw($content_data['source_url'] ?? ''),
+                    'source_id' => sanitize_text_field($content_data['source_id'] ?? ''),
+                    'fingerprint' => $fingerprint,
+                    'quality_score' => $quality_score,
+                    'status' => sanitize_text_field($content_data['status'] ?? 'pending'),
+                    'updated_at' => $now,
+                ];
+                
+                // Handle publish date
+                if (!empty($content_data['publish_date'])) {
+                    $db_data['publish_date'] = date('Y-m-d H:i:s', strtotime($content_data['publish_date']));
+                }
+                
+                // Handle extra data as JSON
+                if (!empty($content_data['extra']) && is_array($content_data['extra'])) {
+                    $db_data['extra'] = json_encode($content_data['extra']);
+                }
+                
+                // Update or insert based on update_id
+                if ($update_id > 0) {
+                    // Update existing content
+                    $result_query = $wpdb->update(
+                        $content_table,
+                        $db_data,
+                        ['id' => $update_id]
+                    );
+                    
+                    if ($result_query === false) {
+                        $result['errors'][] = 'Database error updating content: ' . $wpdb->last_error;
+                        return $result;
+                    }
+                    
+                    // Update index
+                    $index_result = $this->deduplicator->add_to_index($update_id, $fingerprint, $quality_score);
+                    
+                    if (!$index_result) {
+                        $result['errors'][] = 'Error updating content index';
+                        return $result;
+                    }
+                    
+                    $result['success'] = true;
+                    $result['content_id'] = $update_id;
+                    
+                    // Trigger update action
+                    do_action('asap_content_updated', $update_id, $db_data);
+                } else {
+                    // Insert new content
+                    $db_data['ingestion_date'] = $now;
+                    $db_data['created_at'] = $now;
+                    
+                    $result_query = $wpdb->insert($content_table, $db_data);
+                    
+                    if ($result_query === false) {
+                        $result['errors'][] = 'Database error inserting content: ' . $wpdb->last_error;
+                        return $result;
+                    }
+                    
+                    $content_id = (int) $wpdb->insert_id;
+                    
+                    // Add to index
+                    $index_result = $this->deduplicator->add_to_index($content_id, $fingerprint, $quality_score);
+                    
+                    if (!$index_result) {
+                        // If adding to index fails, attempt to delete the content to maintain consistency
+                        $wpdb->delete($content_table, ['id' => $content_id]);
+                        $result['errors'][] = 'Error adding content to index';
+                        return $result;
+                    }
+                    
+                    $result['success'] = true;
+                    $result['content_id'] = $content_id;
+                    
+                    // Trigger create action
+                    do_action('asap_content_added', $content_id, $db_data);
+                }
+            } catch (\Exception $e) {
+                $result['errors'][] = 'Exception during DB insert: ' . $e->getMessage();
+                /**
+                 * Log DB insert exception using ErrorLogger utility.
+                 * Context: 'content_processing', error_type: 'db_insert_exception', severity: 'critical'.
+                 * Includes exception message, stack trace, content_data, and update_id for debugging.
+                 */
+                ErrorLogger::log('content_processing', 'db_insert_exception', $e->getMessage(), [
+                    'trace' => $e->getTraceAsString(),
+                    'content_data' => $content_data,
+                    'update_id' => $update_id
+                ], 'critical');
             }
-            
-            $content_id = (int) $wpdb->insert_id;
-            
-            // Add to index
-            $index_result = $this->deduplicator->add_to_index($content_id, $fingerprint, $quality_score);
-            
-            if (!$index_result) {
-                // If adding to index fails, attempt to delete the content to maintain consistency
-                $wpdb->delete($content_table, ['id' => $content_id]);
-                $result['errors'][] = 'Error adding content to index';
-                return $result;
-            }
-            
-            $result['success'] = true;
-            $result['content_id'] = $content_id;
-            
-            // Trigger create action
-            do_action('asap_content_added', $content_id, $db_data);
         }
-        
         return $result;
     }
 

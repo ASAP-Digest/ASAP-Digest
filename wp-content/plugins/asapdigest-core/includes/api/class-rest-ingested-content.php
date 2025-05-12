@@ -2,6 +2,13 @@
 /**
  * ASAP Digest REST API Ingested Content Controller
  *
+ * Error Handling & Logging:
+ *   - All critical errors and exceptions are logged using the ErrorLogger utility (see \ASAPDigest\Core\ErrorLogger).
+ *   - Errors are recorded in the wp_asap_error_log table with context, type, message, data, and severity.
+ *   - PHP error_log is used as a fallback and for development/debugging.
+ *   - This ensures a unified, queryable error log for admin monitoring and alerting.
+ *
+ * @see \ASAPDigest\Core\ErrorLogger
  * @package ASAPDigest_Core
  * @created 2025-05-10
  * @file-marker ASAP_Digest_REST_Ingested_Content
@@ -9,6 +16,7 @@
 
 namespace ASAPDigest\Core\API;
 
+use ASAPDigest\Core\ErrorLogger;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
@@ -337,6 +345,15 @@ class ASAP_Digest_REST_Ingested_Content extends ASAP_Digest_REST_Base {
         $required = ['type', 'title', 'content', 'source_url'];
         foreach ($required as $field) {
             if (empty($params[$field])) {
+                /**
+                 * Log missing parameter using ErrorLogger utility.
+                 * Context: 'rest_ingested_content', error_type: 'missing_param', severity: 'warning'.
+                 * Includes missing field and params for debugging.
+                 */
+                ErrorLogger::log('rest_ingested_content', 'missing_param', 'Missing required parameter: ' . $field, [
+                    'missing_field' => $field,
+                    'params' => $params
+                ], 'warning');
                 return $this->prepare_error_response(
                     'missing_param',
                     sprintf(__('Missing required parameter: %s', 'asap-digest'), $field)
@@ -360,6 +377,15 @@ class ASAP_Digest_REST_Ingested_Content extends ASAP_Digest_REST_Base {
             $fingerprint
         ));
         if ($existing_id) {
+            /**
+             * Log duplicate content using ErrorLogger utility.
+             * Context: 'rest_ingested_content', error_type: 'duplicate_content', severity: 'warning'.
+             * Includes fingerprint and params for debugging.
+             */
+            ErrorLogger::log('rest_ingested_content', 'duplicate_content', 'Content with this fingerprint already exists.', [
+                'fingerprint' => $fingerprint,
+                'params' => $params
+            ], 'warning');
             return $this->prepare_error_response(
                 'duplicate_content',
                 __('Content with this fingerprint already exists.', 'asap-digest'),
@@ -392,6 +418,15 @@ class ASAP_Digest_REST_Ingested_Content extends ASAP_Digest_REST_Base {
         ];
         $result = $wpdb->insert($wpdb->prefix . 'asap_ingested_content', $insert_data);
         if (!$result) {
+            /**
+             * Log DB insert error using ErrorLogger utility.
+             * Context: 'rest_ingested_content', error_type: 'db_insert_error', severity: 'error'.
+             * Includes last_error and insert_data for debugging.
+             */
+            ErrorLogger::log('rest_ingested_content', 'db_insert_error', $wpdb->last_error ?: 'Failed to insert content.', [
+                'insert_data' => $insert_data,
+                'params' => $params
+            ], 'error');
             return $this->prepare_error_response(
                 'db_insert_error',
                 $wpdb->last_error ?: __('Failed to insert content.', 'asap-digest'),
@@ -449,6 +484,15 @@ class ASAP_Digest_REST_Ingested_Content extends ASAP_Digest_REST_Base {
         $content_item = $processor->get_content($content_id);
         
         if (!$content_item) {
+            /**
+             * Log not found error using ErrorLogger utility.
+             * Context: 'rest_ingested_content', error_type: 'not_found', severity: 'warning'.
+             * Includes content_id and request for debugging.
+             */
+            ErrorLogger::log('rest_ingested_content', 'not_found', 'Content not found for get_similar_content', [
+                'content_id' => $content_id,
+                'request' => $request->get_params()
+            ], 'warning');
             return new WP_Error(
                 'rest_item_not_found',
                 __('Content not found.'),

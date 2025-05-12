@@ -32,6 +32,100 @@ function asap_digest_init_ajax_handlers() {
     // Quality Settings AJAX handlers
     add_action('wp_ajax_asap_get_quality_settings', 'asap_digest_ajax_get_quality_settings');
     add_action('wp_ajax_asap_save_quality_settings', 'asap_digest_ajax_save_quality_settings');
+
+    // AI Provider Test Connection AJAX Handler
+    add_action('wp_ajax_asap_test_ai_connection', function() {
+        error_log('[ASAP AI TEST HANDLER] Entered asap_test_ai_connection AJAX handler.');
+        error_log('[ASAP AI TEST HANDLER] Raw POST data: ' . print_r($_POST, true));
+
+        if (!current_user_can('manage_options')) {
+            error_log('[ASAP AI TEST] Permission denied for user: ' . get_current_user_id());
+            wp_send_json_error(['message' => 'Insufficient permissions'], 403);
+        }
+        check_ajax_referer('asap_digest_content_nonce', 'nonce');
+        $provider = sanitize_text_field($_POST['provider'] ?? '');
+        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+        error_log('[ASAP AI TEST] Provider: ' . $provider . ' | API key length: ' . strlen($api_key));
+        if (!$provider || !$api_key) {
+            error_log('[ASAP AI TEST] Missing provider or API key.');
+            wp_send_json_error(['message' => 'Provider and API key required.']);
+        }
+        require_once dirname(__FILE__, 2) . '/includes/ai/class-ai-service-manager.php';
+        $result = false;
+        $error = '';
+        $debug = '';
+        try {
+            $manager = new \AsapDigest\AI\AIServiceManager();
+            if ($provider === 'openai' && class_exists('AsapDigest\AI\Adapters\OpenAIAdapter')) {
+                $adapter = new \AsapDigest\AI\Adapters\OpenAIAdapter(['api_key' => $api_key]);
+                try {
+                    $result = $adapter->test_connection();
+                } catch (\Exception $e) {
+                    $error = $e->getMessage();
+                    error_log('[ASAP AI TEST][OpenAI] Exception: ' . $error);
+                }
+            } elseif ($provider === 'anthropic' && class_exists('AsapDigest\AI\Adapters\AnthropicAdapter')) {
+                $adapter = new \AsapDigest\AI\Adapters\AnthropicAdapter(['api_key' => $api_key]);
+                try {
+                    $result = $adapter->test_connection();
+                } catch (\Exception $e) {
+                    $error = $e->getMessage();
+                    error_log('[ASAP AI TEST][Anthropic] Exception: ' . $error);
+                    if (method_exists($adapter, 'get_last_response')) {
+                        $debug = $adapter->get_last_response();
+                        error_log('[ASAP AI TEST][Anthropic] Last response: ' . $debug);
+                    }
+                }
+            } else {
+                $error = 'Provider not supported or adapter missing.';
+                error_log('[ASAP AI TEST] ' . $error);
+            }
+        } catch (\Exception $e) {
+            $error = $e->getMessage();
+            error_log('[ASAP AI TEST] Outer exception: ' . $error);
+        }
+        if ($result === true) {
+            error_log('[ASAP AI TEST] Connection successful for provider: ' . $provider);
+            wp_send_json_success(['message' => 'Connection successful!']);
+        } else {
+            $msg = $error ?: 'Connection failed.';
+            if ($debug) {
+                $msg .= ' [Debug: ' . $debug . ']';
+            }
+            error_log('[ASAP AI TEST] Final error: ' . $msg);
+            wp_send_json_error(['message' => $msg]);
+        }
+    });
+
+    // Re-Run AI Enrichment AJAX Handler
+    add_action('wp_ajax_asap_reenrich_content_ai', function() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Insufficient permissions'], 403);
+        }
+        check_ajax_referer('asap_digest_content_nonce', 'nonce');
+        $content_id = intval($_POST['content_id'] ?? 0);
+        if (!$content_id) {
+            wp_send_json_error(['message' => 'Content ID required.']);
+        }
+        global $wpdb;
+        $table = $wpdb->prefix . 'asap_ingested_content';
+        $content = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $content_id), ARRAY_A);
+        if (!$content) {
+            wp_send_json_error(['message' => 'Content not found.']);
+        }
+        require_once dirname(__FILE__, 2) . '/includes/content-processing/class-content-processor.php';
+        $processor = new \ASAP_Digest_Content_Processor();
+        $result = $processor->process($content);
+        if (!empty($result['success'])) {
+            // Save new ai_metadata
+            $ai_metadata = $result['data']['content']['ai_metadata'] ?? '';
+            $wpdb->update($table, ['ai_metadata' => $ai_metadata], ['id' => $content_id], ['%s'], ['%d']);
+            wp_send_json_success(['ai_metadata' => json_decode($ai_metadata, true)]);
+        } else {
+            $msg = $result['errors'] ? implode('; ', (array)$result['errors']) : 'AI enrichment failed.';
+            wp_send_json_error(['message' => $msg]);
+        }
+    });
 }
 add_action('init', 'asap_digest_init_ajax_handlers');
 

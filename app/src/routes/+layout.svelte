@@ -55,6 +55,7 @@
   // import { PUBLIC_WP_API_URL } from '$env/dynamic/public'; 
   // Import the enhanced user utils
   import { getAvatarUrl } from '$lib/stores/user.js';
+  import { theme, setTheme, getAvailableThemes } from '$lib/stores/theme.js';
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -389,6 +390,37 @@
     } catch (error) {
       console.error('[Layout] Error initializing layout:', error);
     }
+
+    // Initialize theme system on mount
+    console.log('🚀 App layout mounted, initializing theme system');
+    
+    // Log available themes for debugging
+    console.log('Available themes in layout:', getAvailableThemes());
+    
+    // Debug theme availability after a small delay to allow CSS to load
+    setTimeout(() => {
+      try {
+        const availableThemes = getAvailableThemes();
+        console.log('Available themes after delay:', availableThemes);
+      } catch (error) {
+        console.error('Error getting available themes:', error);
+      }
+    }, 500);
+    
+    // Subscribe to theme changes for debugging
+    const unsubscribe = theme.subscribe(value => {
+      console.log(`📱 Theme changed to: ${value}`);
+      // Force re-application of theme to ensure proper rendering
+      if (value === 'default') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', value);
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   });
 
   /**
@@ -525,7 +557,7 @@
           {/if}
           <!-- Logo -->
           <span class="text-xl font-semibold">
-            <span class="text-[hsl(var(--primary))]">⚡️ ASAP</span> Digest
+            <span>⚡️ </span><span class="gradient-text">ASAP</span> Digest
           </span>
         </div>
         
@@ -737,6 +769,18 @@
     transition-duration: 300ms;
   }
   
+  /* Gradient text styling */
+  .gradient-text {
+    background: linear-gradient(5deg, rgba(255, 255, 255, 1) 0%, rgba(153, 82, 224, 1) 30%, rgba(26, 198, 255, 1) 61%, rgba(255, 255, 255, 1) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: inline-block;
+    font-weight: 700;
+    padding: 0 2px; /* Small padding to ensure gradient edges are visible */
+  }
+  
   :global(img:not(.lazy)) {
     opacity: 100;
   }
@@ -772,5 +816,54 @@
     .mobile-menu-trigger {
       display: block; /* Shown on mobile */
     }
+  }
+
+  :global(.theme-button-clicked) {
+    transform: scale(0.9) !important;
+    opacity: 0.8 !important;
+    transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out !important;
+  }
+  
+  :global(.theme-button[class*="bg-"]) {
+    position: relative;
+  }
+  
+  :global(.theme-button[style*="background-color: hsl(var(--brand) / 0.3);"]::after) {
+    content: "✓";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    font-size: 0.5rem;
+    background-color: hsl(var(--brand));
+    color: hsl(var(--brand-fg));
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Direct styling of theme buttons to ensure checkmarks appear properly */
+  :global(.theme-button.active-theme) {
+    background-color: hsl(var(--brand) / 0.3) !important;
+    position: relative;
+  }
+  
+  :global(.theme-button.active-theme::after) {
+    content: "✓";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    font-size: 0.5rem;
+    background-color: hsl(var(--brand));
+    color: hsl(var(--brand-fg));
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
   }
 </style>
