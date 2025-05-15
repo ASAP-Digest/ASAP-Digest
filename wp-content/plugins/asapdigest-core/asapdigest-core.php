@@ -22,6 +22,7 @@ error_log('ASAP_CORE_DEBUG: START of asapdigest-core.php');
 
 // Define constants
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
+define('ASAP_DIGEST_VERSION', '3.0.0');
 define('ASAP_DIGEST_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ASAP_DIGEST_PLUGIN_URL', plugin_dir_url(__FILE__));
 error_log('ASAP_CORE_DEBUG: Constants defined');
@@ -34,6 +35,9 @@ error_log('ASAP_CORE_DEBUG: BETTER_AUTH_SECRET defined/checked');
 
 // Load Content Processing Pipeline
 require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/content-processing/bootstrap.php';
+
+// Load AJAX System
+require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/ajax/bootstrap.php';
 
 // Include Better Auth configuration
 error_log('ASAP_CORE_DEBUG: Before require_once better-auth-config.php');

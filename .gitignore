@@ -38,6 +38,9 @@ wp-content/uploads/*
 app/src/lib/components/ui/README.md
 /md-docs/AI_PROVIDER_STANDARDIZATION.md
 /md-docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
+/wp-content/plugins/asapdigest-core/includes/content-processing/README.md
+/wp-content/plugins/asapdigest-core/includes/ajax/README.md
+/wp-content/plugins/asapdigest-core/includes/api/README.md
 class-environment-config.php
 wp-content/mu-plugins/wp-migrate-db-pro-compatibility.php
 
