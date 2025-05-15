@@ -47,4 +47,48 @@ interface AIProviderAdapter {
      * @return array Generated keywords
      */
     public function generate_keywords($text, $options = []);
+    
+    /**
+     * Calculate quality score for content
+     * 
+     * @param string $text Text to analyze
+     * @param array $options Additional options for quality scoring
+     * @return array Quality score results with breakdown
+     */
+    public function calculate_quality_score($text, $options = []);
+    
+    /**
+     * Test connection to the AI provider
+     * 
+     * @return array Test results with success status, message, and latency
+     */
+    public function test_connection();
+    
+    /**
+     * Get capabilities of this provider
+     * 
+     * @return array Provider capabilities including supported operations
+     */
+    public function get_capabilities();
+    
+    /**
+     * Get available models from this provider
+     * 
+     * @return array Available models with details
+     */
+    public function get_models();
+    
+    /**
+     * Get details about the last API response
+     * 
+     * @return array Response details including status and timing information
+     */
+    public function get_last_response();
+    
+    /**
+     * Get usage information for billing/monitoring
+     * 
+     * @return array Usage data including tokens used and estimated cost
+     */
+    public function get_usage_info();
 } 

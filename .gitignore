@@ -36,6 +36,7 @@ wp-content/uploads/*
 /md-docs/jsdoc-typescript-guide.md
 /md-docs/auto-login/*
 app/src/lib/components/ui/README.md
+/md-docs/AI_PROVIDER_STANDARDIZATION.md
 /md-docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
 class-environment-config.php
 wp-content/mu-plugins/wp-migrate-db-pro-compatibility.php

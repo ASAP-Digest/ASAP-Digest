@@ -97,7 +97,7 @@ export default defineConfig(({ mode }) => {
 		},
 		ssr: {
 			timeout: 120000,
-			noExternal: ['lucide-svelte', '@floating-ui/dom', 'clsx', 'class-variance-authority', 'tailwind-merge']
+			noExternal: ['@floating-ui/dom', 'clsx', 'class-variance-authority', 'tailwind-merge']
 		},
 		// Expose all environment variables to the client
 		define: {
