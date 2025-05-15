@@ -94,7 +94,7 @@ if (!defined('ASAP_AUTO_GENERATE_SUMMARIES')) {
 // Maximum content items to keep in history per source
 if (!defined('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE')) {
     define('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE', 100);
-}
+} 
 
 /**
  * Component Registry 

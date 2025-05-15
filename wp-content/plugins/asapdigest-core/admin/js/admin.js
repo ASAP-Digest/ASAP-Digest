@@ -14,6 +14,63 @@
         initSettingsForm();
         initStatsExport();
         initNotifications();
+        initAISettings(); // Initialize AI settings
+    }
+
+    // AI Settings Handler
+    function initAISettings() {
+        // Run only if we're on the AI settings page
+        if ($('.asap-ai-test-area').length === 0) return;
+        
+        // Handle AI connection test
+        window.asapTestAIConnection = function() {
+            var provider = document.getElementById('asap_ai_provider').value;
+            var apiKey = document.getElementById('asap_ai_api_key').value;
+            var resultSpan = document.getElementById('ai-test-result');
+            
+            if (!provider || !apiKey) {
+                resultSpan.textContent = 'Provider and API key are required.';
+                resultSpan.style.color = 'red';
+                return;
+            }
+            
+            resultSpan.textContent = asapDigestAdmin.i18n.testing || 'Testing...';
+            
+            // Following WordPress AJAX handler standardization protocol
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'asap_test_ai_connection',
+                    provider: provider,
+                    api_key: apiKey,
+                    nonce: asapDigestAdmin.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        resultSpan.textContent = response.data.message || asapDigestAdmin.i18n.success;
+                        resultSpan.style.color = 'green';
+                    } else {
+                        resultSpan.textContent = (response.data && response.data.message) ? 
+                            asapDigestAdmin.i18n.error + response.data.message : 
+                            asapDigestAdmin.i18n.error;
+                        resultSpan.style.color = 'red';
+                    }
+                },
+                error: function(xhr) {
+                    var errorMessage = 'AJAX error';
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.data && response.data.message) {
+                            errorMessage = response.data.message;
+                        }
+                    } catch(e) {}
+                    
+                    resultSpan.textContent = asapDigestAdmin.i18n.error + errorMessage;
+                    resultSpan.style.color = 'red';
+                }
+            });
+        };
     }
 
     // Quick Actions Handler

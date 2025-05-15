@@ -32,7 +32,7 @@ class ErrorLogger {
     
     /**
      * Whether to also log to PHP error log
-     * 
+     *
      * @var bool
      */
     private static $use_error_log = true;
@@ -140,8 +140,8 @@ class ErrorLogger {
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         return dbDelta($sql) ? true : false;
-    }
-    
+        }
+
     /**
      * Get recent errors
      * 

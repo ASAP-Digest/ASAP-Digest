@@ -293,5 +293,5 @@ function initialize() {
 }
 
 // Initialize the content processing pipeline
-asap_digest_init_content_processing();
+asap_digest_init_content_processing(); 
 initialize(); 

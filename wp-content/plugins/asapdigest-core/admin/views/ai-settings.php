@@ -8,6 +8,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Enqueue and localize admin script for AJAX
+wp_enqueue_script('asapdigest-admin', plugin_dir_url(dirname(dirname(__FILE__))) . 'admin/js/admin.js', array('jquery'), ASAP_DIGEST_VERSION, true);
+wp_localize_script('asapdigest-admin', 'asapDigestAdmin', array(
+    'ajaxurl' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('asap_digest_content_nonce'),
+    'restNonce' => wp_create_nonce('wp_rest'),
+    'i18n' => array(
+        'testing' => __('Testing...', 'asapdigest-core'),
+        'success' => __('Connection successful!', 'asapdigest-core'),
+        'error' => __('Connection failed: ', 'asapdigest-core')
+    )
+));
+
 // Get plugin instance
 $plugin = AsapDigest\Core\ASAP_Digest_Core::get_instance();
 
@@ -306,45 +319,4 @@ jQuery(document).ready(function($) {
         });
     }
 });
-
-function asapTestAIConnection() {
-    var provider = document.getElementById('asap_ai_provider').value;
-    var apiKey = document.getElementById('asap_ai_api_key').value;
-    var nonce = typeof asapDigestAdmin !== 'undefined' ? asapDigestAdmin.nonce : '';
-    var resultSpan = document.getElementById('ai-test-result');
-    resultSpan.textContent = 'Testing...';
-    var data = new FormData();
-    data.append('action', 'asap_test_ai_connection');
-    data.append('provider', provider);
-    data.append('api_key', apiKey);
-    data.append('nonce', nonce);
-
-    // Log the data being sent
-    console.log('Testing AI Connection with data:', {
-        action: data.get('action'),
-        provider: data.get('provider'),
-        apiKeyLength: data.get('api_key') ? data.get('api_key').length : 0, // Log length, not the key
-        nonce: data.get('nonce')
-    });
-
-    fetch(ajaxurl, {
-        method: 'POST',
-        body: data,
-        credentials: 'same-origin'
-    })
-    .then(function(response) { return response.json(); })
-    .then(function(json) {
-        if (json.success) {
-            resultSpan.textContent = json.data.message || 'Connection successful!';
-            resultSpan.style.color = 'green';
-        } else {
-            resultSpan.textContent = json.data && json.data.message ? json.data.message : 'Connection failed.';
-            resultSpan.style.color = 'red';
-        }
-    })
-    .catch(function(err) {
-        resultSpan.textContent = 'AJAX error: ' + err;
-        resultSpan.style.color = 'red';
-    });
-}
 </script> 
