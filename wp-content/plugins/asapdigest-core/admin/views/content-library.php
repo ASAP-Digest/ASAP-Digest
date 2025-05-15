@@ -581,7 +581,7 @@ $available_statuses = $wpdb->get_col($statuses_query);
                     data: {
                         action: 'asap_get_content_details',
                         content_id: contentId,
-                        nonce: '<?php echo wp_create_nonce('asap_content_library_nonce'); ?>'
+                        nonce: '<?php echo wp_create_nonce('asap_digest_content_nonce'); ?>'
                     },
                     success: function(response) {
                         if (response.success) {

@@ -4,16 +4,16 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/adapters/class-huggingface-adapter.php
  */
 
-namespace AsapDigest\AI\Adapters;
+namespace ASAPDigest\AI\Adapters;
 
-use AsapDigest\AI\Interfaces\AIProviderAdapter;
+use ASAPDigest\AI\Interfaces\AI_Provider_Interface;
 
 /**
  * Hugging Face API adapter
  * 
  * Interfaces with Hugging Face's Inference API for AI operations.
  */
-class HuggingFaceAdapter implements AIProviderAdapter {
+class HuggingFaceAdapter implements AI_Provider_Interface {
     /**
      * @var string API key
      */
@@ -38,6 +38,25 @@ class HuggingFaceAdapter implements AIProviderAdapter {
      * @var int Request timeout in seconds
      */
     private $timeout = 30;
+    
+    /**
+     * Last API response for debugging
+     *
+     * @var array|null
+     */
+    private $last_response = null;
+    
+    /**
+     * Usage data from the last request
+     *
+     * @var array
+     */
+    private $usage_data = [
+        'prompt_tokens' => 0,
+        'completion_tokens' => 0,
+        'total_tokens' => 0,
+        'cost' => 0.0
+    ];
     
     /**
      * Constructor
@@ -393,5 +412,186 @@ class HuggingFaceAdapter implements AIProviderAdapter {
         
         // Fallback: serialize the response
         return json_encode($response);
+    }
+    
+    /**
+     * Test connection to the API
+     *
+     * @return bool Success
+     */
+    public function test_connection() {
+        try {
+            $response = $this->send_api_request([
+                'model' => $this->default_models['summarize'],
+                'inputs' => 'Hello, HuggingFace!',
+            ]);
+            return !empty($response);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Get the last API response for debugging
+     *
+     * @return array|null Last response data
+     */
+    public function get_last_response() {
+        return $this->last_response;
+    }
+    
+    /**
+     * Calculate quality score for content
+     * 
+     * @param string $text Text to analyze
+     * @param array $options Additional options for quality scoring
+     * @return array Quality score results with breakdown
+     */
+    public function calculate_quality_score($text, $options = []) {
+        $model = !empty($options['model']) ? $options['model'] : $this->default_models['summarize'];
+        $task = !empty($options['task']) ? $options['task'] : 'text-classification';
+        
+        $inputs = "Analyze the following text and rate its quality from 0-100. Include scores for readability, engagement, coherence, and relevance:\n\n" . $text;
+        
+        try {
+            $response = $this->send_api_request([
+                'model' => $model,
+                'inputs' => $inputs,
+                'task' => $task
+            ]);
+            
+            $this->last_response = $response;
+            $this->update_usage_data($response);
+            
+            // In a real implementation, parse the response to extract scores
+            // For now, return a placeholder response
+            return [
+                'overall' => 70,
+                'components' => [
+                    'readability' => 75,
+                    'engagement' => 65,
+                    'coherence' => 70,
+                    'relevance' => 70,
+                ],
+                'suggestions' => [
+                    'Consider using more engaging language.',
+                    'Improve transitions between paragraphs.'
+                ]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'error' => $e->getMessage(),
+                'overall' => 0,
+                'components' => [],
+                'suggestions' => []
+            ];
+        }
+    }
+    
+    /**
+     * Get provider capabilities
+     * 
+     * @return array List of supported features and limitations
+     */
+    public function get_capabilities() {
+        return [
+            'summarize' => true,
+            'classify' => true,
+            'extract_entities' => true,
+            'calculate_quality_score' => true,
+            'max_input_tokens' => 4096, // Typical for many HF models
+            'supports_streaming' => false,
+            'supports_functions' => false,
+            'supports_vision' => true,
+        ];
+    }
+    
+    /**
+     * Get available models
+     * 
+     * @return array List of models with capabilities
+     */
+    public function get_models() {
+        return [
+            'gpt2' => [
+                'max_tokens' => 1024,
+                'description' => 'Basic language model for text generation',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.0,    // HF Inference API is free for many models
+                    'output' => 0.0,
+                ],
+            ],
+            'distilbert-base-uncased' => [
+                'max_tokens' => 512,
+                'description' => 'Fast model for text classification',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.0,
+                    'output' => 0.0,
+                ],
+            ],
+            't5-base' => [
+                'max_tokens' => 512,
+                'description' => 'Versatile model for text-to-text tasks',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.0,
+                    'output' => 0.0,
+                ],
+            ],
+        ];
+    }
+    
+    /**
+     * Get usage information
+     * 
+     * @return array Usage metrics
+     */
+    public function get_usage_info() {
+        return $this->usage_data;
+    }
+    
+    /**
+     * Send request to Hugging Face API
+     * 
+     * @param array $params Request parameters
+     * @return array API response
+     * @throws \Exception on error
+     */
+    private function send_api_request($params) {
+        // In real implementation, this would send request to Hugging Face Inference API
+        // This is a placeholder implementation
+        
+        if (empty($this->api_key)) {
+            throw new \Exception('API key is not set');
+        }
+        
+        // Simulate API response
+        $response = [
+            'generated_text' => 'Sample response from Hugging Face',
+            // HF doesn't provide token usage in the same way as OpenAI
+            // We would need to estimate it
+            'estimated_usage' => [
+                'prompt_tokens' => 40,
+                'completion_tokens' => 20,
+                'total_tokens' => 60
+            ]
+        ];
+        
+        return $response;
+    }
+    
+    /**
+     * Update usage tracking data
+     * 
+     * @param array $response API response with usage data
+     */
+    private function update_usage_data($response) {
+        if (!empty($response['estimated_usage'])) {
+            $this->usage_data['prompt_tokens'] += $response['estimated_usage']['prompt_tokens'];
+            $this->usage_data['completion_tokens'] += $response['estimated_usage']['completion_tokens'];
+            $this->usage_data['total_tokens'] += $response['estimated_usage']['total_tokens'];
+            
+            // Most Hugging Face models are free in the Inference API
+            $this->usage_data['cost'] = 0.0;
+        }
     }
 } 

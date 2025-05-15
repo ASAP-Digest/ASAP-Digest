@@ -4,7 +4,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/crawler/class-content-source-manager.php
  */
 
-namespace AsapDigest\Crawler;
+namespace ASAPDigest\Crawler;
 
 /**
  * Manages content sources for the crawler.

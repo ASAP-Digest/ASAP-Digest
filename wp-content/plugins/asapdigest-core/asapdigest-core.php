@@ -3,11 +3,11 @@
  * Plugin Name:     ASAP Digest Core
  * Plugin URI:      https://asapdigest.com/
  * Description:     Core functionality for ASAP Digest app
- * Author:          ASAP Digest
- * Author URI:      https://philoveracity.com/
- * Text Domain:     adc
+ * Author:          ASAP Digest Team
+ * Author URI:      https://asapdigest.com
+ * Text Domain:     asapdigest-core
  * Domain Path:     /languages
- * Version:         0.1.0
+ * Version:         0.1.1
  * 
  * @package         ASAPDigest_Core
  * @created         03.31.25 | 03:34 PM PDT

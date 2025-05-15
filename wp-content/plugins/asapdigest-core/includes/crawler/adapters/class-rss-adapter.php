@@ -4,9 +4,9 @@
  * @location /wp-content/plugins/asapdigest-core/includes/crawler/adapters/class-rss-adapter.php
  */
 
-namespace AsapDigest\Crawler\Adapters;
+namespace ASAPDigest\Crawler\Adapters;
 
-use AsapDigest\Crawler\Interfaces\ContentSourceAdapter;
+use ASAPDigest\Crawler\Interfaces\ContentSourceAdapter;
 
 /**
  * Enhanced RSS/Atom feed adapter for the content crawler.

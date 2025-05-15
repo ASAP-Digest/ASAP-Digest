@@ -4,16 +4,16 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/adapters/class-anthropic-adapter.php
  */
 
-namespace AsapDigest\AI\Adapters;
+namespace ASAPDigest\AI\Adapters;
 
-use AsapDigest\AI\Interfaces\AIProviderAdapter;
+use ASAPDigest\AI\Interfaces\AI_Provider_Interface;
 
 /**
  * Anthropic API adapter
  * 
  * Interfaces with Anthropic's Claude API for AI operations.
  */
-class AnthropicAdapter implements AIProviderAdapter {
+class AnthropicAdapter implements AI_Provider_Interface {
     /**
      * @var string API key
      */
@@ -43,6 +43,11 @@ class AnthropicAdapter implements AIProviderAdapter {
      * @var string|null Last raw response for debugging
      */
     private $last_response = null;
+    
+    /**
+     * @var array Usage data
+     */
+    private $usage_data = [];
     
     /**
      * Constructor
@@ -358,5 +363,170 @@ class AnthropicAdapter implements AIProviderAdapter {
      */
     public function get_last_response() {
         return $this->last_response;
+    }
+    
+    /**
+     * Calculate quality score for content
+     * 
+     * @param string $text Text to analyze
+     * @param array $options Additional options for quality scoring
+     * @return array Quality score results with breakdown
+     */
+    public function calculate_quality_score($text, $options = []) {
+        $model = !empty($options['model']) ? $options['model'] : $this->default_model;
+        $max_tokens = !empty($options['max_tokens']) ? $options['max_tokens'] : 100;
+        
+        $prompt = "Please analyze the following content and provide a quality score between 0 and 100. Include scores for readability, engagement, coherence, and relevance. Also provide 2-3 specific improvement suggestions:\n\n" . $text;
+        
+        try {
+            $response = $this->send_api_request([
+                'model' => $model,
+                'prompt' => $prompt,
+                'max_tokens' => $max_tokens
+            ]);
+            
+            $this->last_response = $response;
+            $this->update_usage_data($response);
+            
+            // In a real implementation, parse the response to extract scores
+            // For now, return a placeholder response
+            return [
+                'overall' => 75,
+                'components' => [
+                    'readability' => 80,
+                    'engagement' => 70,
+                    'coherence' => 75,
+                    'relevance' => 75,
+                ],
+                'suggestions' => [
+                    'Consider breaking up long paragraphs for better readability.',
+                    'Add more specific examples to support key points.'
+                ]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'error' => $e->getMessage(),
+                'overall' => 0,
+                'components' => [],
+                'suggestions' => []
+            ];
+        }
+    }
+    
+    /**
+     * Get provider capabilities
+     * 
+     * @return array List of supported features and limitations
+     */
+    public function get_capabilities() {
+        return [
+            'summarize' => true,
+            'classify' => true,
+            'extract_entities' => true,
+            'calculate_quality_score' => true,
+            'max_input_tokens' => 200000, // Claude supports very long contexts
+            'supports_streaming' => true,
+            'supports_functions' => true,
+            'supports_vision' => false,
+        ];
+    }
+    
+    /**
+     * Get available models
+     * 
+     * @return array List of models with capabilities
+     */
+    public function get_models() {
+        return [
+            'claude-3-opus' => [
+                'max_tokens' => 200000,
+                'description' => 'Most powerful Claude model for complex tasks',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.015,
+                    'output' => 0.075,
+                ],
+            ],
+            'claude-3-sonnet' => [
+                'max_tokens' => 200000,
+                'description' => 'Balanced model for most tasks',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.003,
+                    'output' => 0.015,
+                ],
+            ],
+            'claude-3-haiku' => [
+                'max_tokens' => 200000,
+                'description' => 'Fast and cost-effective model',
+                'cost_per_1k_tokens' => [
+                    'input' => 0.00025,
+                    'output' => 0.00125,
+                ],
+            ],
+        ];
+    }
+    
+    /**
+     * Get usage information
+     * 
+     * @return array Usage metrics
+     */
+    public function get_usage_info() {
+        return $this->usage_data;
+    }
+    
+    /**
+     * Send request to Anthropic API
+     * 
+     * @param array $params Request parameters
+     * @return array API response
+     * @throws \Exception on error
+     */
+    private function send_api_request($params) {
+        // In real implementation, this would send request to Anthropic API
+        // This is a placeholder implementation
+        
+        if (empty($this->api_key)) {
+            throw new \Exception('API key is not set');
+        }
+        
+        // Simulate API response
+        $response = [
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => 'Sample response content'
+                    ]
+                ]
+            ],
+            'usage' => [
+                'prompt_tokens' => 50,
+                'completion_tokens' => 100,
+                'total_tokens' => 150
+            ]
+        ];
+        
+        return $response;
+    }
+    
+    /**
+     * Update usage tracking data
+     * 
+     * @param array $response API response with usage data
+     */
+    private function update_usage_data($response) {
+        if (!empty($response['usage'])) {
+            $this->usage_data['prompt_tokens'] = ($this->usage_data['prompt_tokens'] ?? 0) + $response['usage']['prompt_tokens'];
+            $this->usage_data['completion_tokens'] = ($this->usage_data['completion_tokens'] ?? 0) + $response['usage']['completion_tokens'];
+            $this->usage_data['total_tokens'] = ($this->usage_data['total_tokens'] ?? 0) + $response['usage']['total_tokens'];
+            
+            // Calculate approximate cost
+            $model = $this->default_model;
+            $models = $this->get_models();
+            if (isset($models[$model])) {
+                $input_cost = $models[$model]['cost_per_1k_tokens']['input'] * $response['usage']['prompt_tokens'] / 1000;
+                $output_cost = $models[$model]['cost_per_1k_tokens']['output'] * $response['usage']['completion_tokens'] / 1000;
+                $this->usage_data['cost'] = ($this->usage_data['cost'] ?? 0) + $input_cost + $output_cost;
+            }
+        }
     }
 } 

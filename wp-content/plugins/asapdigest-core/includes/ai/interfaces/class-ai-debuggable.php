@@ -4,7 +4,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/interfaces/class-ai-debuggable.php
  */
 
-namespace AsapDigest\AI\Interfaces;
+namespace ASAPDigest\AI\Interfaces;
 
 /**
  * Interface for debugging AI provider adapters.

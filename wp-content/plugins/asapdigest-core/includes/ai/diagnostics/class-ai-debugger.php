@@ -4,9 +4,9 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/diagnostics/class-ai-debugger.php
  */
 
-namespace AsapDigest\AI\Diagnostics;
+namespace ASAPDigest\AI\Diagnostics;
 
-use AsapDigest\Core\ErrorLogger;
+use ASAPDigest\Core\ErrorLogger;
 
 /**
  * Centralized debugging system for AI provider interactions.

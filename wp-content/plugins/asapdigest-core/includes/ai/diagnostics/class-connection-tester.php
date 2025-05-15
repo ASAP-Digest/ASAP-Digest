@@ -4,9 +4,9 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/diagnostics/class-connection-tester.php
  */
 
-namespace AsapDigest\AI\Diagnostics;
+namespace ASAPDigest\AI\Diagnostics;
 
-use AsapDigest\AI\Interfaces\AIProviderAdapter;
+use ASAPDigest\AI\Interfaces\AIProviderAdapter;
 
 /**
  * Standardized connection testing for AI provider adapters.

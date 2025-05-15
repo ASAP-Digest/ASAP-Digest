@@ -4,7 +4,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/crawler/interfaces/class-content-source-adapter.php
  */
 
-namespace AsapDigest\Crawler\Interfaces;
+namespace ASAPDigest\Crawler\Interfaces;
 
 /**
  * Interface for content source adapters.

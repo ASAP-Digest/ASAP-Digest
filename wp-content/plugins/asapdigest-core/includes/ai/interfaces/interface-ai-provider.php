@@ -1,16 +1,23 @@
 <?php
 /**
- * @file-marker ASAP_Digest_AIProviderAdapter
- * @location /wp-content/plugins/asapdigest-core/includes/ai/interfaces/class-ai-provider-adapter.php
+ * AI Provider Interface
+ *
+ * Defines the standard interface for AI providers to implement.
+ * All AI service providers must implement this interface to be used with the AI Service Manager.
+ *
+ * @package ASAP_Digest
+ * @subpackage AI
+ * @since 2.3.0
+ * @file-marker ASAP_Digest_AI_Provider_Interface
  */
 
 namespace ASAPDigest\AI\Interfaces;
 
 /**
- * Interface for AI provider adapters.
- * All AI service adapters must implement this interface.
+ * Interface for AI providers.
+ * All AI providers must implement this interface.
  */
-interface AIProviderAdapter {
+interface AI_Provider_Interface {
     /**
      * Generate a summary of the provided text
      * 

@@ -94,4 +94,17 @@ if (!defined('ASAP_AUTO_GENERATE_SUMMARIES')) {
 // Maximum content items to keep in history per source
 if (!defined('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE')) {
     define('ASAP_MAX_CONTENT_HISTORY_PER_SOURCE', 100);
-} 
+}
+
+/**
+ * Component Registry 
+ * 
+ * Maps component types to their class implementations.
+ */
+$ASAP_CONTENT_COMPONENTS = [
+    'validator' => '\\ASAPDigest\\Core\\ContentProcessing\\ContentValidator',
+    'deduplicator' => '\\ASAPDigest\\Core\\ContentProcessing\\ContentDeduplicator',
+    'quality' => '\\ASAPDigest\\Core\\ContentProcessing\\ContentQuality',
+    'quality_calculator' => '\\ASAPDigest\\Core\\ContentProcessing\\ContentQualityCalculator',
+    // Add more components as implemented
+]; 

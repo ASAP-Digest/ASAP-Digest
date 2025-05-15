@@ -1062,4 +1062,121 @@ class ASAP_Digest_Content_Quality {
         
         return $this->assessment['score'] >= $threshold;
     }
+
+    /**
+     * Calculate quality score
+     *
+     * @param string $content Content to score
+     * @param array $options Options for scoring
+     * @return array Quality score data
+     */
+    public function calculate_quality_score($content, $options = []) {
+        // Use ContentQualityCalculator if available
+        if (class_exists('ASAPDigest\\Core\\ContentProcessing\\ContentQualityCalculator')) {
+            $calculator = new \ASAPDigest\Core\ContentProcessing\ContentQualityCalculator();
+            return $calculator->calculate_score($content, $options);
+        }
+        
+        // Legacy fallback - basic quality scoring
+        $score = $this->calculate_quality_score_legacy($content);
+        return [
+            'overall' => $score,
+            'coherence' => $score,
+            'clarity' => $score,
+            'accuracy' => $score,
+            'relevance' => $score,
+            'engagement' => $score,
+            'pass' => $score >= 6.0,
+            'recommendations' => ['Consider using the ContentQualityCalculator for more detailed analysis.']
+        ];
+    }
+    
+    /**
+     * Legacy quality scoring implementation
+     *
+     * @param string $content Content to analyze
+     * @return float Quality score (0-10)
+     */
+    private function calculate_quality_score_legacy($content) {
+        if (empty($content)) {
+            return 0;
+        }
+        
+        $score = 5.0; // Start with a base score
+        
+        // Basic readability
+        $avg_sentence_length = $this->calculate_avg_sentence_length($content);
+        if ($avg_sentence_length > 10 && $avg_sentence_length < 25) {
+            $score += 1;
+        }
+        
+        // Content length
+        $word_count = str_word_count(strip_tags($content));
+        if ($word_count > 300) {
+            $score += 1;
+        }
+        
+        // Basic structure check (paragraphs, headings)
+        if (preg_match_all('/<p>/', $content, $matches) > 3) {
+            $score += 0.5;
+        }
+        
+        if (preg_match_all('/<h[2-6]/', $content, $matches) > 0) {
+            $score += 0.5;
+        }
+        
+        // Basic language check (avoid simple banned words)
+        $banned_words = ['very', 'really', 'actually', 'basically', 'literally'];
+        $banned_count = 0;
+        foreach ($banned_words as $word) {
+            $banned_count += substr_count(strtolower($content), " $word ");
+        }
+        
+        if ($banned_count < 3) {
+            $score += 0.5;
+        }
+        
+        // Grammar red flags (very basic)
+        $grammar_flags = ['should of', 'could of', 'would of', 'alot', 'seperate'];
+        $grammar_issues = 0;
+        foreach ($grammar_flags as $flag) {
+            $grammar_issues += substr_count(strtolower($content), $flag);
+        }
+        
+        if ($grammar_issues == 0) {
+            $score += 0.5;
+        }
+        
+        // Ensure score is between 0-10
+        return min(10, max(0, $score));
+    }
+
+    /**
+     * Calculate average sentence length
+     *
+     * @param string $content Content to analyze
+     * @return float Average sentence length in words
+     */
+    private function calculate_avg_sentence_length($content) {
+        $text = strip_tags($content);
+        
+        // Split by sentence-ending punctuation
+        $sentences = preg_split('/[.!?]+/', $text);
+        
+        // Remove empty sentences
+        $sentences = array_filter($sentences, function($sentence) {
+            return trim($sentence) !== '';
+        });
+        
+        if (empty($sentences)) {
+            return 0;
+        }
+        
+        $total_words = 0;
+        foreach ($sentences as $sentence) {
+            $total_words += str_word_count(trim($sentence));
+        }
+        
+        return $total_words / count($sentences);
+    }
 } 

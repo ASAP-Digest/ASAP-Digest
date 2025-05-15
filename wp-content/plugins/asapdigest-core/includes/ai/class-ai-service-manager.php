@@ -4,7 +4,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/class-ai-service-manager.php
  */
 
-namespace AsapDigest\AI;
+namespace ASAPDigest\AI;
 
 use ASAPDigest\Core\ErrorLogger;
 
@@ -76,9 +76,9 @@ class AIServiceManager {
     /**
      * Register default AI providers
      */
-    public function register_default_providers() {
+    private function register_default_providers() {
         // Register OpenAI provider if class and API key exist
-        if (class_exists('AsapDigest\AI\Adapters\OpenAIAdapter')) {
+        if (class_exists('AsapDigest\\AI\\Adapters\\OpenAIAdapter')) {
             $openai_key = get_option('asap_ai_openai_key', '');
             if (!empty($openai_key)) {
                 $this->register_provider('openai', new Adapters\OpenAIAdapter([
@@ -89,7 +89,7 @@ class AIServiceManager {
         }
         
         // Register Hugging Face provider if class and API key exist
-        if (class_exists('AsapDigest\AI\Adapters\HuggingFaceAdapter')) {
+        if (class_exists('AsapDigest\\AI\\Adapters\\HuggingFaceAdapter')) {
             $huggingface_key = get_option('asap_ai_huggingface_key', '');
             if (!empty($huggingface_key)) {
                 $this->register_provider('huggingface', new Adapters\HuggingFaceAdapter([
@@ -99,12 +99,12 @@ class AIServiceManager {
         }
         
         // Register Anthropic provider if class and API key exist
-        if (class_exists('AsapDigest\AI\Adapters\AnthropicAdapter')) {
+        if (class_exists('AsapDigest\\AI\\Adapters\\AnthropicAdapter')) {
             $anthropic_key = get_option('asap_ai_anthropic_key', '');
             if (!empty($anthropic_key)) {
                 $this->register_provider('anthropic', new Adapters\AnthropicAdapter([
                     'api_key' => $anthropic_key,
-                    'model' => get_option('asap_ai_anthropic_model', 'claude-2'),
+                    'model' => get_option('asap_ai_anthropic_model', 'claude-2.1'),
                 ]));
             }
         }
@@ -143,15 +143,30 @@ class AIServiceManager {
      * @return bool Is valid provider
      */
     private function validate_provider($provider) {
+        // Check if provider implements the AI_Provider_Interface
+        if (!($provider instanceof Interfaces\AI_Provider_Interface)) {
+            ErrorLogger::log('ai_service', 'invalid_provider', 'Provider does not implement AI_Provider_Interface', [
+                'provider_class' => get_class($provider)
+            ], 'error');
+            return false;
+        }
+        
+        // Check required methods for backward compatibility with existing code
         $required_methods = [
             'summarize',
             'extract_entities',
             'classify',
             'generate_keywords',
+            'calculate_quality_score',
+            'test_connection',
+            'get_capabilities',
         ];
         
         foreach ($required_methods as $method) {
             if (!method_exists($provider, $method)) {
+                ErrorLogger::log('ai_service', 'missing_method', "Provider missing required method: {$method}", [
+                    'provider_class' => get_class($provider)
+                ], 'error');
                 return false;
             }
         }
@@ -677,5 +692,44 @@ class AIServiceManager {
     public function api_get_usage($request) {
         $usage = get_option('asap_ai_usage_stats', []);
         return rest_ensure_response(['usage' => $usage]);
+    }
+    
+    /**
+     * Calculate quality score for content
+     * 
+     * @param string $text Text to analyze
+     * @param array $options Quality scoring options
+     * @return array Quality score results with breakdown
+     */
+    public function calculate_quality_score($text, $options = []) {
+        $provider = $this->get_provider_for_task('calculate_quality_score');
+        if (!$provider) {
+            /**
+             * Log missing provider using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'no_provider', severity: 'error'.
+             * Includes task and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'no_provider', 'No AI provider available for quality scoring', [
+                'task' => 'calculate_quality_score',
+                'options' => $options
+            ], 'error');
+            throw new \Exception("No AI provider available for quality scoring");
+        }
+        $this->track_usage('calculate_quality_score', $provider, strlen($text));
+        try {
+            return $provider->calculate_quality_score($text, $options);
+        } catch (\Exception $e) {
+            /**
+             * Log provider exception using ErrorLogger utility.
+             * Context: 'ai_service', error_type: 'provider_exception', severity: 'critical'.
+             * Includes exception message, task, and options for debugging.
+             */
+            ErrorLogger::log('ai_service', 'provider_exception', $e->getMessage(), [
+                'task' => 'calculate_quality_score',
+                'options' => $options,
+                'text_length' => strlen($text)
+            ], 'critical');
+            throw $e;
+        }
     }
 } 

@@ -134,72 +134,162 @@ final class ASAP_Digest_Core {
     }
 
     /**
-     * Load dependencies
+     * Load the required dependencies for this plugin.
      *
-     * @return void
+     * @since    1.0.0
+     * @access   private
      */
     private function load_dependencies() {
-        // Core files
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-activator.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-database.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-content-storage.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-better-auth.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-usage-tracker.php';
+        error_log('ASAP_CORE_DEBUG: Starting load_dependencies()');
         
-        // API files
+        // Core Libraries - Database must be loaded first
+        error_log('ASAP_CORE_DEBUG: Loading includes/class-database.php');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-database.php';
+        error_log('ASAP_CORE_DEBUG: Loading includes/class-better-auth.php');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-better-auth.php';
+        error_log('ASAP_CORE_DEBUG: Loading includes/class-usage-tracker.php');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-usage-tracker.php';
+        error_log('ASAP_CORE_DEBUG: Loading includes/class-error-logger.php');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-error-logger.php';
+        
+        // API Components (load before using them in register_rest_routes)
+        error_log('ASAP_CORE_DEBUG: Loading API components');
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-base.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-auth.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-digest.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-auth.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-ingested-content.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-active-sessions-controller.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-session-check-controller.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-sk-token-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-active-sessions-controller.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-sk-user-sync.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-check-sync-token-controller.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/controllers/class-auth-webhook-controller.php';
         
-        // Authentication files
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/auth/bootstrap.php';
+        // AI System
+        error_log('ASAP_CORE_DEBUG: Loading AI system files');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/interfaces/class-ai-debuggable.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/interfaces/class-ai-provider-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/interfaces/interface-ai-provider.php';
         
-        // Content processing
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/adapters/class-openai-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/adapters/class-anthropic-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/adapters/class-huggingface-adapter.php';
         
-        // Crawler
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/class-ai-service-manager.php';
+        
+        // Crawler components
+        error_log('ASAP_CORE_DEBUG: Loading crawler components');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/interfaces/class-content-source-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/adapters/class-api-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/adapters/class-rss-adapter.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/adapters/class-scraper-adapter.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-source-manager.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-crawler.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-scheduler.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-storage.php';
         
-        // Admin
+        // Content Processing
+        error_log('ASAP_CORE_DEBUG: Loading content processing files');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-validator.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-deduplicator.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-quality.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/class-content-quality-calculator.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/content-processing/bootstrap.php';
+        
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-content-processor.php';
+        
+        // Admin / UI
+        error_log('ASAP_CORE_DEBUG: Loading UI components');
+        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-admin.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-central-command.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-admin-ui.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class/class-admin-ajax.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'admin/ajax-handlers.php';
+        
+        error_log('ASAP_CORE_DEBUG: Completed load_dependencies()');
     }
 
     /**
      * Initialize plugin components with proper dependency injection
      */
     private function init_components() {
-        // Core components
-        $this->database = new ASAP_Digest_Database();
-        $this->better_auth = new ASAP_Digest_Better_Auth();
-        $this->usage_tracker = new ASAP_Digest_Usage_Tracker($this->database);
+        error_log('ASAP_CORE_DEBUG: Starting init_components()');
         
-        // Crawler components
-        $this->content_source_manager = new ContentSourceManager($this->database);
-        $this->content_processor = new \ASAP_Digest_Content_Processor();
-        
-        // Create crawler instance with dependencies
-        $this->content_crawler = new ContentCrawler(
-            $this->content_source_manager,
-            $this->content_processor
-        );
-        
-        // Initialize scheduler with a callable to the crawler's run method
-        $this->scheduler = new Scheduler([$this->content_crawler, 'run']);
-        
-        // Admin UI components (centralized in class-central-command.php)
-        new \ASAPDigest\Core\ASAP_Digest_Central_Command();
+        try {
+            // Check if the core classes are loaded
+            if (!class_exists('ASAPDigest\\Core\\ASAP_Digest_Database')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ASAP_Digest_Database class not found. Attempting to reload.');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-database.php';
+                
+                if (!class_exists('ASAPDigest\\Core\\ASAP_Digest_Database')) {
+                    throw new \Exception('Critical: Unable to load ASAP_Digest_Database class after explicit require.');
+                }
+            }
+            
+            // Core components
+            error_log('ASAP_CORE_DEBUG: Instantiating core components');
+            $this->database = new ASAP_Digest_Database();
+            
+            if (!class_exists('ASAPDigest\\Core\\ASAP_Digest_Better_Auth')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ASAP_Digest_Better_Auth class not found. Attempting to reload.');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-better-auth.php';
+            }
+            $this->better_auth = new ASAP_Digest_Better_Auth();
+            
+            if (!class_exists('ASAPDigest\\Core\\ASAP_Digest_Usage_Tracker')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ASAP_Digest_Usage_Tracker class not found. Attempting to reload.');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-usage-tracker.php';
+            }
+            $this->usage_tracker = new ASAP_Digest_Usage_Tracker($this->database);
+            
+            // Crawler components
+            error_log('ASAP_CORE_DEBUG: Instantiating crawler components');
+            if (!class_exists('ASAPDigest\\Crawler\\ContentSourceManager')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ContentSourceManager class not found.');
+            }
+            $this->content_source_manager = new ContentSourceManager($this->database);
+            
+            // First initialize ContentStorage
+            if (!class_exists('AsapDigest\\Crawler\\ContentStorage')) {
+                error_log('ASAP_CORE_DEBUG: Loading ContentStorage class');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'includes/crawler/class-content-storage.php';
+            }
+            $content_storage = new \AsapDigest\Crawler\ContentStorage();
+
+            // Check for content processor
+            if (!class_exists('AsapDigest\\Crawler\\ContentProcessor')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - AsapDigest\\Crawler\\ContentProcessor class not found. Attempting to reload.');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-content-processor.php';
+            }
+            $this->content_processor = new \AsapDigest\Crawler\ContentProcessor($content_storage);
+            
+            // Create crawler instance with dependencies
+            error_log('ASAP_CORE_DEBUG: Instantiating content crawler and scheduler');
+            if (!class_exists('ASAPDigest\\Crawler\\ContentCrawler')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ContentCrawler class not found.');
+            }
+            $this->content_crawler = new ContentCrawler(
+                $this->content_source_manager,
+                $this->content_processor
+            );
+            
+            // Initialize scheduler with a callable to the crawler's run method
+            if (!class_exists('ASAPDigest\\Crawler\\Scheduler')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - Scheduler class not found.');
+            }
+            $this->scheduler = new Scheduler([$this->content_crawler, 'run']);
+            
+            // Admin UI components (centralized in class-central-command.php)
+            error_log('ASAP_CORE_DEBUG: Initializing Central Command');
+            if (!class_exists('ASAPDigest\\Core\\ASAP_Digest_Central_Command')) {
+                error_log('ASAP_CORE_DEBUG: ERROR - ASAP_Digest_Central_Command class not found. Attempting to reload.');
+                require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-central-command.php';
+            }
+            new ASAP_Digest_Central_Command();
+            
+            error_log('ASAP_CORE_DEBUG: Completed init_components successfully');
+        } catch (\Throwable $e) {
+            error_log('ASAP_CORE_DEBUG: CRITICAL ERROR in init_components: ' . $e->getMessage());
+            error_log('ASAP_CORE_DEBUG: File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            error_log('ASAP_CORE_DEBUG: Stack trace: ' . $e->getTraceAsString());
+            // Do not rethrow - we want to continue even with partial initialization
+        }
     }
 
     /**
@@ -235,42 +325,42 @@ final class ASAP_Digest_Core {
         
         try {
             // Digest API
-        $digest_api = new ASAP_Digest_REST_Digest();
-        $digest_api->register_routes();
+            $digest_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Digest();
+            $digest_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Digest API routes');
 
             // Auth API
-        $auth_api = new ASAP_Digest_REST_Auth();
-        $auth_api->register_routes();
+            $auth_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Auth();
+            $auth_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Auth API routes');
         
             // Session check API
-            $session_check_api = new Session_Check_Controller();
-        $session_check_api->register_routes();
+            $session_check_api = new \ASAPDigest\Core\API\Session_Check_Controller();
+            $session_check_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Session Check API routes');
             
             // SK Token API (NEW)
-            $sk_token_api = new SK_Token_Controller();
+            $sk_token_api = new \ASAPDigest\Core\API\SK_Token_Controller();
             $sk_token_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered SK Token API routes');
             
             // Active Sessions API (NEW)
-            $active_sessions_api = new Active_Sessions_Controller();
+            $active_sessions_api = new \ASAPDigest\Core\API\Active_Sessions_Controller();
             $active_sessions_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Active Sessions API routes');
             
             // SK User Sync API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
-            $sk_user_sync = new SK_User_Sync();
+            $sk_user_sync = new \ASAPDigest\Core\API\SK_User_Sync();
             $sk_user_sync->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered SK User Sync API routes');
             
             // Check Sync Token API (OBSOLETE BUT REQUIRED FOR COMPATIBILITY)
-            $check_token_controller = new Check_Sync_Token_Controller();
+            $check_token_controller = new \ASAPDigest\Core\API\Check_Sync_Token_Controller();
             $check_token_controller->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Check Sync Token API routes');
             
             // Ingested Content API
-            $ingested_content_api = new ASAP_Digest_REST_Ingested_Content();
+            $ingested_content_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Ingested_Content();
             $ingested_content_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Ingested Content API routes');
             

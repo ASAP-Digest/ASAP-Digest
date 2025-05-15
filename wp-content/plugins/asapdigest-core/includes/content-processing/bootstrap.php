@@ -4,10 +4,10 @@
  *
  * Bootstraps the content processing system by loading all required components.
  *
- * @package ASAP_Digest
+ * @package ASAPDigest_Core
  * @subpackage Content_Processing
  * @since 2.2.0
- * @file-marker ASAP_Digest_Content_Processing_Bootstrap
+ * @file-marker ContentProcessingBootstrap
  */
 
 // Exit if accessed directly
@@ -16,13 +16,30 @@ if (!defined('ABSPATH')) {
 }
 
 // Load configuration
-require_once(dirname(__FILE__) . '/config.php');
+require_once __DIR__ . '/config.php';
 
-// Load components
-require_once(dirname(__FILE__) . '/class-content-validator.php');
-require_once(dirname(__FILE__) . '/class-content-deduplicator.php');
-require_once(dirname(__FILE__) . '/class-content-quality.php');
-require_once(dirname(__FILE__) . '/class-content-processor.php');
+/**
+ * Get a content processing component instance
+ * 
+ * @param string $component_type Type of component to get
+ * @param array $args Constructor arguments
+ * @return object|null Component instance or null if not found
+ */
+function get_component($component_type, $args = []) {
+    global $ASAP_CONTENT_COMPONENTS;
+    
+    if (!isset($ASAP_CONTENT_COMPONENTS[$component_type])) {
+        return null;
+    }
+    
+    $class_name = $ASAP_CONTENT_COMPONENTS[$component_type];
+    
+    if (!class_exists($class_name)) {
+        return null;
+    }
+    
+    return new $class_name(...$args);
+}
 
 /**
  * Initialize content processing components
@@ -255,5 +272,26 @@ function asap_digest_duplicate_report($args = []) {
     return $processor->generate_duplicate_report($args);
 }
 
+/**
+ * Initialize the content processing pipeline
+ */
+function initialize() {
+    // Register hooks, filters or other initialization logic here
+    
+    // Example: Load components required on init
+    $validator = get_component('validator');
+    $deduplicator = get_component('deduplicator');
+    
+    // Initialize them if needed
+    if ($validator) {
+        // $validator->init();
+    }
+    
+    if ($deduplicator) {
+        // $deduplicator->init();
+    }
+}
+
 // Initialize the content processing pipeline
-asap_digest_init_content_processing(); 
+asap_digest_init_content_processing();
+initialize(); 

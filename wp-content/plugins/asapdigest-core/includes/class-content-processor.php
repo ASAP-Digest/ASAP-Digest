@@ -10,7 +10,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/class-content-processor.php
  */
 
-namespace AsapDigest\Crawler;
+namespace ASAPDigest\Crawler;
 
 /**
  * Class ContentProcessor

@@ -4,12 +4,12 @@
  * @location /wp-content/plugins/asapdigest-core/includes/crawler/class-content-crawler.php
  */
 
-namespace AsapDigest\Crawler;
+namespace ASAPDigest\Crawler;
 
 use ASAPDigest\Core\ErrorLogger;
-use AsapDigest\Crawler\Adapters\APIAdapter;
-use AsapDigest\Crawler\Adapters\RSSAdapter;
-use AsapDigest\Crawler\Adapters\ScraperAdapter;
+use ASAPDigest\Crawler\Adapters\APIAdapter;
+use ASAPDigest\Crawler\Adapters\RSSAdapter;
+use ASAPDigest\Crawler\Adapters\ScraperAdapter;
 
 /**
  * Main orchestrator for the content crawling process.

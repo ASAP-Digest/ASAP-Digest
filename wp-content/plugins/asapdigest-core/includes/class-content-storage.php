@@ -10,7 +10,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/class-content-storage.php
  */
 
-namespace AsapDigest\Crawler;
+namespace ASAPDigest\Crawler;
 
 /**
  * Class ContentStorage

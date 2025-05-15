@@ -4,7 +4,7 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/diagnostics/class-error-classifier.php
  */
 
-namespace AsapDigest\AI\Diagnostics;
+namespace ASAPDigest\AI\Diagnostics;
 
 /**
  * Multi-tiered error classification system for AI provider errors.

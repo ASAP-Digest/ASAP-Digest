@@ -4,9 +4,9 @@
  * @location /wp-content/plugins/asapdigest-core/includes/crawler/adapters/class-api-adapter.php
  */
 
-namespace AsapDigest\Crawler\Adapters;
+namespace ASAPDigest\Crawler\Adapters;
 
-use AsapDigest\Crawler\Interfaces\ContentSourceAdapter;
+use ASAPDigest\Crawler\Interfaces\ContentSourceAdapter;
 
 /**
  * Enhanced API endpoint adapter for the content crawler.

@@ -9,7 +9,7 @@
  * @file-marker ContentStorage
  */
 
-namespace AsapDigest\Crawler;
+namespace ASAPDigest\Crawler;
 
 // Exit if accessed directly
 if (!defined('ABSPATH')) {

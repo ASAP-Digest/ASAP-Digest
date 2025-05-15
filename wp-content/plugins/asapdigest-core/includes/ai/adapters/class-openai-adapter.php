@@ -4,16 +4,16 @@
  * @location /wp-content/plugins/asapdigest-core/includes/ai/adapters/class-openai-adapter.php
  */
 
-namespace AsapDigest\AI\Adapters;
+namespace ASAPDigest\AI\Adapters;
 
-use AsapDigest\AI\Interfaces\AIProviderAdapter;
+use ASAPDigest\AI\Interfaces\AI_Provider_Interface;
 
 /**
  * OpenAI API adapter
  * 
  * Interfaces with OpenAI's API for AI operations.
  */
-class OpenAIAdapter implements AIProviderAdapter {
+class OpenAIAdapter implements AI_Provider_Interface {
     /**
      * @var string API key
      */
@@ -33,6 +33,25 @@ class OpenAIAdapter implements AIProviderAdapter {
      * @var int Request timeout in seconds
      */
     private $timeout = 60;
+    
+    /**
+     * Last API response data for debugging
+     *
+     * @var array|null
+     */
+    private $last_response = null;
+    
+    /**
+     * Usage data from the last request
+     *
+     * @var array
+     */
+    private $usage_data = [
+        'prompt_tokens' => 0,
+        'completion_tokens' => 0,
+        'total_tokens' => 0,
+        'cost' => 0.0
+    ];
     
     /**
      * Constructor
@@ -342,6 +361,8 @@ class OpenAIAdapter implements AIProviderAdapter {
             throw new \Exception('Invalid JSON response: ' . json_last_error_msg());
         }
         
+        $this->update_usage_data($data);
+        
         return $data;
     }
     
@@ -381,5 +402,202 @@ class OpenAIAdapter implements AIProviderAdapter {
 
         error_log('[ASAP OpenAIAdapter] Test connection failed with code: ' . $response_code);
         throw new \Exception('Connection failed with status code: ' . $response_code . ' - ' . $response_body);
+    }
+    
+    /**
+     * Calculate quality score for content
+     * 
+     * @param string $text Text to analyze
+     * @param array $options Additional options for quality scoring
+     * @return array Quality score results with breakdown
+     */
+    public function calculate_quality_score($text, $options = []) {
+        $model = !empty($options['model']) ? $options['model'] : $this->default_model;
+        
+        $system_prompt = "Analyze the following content for quality. Score it on a scale of 1-10 for each of these dimensions: 
+        1. Coherence (logical flow and structure)
+        2. Clarity (ease of understanding)
+        3. Accuracy (factual correctness)
+        4. Relevance (to the apparent topic)
+        5. Engagement (interesting, compelling)
+        
+        Return the results as a JSON object with properties for each dimension score, an overall score (average), and a brief explanation for each.";
+        
+        $messages = [
+            ['role' => 'system', 'content' => $system_prompt],
+            ['role' => 'user', 'content' => $text]
+        ];
+        
+        $response = $this->completions_request([
+            'model' => $model,
+            'messages' => $messages,
+            'temperature' => 0.3,
+            'response_format' => ['type' => 'json_object']
+        ]);
+        
+        if (isset($response['choices'][0]['message']['content'])) {
+            $content = $response['choices'][0]['message']['content'];
+            $data = json_decode($content, true);
+            
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $data;
+            }
+        }
+        
+        throw new \Exception('Failed to calculate quality score');
+    }
+    
+    /**
+     * Get capabilities of this provider
+     * 
+     * @return array Provider capabilities including supported operations
+     */
+    public function get_capabilities() {
+        return [
+            'name' => 'OpenAI',
+            'features' => [
+                'summarize' => true,
+                'extract_entities' => true,
+                'classify' => true,
+                'generate_keywords' => true,
+                'calculate_quality_score' => true,
+                'process_image' => $this->default_model === 'gpt-4-vision-preview' || $this->default_model === 'gpt-4-turbo' || strpos($this->default_model, 'vision') !== false
+            ],
+            'models' => [
+                'gpt-3.5-turbo' => [
+                    'type' => 'chat',
+                    'max_tokens' => 4096
+                ],
+                'gpt-4' => [
+                    'type' => 'chat',
+                    'max_tokens' => 8192
+                ],
+                'gpt-4-turbo' => [
+                    'type' => 'chat',
+                    'max_tokens' => 128000
+                ],
+                'gpt-4-vision-preview' => [
+                    'type' => 'vision',
+                    'max_tokens' => 128000
+                ]
+            ],
+            'current_model' => $this->default_model
+        ];
+    }
+    
+    /**
+     * Get available models from this provider
+     * 
+     * @return array Available models with details
+     */
+    public function get_models() {
+        try {
+            $endpoint = $this->api_endpoint . '/models';
+            
+            $args = [
+                'method' => 'GET',
+                'timeout' => $this->timeout,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->api_key,
+                    'Content-Type' => 'application/json',
+                ],
+            ];
+            
+            $response = wp_remote_get($endpoint, $args);
+            
+            if (is_wp_error($response)) {
+                throw new \Exception('API request failed: ' . $response->get_error_message());
+            }
+            
+            $response_code = wp_remote_retrieve_response_code($response);
+            if ($response_code !== 200) {
+                throw new \Exception("API returned error code: {$response_code}");
+            }
+            
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+            
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON response');
+            }
+            
+            // Filter for chat models
+            $chat_models = array_filter($data['data'], function($model) {
+                return strpos($model['id'], 'gpt') === 0;
+            });
+            
+            // Format results
+            $result = [];
+            foreach ($chat_models as $model) {
+                $result[] = [
+                    'id' => $model['id'],
+                    'name' => $model['id'],
+                    'created' => $model['created'],
+                    'owned_by' => $model['owned_by']
+                ];
+            }
+            
+            return $result;
+        } catch (\Exception $e) {
+            // Return default models on error
+            return array_keys($this->get_capabilities()['models']);
+        }
+    }
+    
+    /**
+     * Get details about the last API response
+     * 
+     * @return array Response details including status and timing information
+     */
+    public function get_last_response() {
+        return $this->last_response ?? [
+            'status' => 'no_requests_made',
+            'time' => 0,
+            'tokens' => 0
+        ];
+    }
+    
+    /**
+     * Get usage information for billing/monitoring
+     * 
+     * @return array Usage data including tokens used and estimated cost
+     */
+    public function get_usage_info() {
+        return $this->usage_data;
+    }
+    
+    /**
+     * Update usage data based on response
+     * 
+     * @param array $response API response data
+     */
+    private function update_usage_data($response) {
+        if (isset($response['usage'])) {
+            $usage = $response['usage'];
+            
+            // Update token counts
+            $this->usage_data['prompt_tokens'] = isset($usage['prompt_tokens']) ? $usage['prompt_tokens'] : 0;
+            $this->usage_data['completion_tokens'] = isset($usage['completion_tokens']) ? $usage['completion_tokens'] : 0;
+            $this->usage_data['total_tokens'] = isset($usage['total_tokens']) ? $usage['total_tokens'] : 0;
+            
+            // Calculate approximate cost
+            // Rates may change, these are estimates
+            $model = $this->default_model;
+            $prompt_rate = 0.0;
+            $completion_rate = 0.0;
+            
+            if (strpos($model, 'gpt-4') === 0) {
+                $prompt_rate = 0.03 / 1000; // $0.03 per 1K tokens
+                $completion_rate = 0.06 / 1000; // $0.06 per 1K tokens
+            } else {
+                // gpt-3.5-turbo
+                $prompt_rate = 0.0015 / 1000; // $0.0015 per 1K tokens
+                $completion_rate = 0.002 / 1000; // $0.002 per 1K tokens
+            }
+            
+            $this->usage_data['cost'] = 
+                ($this->usage_data['prompt_tokens'] * $prompt_rate) + 
+                ($this->usage_data['completion_tokens'] * $completion_rate);
+        }
     }
 } 
