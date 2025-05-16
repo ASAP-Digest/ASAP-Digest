@@ -48,6 +48,23 @@ function asap_digest_init_ajax_handlers() {
     $ajax_manager->register_handler(new \AsapDigest\Core\Ajax\Admin\Source_Ajax());
     $ajax_manager->register_handler(new \AsapDigest\Core\Ajax\User\User_Actions_Ajax());
     
+    // Add debug action for AI AJAX handler
+    add_action('admin_notices', function() {
+        if (current_user_can('manage_options') && isset($_GET['page']) && $_GET['page'] === 'ai-settings') {
+            echo '<div class="notice notice-info is-dismissible"><p>AI AJAX handler debug: ';
+            
+            // Check if the handler is registered
+            $exists = has_action('wp_ajax_asap_test_ai_connection');
+            if ($exists) {
+                echo 'AI connection test handler is properly registered.';
+            } else {
+                echo '<strong style="color:red;">Warning:</strong> AI connection test handler is NOT registered!';
+            }
+            
+            echo '</p></div>';
+        }
+    });
+    
     // Initialize all handlers
     $ajax_manager->init();
     

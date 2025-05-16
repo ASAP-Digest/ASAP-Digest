@@ -163,6 +163,7 @@ final class ASAP_Digest_Core {
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-active-sessions-controller.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-sk-user-sync.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-check-sync-token-controller.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-ai-config.php';
         
         // AI System
         error_log('ASAP_CORE_DEBUG: Loading AI system files');
@@ -175,6 +176,13 @@ final class ASAP_Digest_Core {
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/adapters/class-huggingface-adapter.php';
         
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/class-ai-service-manager.php';
+        
+        // AI Processors
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/processors/class-summarizer.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/processors/class-entity-extractor.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/processors/class-classifier.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/processors/class-keyword-generator.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/ai/processors/class-sentiment-analyzer.php';
         
         // Crawler components
         error_log('ASAP_CORE_DEBUG: Loading crawler components');
@@ -363,6 +371,11 @@ final class ASAP_Digest_Core {
             $ingested_content_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Ingested_Content();
             $ingested_content_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Ingested Content API routes');
+            
+            // AI Config API (NEW)
+            $ai_config_api = new \ASAPDigest\Core\API\REST_AI_Config();
+            $ai_config_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered AI Config API routes');
             
             // Nonce Endpoint
             register_rest_route('asap/v1', '/nonce', [

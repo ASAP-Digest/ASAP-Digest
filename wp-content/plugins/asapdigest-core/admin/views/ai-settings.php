@@ -128,8 +128,13 @@ add_action('admin_init', function() {
                 <th scope="row"><label for="asap_ai_api_key">API Key</label></th>
                     <td>
                     <input type="password" name="asap_ai_settings[api_key]" id="asap_ai_api_key" value="<?php echo esc_attr($opts['api_key'] ?? ''); ?>" size="40" autocomplete="off" />
-                    <button type="button" class="button" onclick="asapTestAIConnection()">Test Connection</button>
+                    <button type="button" class="button" onclick="window.asapTestAIConnection()">Test Connection</button>
                     <span id="ai-test-result"></span>
+                    <?php wp_nonce_field('asap_digest_content_nonce', 'asap_test_connection_nonce'); ?>
+                    <script>
+                    // Make the nonce accessible globally for the test connection function
+                    window.asapTestConnectionNonce = document.getElementById('asap_test_connection_nonce').value;
+                    </script>
                     </td>
                 </tr>
                 <tr>
@@ -267,6 +272,38 @@ jQuery(document).ready(function($) {
         testAIFeature('keywords');
     });
     
+    // Direct AJAX test handler
+    $('#manual-ajax-test').on('click', function() {
+        var resultSpan = $('#manual-test-result');
+        resultSpan.text('Sending direct AJAX request...');
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'asap_test_ai_connection',
+                provider: 'anthropic',
+                api_key: $('#asap_ai_api_key').val(),
+                nonce: $('#asap_test_connection_nonce').val()
+            },
+            success: function(response) {
+                console.log('Manual test response:', response);
+                if (response.success) {
+                    resultSpan.text('Success: ' + response.data.message);
+                    resultSpan.css('color', 'green');
+                } else {
+                    resultSpan.text('Error: ' + (response.data ? response.data.message : 'Unknown error'));
+                    resultSpan.css('color', 'red');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Manual test error:', {xhr, status, error});
+                resultSpan.text('AJAX Error: ' + error);
+                resultSpan.css('color', 'red');
+            }
+        });
+    });
+    
     function testAIFeature(feature) {
         const text = $('#asap-ai-test-text').val();
         if (!text) {
@@ -282,6 +319,9 @@ jQuery(document).ready(function($) {
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ text: text }),
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', asapDigestAdmin.restNonce);
+            },
             success: function(response) {
                 let output = '';
                 
@@ -319,4 +359,23 @@ jQuery(document).ready(function($) {
         });
     }
 });
-</script> 
+</script>
+
+<!-- Manual AJAX Test Section -->
+<div class="wrap" style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
+    <h2>Debug: Manual AJAX Test</h2>
+    <p>This section is for debugging the AI connection test functionality.</p>
+    
+    <button id="manual-ajax-test" class="button button-secondary">Send Manual AJAX Test</button>
+    <span id="manual-test-result" style="margin-left: 10px; font-weight: bold;"></span>
+    
+    <div class="notice notice-info" style="margin-top: 15px;">
+        <p><strong>Debug Information:</strong></p>
+        <ul>
+            <li>AJAX URL: <code><?php echo esc_html(admin_url('admin-ajax.php')); ?></code></li>
+            <li>Nonce Action: <code>asap_digest_content_nonce</code></li>
+            <li>Nonce Value: <code><?php echo esc_html(wp_create_nonce('asap_digest_content_nonce')); ?></code></li>
+            <li>Test for wp_ajax_asap_test_ai_connection: <?php echo has_action('wp_ajax_asap_test_ai_connection') ? '<span style="color:green">✓ Registered</span>' : '<span style="color:red">✗ Not Registered</span>'; ?></li>
+        </ul>
+    </div>
+</div> 

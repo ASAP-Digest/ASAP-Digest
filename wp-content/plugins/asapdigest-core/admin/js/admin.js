@@ -36,28 +36,57 @@
             
             resultSpan.textContent = asapDigestAdmin.i18n.testing || 'Testing...';
             
+            // Get nonce value - try the inline nonce field first, then fall back to localized value
+            var nonceValue = '';
+            if (window.asapTestConnectionNonce) {
+                nonceValue = window.asapTestConnectionNonce;
+                console.log('Using inline nonce field');
+            } else if (asapDigestAdmin && asapDigestAdmin.nonce) {
+                nonceValue = asapDigestAdmin.nonce;
+                console.log('Using localized nonce');
+            } else {
+                console.log('No nonce available!');
+            }
+            
+            // Debug information
+            console.log('Test connection request data:', {
+                provider: provider,
+                api_key_length: apiKey.length,
+                nonce_value: nonceValue,
+                ajax_url: ajaxurl || (asapDigestAdmin ? asapDigestAdmin.ajaxurl : '/wp-admin/admin-ajax.php')
+            });
+            
             // Following WordPress AJAX handler standardization protocol
             $.ajax({
-                url: ajaxurl,
+                url: ajaxurl || (asapDigestAdmin ? asapDigestAdmin.ajaxurl : '/wp-admin/admin-ajax.php'),
                 type: 'POST',
                 data: {
                     action: 'asap_test_ai_connection',
                     provider: provider,
                     api_key: apiKey,
-                    nonce: asapDigestAdmin.nonce
+                    nonce: nonceValue
+                },
+                beforeSend: function(xhr, settings) {
+                    console.log('Sending AJAX request:', settings);
                 },
                 success: function(response) {
+                    console.log('AJAX response received:', response);
                     if (response.success) {
                         resultSpan.textContent = response.data.message || asapDigestAdmin.i18n.success;
                         resultSpan.style.color = 'green';
                     } else {
                         resultSpan.textContent = (response.data && response.data.message) ? 
-                            asapDigestAdmin.i18n.error + response.data.message : 
-                            asapDigestAdmin.i18n.error;
+                            (asapDigestAdmin.i18n.error || 'Error: ') + response.data.message : 
+                            (asapDigestAdmin.i18n.error || 'Error');
                         resultSpan.style.color = 'red';
                     }
                 },
-                error: function(xhr) {
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', {
+                        status: status,
+                        error: error,
+                        response: xhr.responseText
+                    });
                     var errorMessage = 'AJAX error';
                     try {
                         var response = JSON.parse(xhr.responseText);
@@ -66,11 +95,21 @@
                         }
                     } catch(e) {}
                     
-                    resultSpan.textContent = asapDigestAdmin.i18n.error + errorMessage;
+                    resultSpan.textContent = (asapDigestAdmin.i18n.error || 'Error: ') + errorMessage;
                     resultSpan.style.color = 'red';
+                },
+                complete: function(xhr, status) {
+                    console.log('AJAX request completed:', status);
                 }
             });
         };
+    }
+
+    // Notifications Handler
+    function initNotifications() {
+        // Placeholder for notification initialization
+        // This function was referenced but not defined, causing a JavaScript error
+        console.log('Notifications system initialized');
     }
 
     // Quick Actions Handler

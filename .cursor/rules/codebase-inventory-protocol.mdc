@@ -1,0 +1,289 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Codebase Inventory Protocol v1.1
+
+## 1. Purpose
+
+This protocol defines a systematic process for auditing the current codebase structure, files, and functions to maintain an accurate inventory in the Project Environment Context (`@PE - CTXT`). While the `new-directory-protocol.mdc`, `new-file-protocol.mdc`, and `new-function-protocol.mdc` ensure proper documentation when creating new components, this protocol addresses the need to periodically refresh the entire inventory after multiple changes have accumulated. It also facilitates the detection of duplicate or unused files and functions to streamline codebase maintenance.
+
+## 2. Protocol Integration Layer
+
+```text
+┌─────────────────────────────────────────┐
+│         Protocol Integration            │
+├─────────────────────────────────────────┤
+│ 1. Software Development Meta Protocol   │ // Overall Guidance
+│ 2. Rule Execution Protocol              │ // Rule Application
+│ 3. Server Memory Rules                  │ // Entity Management
+│ 4. Cross-Protocol Comms & Verification  │ // Consistency Checks
+│ 5. Universal Error Resolution Protocol  │ // Error Handling
+│ 6. Audit Trail System                   │ // State Logging
+│ 7. New Directory Protocol               │ // Directory Standards
+│ 8. New File Protocol                    │ // File Standards
+│ 9. New Function Protocol                │ // Function Standards
+│ 10. Task Tracking Protocol              │ // Optional Task Integration
+│ 11. Critical Code Removal Protocol      │ // If implementing removals
+└─────────────────────────────────────────┘
+```
+
+## 3. Activation & Trigger Conditions
+
+- **Command:** "Codebase Inventory Protocol" 
+- **Alias:** "CIP" (instead of "CI" to avoid confusion with Continuous Integration)
+- **Optional Parameters:**
+  - `scope`: Limits the scan to a specific directory or file pattern (default: entire codebase)
+  - `depth`: Controls how deep the scan should go (default: full depth)
+  - `focus`: Type of inventory to focus on - "files", "functions", "directories", "duplicates", "unused", or "all" (default: "all")
+  - `output`: Output format - "pe-ctxt" (update PE-CTXT), "report" (generate report only), or "both" (default: "both")
+  - `threshold`: For duplicate analysis, similarity threshold percentage (default: 80%)
+
+## 4. Core Protocol Steps
+
+### 4.1 Initial Context Assessment
+
+1. **Environment Analysis:**
+   - Check current working directory
+   - Verify project structure
+   - Document available tools
+   - Note any environmental constraints
+
+2. **Protocol Selection:**
+   - Determine applicable sub-protocols based on parameters
+   - Set scan configuration
+
+### 4.2 Codebase Scanning & Analysis
+
+1. **Directory Structure Scanning:**
+   - Create a complete directory tree
+   - Compare with existing documentation
+   - Note new or missing directories
+
+2. **File Inventory:**
+   - Create comprehensive file listing with metadata
+   - Categorize by type (code, config, assets, etc.)
+   - Document file-specific information (size, last modified)
+
+3. **Function/Class Inventory:**
+   - Parse source files to extract function and class definitions
+   - Document function signatures, parameters, and return types
+   - Note function locations and relationships
+
+4. **Duplicate Detection:**
+   - Analyze for duplicate or highly similar files (using hash or content comparison)
+   - Identify duplicate or similar functions (using signature comparison)
+   - Create a report of potential duplications
+
+5. **Unused Code Detection:**
+   - Analyze for unused functions/methods (through reference counting)
+   - Identify potentially dead code paths
+   - Flag files that appear to be unused or obsolete
+
+### 4.3 Reporting & Documentation
+
+1. **Inventory Report Generation:**
+   - Create structured report of findings
+   - Document new, changed, removed, and duplicate items
+   - Include metrics and statistics
+
+2. **PE-CTXT Integration:**
+   - Update `@PE - CTXT` with current inventory information
+   - Document potential refactoring targets
+
+3. **Improvement Recommendations:**
+   - Generate suggestions for codebase optimization
+   - Recommend candidates for removal, deduplication, or consolidation
+
+### 4.4 Memory Entity Creation & Tracking
+
+1. **Create Inventory Entity:**
+   - Create a `CodebaseInventory` entity with current timestamp
+   - Record scan parameters and scope
+
+2. **Document Findings in Memory:**
+   - Add observations for key metrics
+   - Link to relevant entities (tasks, errors, etc.)
+
+3. **Entity Relationships:**
+   - Create relationships with affected components
+
+## 5. Structure Integration
+
+The protocol can integrate with the existing file structure generator scripts:
+
+1. **Structure Generator Integration:**
+   - Leverage `.cursor/veridx/fd-sample/structure-generator.js` for enhanced directory mapping
+   - Use its output to compare with current documentation
+
+2. **Watch Structure Integration:**
+   - Optionally use `.cursor/veridx/fd-sample/watch-structure.js` to continuously monitor file changes
+   - Enable real-time updates to documentation when appropriate
+
+## 6. Duplicate & Unused Code Analysis
+
+### 6.1 Duplicate Detection Methods
+
+1. **Hash-Based Comparison:**
+   - Create hashes of file contents or function bodies
+   - Group by hash to identify exact duplicates
+
+2. **Similarity Analysis:**
+   - Use token-based comparison for similar but not identical code
+   - Apply defined threshold for "similarity" warnings
+
+3. **Pattern Recognition:**
+   - Identify common code patterns across multiple files
+   - Suggest potential extraction to shared utilities
+
+### 6.2 Unused Code Detection Methods
+
+1. **Reference Analysis:**
+   - Track function references throughout the codebase
+   - Flag functions with zero references outside their definition
+
+2. **Import/Export Analysis:**
+   - Analyze module imports and exports
+   - Identify exported functions never imported elsewhere
+
+3. **Dead Path Analysis:**
+   - Identify conditionals that can never be true
+   - Flag unreachable code blocks
+
+### 6.3 Recommendation Categories
+
+1. **Removal Candidates:**
+   - Completely unused files or functions
+   - Obsolete code (commented out, marked deprecated)
+
+2. **Deduplication Candidates:**
+   - Files or functions with >90% similarity
+   - Multiple copies of the same function in different modules
+
+3. **Consolidation Candidates:**
+   - Similar functions that could be combined
+   - Related functions that could be grouped into a utility module
+
+## 7. Implementation Example
+
+```javascript
+// Example Pseudocode for Implementation
+async function executeCodebaseInventory(params) {
+  // Initialize
+  const timestamp = await getFormattedTimestamp();
+  const sessionId = `CIP_${timestamp}`;
+  
+  // Create memory entity
+  await createInventoryEntity(sessionId, params);
+  
+  // Scan directories
+  const directories = await scanDirectoryStructure(params.scope, params.depth);
+  
+  // Scan files
+  const files = await catalogFiles(directories);
+  
+  // Analyze functions
+  const functions = await extractFunctions(files);
+  
+  // Run duplicate analysis if requested
+  let duplicates = {};
+  if (params.focus === 'all' || params.focus === 'duplicates') {
+    duplicates = await detectDuplicates(files, functions, params.threshold);
+  }
+  
+  // Run unused code analysis if requested
+  let unusedCode = {};
+  if (params.focus === 'all' || params.focus === 'unused') {
+    unusedCode = await detectUnusedCode(files, functions);
+  }
+  
+  // Generate recommendations
+  const recommendations = generateRecommendations(duplicates, unusedCode);
+  
+  // Prepare report
+  const report = formatInventoryReport({
+    directories,
+    files,
+    functions,
+    duplicates,
+    unusedCode,
+    recommendations,
+    timestamp
+  });
+  
+  // Update PE-CTXT if needed
+  if (params.output === 'both' || params.output === 'pe-ctxt') {
+    await updatePeCtxt(report);
+  }
+  
+  // Update memory entity with results
+  await updateInventoryEntity(sessionId, report);
+  
+  return report;
+}
+```
+
+## 8. Success Criteria & Verification
+
+1. **Inventory Completeness:**
+   - Directory structure accurately mapped
+   - All relevant files cataloged
+   - Functions properly extracted and documented
+
+2. **Duplicate & Unused Detection Success:**
+   - Valid duplicate candidates identified
+   - Reasonable unused code suggestions made
+   - False positives minimized
+
+3. **Documentation Success:**
+   - `@PE - CTXT` successfully updated
+   - Comprehensive report generated
+   - Recommendations properly categorized
+
+4. **Verification Methods:**
+   - Sampling verification of file inventory
+   - Manual review of subset of identified duplicates
+   - Verification of unused code via reference search
+
+## 9. Usage Examples
+
+1. **Basic Full Inventory:**
+   ```
+   CIP
+   ```
+
+2. **Frontend Components Focused Scan:**
+   ```
+   CIP scope=app/src/components focus=duplicates
+   ```
+
+3. **PHP Files Unused Functions Scan:**
+   ```
+   CIP scope=wp-content/plugins/asapdigest-core focus=unused output=report threshold=90
+   ```
+
+4. **Quick Directory Structure Update:**
+   ```
+   CIP focus=directories output=pe-ctxt
+   ```
+
+## 10. Common Pitfalls & Error Handling
+
+1. **Performance Considerations:**
+   - Very large codebases may require batch processing
+   - Consider file filtering for performance-critical scans
+
+2. **False Positives in Unused Detection:**
+   - Be aware of dynamic references (e.g., string-based function calls)
+   - Consider framework-specific behaviors
+
+3. **Recommendation Context:**
+   - All recommendations are suggestions only
+   - Remove/consolidation should be verified manually
+   - Always follow `critical-code-removal-protocol.mdc` for removals
+
+4. **Error Handling:**
+   - File permission issues
+   - Memory limitations with large codebases
+   - Parser errors for specific languages
