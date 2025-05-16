@@ -1,0 +1,565 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# UI AJAX Response Handling Protocol v1.0
+
+## 1. Purpose and Scope
+
+This protocol extends the `wordpress-admin-ui-component-style-protocol` to establish comprehensive standards for AJAX response handling in WordPress admin interfaces. It focuses on creating consistent, user-friendly experiences during asynchronous operations, particularly for handling loading states, timeouts, and error feedback.
+
+## 2. AJAX Loading State Requirements
+
+### 2.1 Visual Loading Indicators (MUST)
+
+All AJAX operations MUST include visual loading indicators:
+
+```javascript
+// Basic loading indicator implementation
+function showLoading(element) {
+    // 1. Clear previous content or indicator
+    element.html('<div class="loading-indicator"><span class="spinner"></span> Processing...</div>');
+    
+    // 2. Make sure the spinner is visible (WP sometimes hides it by default)
+    element.find('.spinner').css('visibility', 'visible');
+}
+
+// Usage
+$('#save-button').on('click', function() {
+    const resultArea = $('#result-area');
+    showLoading(resultArea);
+    
+    // Make the AJAX request...
+});
+```
+
+### 2.2 Loading Indicator CSS (SHOULD)
+
+Loading indicators SHOULD follow WordPress styling with these enhancements:
+
+```css
+.loading-indicator {
+    position: relative;
+    min-height: 30px;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.loading-indicator .spinner {
+    visibility: visible;
+    float: none;
+    margin: 0 10px 0 0;
+    vertical-align: middle;
+}
+
+.loading-indicator.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+```
+
+### 2.3 Button State Changes (MUST)
+
+Buttons initiating AJAX requests MUST visually indicate the in-progress state:
+
+```javascript
+function updateButtonState(button, isLoading) {
+    if (isLoading) {
+        // Store original text if not already stored
+        if (!button.data('original-text')) {
+            button.data('original-text', button.text());
+        }
+        
+        // Add loading class and update text
+        button.addClass('button-loading')
+            .prop('disabled', true)
+            .html('<span class="spinner"></span> Processing...');
+            
+        // Make spinner visible (WordPress default is hidden)
+        button.find('.spinner').css('visibility', 'visible');
+    } else {
+        // Restore button to original state
+        button.removeClass('button-loading')
+            .prop('disabled', false)
+            .text(button.data('original-text') || 'Submit');
+    }
+}
+```
+
+### 2.4 Progress Indicators for Long Operations (MUST)
+
+For operations expected to take longer than 2 seconds, MUST include a progress indicator:
+
+```javascript
+function initProgressIndicator(container) {
+    // Create progress elements
+    const progressWrap = $('<div class="operation-progress"></div>');
+    const timer = $('<span class="timer">0s</span>');
+    const progressBar = $('<div class="progress-bar"><div class="progress-fill"></div></div>');
+    
+    // Add to container
+    progressWrap.append(timer).append(progressBar);
+    container.append(progressWrap);
+    
+    // Initialize timer
+    let seconds = 0;
+    const interval = setInterval(function() {
+        seconds++;
+        timer.text(seconds + 's');
+        
+        // Update progress bar for known operations with estimated times
+        // For unknown duration operations, use pulse animation instead
+        if (container.data('estimated-seconds')) {
+            const estimatedSeconds = parseInt(container.data('estimated-seconds'));
+            const percentage = Math.min((seconds / estimatedSeconds) * 100, 100);
+            progressBar.find('.progress-fill').css('width', percentage + '%');
+        }
+    }, 1000);
+    
+    // Store interval reference for later cleanup
+    container.data('progress-interval', interval);
+    
+    return {
+        update: function(percentage) {
+            progressBar.find('.progress-fill').css('width', percentage + '%');
+        },
+        complete: function(success) {
+            clearInterval(interval);
+            progressWrap.addClass(success ? 'complete' : 'failed');
+            timer.append(' - ' + (success ? 'Complete' : 'Failed'));
+        }
+    };
+}
+```
+
+## 3. Timeout Handling
+
+### 3.1 AJAX Timeout Configuration (MUST)
+
+All AJAX requests MUST include appropriate timeouts:
+
+```javascript
+// Standard timeout configuration
+$.ajax({
+    url: ajaxurl,
+    method: 'POST',
+    data: data,
+    timeout: 30000, // 30 second timeout
+    // Other parameters...
+});
+```
+
+### 3.2 Timeout Duration Guidelines (SHOULD)
+
+Timeout durations SHOULD follow these guidelines:
+
+1. **Standard Operations:** 30 seconds
+2. **Quick Operations (UI updates):** 10 seconds
+3. **Complex Operations (imports, exports):** 60-120 seconds
+
+### 3.3 Timeout User Feedback (MUST)
+
+When a timeout occurs, MUST provide clear feedback:
+
+```javascript
+$.ajax({
+    // Other parameters...
+    timeout: 30000,
+    error: function(xhr, status, error) {
+        if (status === 'timeout') {
+            showError(
+                'The operation timed out after 30 seconds. The server might be experiencing ' +
+                'high load or the operation is too complex. Please try again later.'
+            );
+            
+            // Log timeout for diagnostics
+            console.error('AJAX Timeout:', { 
+                endpoint: this.url,
+                data: this.data,
+                duration: '30s'
+            });
+        } else {
+            // Handle other errors
+            handleError(xhr, status, error);
+        }
+    }
+});
+```
+
+## 4. Error Handling and Feedback
+
+### 4.1 Error Display Requirements (MUST)
+
+Error messages MUST be:
+1. Clearly visible
+2. Descriptive of the problem
+3. Suggestive of potential solutions when possible
+
+```javascript
+/**
+ * Display error message with consistent styling.
+ * 
+ * @param {string} message Error message to display
+ * @param {jQuery|string} container Container to show error in
+ * @param {boolean} dismissible Whether error can be dismissed
+ */
+function showError(message, container, dismissible = true) {
+    // Get container as jQuery object
+    const $container = typeof container === 'string' ? $(container) : container;
+    
+    // Create error notice
+    const $notice = $(
+        '<div class="notice notice-error ' + (dismissible ? 'is-dismissible' : '') + '">' +
+        '<p><strong>Error:</strong> ' + message + '</p>' +
+        '</div>'
+    );
+    
+    // Add dismiss button if needed
+    if (dismissible) {
+        const $button = $('<button type="button" class="notice-dismiss"></button>');
+        $button.on('click', function() {
+            $notice.fadeOut(200, function() { $(this).remove(); });
+        });
+        $notice.append($button);
+    }
+    
+    // Add to container
+    $container.empty().append($notice);
+    
+    // Scroll to error if not in viewport
+    if (!isElementInViewport($notice[0])) {
+        $('html, body').animate({
+            scrollTop: $notice.offset().top - 50
+        }, 500);
+    }
+}
+```
+
+### 4.2 Error Types and Handling (MUST)
+
+Different error types MUST be handled appropriately:
+
+```javascript
+/**
+ * Unified error handler for AJAX requests.
+ * 
+ * @param {object} xhr The jqXHR object
+ * @param {string} status The status text
+ * @param {string} error The error thrown
+ * @param {jQuery} container Container for error display
+ */
+function handleAjaxError(xhr, status, error, container) {
+    // Determine error type and message
+    let message = '';
+    let errorType = 'general';
+    
+    // Handle specific error types
+    if (status === 'timeout') {
+        message = 'Request timed out. Please try again later.';
+        errorType = 'timeout';
+    } else if (status === 'parsererror') {
+        message = 'Received an invalid response from the server.';
+        errorType = 'parse';
+    } else if (status === 'abort') {
+        message = 'Request was aborted.';
+        errorType = 'abort';
+    } else {
+        // Try to parse response for more detailed error
+        try {
+            const response = JSON.parse(xhr.responseText);
+            if (response.message) {
+                message = response.message;
+            } else if (response.error) {
+                message = response.error;
+            } else if (response.data && response.data.message) {
+                message = response.data.message;
+            }
+        } catch (e) {
+            // If can't parse JSON, use status text and error
+            message = 'Error: ' + status + (error ? ' - ' + error : '');
+        }
+    }
+    
+    // Log for diagnostics
+    console.error('AJAX Error:', { 
+        type: errorType,
+        status: xhr.status,
+        message: message,
+        response: xhr.responseText
+    });
+    
+    // Display to user
+    showError(message, container);
+    
+    // Additional specialized handling based on error type
+    switch (errorType) {
+        case 'timeout':
+            // Perhaps offer a retry with longer timeout
+            break;
+        case 'parse':
+            // Maybe add a "report bug" link
+            break;
+    }
+}
+```
+
+### 4.3 Inline Validation Feedback (SHOULD)
+
+For form submissions, SHOULD show inline validation feedback:
+
+```javascript
+/**
+ * Validate form field and show inline feedback.
+ * 
+ * @param {jQuery} $field The field to validate
+ * @param {Function} validator Validation function returning true/error message
+ * @return {boolean} Whether validation passed
+ */
+function validateField($field, validator) {
+    // Clear existing validation messages
+    removeFieldError($field);
+    
+    // Get field value and run validation
+    const value = $field.val();
+    const result = validator(value);
+    
+    // True means validation passed
+    if (result === true) {
+        // Add success indicator if desired
+        $field.addClass('is-valid');
+        return true;
+    }
+    
+    // Otherwise show error
+    $field.addClass('is-invalid');
+    
+    // Add error message after field
+    const $error = $('<div class="field-error">' + result + '</div>');
+    $field.after($error);
+    
+    return false;
+}
+
+/**
+ * Remove field error state and message.
+ * 
+ * @param {jQuery} $field The field to clear errors from
+ */
+function removeFieldError($field) {
+    $field.removeClass('is-valid is-invalid');
+    $field.next('.field-error').remove();
+}
+```
+
+## 5. Complete AJAX Operation Implementation
+
+### 5.1 Comprehensive Example (SHOULD)
+
+AJAX operations SHOULD follow this pattern:
+
+```javascript
+/**
+ * Perform an AJAX operation with complete user feedback.
+ * 
+ * @param {object} options Configuration options
+ */
+function performAjaxOperation(options) {
+    // Default options
+    const settings = $.extend({
+        action: '',            // WP AJAX action
+        data: {},              // Data to send
+        button: null,          // Button that triggered the action
+        resultContainer: null, // Container for results/errors
+        timeout: 30000,        // Timeout in milliseconds
+        successCallback: null, // Function to call on success
+        errorCallback: null    // Function to call on error
+    }, options);
+    
+    // Validate required options
+    if (!settings.action) {
+        console.error('AJAX operation missing required "action" parameter');
+        return;
+    }
+    
+    // Get jQuery objects
+    const $button = settings.button ? $(settings.button) : null;
+    const $container = settings.resultContainer ? $(settings.resultContainer) : null;
+    
+    // Update UI for loading state
+    if ($button) {
+        updateButtonState($button, true);
+    }
+    
+    if ($container) {
+        showLoading($container);
+        const progress = initProgressIndicator($container);
+    }
+    
+    // Prepare request data
+    const requestData = $.extend({}, settings.data, {
+        action: settings.action,
+        nonce: wpApiSettings.nonce // Assuming wp_localize_script was used to provide this
+    });
+    
+    // Make the request
+    $.ajax({
+        url: ajaxurl,
+        method: 'POST',
+        data: requestData,
+        timeout: settings.timeout,
+        success: function(response) {
+            // Stop progress indicator if present
+            if ($container && $container.data('progress-interval')) {
+                clearInterval($container.data('progress-interval'));
+            }
+            
+            // Check for WordPress JSON response format
+            let isSuccess = false;
+            let output = '';
+            
+            // Handle various response formats
+            if (typeof response === 'object' && response !== null) {
+                if (response.success === true) {
+                    isSuccess = true;
+                    output = response.data || 'Operation completed successfully';
+                } else {
+                    output = response.data?.message || 'Operation failed';
+                }
+            } else if (response === '1' || response === 1) {
+                isSuccess = true;
+                output = 'Operation completed successfully';
+            } else {
+                // Fallback for unexpected/legacy response format
+                output = response;
+                isSuccess = true; // Assuming success for non-object responses
+            }
+            
+            // Update UI based on result
+            if (isSuccess) {
+                if ($container) {
+                    if (typeof output === 'string') {
+                        $container.html('<div class="notice notice-success"><p>' + output + '</p></div>');
+                    } else {
+                        // For complex data, format appropriately
+                        $container.html('<div class="operation-result success"></div>');
+                        formatOperationResult($container.find('.operation-result'), output);
+                    }
+                }
+                
+                // Call success callback if provided
+                if (typeof settings.successCallback === 'function') {
+                    settings.successCallback(output);
+                }
+            } else {
+                // Handle error in response
+                if ($container) {
+                    showError(output, $container);
+                }
+                
+                // Call error callback if provided
+                if (typeof settings.errorCallback === 'function') {
+                    settings.errorCallback(output);
+                }
+            }
+        },
+        error: function(xhr, status, error) {
+            // Stop progress indicator if present
+            if ($container && $container.data('progress-interval')) {
+                clearInterval($container.data('progress-interval'));
+            }
+            
+            // Handle error
+            if ($container) {
+                handleAjaxError(xhr, status, error, $container);
+            }
+            
+            // Call error callback if provided
+            if (typeof settings.errorCallback === 'function') {
+                settings.errorCallback(error);
+            }
+            
+            // Log the error
+            console.error('AJAX operation failed:', {
+                action: settings.action,
+                status: status,
+                error: error,
+                response: xhr.responseText || 'No response'
+            });
+        },
+        complete: function() {
+            // Always restore button state
+            if ($button) {
+                updateButtonState($button, false);
+            }
+        }
+    });
+}
+```
+
+### 5.2 Usage Example (SHOULD)
+
+```javascript
+// Usage example
+$('#save-settings-button').on('click', function(e) {
+    e.preventDefault();
+    
+    // Validate form first
+    if (!validateSettingsForm()) {
+        return;
+    }
+    
+    // Collect form data
+    const formData = $('#settings-form').serialize();
+    
+    // Perform AJAX operation
+    performAjaxOperation({
+        action: 'save_plugin_settings',
+        data: formData,
+        button: this,
+        resultContainer: '#settings-result',
+        timeout: 15000,
+        successCallback: function(response) {
+            // Additional actions on success
+            updateLastSavedTime();
+        }
+    });
+});
+```
+
+## 6. Verification Checklist
+
+When implementing AJAX operations, verify:
+
+- [ ] Visual loading indicators are present for all operations
+- [ ] Buttons show loading state when operations are in progress
+- [ ] Progress indicators for operations expected to take >2 seconds
+- [ ] Appropriate timeouts are set for all AJAX requests
+- [ ] Error handling provides clear, actionable feedback
+- [ ] Form validation provides helpful inline feedback
+- [ ] All operations restore UI state after completion (success or error)
+- [ ] Console logging is included for debugging failed operations
+
+## 7. Common Issues This Prevents
+
+1. **Poor User Experience**
+   - Unclear if operations succeeded or failed
+   - No indication of progress for long-running operations
+   - Buttons remaining in loading state after operation completes
+
+2. **Hanging Requests**
+   - Requests without timeouts may never resolve
+   - Users left uncertain if a request is still processing
+
+3. **Unhelpful Error Messages**
+   - Generic "An error occurred" messages
+   - Technical errors exposed to end users
+   - No actionable information for resolution

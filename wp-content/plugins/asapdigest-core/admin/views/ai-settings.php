@@ -110,41 +110,84 @@ add_action('admin_init', function() {
     <p>Configure your AI providers and settings for content enhancement features.</p>
     
     <h2>AI Provider Configuration</h2>
-    <form method="post" action="options.php">
-        <?php settings_fields('asap_ai_settings'); ?>
-        <?php $opts = get_option('asap_ai_settings', []); ?>
-            <table class="form-table">
-                <tr>
-                <th scope="row"><label for="asap_ai_provider">Provider</label></th>
+    <form method="post" action="<?php echo admin_url('admin.php?page=asap-ai-settings'); ?>" name="asap_ai_config_form">
+        <?php wp_nonce_field('asap_ai_settings', 'asap_ai_nonce'); ?>
+        
+        <h3>API Keys</h3>
+        <p class="description">Enter your AI provider API keys below. Each provider requires a separate API key.</p>
+        
+        <table class="form-table">
+            <!-- OpenAI API Key -->
+            <tr>
+                <th scope="row"><label for="asap_ai_openai_key">OpenAI API Key</label></th>
                 <td>
-                    <select name="asap_ai_settings[provider]" id="asap_ai_provider">
-                        <option value="openai" <?php selected($opts['provider'] ?? '', 'openai'); ?>>OpenAI</option>
-                        <option value="anthropic" <?php selected($opts['provider'] ?? '', 'anthropic'); ?>>Anthropic</option>
-                        <!-- Add more providers as needed -->
-                    </select>
-                    </td>
-                </tr>
-                <tr>
-                <th scope="row"><label for="asap_ai_api_key">API Key</label></th>
-                    <td>
-                    <input type="password" name="asap_ai_settings[api_key]" id="asap_ai_api_key" value="<?php echo esc_attr($opts['api_key'] ?? ''); ?>" size="40" autocomplete="off" />
-                    <button type="button" class="button" onclick="window.asapTestAIConnection()">Test Connection</button>
-                    <span id="ai-test-result"></span>
-                    <?php wp_nonce_field('asap_digest_content_nonce', 'asap_test_connection_nonce'); ?>
-                    <script>
-                    // Make the nonce accessible globally for the test connection function
-                    window.asapTestConnectionNonce = document.getElementById('asap_test_connection_nonce').value;
-                    </script>
-                    </td>
-                </tr>
-                <tr>
-                <th scope="row">Enable AI Provider</th>
-                    <td>
-                    <input type="checkbox" name="asap_ai_settings[enabled]" value="1" <?php checked($opts['enabled'] ?? false, true); ?> />
-                    </td>
-                </tr>
-            </table>
-        <?php submit_button('Save AI Settings'); ?>
+                    <input type="password" 
+                           name="asap_ai_openai_key" 
+                           id="asap_ai_openai_key" 
+                           value="<?php echo esc_attr($openai_key); ?>" 
+                           class="regular-text" 
+                           autocomplete="off" />
+                    <button type="button" 
+                            class="button asap-test-provider-button" 
+                            data-provider="openai" 
+                            data-key-field="asap_ai_openai_key">
+                        Test Connection
+                    </button>
+                    <span id="openai-test-result" class="test-result-indicator"></span>
+                    <p class="description">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a></p>
+                </td>
+            </tr>
+            
+            <!-- Anthropic API Key -->
+            <tr>
+                <th scope="row"><label for="asap_ai_anthropic_key">Anthropic API Key</label></th>
+                <td>
+                    <input type="password" 
+                           name="asap_ai_anthropic_key" 
+                           id="asap_ai_anthropic_key" 
+                           value="<?php echo esc_attr($anthropic_key); ?>" 
+                           class="regular-text" 
+                           autocomplete="off" />
+                    <button type="button" 
+                            class="button asap-test-provider-button" 
+                            data-provider="anthropic" 
+                            data-key-field="asap_ai_anthropic_key">
+                        Test Connection
+                    </button>
+                    <span id="anthropic-test-result" class="test-result-indicator"></span>
+                    <p class="description">Get your API key from <a href="https://console.anthropic.com/keys" target="_blank">Anthropic Console</a></p>
+                </td>
+            </tr>
+            
+            <!-- Hugging Face API Key -->
+            <tr>
+                <th scope="row"><label for="asap_ai_huggingface_key">Hugging Face API Key</label></th>
+                <td>
+                    <input type="password" 
+                           name="asap_ai_huggingface_key" 
+                           id="asap_ai_huggingface_key" 
+                           value="<?php echo esc_attr($huggingface_key); ?>" 
+                           class="regular-text" 
+                           autocomplete="off" />
+                    <button type="button" 
+                            class="button asap-test-provider-button" 
+                            data-provider="huggingface" 
+                            data-key-field="asap_ai_huggingface_key">
+                        Test Connection
+                    </button>
+                    <span id="huggingface-test-result" class="test-result-indicator"></span>
+                    <p class="description">Get your API key from <a href="https://huggingface.co/settings/tokens" target="_blank">Hugging Face Token Settings</a></p>
+                </td>
+            </tr>
+        </table>
+        
+        <?php wp_nonce_field('asap_digest_content_nonce', 'asap_test_connection_nonce'); ?>
+        <script>
+        // Make the nonce accessible globally for the test connection function
+        window.asapTestConnectionNonce = document.getElementById('asap_test_connection_nonce').value;
+        </script>
+                
+        <input type="submit" name="asap_ai_submit" class="button button-primary" value="Save API Settings">
     </form>
             
             <h2>Model Configuration</h2>
@@ -257,8 +300,89 @@ add_action('admin_init', function() {
     }
 </style>
 
+<style>
+.test-result-indicator {
+    margin-left: 10px;
+    font-weight: bold;
+    display: inline-block;
+    min-width: 100px;
+}
+.test-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 50%;
+    border-top-color: #0073aa;
+    animation: asap-spinner 0.8s linear infinite;
+}
+@keyframes asap-spinner {
+    to { transform: rotate(360deg); }
+}
+.asap-ai-test-area .error {
+    color: #d63638;
+    font-weight: bold;
+}
+</style>
+
 <script>
 jQuery(document).ready(function($) {
+    // Provider connection test handlers
+    $('.asap-test-provider-button').on('click', function() {
+        const provider = $(this).data('provider');
+        const keyField = $(this).data('key-field');
+        const apiKey = $('#' + keyField).val();
+        const resultSpan = $('#' + provider + '-test-result');
+        
+        if (!apiKey) {
+            resultSpan.html('<span style="color:red;">Please enter an API key first</span>');
+            return;
+        }
+        
+        // Show loading indicator with timer
+        let seconds = 0;
+        resultSpan.html('<span class="test-loading"></span> Testing... <span class="test-timer">0</span>s');
+        
+        const timer = setInterval(function() {
+            seconds++;
+            resultSpan.find('.test-timer').text(seconds);
+        }, 1000);
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'asap_test_ai_connection',
+                provider: provider,
+                api_key: apiKey,
+                nonce: $('#asap_test_connection_nonce').val()
+            },
+            timeout: 30000, // 30 second timeout
+            success: function(response) {
+                clearInterval(timer);
+                console.log(provider + ' test response:', response);
+                
+                if (response.success) {
+                    resultSpan.html('<span style="color:green;">✓ Connected successfully</span>');
+                } else {
+                    resultSpan.html('<span style="color:red;">✗ ' + (response.data ? response.data.message : 'Unknown error') + '</span>');
+                }
+            },
+            error: function(xhr, status, error) {
+                clearInterval(timer);
+                console.error(provider + ' test error:', {xhr, status, error});
+                
+                let errorMessage = error;
+                if (status === 'timeout') {
+                    errorMessage = 'Connection timed out after 30 seconds';
+                }
+                
+                resultSpan.html('<span style="color:red;">✗ ' + errorMessage + '</span>');
+            }
+        });
+    });
+    
     // Test button click handlers
     $('#asap-ai-test-summarize').on('click', function() {
         testAIFeature('summarize');
@@ -275,7 +399,7 @@ jQuery(document).ready(function($) {
     // Direct AJAX test handler
     $('#manual-ajax-test').on('click', function() {
         var resultSpan = $('#manual-test-result');
-        resultSpan.text('Sending direct AJAX request...');
+        resultSpan.html('<span class="test-loading"></span> Sending direct AJAX request...');
         
         $.ajax({
             url: ajaxurl,
@@ -283,23 +407,20 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'asap_test_ai_connection',
                 provider: 'anthropic',
-                api_key: $('#asap_ai_api_key').val(),
+                api_key: $('#asap_ai_anthropic_key').val(),
                 nonce: $('#asap_test_connection_nonce').val()
             },
             success: function(response) {
                 console.log('Manual test response:', response);
                 if (response.success) {
-                    resultSpan.text('Success: ' + response.data.message);
-                    resultSpan.css('color', 'green');
+                    resultSpan.html('<span style="color:green;">✓ ' + response.data.message + '</span>');
                 } else {
-                    resultSpan.text('Error: ' + (response.data ? response.data.message : 'Unknown error'));
-                    resultSpan.css('color', 'red');
+                    resultSpan.html('<span style="color:red;">✗ ' + (response.data ? response.data.message : 'Unknown error') + '</span>');
                 }
             },
             error: function(xhr, status, error) {
                 console.error('Manual test error:', {xhr, status, error});
-                resultSpan.text('AJAX Error: ' + error);
-                resultSpan.css('color', 'red');
+                resultSpan.html('<span style="color:red;">✗ AJAX Error: ' + error + '</span>');
             }
         });
     });
@@ -311,49 +432,84 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        $('#asap-ai-test-output').html('<p>Processing, please wait...</p>');
+        $('#asap-ai-test-output').html('<p><span class="test-loading"></span> Processing, please wait... <span id="request-timer">0</span> seconds</p>');
         $('#asap-ai-test-results').show();
+        
+        // Add timer to indicate how long the request is taking
+        let seconds = 0;
+        const timer = setInterval(function() {
+            seconds++;
+            $('#request-timer').text(seconds);
+        }, 1000);
         
         $.ajax({
             url: '/wp-json/asap/v1/ai/' + feature,
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ text: text }),
+            timeout: 60000, // 60 seconds timeout
             beforeSend: function(xhr) {
                 xhr.setRequestHeader('X-WP-Nonce', asapDigestAdmin.restNonce);
             },
             success: function(response) {
+                clearInterval(timer);
                 let output = '';
                 
-                if (feature === 'summarize' && response.summary) {
-                    output = '<p><strong>Summary:</strong> ' + response.summary + '</p>';
-                } else if (feature === 'entities' && response.entities) {
-                    output = '<p><strong>Entities:</strong></p><ul>';
-                    response.entities.forEach(function(entity) {
-                        output += '<li>' + entity.entity + ' (' + entity.type + ', confidence: ' + (entity.confidence * 100).toFixed(1) + '%)</li>';
-                    });
-                    output += '</ul>';
-                } else if (feature === 'keywords' && response.keywords) {
-                    output = '<p><strong>Keywords:</strong></p><ul>';
-                    response.keywords.forEach(function(keyword) {
-                        output += '<li>' + keyword.keyword + ' (score: ' + (keyword.score * 100).toFixed(1) + '%)</li>';
-                    });
-                    output += '</ul>';
+                console.log('Test response:', feature, response);
+                
+                if (feature === 'summarize') {
+                    if (response.summary) {
+                        output = '<p><strong>Summary:</strong> ' + response.summary + '</p>';
+                    } else {
+                        output = '<p><strong>Summary:</strong> ' + JSON.stringify(response) + '</p>';
+                    }
+                } else if (feature === 'entities') {
+                    if (response.entities && Array.isArray(response.entities)) {
+                        output = '<p><strong>Entities:</strong></p><ul>';
+                        response.entities.forEach(function(entity) {
+                            output += '<li>' + entity.entity + ' (' + entity.type + ', confidence: ' + (entity.confidence * 100).toFixed(1) + '%)</li>';
+                        });
+                        output += '</ul>';
+                    } else {
+                        output = '<p><strong>Entities:</strong> ' + JSON.stringify(response) + '</p>';
+                    }
+                } else if (feature === 'keywords') {
+                    if (response.keywords && Array.isArray(response.keywords)) {
+                        output = '<p><strong>Keywords:</strong></p><ul>';
+                        response.keywords.forEach(function(keyword) {
+                            output += '<li>' + keyword.keyword + ' (score: ' + (keyword.score * 100).toFixed(1) + '%)</li>';
+                        });
+                        output += '</ul>';
+                    } else {
+                        output = '<p><strong>Keywords:</strong> ' + JSON.stringify(response) + '</p>';
+                    }
                 } else {
-                    output = '<p>No results returned.</p>';
+                    output = '<p>No results returned.</p><pre>' + JSON.stringify(response, null, 2) + '</pre>';
                 }
                 
                 $('#asap-ai-test-output').html(output);
             },
-            error: function(xhr) {
+            error: function(xhr, status, error) {
+                clearInterval(timer);
                 let errorMessage = 'An error occurred.';
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    if (response.message) {
-                        errorMessage = response.message;
-                    }
-                } catch (e) {}
                 
+                if (status === 'timeout') {
+                    errorMessage = 'Request timed out after 60 seconds. The AI service might be experiencing delays.';
+                } else {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMessage = response.message;
+                        }
+                    } catch (e) {
+                        // Use the error parameter if available
+                        if (error) {
+                            errorMessage = error;
+                        }
+                    }
+                }
+                
+                console.error('AJAX error:', { status, error, xhr });
                 $('#asap-ai-test-output').html('<p class="error">Error: ' + errorMessage + '</p>');
             }
         });

@@ -1,0 +1,308 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# WordPress AI Integration Protocol v1.0
+
+## 1. Purpose and Scope
+
+This protocol establishes standards for integrating AI services with WordPress plugins, focusing on:
+1. Reliable provider connections
+2. Type-safe data handling
+3. User feedback and error management
+4. Testing methodologies
+
+Following these guidelines prevents issues like type conversion errors, UI display failures, and timeout management problems.
+
+## 2. Provider Integration Layer
+
+### 2.1 Provider Adapter Pattern
+
+Each AI provider MUST be implemented using the adapter pattern:
+
+```php
+namespace YourPlugin\AI\Adapters;
+
+use YourPlugin\AI\Interfaces\AI_Provider_Interface;
+
+class ProviderAdapter implements AI_Provider_Interface {
+    // Implementation
+}
+```
+
+### 2.2 Required Interface Methods
+
+All provider adapters MUST implement these core methods:
+
+```php
+interface AI_Provider_Interface {
+    // Connection testing
+    public function test_connection();
+    
+    // Core AI functions
+    public function summarize($text, $options = []);
+    public function extract_entities($text, $options = []);
+    public function classify($text, $categories = [], $options = []);
+    public function generate_keywords($text, $options = []);
+    
+    // Provider information
+    public function get_capabilities();
+    public function get_last_response();
+}
+```
+
+### 2.3 Connection Testing
+
+Connection testing MUST include:
+- Detailed error logging
+- Timeouts (max 30 seconds recommended)
+- Clear status reporting
+
+```php
+public function test_connection() {
+    error_log('[PROVIDER] Attempting test connection.');
+    
+    try {
+        // Validate API key
+        if (empty($this->api_key)) {
+            error_log('[PROVIDER] Test failed: API key missing.');
+            throw new \Exception('API key is missing.');
+        }
+        
+        error_log('[PROVIDER] API Key present (length: ' . strlen($this->api_key) . ')');
+        
+        // Make minimal API request
+        $response = wp_remote_post(
+            'https://api.provider.com/endpoint',
+            [
+                'timeout' => 15,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->api_key,
+                    'Content-Type' => 'application/json'
+                ],
+                'body' => json_encode(['minimal_test_payload' => true])
+            ]
+        );
+        
+        // Log response
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
+        error_log('[PROVIDER] Test response code: ' . $response_code);
+        
+        // Handle errors
+        if (is_wp_error($response)) {
+            error_log('[PROVIDER] Test WP_Error: ' . $response->get_error_message());
+            throw new \Exception('Connection failed: ' . $response->get_error_message());
+        }
+        
+        // Check for success
+        if ($response_code === 200) {
+            error_log('[PROVIDER] Test successful.');
+            return true;
+        }
+        
+        error_log('[PROVIDER] Test failed with code: ' . $response_code);
+        throw new \Exception('Connection failed with status code: ' . $response_code);
+    } catch (\Exception $e) {
+        error_log('[PROVIDER] Exception: ' . $e->getMessage());
+        throw $e;
+    }
+}
+```
+
+## 3. Type Safety Requirements
+
+### 3.1 Explicit Type Handling
+
+ALWAYS use explicit type casting for:
+- Numeric parameters
+- Array/object conversions
+- Return values
+
+```php
+// CORRECT
+$score = (float)min(1.0, $count / 10);
+$limit = (int)$options['limit'];
+
+// INCORRECT
+$score = min(1.0, $count / 10); // Implicit conversion
+$limit = $options['limit']; // Missing explicit cast
+```
+
+### 3.2 Parameter Validation
+
+```php
+private function validate_options($options, $defaults) {
+    $validated = [];
+    
+    foreach ($defaults as $key => $default) {
+        if (isset($options[$key])) {
+            // Apply type casting based on default value type
+            if (is_int($default)) {
+                $validated[$key] = (int)$options[$key];
+            } elseif (is_float($default)) {
+                $validated[$key] = (float)$options[$key];
+            } elseif (is_bool($default)) {
+                $validated[$key] = (bool)$options[$key];
+            } elseif (is_array($default)) {
+                $validated[$key] = (array)$options[$key];
+            } else {
+                $validated[$key] = $options[$key];
+            }
+        } else {
+            $validated[$key] = $default;
+        }
+    }
+    
+    return $validated;
+}
+```
+
+## 4. UI Feedback Standards
+
+### 4.1 Loading States
+
+For AJAX operations, ALWAYS provide:
+- Loading indicators
+- Progress timers
+- Timeout handling
+- Clear success/failure indicators
+
+```javascript
+// Sample implementation
+function performOperation() {
+    // 1. Show loading state
+    $('#result').html('<span class="loading-spinner"></span> Processing...');
+    
+    // 2. Track elapsed time
+    let seconds = 0;
+    const timer = setInterval(() => {
+        seconds++;
+        $('#timer').text(seconds + 's');
+    }, 1000);
+    
+    // 3. Make request with timeout
+    $.ajax({
+        url: endpoint,
+        timeout: 60000, // 60 second timeout
+        success: (response) => {
+            clearInterval(timer);
+            $('#result').html('<span class="success">✓ Complete</span>');
+        },
+        error: (xhr, status, error) => {
+            clearInterval(timer);
+            
+            // 4. Handle specific errors
+            let message = 'An error occurred';
+            if (status === 'timeout') {
+                message = 'Request timed out after 60 seconds';
+            }
+            
+            $('#result').html('<span class="error">✗ ' + message + '</span>');
+        }
+    });
+}
+```
+
+### 4.2 Test Integration UI
+
+Test interfaces MUST include:
+- Input validation before request
+- Visual loading indicators
+- Countdown timers for long operations
+- Timeout mechanisms
+- Response validation and fallback display
+- JSON responses for debugging
+
+## 5. Error Handling & Logging
+
+### 5.1 Structured Error Logging
+
+```php
+// Within provider adapters
+try {
+    // AI operation
+} catch (\Exception $e) {
+    error_log('[' . static::class . '] Error in ' . __METHOD__ . ': ' . $e->getMessage());
+    
+    // Use error logger if available
+    if (class_exists('YourPlugin\\Core\\ErrorLogger')) {
+        \YourPlugin\Core\ErrorLogger::log(
+            'ai_service',
+            'provider_error',
+            $e->getMessage(),
+            ['provider' => static::class, 'method' => __METHOD__],
+            'error'
+        );
+    }
+    
+    throw $e; // Re-throw for upstream handling
+}
+```
+
+### 5.2 Front-end Error Handling
+
+```javascript
+// Show appropriate error messages
+function handleApiError(xhr, status, error) {
+    // Try to extract error message from response
+    let message = error || 'Unknown error';
+    
+    try {
+        const response = JSON.parse(xhr.responseText);
+        if (response.message) {
+            message = response.message;
+        } else if (response.error) {
+            message = response.error;
+        }
+    } catch (e) {
+        // If parsing fails, use default message
+    }
+    
+    // Special case for timeouts
+    if (status === 'timeout') {
+        message = 'Request timed out. The service might be experiencing delays.';
+    }
+    
+    return message;
+}
+```
+
+## 6. Testing Protocol
+
+### 6.1 Provider Testing
+
+Before deploying AI features:
+
+1. Test all provider connections
+2. Validate response formats
+3. Verify timeouts and error handling
+4. Test with large inputs
+
+### 6.2 Integration Tests
+
+Create automated tests for:
+1. Type handling
+2. API responses
+3. UI feedback
+4. Error conditions
+
+## 7. Implementation Checklist
+
+- [ ] Provider adapter implements required interface
+- [ ] Explicit type casting used for all numeric operations
+- [ ] Connection testing includes proper logging
+- [ ] UI includes loading indicators with timers
+- [ ] Timeouts are configured appropriately
+- [ ] Error handling is comprehensive
+- [ ] Response parsing includes fallback handling
+
+## 8. Common Issues This Prevents
+
+- Float to int conversion errors
+- Incomplete or missing UI feedback
+- Hanging requests without timeouts
+- Cryptic error messages
+- Type-related fatal errors
+- Response parsing failures

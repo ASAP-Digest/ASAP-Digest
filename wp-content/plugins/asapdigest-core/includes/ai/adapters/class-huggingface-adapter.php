@@ -415,20 +415,49 @@ class HuggingFaceAdapter implements AI_Provider_Interface {
     }
     
     /**
-     * Test connection to the API
-     *
-     * @return bool Success
+     * Test connection to Hugging Face API
+     * @return bool
      */
     public function test_connection() {
-        try {
-            $response = $this->send_api_request([
-                'model' => $this->default_models['summarize'],
-                'inputs' => 'Hello, HuggingFace!',
-            ]);
-            return !empty($response);
-        } catch (\Exception $e) {
-            return false;
+        error_log('[ASAP HuggingFaceAdapter] Attempting test connection.');
+        $api_key = $this->api_key;
+        if (!$api_key) {
+            error_log('[ASAP HuggingFaceAdapter] Test connection failed: API key missing.');
+            throw new \Exception('API key is missing.');
         }
+        error_log('[ASAP HuggingFaceAdapter] API Key present (length: ' . strlen($api_key) . '). Making request to Hugging Face.');
+        
+        // Use a simple model for testing
+        $model = 'distilbert-base-uncased';
+        $url = $this->api_endpoint . $model;
+        $response = wp_remote_post($url, [
+            'method'  => 'POST',
+            'headers' => [
+                'Authorization' => 'Bearer ' . $api_key,
+                'Content-Type' => 'application/json'
+            ],
+            'body'    => json_encode(['inputs' => 'Hello, testing!']),
+            'timeout' => 15,
+        ]);
+
+        $response_body = wp_remote_retrieve_body($response);
+        error_log('[ASAP HuggingFaceAdapter] Raw test connection response: ' . $response_body);
+
+        if (is_wp_error($response)) {
+            error_log('[ASAP HuggingFaceAdapter] Test connection WP_Error: ' . $response->get_error_message());
+            throw new \Exception('Connection failed: ' . $response->get_error_message());
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        error_log('[ASAP HuggingFaceAdapter] Test connection response code: ' . $response_code);
+
+        if ($response_code === 200) {
+            error_log('[ASAP HuggingFaceAdapter] Test connection successful.');
+            return true;
+        }
+
+        error_log('[ASAP HuggingFaceAdapter] Test connection failed with code: ' . $response_code);
+        throw new \Exception('Connection failed with status code: ' . $response_code . ' - ' . $response_body);
     }
     
     /**

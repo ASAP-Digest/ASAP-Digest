@@ -363,7 +363,7 @@ class KeywordGenerator {
                     if ($count > 1) { // Only include phrases that appear multiple times
                         $phrases[] = [
                             'keyword' => $phrase,
-                            'score' => min(1.0, $count / 10),
+                            'score' => (float)min(1.0, $count / 10), // Cast to float to prevent implicit conversion
                             'occurrences' => $count
                         ];
                     }
