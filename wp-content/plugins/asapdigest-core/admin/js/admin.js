@@ -461,6 +461,46 @@
         return models;
     }
     
+    // Helper function to update model verification status in database
+    function updateModelVerificationStatus(modelId, isVerified) {
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'asap_update_hf_model_verification',
+                model_id: modelId,
+                is_verified: isVerified ? 1 : 0,
+                nonce: nonceValue
+            },
+            success: function(response) {
+                if (response.success) {
+                    console.log('Model verification status updated:', response.data);
+                } else {
+                    console.error('Error updating model verification status:', response.data);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error updating model verification status:', xhr.responseText);
+            }
+        });
+    }
+    
+    // Helper function to mark a model as failed
+    function markModelAsFailed(modelId) {
+        // Get model row
+        var modelRow = $('#hf-models-list tr[data-model-id="' + modelId + '"]');
+        
+        // Update row class and status indicator
+        modelRow.removeClass('model-verified model-unverified').addClass('model-failed');
+        modelRow.find('.model-status').html('<span class="status-failed">✗ Failed</span>');
+        
+        // Update the verification status in the database
+        updateModelVerificationStatus(modelId, false);
+    }
+    
     // Call ThickBox initialization when document is ready
     $(document).ready(function() {
         initThickBox();
@@ -482,8 +522,15 @@
             return;
         }
         
-        // Show loading indicator
-        resultIndicator.html('<span class="testing">Testing... <span class="spinner"></span></span>');
+        // Show loading indicator with timer
+        resultIndicator.html('<span class="test-loading"></span> Testing... <span class="test-timer">0</span>s');
+        
+        // Start timer
+        let seconds = 0;
+        const timer = setInterval(function() {
+            seconds++;
+            resultIndicator.find('.test-timer').text(seconds);
+        }, 1000);
         
         // Use the global nonce from asapDigestAdmin
         var nonceValue = asapDigestAdmin.nonce;
@@ -500,6 +547,7 @@
                 nonce: nonceValue
             },
             success: function(response) {
+                clearInterval(timer);
                 console.log('huggingface test response:', response);
                 if (response.success) {
                     resultIndicator.html('<span class="success">✓ ' + response.data.message + '</span>');
@@ -520,6 +568,7 @@
                 }
             },
             error: function(xhr, status, error) {
+                clearInterval(timer);
                 console.log('huggingface test error:', {xhr, status, error});
                 var errorMsg = 'Connection failed';
                 
@@ -542,36 +591,107 @@
         });
     });
     
-    // Handle adding a new Hugging Face model
-    $('#hf-add-model-form').off('submit').on('submit', function(e) {
+    // Handle add model form submission
+    $('#hf-add-model-form').on('submit', function(e) {
         e.preventDefault();
         
+        var form = $(this);
         var modelId = $('#hf_model_id').val().trim();
         var modelLabel = $('#hf_model_label').val().trim();
+        var apiKey = $('#asap_ai_huggingface_key').val();
+        var verifyBeforeAdd = $('#hf-verify-before-add').is(':checked');
+        var submitButton = form.find('button[type="submit"]');
+        var resultIndicator = $('#hf-test-new-result');
         
+        // Basic validation
         if (!modelId || !modelLabel) {
-            showAdminNotice('error', 'Both Model ID and Display Name are required.');
+            showAdminNotice('error', 'Please enter both Model ID and Display Name.');
             return;
         }
         
-        // Get current models before adding
-        let models = getCurrentModels();
-        
-        // Check if model already exists
-        if (models[modelId]) {
-            showAdminNotice('error', 'A model with this ID already exists.');
+        if (verifyBeforeAdd) {
+            if (!apiKey) {
+                showAdminNotice('error', 'Please enter your Hugging Face API key to verify this model.');
             return;
         }
         
-        // Disable form fields and add loading state
-        var submitButton = $(this).find('button[type="submit"]');
-        submitButton.prop('disabled', true).addClass('loading');
-        $('#hf_model_id, #hf_model_label').prop('disabled', true);
-        
+            // Show loading
+            submitButton.prop('disabled', true);
+            resultIndicator.html('<span class="test-loading"></span> Verifying model...');
+            
+            // Get nonce
+            var nonceValue = asapDigestAdmin.nonce;
+            
+            // Test model first
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'asap_test_ai_connection',
+                    provider: 'huggingface',
+                    api_key: apiKey,
+                    model: modelId,
+                    nonce: nonceValue
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Model verified, now add it
+                        resultIndicator.html('<span class="success">✓ Verified</span>');
+                        
+                        // Continue with adding model
+                        addModelToDatabase(modelId, modelLabel, submitButton, resultIndicator, true);
+                    } else {
+                        // Model verification failed
+                        var errorMsg = response.data.message || 'Verification failed';
+                        resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                        
+                        if (confirm('Model verification failed: ' + errorMsg + '\n\nAdd this model anyway?')) {
+                            addModelToDatabase(modelId, modelLabel, submitButton, resultIndicator, false);
+                        } else {
+                            submitButton.prop('disabled', false);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Model verification error:', xhr.responseText);
+                    var errorMsg = 'Verification failed';
+                    
+                    try {
+                        if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                            errorMsg = xhr.responseJSON.data.message;
+                        } else {
+                            var jsonResponse = JSON.parse(xhr.responseText);
+                            if (jsonResponse && jsonResponse.data && jsonResponse.data.message) {
+                                errorMsg = jsonResponse.data.message;
+                            }
+                        }
+                    } catch (e) {
+                        if (xhr.responseText && xhr.responseText.length < 100) {
+                            errorMsg = xhr.responseText;
+                        }
+                    }
+                    
+                    resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                    
+                    if (confirm('Model verification failed: ' + errorMsg + '\n\nAdd this model anyway?')) {
+                        addModelToDatabase(modelId, modelLabel, submitButton, resultIndicator, false);
+                    } else {
+                        submitButton.prop('disabled', false);
+                    }
+                }
+            });
+        } else {
+            // Skip verification, add model directly
+            addModelToDatabase(modelId, modelLabel, submitButton, resultIndicator, false);
+        }
+    });
+    
+    // Helper function to add model to database
+    function addModelToDatabase(modelId, modelLabel, submitButton, resultIndicator, isVerified) {
         // Use the global nonce from asapDigestAdmin
         var nonceValue = asapDigestAdmin.nonce;
         
-        // Save the model using operation-based format
+        // Send the request to add the model
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -580,17 +700,33 @@
                 operation: 'add',
                 model_id: modelId,
                 model_label: modelLabel,
+                is_verified: isVerified ? 1 : 0,
                 nonce: nonceValue
             },
             success: function(response) {
                 if (response.success) {
-                    // Check if the row already exists and remove it first
-                    $('tr[data-model-id="' + modelId + '"]').remove();
+                    // Clear form
+                    $('#hf_model_id, #hf_model_label').val('');
                     
-                    // Add the new model row to the table only once
-                    var newRow = $('<tr data-model-id="' + modelId + '">' +
+                    // Clear indicator if there was one
+                    resultIndicator.html('');
+                    
+                    // Get verification status classes
+                    var modelClass = isVerified ? 'model-verified' : 'model-unverified';
+                    var statusHtml = isVerified ? 
+                        '<span class="status-verified">✓ Verified</span>' : 
+                        '<span class="status-unverified">⚠ Unverified</span>';
+                    
+                    // Check if there's a "no items" row that needs to be removed
+                    if ($('#hf-models-list .no-items').length) {
+                        $('#hf-models-list').empty();
+                    }
+                    
+                    // Add new row to the table
+                    var newRow = $('<tr data-model-id="' + modelId + '" class="' + modelClass + '">' +
                                   '<td class="model-id">' + modelId + '</td>' +
                                   '<td class="model-name">' + modelLabel + '</td>' +
+                        '<td class="model-status">' + statusHtml + '</td>' +
                                   '<td class="actions">' +
                                     '<button type="button" class="button button-small hf-test-model" data-model="' + modelId + '">Test</button> ' +
                                     '<button type="button" class="button button-small hf-edit-model" data-model="' + modelId + '" data-name="' + modelLabel + '">Edit</button> ' +
@@ -599,40 +735,36 @@
                                   '</td>' +
                                 '</tr>');
                     
-                    // Remove the "no items" row if it exists
-                    $('#hf-models-list .no-items').remove();
-                    
-                    // Add the new row
                     $('#hf-models-list').append(newRow);
                     
-                    // Update dropdown - remove existing option first to prevent duplicates
-                    $('#asap_ai_huggingface_model option[value="' + modelId + '"]').remove();
-                    var option = new Option(modelLabel, modelId);
-                    $('#asap_ai_huggingface_model').append(option);
+                    // Add to the dropdown
+                    $('#asap_ai_huggingface_model').append('<option value="' + modelId + '">' + modelLabel + '</option>');
                     
-                    // Show success notice
-                    showAdminNotice('success', 'Model added successfully!');
+                    // Show success message
+                    showAdminNotice('success', 'Model added successfully' + (isVerified ? ' and verified.' : '.'));
                     
-                    // Clear the form
-                    $('#hf_model_id, #hf_model_label').val('');
-                    $('#hf-test-new-result').html('');
+                    // Update verification status in database if verified
+                    if (isVerified) {
+                        updateModelVerificationStatus(modelId, true);
+                    }
                 } else {
-                    showAdminNotice('error', 'Error adding model: ' + (response.data ? response.data.message : 'Unknown error'));
+                    showAdminNotice('error', 'Error adding model: ' + (response.data.message || 'Unknown error'));
                 }
+                
+                // Re-enable submit button
+                submitButton.prop('disabled', false);
             },
             error: function(xhr, status, error) {
-                showAdminNotice('error', 'An error occurred while saving the model: ' + error);
-                console.error('Error saving model:', {xhr, status, error});
-            },
-            complete: function() {
-                // Re-enable form fields
-                submitButton.prop('disabled', false).removeClass('loading');
-                $('#hf_model_id, #hf_model_label').prop('disabled', false);
+                console.error('Error adding model:', xhr.responseText);
+                showAdminNotice('error', 'Error adding model. Please try again.');
+                
+                // Re-enable submit button
+                submitButton.prop('disabled', false);
             }
         });
-    });
+    }
     
-    // Handle testing an existing model
+    // Handle test model button click
     $(document).on('click', '.hf-test-model', function() {
         var button = $(this);
         var modelId = button.data('model');
@@ -640,17 +772,17 @@
         var resultIndicator = button.siblings('.test-result-indicator');
         
         if (!apiKey) {
-            resultIndicator.html('<span class="error">⚠️ Please enter your Hugging Face API key first</span>');
+            resultIndicator.html('<span class="error">⚠️ Please enter API key first</span>');
             return;
         }
         
         // Show loading indicator
-        resultIndicator.html('<span class="testing">Testing... <span class="spinner"></span></span>');
+        resultIndicator.html('<span class="test-loading"></span> Testing...');
         
-        // Use the global nonce from asapDigestAdmin
+        // Get nonce
         var nonceValue = asapDigestAdmin.nonce;
         
-        // Test the model
+        // Send test request
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -663,22 +795,32 @@
             },
             success: function(response) {
                 if (response.success) {
-                    resultIndicator.html('<span class="success">✓ ' + response.data.message + '</span>');
+                    resultIndicator.html('<span class="success">✓ Working</span>');
                     
-                    // Hide the success message after 3 seconds
+                    // Update row class
+                    button.closest('tr').removeClass('model-failed model-unverified').addClass('model-verified');
+                    button.closest('tr').find('.model-status').html('<span class="status-verified">✓ Verified</span>');
+                    
+                    // Update verification status
+                    updateModelVerificationStatus(modelId, true);
+                    
+                    // Clear result after delay
                     setTimeout(function() {
                         resultIndicator.html('');
                     }, 3000);
                 } else {
-                    resultIndicator.html('<span class="error">✗ ' + (response.data.message || 'Connection failed') + '</span>');
+                    var errorMsg = response.data.message || 'Connection failed';
+                    resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                    
+                    // Mark model as failed
+                    markModelAsFailed(modelId);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Test model error:', {xhr, status, error});
+                console.error('Test model error:', xhr.responseText);
                 var errorMsg = 'Connection failed';
                 
                 try {
-                    // Try to parse the response JSON for better error messages
                     if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
                         errorMsg = xhr.responseJSON.data.message;
                     } else {
@@ -688,13 +830,15 @@
                         }
                     }
                 } catch (e) {
-                    // If JSON parsing fails, use the raw responseText if available
                     if (xhr.responseText && xhr.responseText.length < 100) {
                         errorMsg = xhr.responseText;
                     }
                 }
                 
                 resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                
+                // Mark model as failed
+                markModelAsFailed(modelId);
             }
         });
     });
@@ -727,6 +871,7 @@
                     var originalModelId = $('#edit_original_model_id').val();
                     var newModelId = $('#edit_model_id').val().trim();
                     var newModelLabel = $('#edit_model_label').val().trim();
+                    var verifyAfterUpdate = $('#edit_verify_after_update').is(':checked');
                     
                     if (!newModelId || !newModelLabel) {
                         showAdminNotice('error', 'Both Model ID and Display Name are required.');
@@ -745,6 +890,8 @@
                     // Use the global nonce from asapDigestAdmin
                     var nonceValue = asapDigestAdmin.nonce;
                     
+                    // Function to update the model in the database
+                    function updateModelInDatabase() {
                     // Save the model using operation-based format
                     $.ajax({
                         url: ajaxurl,
@@ -767,6 +914,15 @@
                                 row.find('.hf-test-model').attr('data-model', newModelId);
                                 row.find('.hf-edit-model').attr('data-model', newModelId).attr('data-name', newModelLabel);
                                 row.find('.hf-delete-model').attr('data-model', newModelId);
+                                    
+                                    // If model ID changed, remove verification status
+                                    if (newModelId !== originalModelId) {
+                                        row.removeClass('model-verified model-failed').addClass('model-unverified');
+                                        row.find('.model-status').html('<span class="status-unverified">⚠ Unverified</span>');
+                                        
+                                        // Remove from verified models
+                                        updateModelVerificationStatus(originalModelId, false);
+                                    }
                                 
                                 // Update dropdown
                                 var option = $('#asap_ai_huggingface_model option[value="' + originalModelId + '"]');
@@ -790,6 +946,69 @@
                             console.error('Error updating model:', {xhr, status, error});
                         }
                     });
+                    }
+                    
+                    // If we need to verify after update and the model ID changed
+                    if (verifyAfterUpdate && newModelId !== originalModelId) {
+                        // Test the new model
+                        $.ajax({
+                            url: ajaxurl,
+                            type: 'POST',
+                            data: {
+                                action: 'asap_test_ai_connection',
+                                provider: 'huggingface',
+                                api_key: $('#asap_ai_huggingface_key').val(),
+                                model: newModelId,
+                                nonce: nonceValue
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    // Model is verified, update it and mark as verified
+                                    updateModelInDatabase();
+                                    setTimeout(function() {
+                                        updateModelVerificationStatus(newModelId, true);
+                                    }, 500);
+                                } else {
+                                    // Model verification failed
+                                    var errorMsg = response.data.message || 'Connection failed';
+                                    
+                                    // Ask if user wants to update anyway
+                                    if (confirm('Model verification failed: ' + errorMsg + '. Update this model anyway?')) {
+                                        updateModelInDatabase();
+                                    }
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                // Handle error
+                                var errorMsg = 'Connection failed';
+                                
+                                try {
+                                    if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                                        errorMsg = xhr.responseJSON.data.message;
+                                    } else {
+                                        var jsonResponse = JSON.parse(xhr.responseText);
+                                        if (jsonResponse && jsonResponse.data && jsonResponse.data.message) {
+                                            errorMsg = jsonResponse.data.message;
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Use raw text if available
+                                    if (xhr.responseText && xhr.responseText.length < 100) {
+                                        errorMsg = xhr.responseText;
+                                    }
+                                }
+                                
+                                // Ask if user wants to update anyway
+                                if (confirm('Model verification failed: ' + errorMsg + '. Update this model anyway?')) {
+                                    updateModelInDatabase();
+                                }
+                            },
+                            timeout: 30000
+                        });
+                    } else {
+                        // Just update the model without verification
+                        updateModelInDatabase();
+                    }
                 },
                 'Cancel': function() {
                     $(this).dialog('close');
@@ -798,6 +1017,7 @@
             close: function() {
                 // Clear form values on close
                 $('#edit_original_model_id, #edit_model_id, #edit_model_label').val('');
+                $('#edit_verify_after_update').prop('checked', true);
             }
         });
     });
@@ -834,8 +1054,11 @@
                     
                     // If there are no models left, add the "no items" row
                     if ($('#hf-models-list tr').length === 0) {
-                        $('#hf-models-list').append('<tr class="no-items"><td colspan="3">No custom models added yet.</td></tr>');
+                        $('#hf-models-list').append('<tr class="no-items"><td colspan="4">No custom models added yet.</td></tr>');
                     }
+                    
+                    // Also remove from verified models list
+                    updateModelVerificationStatus(modelId, false);
                     
                     // Show success notice
                     showAdminNotice('success', 'Model deleted successfully!');
@@ -850,32 +1073,243 @@
         });
     });
 
-    // Helper function to show WordPress admin notices
-    function showAdminNotice(type, message) {
-        // Remove any existing notices first
-        $('.notice').remove();
+    // Handle Verify All Models button
+    $(document).on('click', '#hf-verify-all-models', function() {
+        var button = $(this);
+        var apiKey = $('#asap_ai_huggingface_key').val();
+        var resultIndicator = $('#hf-bulk-action-result');
         
-        var noticeClass = type === 'success' ? 'notice-success' : 'notice-error';
-        var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"><p>' + message + '</p></div>');
+        if (!apiKey) {
+            resultIndicator.html('<span class="error">⚠️ Please enter your Hugging Face API key first</span>');
+            return;
+        }
         
-        // Insert the notice at the top of the page
-        $('.wrap').first().prepend(notice);
-        
-        // Make the notice dismissible
-        notice.fadeIn('fast', function() {
-            if (typeof wp !== 'undefined' && wp.notices && wp.notices.addDismiss) {
-                wp.notices.addDismiss();
-            }
+        // Get all models
+        var models = [];
+        $('#hf-models-list tr[data-model-id]').each(function() {
+            models.push($(this).data('model-id'));
         });
         
-        // Auto dismiss success messages after 3 seconds
-        if (type === 'success') {
+        if (models.length === 0) {
+            resultIndicator.html('<span class="error">No models to verify</span>');
+            return;
+        }
+        
+        // Confirm
+        if (!confirm('This will test all ' + models.length + ' models. This might take some time. Continue?')) {
+            return;
+        }
+        
+        // Show loading indicator with model count
+        resultIndicator.html('<span class="test-loading"></span> Verifying all models (0/' + models.length + ')...');
+        
+        // Disable button
+        button.prop('disabled', true);
+        
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
+        // Track progress and results
+        var processed = 0;
+        var verified = 0;
+        var failed = 0;
+        
+        // Start testing models one by one
+        testNextModel(0);
+        
+        function testNextModel(index) {
+            if (index >= models.length) {
+                // All models tested
+                resultIndicator.html(
+                    '<span class="success">✓ Verification complete: ' + 
+                    verified + ' verified, ' + 
+                    failed + ' failed</span>'
+                );
+                
+                // Re-enable button
+                button.prop('disabled', false);
+                return;
+            }
+            
+            // Update progress
+            resultIndicator.html(
+                '<span class="test-loading"></span> Verifying all models (' + 
+                processed + '/' + models.length + ')...'
+            );
+            
+            var modelId = models[index];
+            var modelRow = $('#hf-models-list tr[data-model-id="' + modelId + '"]');
+            var modelResultIndicator = modelRow.find('.test-result-indicator');
+            
+            // Show loading indicator for this model
+            modelResultIndicator.html('<span class="test-loading"></span> Testing...');
+            
+            // Test the model
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'asap_test_ai_connection',
+                    provider: 'huggingface',
+                    api_key: apiKey,
+                    model: modelId,
+                    nonce: nonceValue
+                },
+                success: function(response) {
+                    processed++;
+                    
+                    if (response.success) {
+                        verified++;
+                        modelResultIndicator.html('<span class="success">✓ Verified</span>');
+                        updateModelVerificationStatus(modelId, true);
+                        
+                        // Update row class
+                        modelRow.removeClass('model-failed model-unverified').addClass('model-verified');
+                        modelRow.find('.model-status').html('<span class="status-verified">✓ Verified</span>');
+                        
+                        // Clear result after delay
+                        setTimeout(function() {
+                            modelResultIndicator.html('');
+                        }, 3000);
+                    } else {
+                        failed++;
+                        var errorMsg = response.data.message || 'Connection failed';
+                        modelResultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                        markModelAsFailed(modelId);
+                    }
+                    
+                    // Process next model
+                    testNextModel(index + 1);
+                },
+                error: function(xhr, status, error) {
+                    processed++;
+                    failed++;
+                    console.error('Test model error:', xhr.responseText);
+                    
+                    var errorMsg = 'Connection failed';
+                    try {
+                        if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                            errorMsg = xhr.responseJSON.data.message;
+                        } else {
+                            var jsonResponse = JSON.parse(xhr.responseText);
+                            if (jsonResponse && jsonResponse.data && jsonResponse.data.message) {
+                                errorMsg = jsonResponse.data.message;
+                            }
+                        }
+                    } catch (e) {
+                        if (xhr.responseText && xhr.responseText.length < 100) {
+                            errorMsg = xhr.responseText;
+                        }
+                    }
+                    
+                    modelResultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
+                    markModelAsFailed(modelId);
+                    
+                    // Process next model
+                    testNextModel(index + 1);
+                }
+            });
+        }
+    });
+    
+    // Handle Remove Failed Models button
+    $(document).on('click', '#hf-remove-failed-models', function() {
+        var button = $(this);
+        var resultIndicator = $('#hf-bulk-action-result');
+        
+        // Get failed models from the UI
+        var failedModels = [];
+        $('#hf-models-list tr.model-failed').each(function() {
+            failedModels.push($(this).data('model-id'));
+        });
+        
+        if (failedModels.length === 0) {
+            resultIndicator.html('<span class="error">No failed models to remove</span>');
+            return;
+        }
+        
+        // Confirm
+        if (!confirm('This will remove ' + failedModels.length + ' failed models. Continue?')) {
+            return;
+        }
+        
+        // Disable button
+        button.prop('disabled', true);
+        
+        // Show loading indicator
+        resultIndicator.html('<span class="test-loading"></span> Removing failed models...');
+        
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
+        // Send request to remove failed models
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'asap_remove_failed_models',
+                nonce: nonceValue
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Show success message
+                    resultIndicator.html('<span class="success">✓ ' + response.data.message + '</span>');
+                    
+                    // Remove failed models from UI
+                    $('#hf-models-list tr.model-failed').remove();
+                    
+                    // Update the dropdown
+                    for (var i = 0; i < failedModels.length; i++) {
+                        $('#asap_ai_huggingface_model option[value="' + failedModels[i] + '"]').remove();
+                    }
+                    
+                    // If no models left, show the "no items" row
+                    if ($('#hf-models-list tr[data-model-id]').length === 0) {
+                        $('#hf-models-list').html('<tr class="no-items"><td colspan="4">No custom models added yet. Add a model above or select from recommended models.</td></tr>');
+                    }
+                    
+                    // Show success notice
+                    showAdminNotice('success', response.data.message);
+                } else {
+                    resultIndicator.html('<span class="error">✗ Error removing models</span>');
+                    console.error('Error removing models:', response.data);
+                }
+                
+                // Re-enable button
+                button.prop('disabled', false);
+            },
+            error: function(xhr, status, error) {
+                resultIndicator.html('<span class="error">✗ Error removing models</span>');
+                console.error('AJAX error removing models:', xhr.responseText);
+                
+                // Re-enable button
+                button.prop('disabled', false);
+            }
+        });
+    });
+
+    // Helper function to show admin notice
+    function showAdminNotice(type, message) {
+        var noticeClass = 'notice-' + type;
+        var notice = $('<div class="notice ' + noticeClass + ' is-dismissible"><p>' + message + '</p></div>');
+        
+        // Remove any existing notices
+        $('.notice').remove();
+        
+        // Add notice at the top of the content
+        $('.wrap h1').after(notice);
+        
+        // Make notice dismissible
+        if (typeof wp !== 'undefined' && wp.notices && wp.notices.removeDismissed) {
+            wp.notices.removeDismissed();
+        }
+        
+        // Auto-dismiss after 5 seconds
             setTimeout(function() {
-                notice.fadeOut('fast', function() {
+            notice.fadeOut(500, function() {
                     notice.remove();
                 });
-            }, 3000);
-        }
+        }, 5000);
     }
 
     // Helper function to generate a nice display name for models

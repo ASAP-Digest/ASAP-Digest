@@ -168,5 +168,133 @@ function asap_digest_ajax_trigger_content_crawler() {
     // The functionality is now handled by the class-based AJAX handler system
 }
 
+/**
+ * Updates a Hugging Face model's verification status
+ * 
+ * @since 3.1.0
+ * @return void
+ */
+function handle_update_hf_model_verification() {
+    // Check nonce
+    if (!check_ajax_referer('asap_digest_content_nonce', 'nonce', false)) {
+        wp_send_json_error(array(
+            'message' => 'Invalid security token.',
+            'code' => 'invalid_nonce'
+        ), 403);
+    }
+    
+    // Check for required parameters
+    $model_id = isset($_POST['model_id']) ? sanitize_text_field($_POST['model_id']) : '';
+    $is_verified = isset($_POST['is_verified']) ? (bool)$_POST['is_verified'] : false;
+    
+    if (empty($model_id)) {
+        wp_send_json_error(array(
+            'message' => 'Missing required parameter: model_id',
+            'code' => 'missing_parameter'
+        ), 400);
+    }
+    
+    // Get current verified and failed models
+    $verified_models = get_option('asap_ai_verified_huggingface_models', array());
+    $failed_models = get_option('asap_ai_failed_huggingface_models', array());
+    
+    if ($is_verified) {
+        // Add to verified models if not already there
+        if (!in_array($model_id, $verified_models)) {
+            $verified_models[] = $model_id;
+            update_option('asap_ai_verified_huggingface_models', $verified_models);
+        }
+        
+        // Remove from failed models if it was there
+        if (in_array($model_id, $failed_models)) {
+            $failed_models = array_diff($failed_models, array($model_id));
+            update_option('asap_ai_failed_huggingface_models', $failed_models);
+        }
+        
+        wp_send_json_success(array(
+            'message' => 'Model marked as verified',
+            'model_id' => $model_id,
+            'status' => 'verified'
+        ));
+    } else {
+        // Mark as failed
+        if (!in_array($model_id, $failed_models)) {
+            $failed_models[] = $model_id;
+            update_option('asap_ai_failed_huggingface_models', $failed_models);
+        }
+        
+        // Remove from verified models if it was there
+        if (in_array($model_id, $verified_models)) {
+            $verified_models = array_diff($verified_models, array($model_id));
+            update_option('asap_ai_verified_huggingface_models', $verified_models);
+        }
+        
+        wp_send_json_success(array(
+            'message' => 'Model marked as failed',
+            'model_id' => $model_id,
+            'status' => 'failed'
+        ));
+    }
+}
+
+/**
+ * Handle removing all failed models
+ * 
+ * @since 3.1.0
+ * @return void
+ */
+function handle_remove_failed_models() {
+    // Check nonce
+    if (!check_ajax_referer('asap_digest_content_nonce', 'nonce', false)) {
+        wp_send_json_error(array(
+            'message' => 'Invalid security token.',
+            'code' => 'invalid_nonce'
+        ), 403);
+    }
+    
+    // Get failed models
+    $failed_models = get_option('asap_ai_failed_huggingface_models', array());
+    
+    if (empty($failed_models)) {
+        wp_send_json_success(array(
+            'message' => 'No failed models to remove',
+            'removed_count' => 0
+        ));
+    }
+    
+    // Get custom models
+    $custom_models = get_option('asap_ai_custom_huggingface_models', array());
+    
+    // Remove failed models from custom models
+    $removed_count = 0;
+    foreach ($failed_models as $model_id) {
+        if (isset($custom_models[$model_id])) {
+            unset($custom_models[$model_id]);
+            $removed_count++;
+        }
+    }
+    
+    // Update custom models
+    update_option('asap_ai_custom_huggingface_models', $custom_models);
+    
+    // Clear failed models
+    update_option('asap_ai_failed_huggingface_models', array());
+    
+    wp_send_json_success(array(
+        'message' => sprintf(_n(
+            '%d failed model removed successfully',
+            '%d failed models removed successfully',
+            $removed_count,
+            'asapdigest-core'
+        ), $removed_count),
+        'removed_count' => $removed_count,
+        'failed_models' => $failed_models
+    ));
+}
+
+// Register the AJAX handlers
+add_action('wp_ajax_asap_update_hf_model_verification', 'handle_update_hf_model_verification');
+add_action('wp_ajax_asap_remove_failed_models', 'handle_remove_failed_models');
+
 // Do not add action hooks for these deprecated functions
 // The new AJAX handler system registers its own hooks 
