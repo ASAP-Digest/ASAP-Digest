@@ -237,4 +237,394 @@
     .admin-color-midnight .setting-label {
         color: #c3c4c7;
     }
+}
+
+/* Hugging Face Models Management Styles */
+.hf-models-management {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.hf-models-table {
+    margin-top: 15px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hf-models-table th,
+.hf-models-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.hf-models-table th {
+    background-color: #f9f9f9;
+    font-weight: bold;
+}
+
+.hf-models-table .actions {
+    white-space: nowrap;
+}
+
+.hf-model-form table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.hf-model-form th,
+.hf-model-form td {
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.hf-model-form input[type="text"] {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Test Result Indicators */
+.test-result-indicator {
+    display: inline-block;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+.test-result-indicator .success {
+    color: #46b450;
+}
+
+.test-result-indicator .error {
+    color: #dc3232;
+}
+
+.test-result-indicator .testing {
+    color: #ffb900;
+}
+
+.test-result-indicator .error-details {
+    font-weight: normal;
+    font-size: 0.9em;
+    margin-top: 5px;
+    padding: 8px;
+    background-color: #f8f8f8;
+    border-left: 3px solid #dc3232;
+    color: #444;
+}
+
+.test-result-indicator .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 5px;
+    vertical-align: middle;
+    background: url(../images/spinner.gif) no-repeat;
+    background-size: 16px 16px;
+}
+
+/* jQuery UI Dialog Customizations */
+.ui-dialog.wp-dialog {
+    z-index: 300000 !important; /* Ensure dialog is above ThickBox */
+}
+
+/* Hugging Face Models Browser Styles */
+.hf-models-container {
+    padding: 15px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.hf-models-tabs .category-tabs {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ccd0d4;
+    padding-bottom: 0;
+}
+
+.hf-models-tabs .category-tabs li {
+    margin: 0 5px -1px 0;
+    display: inline-block;
+}
+
+.hf-models-tabs .category-tabs li a {
+    padding: 8px 12px;
+    display: block;
+    text-decoration: none;
+    color: #555;
+    border: 1px solid #ccd0d4;
+    background: #f7f7f7;
+    border-bottom: none;
+    border-radius: 3px 3px 0 0;
+}
+
+.hf-models-tabs .category-tabs li.tabs a {
+    background: #fff;
+    color: #000;
+    border-bottom: 1px solid #fff;
+}
+
+.hf-models-tabs .tabs-panel {
+    border: 1px solid #ccd0d4;
+    padding: 15px;
+    background: #fff;
+    margin-top: -1px;
+}
+
+.hf-models-tabs .tabs-panel.hidden {
+    display: none;
+}
+
+.hf-models-tabs .tabs-panel table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.hf-models-tabs .tabs-panel table th,
+.hf-models-tabs .tabs-panel table td {
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.hf-models-tabs .tabs-panel table th {
+    text-align: left;
+    font-weight: 600;
+}
+
+.hf-models-tabs .tabs-panel .model-description {
+    max-width: 50%;
+}
+
+#hf-models-browser.loading {
+    text-align: center;
+    padding: 30px;
+}
+
+#hf-models-browser.loading .spinner {
+    display: inline-block;
+    float: none;
+    margin-top: 15px;
+}
+
+#hf-models-browser .error {
+    color: #dc3232;
+    padding: 10px;
+    background: #f8f8f8;
+    border-left: 4px solid #dc3232;
+}
+
+/* jQuery UI Dialog Customization */
+.wp-dialog {
+    background: #fff !important;
+    padding: 0 !important;
+    border-radius: 4px !important;
+    border: 1px solid #c3c4c7 !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+}
+
+.wp-dialog .ui-dialog-titlebar {
+    background: #fff !important;
+    border-bottom: 1px solid #dcdcde !important;
+    height: 36px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    line-height: 36px !important;
+    padding: 0 36px 0 16px !important;
+}
+
+.wp-dialog .ui-dialog-titlebar-close {
+    color: #646970 !important;
+    height: 36px !important;
+    width: 36px !important;
+    padding: 0 !important;
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+    border: none !important;
+    background: none !important;
+    cursor: pointer !important;
+}
+
+.wp-dialog .ui-dialog-titlebar-close:before {
+    content: "\f158" !important;
+    font: normal 20px/1 dashicons !important;
+    vertical-align: middle !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    line-height: 36px !important;
+}
+
+.wp-dialog .ui-dialog-titlebar-close:hover {
+    color: #135e96 !important;
+}
+
+.wp-dialog .ui-dialog-buttonpane {
+    background: #f6f7f7 !important;
+    border-top: 1px solid #dcdcde !important;
+    padding: 8px 16px !important;
+    text-align: right !important;
+}
+
+.wp-dialog .ui-dialog-buttonpane button {
+    margin-left: 5px !important;
+}
+
+/* Remove custom modal styling since we're using jQuery UI Dialog */
+#hf-edit-model-dialog {
+    display: none; /* Hidden by default, shown by jQuery UI */
+}
+
+#hf-edit-model-dialog .form-field {
+    margin-bottom: 15px;
+}
+
+#hf-edit-model-dialog label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+#hf-edit-model-dialog input[type="text"] {
+    width: 100%;
+    padding: 8px;
+}
+
+/* Add New Model Form */
+.hf-add-model-section {
+    background: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.hf-add-model-section h3 {
+    margin-top: 0;
+}
+
+/* Recommended Models Modal */
+.hf-models-tabs {
+    margin-top: 20px;
+}
+
+.hf-models-tabs .nav-tab-wrapper {
+    margin-bottom: 0;
+}
+
+.hf-models-tabs .tab-content {
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-top: none;
+}
+
+.hf-models-tabs .nav-tab {
+    cursor: pointer;
+}
+
+/* Buttons Styling */
+.button.add-model {
+    background-color: #0073aa;
+    color: white;
+    border-color: #0073aa;
+}
+
+.button.add-model:hover {
+    background-color: #005177;
+    color: white;
+    border-color: #005177;
+}
+
+/* HuggingFace Models Browser */
+#hf-models-browser {
+    min-height: 400px;
+    padding: 20px;
+}
+
+#hf-models-browser.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.hf-models-container {
+    height: 100%;
+}
+
+.hf-models-tabs {
+    height: 100%;
+}
+
+.hf-models-tabs .category-tabs {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.hf-models-tabs .category-tabs li {
+    margin: 0;
+    padding: 5px 10px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    margin-right: 5px;
+    border-radius: 3px 3px 0 0;
+    cursor: pointer;
+}
+
+.hf-models-tabs .category-tabs li.tabs {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+}
+
+.hf-models-tabs .category-tabs a {
+    text-decoration: none;
+    color: #444;
+}
+
+.hf-models-tabs .tabs-panel {
+    border: 1px solid #ccc;
+    padding: 15px;
+    background: #fff;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.hf-models-tabs .tabs-panel table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.hf-models-tabs .tabs-panel th,
+.hf-models-tabs .tabs-panel td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.hf-models-tabs .tabs-panel th {
+    background-color: #f8f8f8;
+    font-weight: bold;
+}
+
+.hf-models-tabs .tabs-panel td.model-id {
+    font-family: monospace;
+    width: 30%;
+}
+
+.hf-models-tabs .tabs-panel td.model-description {
+    width: 50%;
+}
+
+.hf-models-tabs .tabs-panel td.actions {
+    width: 20%;
+    text-align: center;
+}
+
+/* Error styles */
+#hf-models-browser p.error {
+    color: #d63638;
+    font-weight: bold;
 } 

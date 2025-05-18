@@ -93,10 +93,47 @@ class ASAP_Digest_Admin {
      * @return void
      */
     public function enqueue_admin_scripts($hook) {
-        // Enqueue admin scripts and styles
-        if (strpos($hook, 'asap-digest') !== false) {
-            wp_enqueue_style('asap-admin-css', plugin_dir_url(__FILE__) . 'css/admin.css', array(), '2.3.0');
-            wp_enqueue_script('asap-admin-js', plugin_dir_url(__FILE__) . 'js/admin.js', array('jquery'), '2.3.0', true);
+        // Check if we're on any of our plugin's admin pages
+        if (strpos($hook, 'asap-digest') !== false || (isset($_GET['page']) && strpos($_GET['page'], 'asap-') !== false)) {
+            // Enqueue WordPress core dependencies first
+            wp_enqueue_style('thickbox');
+            wp_enqueue_script('thickbox');
+            wp_enqueue_script('jquery');
+            wp_enqueue_script('jquery-ui-core');
+            wp_enqueue_script('jquery-ui-dialog');
+            wp_enqueue_style('wp-jquery-ui-dialog');
+            
+            // Get plugin version for cache busting
+            $version = defined('ASAP_DIGEST_VERSION') ? ASAP_DIGEST_VERSION : '2.3.0';
+            
+            // Enqueue our admin styles and scripts with proper dependencies
+            wp_enqueue_style(
+                'asap-admin-css',
+                plugin_dir_url(__FILE__) . 'css/admin.css',
+                array('thickbox', 'wp-jquery-ui-dialog'),  // Add jQuery UI dialog styles as dependency
+                $version
+            );
+            
+            wp_enqueue_script(
+                'asap-admin-js',
+                plugin_dir_url(__FILE__) . 'js/admin.js',
+                array('jquery', 'thickbox', 'jquery-ui-dialog'),  // Add jQuery UI dialog as dependency
+                $version,
+                true  // Load in footer
+            );
+            
+            // Add localized script data
+            wp_localize_script('asap-admin-js', 'asap_admin_vars', array(
+                'nonce' => wp_create_nonce('asap_admin_nonce'),
+                'rest_nonce' => wp_create_nonce('wp_rest'),
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'rest_url' => rest_url(),
+                'i18n' => array(
+                    'testing' => __('Testing connection...', 'asapdigest-core'),
+                    'success' => __('Connection successful!', 'asapdigest-core'),
+                    'error' => __('Error: ', 'asapdigest-core')
+                )
+            ));
         }
     }
 }

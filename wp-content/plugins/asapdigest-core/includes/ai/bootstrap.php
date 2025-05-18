@@ -33,6 +33,10 @@ function bootstrap() {
     // Register global AI hooks
     register_ai_hooks();
     
+    // Initialize AI API class
+    $ai_api = new ASAP_Digest_AI_API();
+    $ai_api->init();
+    
     // Allow plugins to extend or modify AI system
     do_action('asapdigest_ai_system_loaded');
 }
@@ -46,6 +50,9 @@ function load_core_components() {
     $component_files = [
         // Core AI Service Manager
         'class-ai-service-manager.php',
+        
+        // API Classes
+        'class-ai-api.php',
         
         // Interfaces
         'interfaces/interface-ai-provider.php',

@@ -386,6 +386,13 @@ final class ASAP_Digest_Core {
                 'permission_callback' => '__return_true'
             ]);
             error_log('ASAP_CORE_DEBUG: Registered Nonce API endpoint');
+
+            // Register AI endpoints
+            register_rest_route('asap/v1', '/ai/models/recommended', array(
+                'methods' => 'GET',
+                'callback' => array($this, 'get_recommended_models'),
+                'permission_callback' => array($this, 'check_admin_permission'),
+            ));
         } catch (\Throwable $e) {
             error_log('ASAP_CORE_DEBUG: Error registering REST routes: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
             error_log('ASAP_CORE_DEBUG: Stack trace: ' . $e->getTraceAsString());
@@ -633,6 +640,52 @@ final class ASAP_Digest_Core {
      */
     public function register_ai_settings_group() {
         register_setting('asap_ai_settings', 'asap_ai_settings');
+    }
+
+    /**
+     * Get recommended models from HuggingFace
+     * 
+     * @param WP_REST_Request $request REST API request
+     * @return WP_REST_Response
+     */
+    public function get_recommended_models($request) {
+        try {
+            // Get the HuggingFace adapter
+            $adapter = new \ASAPDigest\AI\Adapters\HuggingFaceAdapter(['api_key' => get_option('asap_ai_huggingface_key', '')]);
+            
+            // Get recommended models
+            $models = $adapter->get_recommended_models();
+            
+            if (empty($models)) {
+                return new \WP_Error(
+                    'asap_ai_empty_models',
+                    'No recommended models were found.',
+                    ['status' => 404]
+                );
+            }
+            
+            return rest_ensure_response([
+                'models' => $models,
+                'success' => true
+            ]);
+        } catch (\Exception $e) {
+            error_log('ASAP_AI_ERROR: Error getting recommended models: ' . $e->getMessage());
+            return new \WP_Error(
+                'asap_ai_error',
+                $e->getMessage(),
+                ['status' => 500]
+            );
+        }
+    }
+
+    /**
+     * Check if user has admin permission
+     * 
+     * @param WP_REST_Request $request
+     * @return bool
+     */
+    public function check_admin_permission($request) {
+        return current_user_can('manage_options');
     }
 }
 

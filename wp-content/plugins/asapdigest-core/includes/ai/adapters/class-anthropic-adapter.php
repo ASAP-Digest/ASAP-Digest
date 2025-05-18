@@ -85,6 +85,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
      * @return string Summary
      */
     public function summarize($text, $options = []) {
+        try {
         $model = !empty($options['model']) ? $options['model'] : $this->default_model;
         $max_tokens = !empty($options['max_tokens']) ? (int)$options['max_tokens'] : 150;
         
@@ -100,12 +101,17 @@ class AnthropicAdapter implements AI_Provider_Interface {
             'max_tokens' => $max_tokens,
             'temperature' => 0.5
         ]);
-        
+            $this->update_usage_data($response);
         if (isset($response['content'][0]['text'])) {
             return trim($response['content'][0]['text']);
         }
         
-        throw new \Exception('Failed to generate summary');
+            error_log('[ASAP AnthropicAdapter][summarize] No summary returned for input: ' . substr($text, 0, 100));
+            throw new \Exception('Failed to generate summary: No summary returned.');
+        } catch (\Exception $e) {
+            error_log('[ASAP AnthropicAdapter][summarize] Exception: ' . $e->getMessage() . ' | Input: ' . substr($text, 0, 100));
+            throw new \Exception('Anthropic summarize error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -116,6 +122,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
      * @return array Entities
      */
     public function extract_entities($text, $options = []) {
+        try {
         $model = !empty($options['model']) ? $options['model'] : $this->default_model;
         $entity_types = !empty($options['entity_types']) ? $options['entity_types'] : ['person', 'organization', 'location', 'date', 'product'];
         
@@ -131,7 +138,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
             ],
             'temperature' => 0.3
         ]);
-        
+            $this->update_usage_data($response);
         if (isset($response['content'][0]['text'])) {
             $content = $response['content'][0]['text'];
             
@@ -157,7 +164,12 @@ class AnthropicAdapter implements AI_Provider_Interface {
             }
         }
         
-        throw new \Exception('Failed to extract entities');
+            error_log('[ASAP AnthropicAdapter][extract_entities] No entities returned for input: ' . substr($text, 0, 100));
+            throw new \Exception('Failed to extract entities: No valid JSON array returned.');
+        } catch (\Exception $e) {
+            error_log('[ASAP AnthropicAdapter][extract_entities] Exception: ' . $e->getMessage() . ' | Input: ' . substr($text, 0, 100));
+            throw new \Exception('Anthropic extract_entities error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -169,8 +181,8 @@ class AnthropicAdapter implements AI_Provider_Interface {
      * @return array Classifications with confidence scores
      */
     public function classify($text, $categories = [], $options = []) {
+        try {
         $model = !empty($options['model']) ? $options['model'] : $this->default_model;
-        
         $system = "You are a content classifier with expertise in categorizing text.";
         
         if (empty($categories)) {
@@ -190,7 +202,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
             ],
             'temperature' => 0.3
         ]);
-        
+            $this->update_usage_data($response);
         if (isset($response['content'][0]['text'])) {
             $content = $response['content'][0]['text'];
             
@@ -217,7 +229,12 @@ class AnthropicAdapter implements AI_Provider_Interface {
             }
         }
         
-        throw new \Exception('Failed to classify content');
+            error_log('[ASAP AnthropicAdapter][classify] No valid classification returned for input: ' . substr($text, 0, 100));
+            throw new \Exception('Failed to classify content: No valid JSON returned.');
+        } catch (\Exception $e) {
+            error_log('[ASAP AnthropicAdapter][classify] Exception: ' . $e->getMessage() . ' | Input: ' . substr($text, 0, 100));
+            throw new \Exception('Anthropic classify error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -228,6 +245,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
      * @return array Keywords
      */
     public function generate_keywords($text, $options = []) {
+        try {
         $model = !empty($options['model']) ? $options['model'] : $this->default_model;
         $limit = !empty($options['limit']) ? (int)$options['limit'] : 10;
         
@@ -242,7 +260,7 @@ class AnthropicAdapter implements AI_Provider_Interface {
             ],
             'temperature' => 0.3
         ]);
-        
+            $this->update_usage_data($response);
         if (isset($response['content'][0]['text'])) {
             $content = $response['content'][0]['text'];
             
@@ -267,7 +285,12 @@ class AnthropicAdapter implements AI_Provider_Interface {
             }
         }
         
-        throw new \Exception('Failed to generate keywords');
+            error_log('[ASAP AnthropicAdapter][generate_keywords] No keywords returned for input: ' . substr($text, 0, 100));
+            throw new \Exception('Failed to generate keywords: No valid JSON array returned.');
+        } catch (\Exception $e) {
+            error_log('[ASAP AnthropicAdapter][generate_keywords] Exception: ' . $e->getMessage() . ' | Input: ' . substr($text, 0, 100));
+            throw new \Exception('Anthropic generate_keywords error: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -521,6 +544,9 @@ class AnthropicAdapter implements AI_Provider_Interface {
             
             // Calculate approximate cost
             $model = $this->default_model;
+            if (!empty($response['model'])) {
+                $model = $response['model'];
+            }
             $models = $this->get_models();
             if (isset($models[$model])) {
                 $input_cost = $models[$model]['cost_per_1k_tokens']['input'] * $response['usage']['prompt_tokens'] / 1000;
