@@ -485,6 +485,9 @@
         // Show loading indicator
         resultIndicator.html('<span class="testing">Testing... <span class="spinner"></span></span>');
         
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
         // Test the model
         $.ajax({
             url: ajaxurl,
@@ -494,7 +497,7 @@
                 provider: 'huggingface',
                 api_key: apiKey,
                 model: modelId,
-                nonce: asap_admin_vars.nonce
+                nonce: nonceValue
             },
             success: function(response) {
                 console.log('huggingface test response:', response);
@@ -565,6 +568,9 @@
         submitButton.prop('disabled', true).addClass('loading');
         $('#hf_model_id, #hf_model_label').prop('disabled', true);
         
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
         // Save the model using operation-based format
         $.ajax({
             url: ajaxurl,
@@ -574,14 +580,14 @@
                 operation: 'add',
                 model_id: modelId,
                 model_label: modelLabel,
-                nonce: $('#asap_test_connection_nonce').val()
+                nonce: nonceValue
             },
             success: function(response) {
                 if (response.success) {
-                    // Remove any existing row with the same ID first to prevent duplicates
+                    // Check if the row already exists and remove it first
                     $('tr[data-model-id="' + modelId + '"]').remove();
                     
-                    // Add the new model to the table
+                    // Add the new model row to the table only once
                     var newRow = $('<tr data-model-id="' + modelId + '">' +
                                   '<td class="model-id">' + modelId + '</td>' +
                                   '<td class="model-name">' + modelLabel + '</td>' +
@@ -616,6 +622,7 @@
             },
             error: function(xhr, status, error) {
                 showAdminNotice('error', 'An error occurred while saving the model: ' + error);
+                console.error('Error saving model:', {xhr, status, error});
             },
             complete: function() {
                 // Re-enable form fields
@@ -640,6 +647,9 @@
         // Show loading indicator
         resultIndicator.html('<span class="testing">Testing... <span class="spinner"></span></span>');
         
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
         // Test the model
         $.ajax({
             url: ajaxurl,
@@ -649,7 +659,7 @@
                 provider: 'huggingface',
                 api_key: apiKey,
                 model: modelId,
-                nonce: asap_admin_vars.nonce
+                nonce: nonceValue
             },
             success: function(response) {
                 if (response.success) {
@@ -663,8 +673,28 @@
                     resultIndicator.html('<span class="error">✗ ' + (response.data.message || 'Connection failed') + '</span>');
                 }
             },
-            error: function() {
-                resultIndicator.html('<span class="error">✗ Connection failed</span>');
+            error: function(xhr, status, error) {
+                console.error('Test model error:', {xhr, status, error});
+                var errorMsg = 'Connection failed';
+                
+                try {
+                    // Try to parse the response JSON for better error messages
+                    if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                        errorMsg = xhr.responseJSON.data.message;
+                    } else {
+                        var jsonResponse = JSON.parse(xhr.responseText);
+                        if (jsonResponse && jsonResponse.data && jsonResponse.data.message) {
+                            errorMsg = jsonResponse.data.message;
+                        }
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, use the raw responseText if available
+                    if (xhr.responseText && xhr.responseText.length < 100) {
+                        errorMsg = xhr.responseText;
+                    }
+                }
+                
+                resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
             }
         });
     });
@@ -712,6 +742,9 @@
                         return;
                     }
                     
+                    // Use the global nonce from asapDigestAdmin
+                    var nonceValue = asapDigestAdmin.nonce;
+                    
                     // Save the model using operation-based format
                     $.ajax({
                         url: ajaxurl,
@@ -722,7 +755,7 @@
                             original_model_id: originalModelId,
                             model_id: newModelId,
                             model_label: newModelLabel,
-                            nonce: $('#asap_test_connection_nonce').val()
+                            nonce: nonceValue
                         },
                         success: function(response) {
                             if (response.success) {
@@ -754,6 +787,7 @@
                         },
                         error: function(xhr, status, error) {
                             showAdminNotice('error', 'An error occurred while updating the model: ' + error);
+                            console.error('Error updating model:', {xhr, status, error});
                         }
                     });
                 },
@@ -777,6 +811,9 @@
             return;
         }
         
+        // Use the global nonce from asapDigestAdmin
+        var nonceValue = asapDigestAdmin.nonce;
+        
         // Delete the model using operation-based format
         $.ajax({
             url: ajaxurl,
@@ -785,7 +822,7 @@
                 action: 'asap_save_custom_hf_models',
                 operation: 'delete',
                 model_id: modelId,
-                nonce: $('#asap_test_connection_nonce').val()
+                nonce: nonceValue
             },
             success: function(response) {
                 if (response.success) {
@@ -799,12 +836,16 @@
                     if ($('#hf-models-list tr').length === 0) {
                         $('#hf-models-list').append('<tr class="no-items"><td colspan="3">No custom models added yet.</td></tr>');
                     }
+                    
+                    // Show success notice
+                    showAdminNotice('success', 'Model deleted successfully!');
                 } else {
-                    alert('Error deleting model: ' + (response.data ? response.data.message : 'Unknown error'));
+                    showAdminNotice('error', 'Error deleting model: ' + (response.data ? response.data.message : 'Unknown error'));
                 }
             },
             error: function(xhr, status, error) {
-                alert('An error occurred while deleting the model: ' + error);
+                showAdminNotice('error', 'An error occurred while deleting the model: ' + error);
+                console.error('Error deleting model:', {xhr, status, error});
             }
         });
     });

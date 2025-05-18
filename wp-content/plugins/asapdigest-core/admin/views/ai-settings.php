@@ -197,11 +197,10 @@ add_action('admin_init', function() {
             </tr>
         </table>
         
-                    <?php wp_nonce_field('asap_digest_content_nonce', 'asap_test_connection_nonce'); ?>
-                    <script>
-                    // Make the nonce accessible globally for the test connection function
-                    window.asapTestConnectionNonce = document.getElementById('asap_test_connection_nonce').value;
-                    </script>
+        <?php 
+        // Hidden nonce field that can be accessed by jQuery - only needed for backward compatibility
+        wp_nonce_field('asap_digest_content_nonce', 'asap_test_connection_nonce'); 
+        ?>
                 
         <input type="submit" name="asap_ai_submit" class="button button-primary" value="Save API Settings">
     </form>
@@ -487,6 +486,9 @@ jQuery(document).ready(function($) {
             resultSpan.find('.test-timer').text(seconds);
         }, 1000);
         
+        // Use the global nonce from asapDigestAdmin
+        const nonceValue = asapDigestAdmin.nonce;
+        
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -495,7 +497,7 @@ jQuery(document).ready(function($) {
                 provider: provider,
                 api_key: apiKey,
                 model: additionalData.model, // Add model for Hugging Face
-                nonce: $('#asap_test_connection_nonce').val()
+                nonce: nonceValue
             },
             timeout: 30000, // 30 second timeout
             success: function(response) {
@@ -547,6 +549,9 @@ jQuery(document).ready(function($) {
         var resultSpan = $('#manual-test-result');
         resultSpan.html('<span class="test-loading"></span> Sending direct AJAX request...');
         
+        // Use the global nonce from asapDigestAdmin
+        const nonceValue = asapDigestAdmin.nonce;
+        
         $.ajax({
             url: ajaxurl,
             type: 'POST',
@@ -554,7 +559,7 @@ jQuery(document).ready(function($) {
                 action: 'asap_test_ai_connection',
                 provider: 'anthropic',
                 api_key: $('#asap_ai_anthropic_key').val(),
-                nonce: $('#asap_test_connection_nonce').val()
+                nonce: nonceValue
             },
             success: function(response) {
                 console.log('Manual test response:', response);
@@ -685,358 +690,6 @@ jQuery(document).ready(function($) {
 <?php
 // Add JavaScript for the custom models management
 add_action('admin_footer', function() {
-?>
-<script>
-jQuery(document).ready(function($) {
-    // Function to save custom models
-    function saveCustomModels(models, callback) {
-        $.ajax({
-            url: ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'asap_save_custom_hf_models',
-                models: models,
-                nonce: $('#asap_test_connection_nonce').val()
-            },
-            success: function(response) {
-                if (response.success) {
-                    if (callback) callback(true);
-                } else {
-                    alert('Error saving models: ' + (response.data ? response.data.message : 'Unknown error'));
-                    if (callback) callback(false);
-                }
-            },
-            error: function() {
-                alert('Server error while saving models.');
-                if (callback) callback(false);
-            }
-        });
-    }
-    
-    // Function to get current custom models
-    function getCurrentModels() {
-        let models = {};
-        $('#hf-models-list tr:not(.no-items)').each(function() {
-            const modelId = $(this).data('model-id');
-            const modelName = $(this).find('.model-name').text();
-            if (modelId) {
-                models[modelId] = modelName;
-            }
-        });
-        return models;
-    }
-    
-    // Test a Hugging Face model
-    function testHuggingFaceModel(modelId, resultElement) {
-        const apiKey = $('#asap_ai_huggingface_key').val();
-        
-        if (!apiKey) {
-            resultElement.html('<span style="color:red;">Please enter an API key first</span>');
-            return;
-        }
-        
-        if (!modelId) {
-            resultElement.html('<span style="color:red;">Model ID is required</span>');
-            return;
-        }
-        
-        // Show loading indicator with timer
-        let seconds = 0;
-        resultElement.html('<span class="test-loading"></span> Testing... <span class="test-timer">0</span>s');
-        
-        const timer = setInterval(function() {
-            seconds++;
-            resultElement.find('.test-timer').text(seconds);
-        }, 1000);
-        
-        $.ajax({
-            url: ajaxurl,
-            type: 'POST',
-            data: {
-                action: 'asap_test_ai_connection',
-                provider: 'huggingface',
-                api_key: apiKey,
-                model: modelId,
-                nonce: $('#asap_test_connection_nonce').val()
-            },
-            timeout: 30000,
-            success: function(response) {
-                clearInterval(timer);
-                
-                if (response.success) {
-                    resultElement.html('<span style="color:green;">✓ Model works!</span>');
-                } else {
-                    resultElement.html('<span style="color:red;">✗ ' + (response.data ? response.data.message : 'Unknown error') + '</span>');
-                }
-            },
-            error: function(xhr, status, error) {
-                clearInterval(timer);
-                let errorMessage = error;
-                if (status === 'timeout') {
-                    errorMessage = 'Connection timed out after 30 seconds';
-                } else if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-                    errorMessage = xhr.responseJSON.data.message;
-                } else if (xhr.responseText) {
-                    try {
-                        const resp = JSON.parse(xhr.responseText);
-                        if (resp.data && resp.data.message) {
-                            errorMessage = resp.data.message;
-                        }
-                    } catch (e) {}
-                }
-                resultElement.html('<span style="color:red;">✗ ' + errorMessage + '</span>');
-            }
-        });
-    }
-    
-    // Add new model form submission
-    $('#hf-add-model-form').on('submit', function(e) {
-        e.preventDefault();
-        
-        const modelId = $('#hf_model_id').val().trim();
-        const modelLabel = $('#hf_model_label').val().trim();
-        
-        if (!modelId || !modelLabel) {
-            alert('Both Model ID and Display Name are required.');
-            return;
-        }
-        
-        // Get current models
-        let models = getCurrentModels();
-        
-        // Check if model ID already exists
-        if (models[modelId]) {
-            alert('A model with this ID already exists. Please use a different ID or edit the existing model.');
-            return;
-        }
-        
-        // Add new model
-        models[modelId] = modelLabel;
-        
-        // Save updated models
-        saveCustomModels(models, function(success) {
-            if (success) {
-                // Add row to the table
-                const newRow = $('<tr data-model-id="' + modelId + '">' +
-                    '<td class="model-id">' + modelId + '</td>' +
-                    '<td class="model-name">' + modelLabel + '</td>' +
-                    '<td class="actions">' +
-                    '<button type="button" class="button button-small hf-test-model" data-model="' + modelId + '">Test</button> ' +
-                    '<button type="button" class="button button-small hf-edit-model" data-model="' + modelId + '" data-name="' + modelLabel + '">Edit</button> ' +
-                    '<button type="button" class="button button-small hf-delete-model" data-model="' + modelId + '">Delete</button>' +
-                    '<span class="test-result-indicator"></span>' +
-                    '</td>' +
-                    '</tr>');
-                
-                // Remove "no items" row if present
-                $('#hf-models-list tr.no-items').remove();
-                
-                // Add new row
-                $('#hf-models-list').append(newRow);
-                
-                // Add to dropdown
-                const option = new Option(modelLabel, modelId);
-                $('#asap_ai_huggingface_model').append(option);
-                
-                // Clear form
-                $('#hf_model_id').val('');
-                $('#hf_model_label').val('');
-                $('#hf-test-new-result').html('');
-                
-                // Show success message
-                alert('Model added successfully!');
-            }
-        });
-    });
-    
-    // Test new model button
-    $('#hf-test-new-model').on('click', function() {
-        const modelId = $('#hf_model_id').val().trim();
-        if (!modelId) {
-            $('#hf-test-new-result').html('<span style="color:red;">Please enter a Model ID first</span>');
-            return;
-        }
-        
-        testHuggingFaceModel(modelId, $('#hf-test-new-result'));
-    });
-    
-    // Test existing model button
-    $(document).on('click', '.hf-test-model', function() {
-        const modelId = $(this).data('model');
-        const resultSpan = $(this).siblings('.test-result-indicator');
-        
-        testHuggingFaceModel(modelId, resultSpan);
-    });
-    
-    // Edit model button
-    $(document).on('click', '.hf-edit-model', function() {
-        const modelId = $(this).data('model');
-        const modelName = $(this).data('name');
-        
-        // Populate edit form
-        $('#edit_original_model_id').val(modelId);
-        $('#edit_model_id').val(modelId);
-        $('#edit_model_label').val(modelName);
-        
-        // Show dialog
-        $('#hf-edit-model-dialog').show();
-    });
-    
-    // Update model button
-    $('#hf-update-model').on('click', function() {
-        const originalModelId = $('#edit_original_model_id').val();
-        const newModelId = $('#edit_model_id').val().trim();
-        const newModelLabel = $('#edit_model_label').val().trim();
-        
-        if (!newModelId || !newModelLabel) {
-            alert('Both Model ID and Display Name are required.');
-            return;
-        }
-        
-        // Get current models
-        let models = getCurrentModels();
-        
-        // Check if new model ID already exists (unless it's the same as original)
-        if (newModelId !== originalModelId && models[newModelId]) {
-            alert('A model with this ID already exists. Please use a different ID.');
-            return;
-        }
-        
-        // Remove original model
-        delete models[originalModelId];
-        
-        // Add updated model
-        models[newModelId] = newModelLabel;
-        
-        // Save updated models
-        saveCustomModels(models, function(success) {
-            if (success) {
-                // Find the row to update
-                const row = $('#hf-models-list tr[data-model-id="' + originalModelId + '"]');
-                
-                // Update row
-                row.attr('data-model-id', newModelId);
-                row.find('.model-id').text(newModelId);
-                row.find('.model-name').text(newModelLabel);
-                row.find('.hf-test-model').attr('data-model', newModelId);
-                row.find('.hf-edit-model').attr('data-model', newModelId).attr('data-name', newModelLabel);
-                row.find('.hf-delete-model').attr('data-model', newModelId);
-                
-                // Update in dropdown
-                const dropdownOption = $('#asap_ai_huggingface_model option[value="' + originalModelId + '"]');
-                if (dropdownOption.length) {
-                    dropdownOption.val(newModelId).text(newModelLabel);
-                } else {
-                    // Add if not exists
-                    const option = new Option(newModelLabel, newModelId);
-                    $('#asap_ai_huggingface_model').append(option);
-                }
-                
-                // Hide dialog
-                $('#hf-edit-model-dialog').hide();
-                
-                // Show success message
-                alert('Model updated successfully!');
-            }
-        });
-    });
-    
-    // Cancel edit button
-    $('#hf-cancel-edit').on('click', function() {
-        $('#hf-edit-model-dialog').hide();
-    });
-    
-    // Delete model button
-    $(document).on('click', '.hf-delete-model', function() {
-        if (!confirm('Are you sure you want to delete this model?')) {
-            return;
-        }
-        
-        const modelId = $(this).data('model');
-        const row = $(this).closest('tr');
-        
-        // Get current models
-        let models = getCurrentModels();
-        
-        // Remove model
-        delete models[modelId];
-        
-        // Save updated models
-        saveCustomModels(models, function(success) {
-            if (success) {
-                // Remove row
-                row.remove();
-                
-                // Add "no items" row if this was the last model
-                if ($('#hf-models-list tr').length === 0) {
-                    $('#hf-models-list').append('<tr class="no-items"><td colspan="3">No custom models added yet.</td></tr>');
-                }
-                
-                // Remove from dropdown
-                $('#asap_ai_huggingface_model option[value="' + modelId + '"]').remove();
-                
-                // Show success message
-                alert('Model deleted successfully!');
-            }
-        });
-    });
-});
-</script>
-
-<style>
-.hf-models-management {
-    margin-top: 20px;
-}
-.hf-add-model-section {
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
-.hf-models-table {
-    margin-top: 10px;
-}
-.hf-models-table .actions {
-    white-space: nowrap;
-}
-.hf-models-table .button-small {
-    margin-right: 5px;
-}
-#hf-edit-model-dialog {
-    position: fixed;
-    z-index: 100;
-    background: white;
-    border: 1px solid #ccc;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    padding: 20px;
-    border-radius: 4px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 400px;
-    max-width: 90%;
-}
-#hf-edit-model-dialog .form-field {
-    margin-bottom: 15px;
-}
-#hf-edit-model-dialog label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-#hf-edit-model-dialog input {
-    width: 100%;
-    margin-bottom: 5px;
-}
-#hf-edit-model-dialog .dialog-buttons {
-    margin-top: 15px;
-    text-align: right;
-}
-#hf-edit-model-dialog .dialog-buttons button {
-    margin-left: 10px;
-}
-</style>
-<?php
+    // No need to add additional JavaScript as we've already handled this in admin.js
 });
 ?> 
