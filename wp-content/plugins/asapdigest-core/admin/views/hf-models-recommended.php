@@ -151,7 +151,10 @@ foreach ($recommended_models as $model) :
     </div>
 </div>
 <?php endforeach; ?>
+<?php
+// Close the container div properly
 echo '</div>';
+?>
 
 <script>
     // Handler for quick-add buttons
@@ -381,11 +384,113 @@ echo '</div>';
                     resultIndicator.html('<span class="error">✗ ' + errorMsg + '</span>');
                 }
             });
+        });
     });
-});
 </script>
 
 <style>
+/* CSS Grid Layout Implementation
+ * Following MDN Grid Layout guidelines: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout
+ */
+
+/* First, reset any conflicting styles that might be inherited */
+.hf-recommended-models-container {
+    /* Remove any display properties that might conflict with grid */
+    display: grid;
+    /* Define a proper grid template with responsive columns */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    /* Set appropriate gap between grid items */
+    gap: 20px;
+    /* Ensure the container takes full width */
+    width: 100%;
+    /* Reset any potentially conflicting properties */
+    flex-direction: initial;
+    flex-wrap: initial;
+    padding: 0;
+    margin: 0;
+}
+
+/* Style individual cards to ensure consistent layout */
+.hf-recommended-model-card {
+    /* Use a grid for internal layout instead of flexbox */
+    display: grid;
+    /* Set up the internal grid layout with areas */
+    grid-template-areas:
+        "header"
+        "model-id"
+        "description"
+        "meta"
+        "actions";
+    grid-template-rows: auto auto 1fr auto auto;
+    /* Standard card styling */
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* Ensure consistent card height behavior */
+    height: 100%;
+    min-height: 200px;
+    /* Box sizing to include padding in dimensions */
+    box-sizing: border-box;
+}
+
+/* Card content area styling */
+.hf-recommended-model-card h4 {
+    grid-area: header;
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.hf-recommended-model-card .model-id {
+    grid-area: model-id;
+    font-family: monospace;
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+
+.hf-recommended-model-card .model-description {
+    grid-area: description;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.hf-recommended-model-card .model-meta {
+    grid-area: meta;
+    font-size: 12px;
+    color: #666;
+    padding-top: 8px;
+    margin: 8px 0;
+}
+
+.hf-recommended-model-card .model-actions {
+    grid-area: actions;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: auto;
+    padding-top: 10px;
+}
+
+/* Status indicators */
+.status-verified {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.status-failed {
+    color: #dc3232;
+    font-weight: 600;
+}
+
+.status-unverified {
+    color: #ffb900;
+    font-weight: 600;
+}
+
+/* Additional styles needed for the model tabs */
 .hf-models-tabs {
     margin-top: 20px;
 }
@@ -419,5 +524,16 @@ echo '</div>';
     background-color: #005177;
     color: white;
     border-color: #005177;
+}
+
+/* Add status class styling for the cards */
+.hf-recommended-model-card.model-verified {
+    background-color: rgba(70, 180, 80, 0.05);
+    border-color: rgba(70, 180, 80, 0.3);
+}
+
+.hf-recommended-model-card.model-failed {
+    background-color: rgba(220, 50, 50, 0.05);
+    border-color: rgba(220, 50, 50, 0.3);
 }
 </style> 
