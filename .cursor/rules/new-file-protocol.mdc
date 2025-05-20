@@ -6,8 +6,8 @@ alwaysApply: true
 # New File Protocol
 
 1.  **Location Context Verification**
-    *   MUST Check current location `pwd` against relevant target directory specified in `@PE - CTXT` (e.g., SvelteKit Root, WordPress Root).
-    *   **MUST explicitly state the current CWD (from `pwd` result) and the required CWD (from `@PE - CTXT`).**
+    *   MUST Check current location `pwd` against relevant target directory specified in `@pe-ctxt` (e.g., SvelteKit Root, WordPress Root).
+    *   **MUST explicitly state the current CWD (from `pwd` result) and the required CWD (from `@pe-ctxt`).**
     *   **MUST confirm they match OR state the exact `cd` command needed to reach the required CWD.**
     *   If `cd` is needed, execute it *before* proceeding to Step 2.
 

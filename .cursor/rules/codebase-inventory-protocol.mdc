@@ -7,7 +7,7 @@ alwaysApply: false
 
 ## 1. Purpose
 
-This protocol defines a systematic process for auditing the current codebase structure, files, and functions to maintain an accurate inventory in the Project Environment Context (`@PE - CTXT`). While the `new-directory-protocol.mdc`, `new-file-protocol.mdc`, and `new-function-protocol.mdc` ensure proper documentation when creating new components, this protocol addresses the need to periodically refresh the entire inventory after multiple changes have accumulated. It also facilitates the detection of duplicate or unused files and functions to streamline codebase maintenance.
+This protocol defines a systematic process for auditing the current codebase structure, files, and functions to maintain an accurate inventory in the Project Environment Context (`@pe-ctxt`). While the `new-directory-protocol.mdc`, `new-file-protocol.mdc`, and `new-function-protocol.mdc` ensure proper documentation when creating new components, this protocol addresses the need to periodically refresh the entire inventory after multiple changes have accumulated. It also facilitates the detection of duplicate or unused files and functions to streamline codebase maintenance.
 
 ## 2. Protocol Integration Layer
 
@@ -88,8 +88,8 @@ This protocol defines a systematic process for auditing the current codebase str
    - Document new, changed, removed, and duplicate items
    - Include metrics and statistics
 
-2. **PE-CTXT Integration:**
-   - Update `@PE - CTXT` with current inventory information
+2. **pe-ctxt Integration:**
+   - Update `@pe-ctxt` with current inventory information
    - Document potential refactoring targets
 
 3. **Improvement Recommendations:**
@@ -237,7 +237,7 @@ async function executeCodebaseInventory(params) {
    - False positives minimized
 
 3. **Documentation Success:**
-   - `@PE - CTXT` successfully updated
+   - `@pe-ctxt` successfully updated
    - Comprehensive report generated
    - Recommendations properly categorized
 

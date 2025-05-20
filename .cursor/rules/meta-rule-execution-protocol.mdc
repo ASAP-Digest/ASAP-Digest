@@ -13,7 +13,7 @@ alwaysApply: true
    - Create execution checklist from all relevant rules
 
    B. Environment Verification
-   - Check PE - CTXT for current environment state
+   - Check `pe-ctxt` for current environment state
    - Verify working directories match context
    - Document any environmental constraints
    ```

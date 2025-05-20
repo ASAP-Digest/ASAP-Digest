@@ -38,6 +38,9 @@ wp-content/uploads/*
 app/src/lib/components/ui/README.md
 /md-docs/AI_PROVIDER_STANDARDIZATION.md
 /md-docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md
+/md-docs/ASAP_DIGEST_DIGEST_ENTITY_SCHEMA.md
+/md-docs/ASAP_DIGEST_MODULE_ENTITY.md
+/md-docs/Multi-to-Single-Module-Migration.md
 /wp-content/plugins/asapdigest-core/includes/content-processing/README.md
 /wp-content/plugins/asapdigest-core/includes/ajax/README.md
 /wp-content/plugins/asapdigest-core/includes/api/README.md

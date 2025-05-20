@@ -13,7 +13,7 @@ alwaysApply: false
 
 ````text
 ┌─────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────┐
-│ Variable Name                           │ Value for 'ASAP Digest' Project (from @PE - CTXT)                              │
+│ Variable Name                           │ Value for 'ASAP Digest' Project (from @pe-ctxt)                              │
 ├─────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────┤
 │ [PROJECT_NAME]                          │ ASAP Digest                                                                    │
 │ [SVELTEKIT_ROOT]                        │ /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app      │

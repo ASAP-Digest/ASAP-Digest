@@ -1,0 +1,623 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Environment, Structure & Configuration (`@pe-ctxt`) as of 03:34:34 PM - May 07, 2025
+
+1.  **Overview:**
+    *   **Project Name:** ⚡️ ASAP Digest
+    *   **Type:** Headless WordPress backend + SvelteKit (v2), Tailwind 4, Shadcn-Svelte 5 & Lucide Svelte frontend application.
+    *   **Functionality:** WP serves content/API & marketing site; SvelteKit handles the user-facing application with Progressive Web App (PWA) features.
+
+2.  **System & Local Environment:**
+    *   **Operating System:** macOS (`darwin 23.6.0`)
+    *   **Shell:** `zsh` (`/usr/local/bin/zsh`)
+    *   **Full Local Project Path:** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest`
+    *   **WordPress Root:** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
+    *   **SvelteKit Root:** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
+    *   **Internal Markdown Based Documentation:** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/md-docs`
+    *   **Mintlify Based Public API & APP Docs:** `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/docs`
+    *   **Local WP Tool:** Local by Flywheel
+    *   **Local Web Server:** NGINX
+    *   **Local PHP Version:** 8.3.17
+    *   **Local MySQL Version:** 8.0.35 through PHP extension MySQLi
+    *   **Local DB Socket:** `/Volumes/Macintosh HD/Users/vsmith/Library/Application Support/Local/run/AFTH2oxzp/mysql/mysqld.sock`
+    *   **Database UI:** AdminerEvo 4.8.3 (`http://localhost:10040/?username=root&db=local`)
+    *   **Node.js:** `v23.10.0` (Installed via Homebrew)
+    *   **npm:** `10.9.2`
+    *   **npx:** `10.9.2`
+    *   **Package Manager:** `pnpm`
+    *   **Local URLs:**
+    *   WordPress (Marketing Site & API): `https://asapdigest.local`
+    *   SvelteKit App (Base/Home): `https://localhost:5173`
+    *   SvelteKit Login: `https://localhost:5173/login`
+    *   *(Potentially others like `/signup`, `/dashboard` etc. under `https://localhost:5173`)*
+    *   **WP GraphQL URL:** `https://asapdigest.local/graphql` (per `.env.local`)    
+    *   **Keys (Local):** Sourced from `app/.env.local` (Stripe Test, VAPID, Better Auth Secret etc...) and `wp-config.php` (AWS, HF Token).
+
+
+
+3.  **Technology Stack:**
+    *   **Frontend:** Svelte 5 (Runes), SvelteKit 2
+    *   **UI:** Shadcn-Svelte 5
+    *   **Styling:** Tailwind CSS 4
+    *   **Icons:** Lucide (`lucide-svelte`)
+    *   **Language:** JavaScript + JSDoc
+    *   **Backend (WP):** Headless WordPress, PHP
+    *   **Database:** MySQL (MariaDB 10.6.21 - *Note: Live server uses MariaDB, Local uses MySQL 8.0.35*)
+    *   **Caching:** Redis (`redis://localhost:6379`, prefix `asapdigest_local`)
+    *   **PWA:** Enabled (`ENABLE_PWA=true` flag set in `.env`). Uses `app/src/service-worker.js`.
+
+4.  **Database Details (MySQL via Local by Flywheel):**
+    *   **Containerization:** Docker container managed by Local.
+    *   **Host (App Connection):** `localhost`
+    *   **Port (App Connection):** `10018`
+    *   **Database Name:** `local`
+    *   **Username:** `root`
+    *   **Password:** `root`
+    *   **MySQL Config File:** `/Volumes/Macintosh HD/Users/vsmith/Library/Application Support/Local/run/AFTH2oxzp/conf/mysql/my.cnf` (`bind-address = 0.0.0.0`)
+    *   **User Privileges:** `root@localhost` and `root@'::1'` have full privileges.
+    *   **Root Auth Plugin:** `mysql_native_password`
+    *   **SvelteKit Client Library:** `mysql2/promise`
+    *   **Better Auth Tables:**
+        - `ba_wp_user_map`: WordPress to Better Auth user mapping
+          * Primary Key: `id`
+          * Foreign Keys: `wp_user_id` (wp_users), `ba_user_id` (ba_users)
+          * Indexes: UNIQUE on `wp_user_id`, `ba_user_id`
+        - `ba_users`: Better Auth user records
+          * Primary Key: `id`
+          * Indexes: UNIQUE on `email`
+          * Metadata: JSON column for flexible user data
+        - `ba_sessions`: User session management
+          * Primary Key: `id`
+          * Foreign Key: `user_id` (ba_users)
+          * Indexes: UNIQUE on `token`
+        - `ba_verifications`: User verification tracking
+          * Primary Key: `id`
+          * Foreign Key: `user_id` (ba_users)
+          * Indexes: UNIQUE on `token`
+
+5.  **Authentication & Authorization Configuration:**
+    *   **SvelteKit Provider:** Better Auth (`v1.2.5` per `app/package.json`).
+        *   Configured in: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/src/lib/server/auth.js`.
+        *   Uses Kysely adapter for MySQL connection to the `local` database on port `10018`.
+        *   Reads `BETTER_AUTH_SECRET` from `.env` files [env.local - `app/.env.local` & env.production - `app/.env.production`].
+        *   Reads `BETTER_AUTH_URL` from `.env` files [env.local - `app/.env.local` & env.production - `app/.env.production`].
+    *   **WordPress Custom Auth (To Deprecate for users):** `asapdigest-core.php` contains functions for JWT generation/validation/refresh (`jwt_encode`, `jwt_decode`, etc.) using `AUTH_KEY` from `wp-config.php`. Includes REST endpoints `/asap/v1/auth/(token|validate|refresh|register)`.
+    *   **Better Auth Integration** (`includes/class-better-auth.php` & `wp-content/config/class-environment-config.php`)
+        - Core Configuration:
+          * Shared Secret Management: Uses `BETTER_AUTH_SECRET` from wp-config.php or generates secure fallback
+          * Shared Secret Management: Uses `BETTER_AUTH_SECRET` defined in `wp-config.php`, which retrieves the value via `EnvironmentConfig::getBetterAuthSecret()`. This class prioritizes the `BETTER_AUTH_SECRET` OS environment variable, then attempts parsing `app/.env.local` (local only), and uses a hardcoded local fallback if needed. Production environments MUST have the OS environment variable set.
+          * Base URL Configuration: Environment-aware (`development`, `staging`, `production`)
+          * Request Validation: HMAC-SHA256 signatures with 5-minute validity window
+        - User Management:
+          * Bi-directional sync between WordPress and Better Auth
+          * Automatic user creation and updates
+          * Role mapping and permissions sync
+          * Session token management
+        - Database Tables:
+          * `ba_wp_user_map`: Maps WordPress users to Better Auth users
+            - Columns: id (PK), wp_user_id, ba_user_id, created_at
+            - Unique constraints on both wp_user_id and ba_user_id
+          * `ba_users`: Better Auth user data
+            - Columns: email, username, name, metadata, created_at, updated_at
+          * `ba_sessions`: Session management
+            - Columns: id, user_id, token, expires_at, created_at
+          * `ba_verifications`: User verification tracking
+        - Security Features:
+          * Request signature validation
+          * Session token validation
+          * Role-based access control
+          * Secure cookie handling
+        - Event Handling:
+          * User creation/update events
+          * Session management events
+          * Role change synchronization
+          * Error logging and monitoring
+        - Better Auth REST API Endpoints:
+          * `POST /asap/v1/auth/create-wp-user` - Creates a WordPress user from Better Auth data
+          * `POST /asap/v1/auth/create-wp-session` - Creates a session for WordPress user
+          * `GET /asap/v1/auth/check-wp-session` - Checks WordPress session status
+          * `POST /asap/v1/auth/exchange-token` - Exchanges tokens between systems
+          * `GET /asap/v1/auth/status` - Gets current authentication status
+          * `POST /asap/v1/auth/settings` - Updates authentication settings
+          * `POST /asap/v1/auth/validate` - Validates current session
+
+        - Request Signature Validation:
+          * All Better Auth server-to-server requests must include:
+            - `X-Better-Auth-Timestamp` header with current timestamp
+            - `X-Better-Auth-Signature` header with HMAC-SHA256 signature
+            - 5-minute validity window for timestamp
+
+
+    *   **User Metadata Fields:**
+        - `better_auth_user_id`: Links to Better Auth system
+        - `better_auth_session_token`: Active session token
+        - `better_auth_last_login`: Timestamp of last login
+        - `better_auth_metadata_snapshot`: Complete user metadata
+        - `better_auth_avatar_url`: User avatar
+        - `better_auth_preferences`: User preferences
+        - `better_auth_subscription_status`: Subscription state
+        - `better_auth_subscription_plan`: Plan details
+
+6.  **Production Environment (Live Server):**
+    *   **Host OS:** AlmaLinux (Managed via WHM/cPanel)
+    *   **Web Server:** Apache 2.4.63
+    *   **Database:** MariaDB 10.6.21
+    *   **Architecture:** x86_64
+    *   **Server Name:** `host`
+    *   **Shared IP Address:** 199.167.200.52
+    *   **URLs:**
+        *   WordPress (Marketing Site & API): `https://asapdigest.com`
+        *   SvelteKit App (Base/Home): `https://app.asapdigest.com`
+        *   SvelteKit Login: `https://app.asapdigest.com/login`
+        *   *(Potentially others like `/signup`, `/dashboard` etc. under `app.asapdigest.com`)*
+    *   **WP GraphQL URL:** `https://asapdigest.com/graphql` (per `.env.production`)
+    *   **Keys (Production):** Sourced from `app/.env.production` (Stripe Live, VAPID, Better Auth Secret, Plivo placeholders) and `wp-config.php` (AWS, HF Token).
+
+7.  **Directory Structure (Key Paths):**
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app` (SvelteKit Root)
+        *   `src/lib/` (api, components, esm-env, hooks, server, stores, styles, utils)
+        *   `src/routes/` ((auth), api, billing, dashboard, demo, design-system, digest, explore, logout, notifications, plans, profile, settings, today)
+        *   `static/` (icons, images, screenshots)
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public` (WordPress Root)
+        *   `wp-admin/`
+        *   `wp-content/` (plugins/asapdigest-core, themes/asapdigest, uploads)
+        *   `config/`    # Custom PHP configuration classes (e.g., EnvironmentConfig)
+        *   `wp-includes/`
+
+8.  **Key Configuration Files:**
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/wp-config.php`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/.env.local`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/.env.production`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/package.json`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/svelte.config.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/tailwind.config.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/vite.config.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/src/lib/server/auth.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/src/lib/auth-client.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/wp-content/plugins/asapdigest-core/asapdigest-core.php`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app/src/service-worker.js`
+    *   `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/wp-content/config/class-environment-config.php` # Handles Env Detection & Secrets
+
+9. **Custom WordPress REST API Endpoints (`/asap/v1/...` in `asapdigest-core.php`):**
+    A. **Core Endpoints**
+    - `/digest/settings` (GET/POST) - Digest settings management
+    - `/digest/stats` (GET) - Digest statistics retrieval
+    - `/crawler/run` (GET) - Start the crawler
+    - `/crawler/run/{id}` (GET) - Start specific crawler source
+    - `/crawler/status` (GET) - Crawler status check
+    - `/crawler/sources` (GET/POST) - Manage content sources
+    - `/crawler/sources/{id}` (GET/PUT/DELETE) - Manage specific content source
+    - `/crawler/sources/{id}/run` (POST) - Run specific content source
+    - `/crawler/queue` (GET) - View content queue
+    - `/crawler/queue/approve/{id}` (POST) - Approve queued content
+    - `/crawler/queue/reject/{id}` (POST) - Reject queued content
+    - `/crawler/content` (GET) - Content listing
+    - `/crawler/moderation-log/{content_id}` (GET) - Get moderation log
+    - `/crawler/metrics` (GET) - Retrieve crawler metrics
+    - `/crawler/moderation-metrics` (GET) - Moderation metrics
+    - `/crawler/quality-settings` (GET/POST) - Content quality settings
+    - `/ingest-digest-items` (POST) - Ingest content into digest
+    - `/nonce` (GET) - Nonce generation
+
+    B. **AI System Endpoints**
+    - `/ai/providers` (GET) - List available AI providers
+    - `/ai/summarize` (POST) - Generate content summaries
+    - `/ai/entities` (POST) - Extract entities from content
+    - `/ai/classify` (POST) - Classify content
+    - `/ai/keywords` (POST) - Extract keywords
+    - `/ai/usage` (GET) - AI service usage statistics
+
+    C. **Analytics & Usage Endpoints**
+    - `/usage-metrics` (GET) - Usage tracking data
+    - `/cost-analysis` (GET) - Service cost analysis
+    - `/service-tracking` (POST) - Service usage tracking
+
+    D. **Authentication Endpoints**
+    - `/auth/status` (GET) - Check authentication status
+    - `/auth/settings` (POST) - Update auth settings
+    - `/auth/validate` (POST) - Validate session
+    - `/auth/create-wp-user` (POST) - Create WP user from Better Auth
+    - `/auth/create-wp-session` (POST) - Create WP session
+    - `/auth/exchange-token` (POST) - Exchange authentication tokens
+    - `/auth/webhook` (POST) - Authentication webhook handler
+    - `/auth/check-wp-session` (GET) - Check WordPress session status
+    - `/check-sync-token` (GET) - Check if a valid sync token exists
+
+10.  **Full Project Tree Structure**
+
+/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/
+└── app/                 # Root Directory
+    └── public/         # WordPress Root
+        ├── wp-admin/    # WordPress Admin Area
+        ├── wp-content/  # WordPress Themes, Plugins, Uploads
+        │   ├── plugins/
+        │   │   ├── asapdigest-core/ # Primary Custom Plugin
+        │   │   │   ├── asapdigest-core.php # Main plugin file
+        │   │   │   └── ... # Other plugin files/dirs
+        │   │   └── ...     # Other installed plugins
+        │   ├── themes/
+        │   │   ├── asapdigest/    # Primary Custom Theme
+        │   │   │   ├── functions.php
+        │   │   │   ├── style.css
+        │   │   │   └── ...
+        │   │   └── ...
+        │   └── uploads/   # Uploaded media
+        │       └── ...
+        ├── wp-includes/   # WordPress Core Files
+        ├── .htaccess      # Apache configuration
+        ├── index.php      # WordPress main index
+        ├── wp-config.php  # WordPress Configuration
+        │
+        └── app/          # SvelteKit Application Root
+            ├── src/      # SvelteKit Source Files
+            │   ├── lib/  # Core library files
+            │   │   ├── api/       # Frontend API helpers/clients
+            │   │   ├── components/ # Custom/Shadcn components
+            │   │   ├── esm-env/   # ESM Environment specific code
+            │   │   ├── hooks/     # Custom SvelteKit hooks
+            │   │   ├── server/    # Server-only modules
+            │   │   │   └── auth.js # Better Auth Server Config
+            │   │   ├── stores/    # Svelte stores
+            │   │   ├── styles/    # Global styles/CSS files
+            │   │   ├── utils/     # Utility functions
+            │   │   └── auth-client.js # Better Auth Client Config
+            │   ├── routes/   # SvelteKit Routes & Layouts
+            │   │   ├── (auth)/    # Authentication related routes
+            │   │   ├── api/       # API endpoints
+            │   │   ├── billing/   # Billing related routes
+            │   │   ├── dashboard/ # Dashboard routes
+            │   │   ├── demo/      # Demo routes
+            │   │   ├── design-system/ # Design system showcase
+            │   │   ├── digest/    # Digest viewing routes
+            │   │   ├── explore/   # Exploration routes
+            │   │   ├── logout/    # Logout route/action
+            │   │   ├── notifications/ # Notification routes
+            │   │   ├── plans/     # Pricing/Plan routes
+            │   │   ├── profile/   # User profile routes
+            │   │   ├── settings/  # Settings routes
+            │   │   ├── today/     # Today's Digest routes
+            │   │   ├── +layout.svelte # Root layout
+            │   │   └── +page.svelte   # Root page
+            │   ├── app.html     # Main HTML template
+            │   ├── hooks.server.js # Server hooks
+            │   └── service-worker.js # PWA Service Worker
+            │
+            ├── static/       # Static assets
+            │   ├── icons/    # Static icon files
+            │   ├── images/   # Static image files
+            │   └── screenshots/ # Static screenshot files
+            │
+            ├── .env.local       # Local Environment Variables
+            ├── .env.production  # Production Environment Variables
+            ├── package.json     # Project dependencies and scripts
+            ├── svelte.config.js # SvelteKit Configuration
+            ├── tailwind.config.js # Tailwind CSS Configuration
+            ├── vite.config.js   # Vite Configuration
+            └── pnpm-lock.yaml   # PNPM Lockfile
+
+
+
+11. **Documentation Files:**
+    
+    A. **Core Documentation**
+    - `/docs/ASAP_DIGEST_ROADMAP.md` (162KB) - Master roadmap containing complete project overview, features, and implementation details
+    - `/docs/ROADMAP_TASKS.md` (17KB) - Active task tracking and progress monitoring
+    - `/docs/ENVIRONMENT.md` (17KB) - Detailed environment setup and configuration guide
+    - `/docs/DATA_FLOW.md` (18KB) - Documentation of data flow and system architecture
+    - `/docs/DATABASE_SCHEMA.md` (6KB) - Database schema definitions and relationships
+    
+    B. **Implementation Guides**
+    - `/docs/BA_WP_IMPLEMENTATION.md` (5.5KB) - Better Auth WordPress integration guide
+    - `/docs/DEPLOYMENT_CHECKLIST.md` (15KB) - Production deployment procedures and requirements
+    - `/docs/API_CREDENTIALS.md` (9KB) - API integration and credential management guide
+    
+    C. **Style & Design**
+    - `/docs/VISUAL_IDENTITY_STYLE_GUIDE.md` (36KB) - Comprehensive visual design guidelines
+    - `/docs/VISUAL_IDENTITY_IMPLEMENTATION_CHECKLIST.md` (4.6KB) - Style guide implementation checklist
+    - `/docs/TAILWIND4_GUIDELINES.md` (5.2KB) - Tailwind CSS v4 usage guidelines
+    
+    D. **Development Tracking**
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_1.md` (10KB) - Project overview and initial setup
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_2.md` (17KB) - Frontend dependencies and core infrastructure
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_3.md` (20KB) - Widget implementations (Podcast, Key Term, Financial)
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_4.md` (20KB) - Widget implementations (X Post, Reddit, Event, Polymarket)
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_5.md` (15KB) - Main dashboard, profile settings, plans page and admin area
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_6.md` (17KB) - Additional features (digest, push notifications, feedback)
+    - `/docs/ASAP_DIGEST_ROADMAP_LLM_7.md` (23KB) - Performance metrics, multi-device sync, authentication and testing
+    
+    E. **Future Planning**
+    - `/docs/FUTURE_PLANS.md` (8.6KB) - Future feature ideas and expansion plans
+
+    All documentation files are located in the `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/docs/` directory. Files are regularly updated to reflect project progress and changes. The LLM roadmap files (LLM_1 through LLM_7) are optimized for AI processing and should be used instead of the main roadmap file when working with AI assistants.
+
+12. **ASAP Digest Core Plugin Structure:**
+
+    A. **Core Plugin Organization** (MVP Implementation)
+    ```
+    asapdigest-core/
+    ├── asapdigest-core.php                # Main plugin file
+    ├── better-auth-config.php             # Authentication configuration
+    ├── fix-namespaces.php                 # Namespace standardization script
+    ├── package.json                       # npm package definition
+    ├── readme.txt                         # Plugin readme
+    ├── test-database.php                  # Database test utility
+    ├── upgrade.php                        # Upgrade script
+    │
+    ├── admin/                             # Admin UI components
+    │   ├── ajax-handlers.php              # AJAX handlers
+    │   ├── class-admin-ui.php             # Admin UI helper class
+    │   ├── class-admin.php                # Main admin class
+    │   ├── class-central-command.php      # Central command dashboard
+    │   ├── api/                           # Admin-specific API endpoints
+    │   ├── class/                         # Admin class implementations
+    │   │   └── class-admin-ajax.php       # AJAX handler class
+    │   ├── css/                           # Admin stylesheets
+    │   ├── js/                            # Admin JavaScript
+    │   └── views/                         # Admin page templates
+    │       ├── ai-settings.php            # AI settings page
+    │       ├── analytics-dashboard.php    # Analytics dashboard
+    │       ├── content-library.php        # Content library view
+    │       ├── dashboard.php              # Main dashboard
+    │       ├── ingested-content.php       # Ingested content manager
+    │       ├── main-page.php              # Main admin page
+    │       ├── service-costs.php          # Service costs configuration
+    │       ├── settings-page.php          # Settings page
+    │       ├── source-management.php      # Source management page
+    │       ├── stats-page.php             # Statistics page
+    │       ├── test-session-sync.php      # Session sync testing
+    │       └── usage-analytics.php        # Usage analytics
+    │
+    ├── examples/                          # Example code
+    │   └── consume-api-example.php        # API consumption example
+    │
+    ├── includes/                          # Core functionality
+    │   ├── ai/                            # AI integration
+    │   │   ├── adapters/                  # AI provider adapters
+    │   │   │   ├── class-anthropic-adapter.php    # Anthropic API adapter
+    │   │   │   ├── class-huggingface-adapter.php  # Hugging Face adapter
+    │   │   │   └── class-openai-adapter.php       # OpenAI adapter
+    │   │   ├── class-ai-service-manager.php       # AI service manager
+    │   │   ├── diagnostics/                       # AI diagnostics tools
+    │   │   │   ├── class-ai-debugger.php          # AI debugging utilities
+    │   │   │   ├── class-connection-tester.php    # Connection testing
+    │   │   │   └── class-error-classifier.php     # Error classification
+    │   │   └── interfaces/                        # AI interfaces
+    │   │       ├── class-ai-debuggable.php        # Debugging interface
+    │   │       ├── class-ai-provider-adapter.php  # Provider adapter interface
+    │   │       └── interface-ai-provider.php      # Provider interface
+    │   │
+    │   ├── api/                           # REST API components
+    │   │   ├── class-active-sessions-controller.php    # Active sessions API
+    │   │   ├── class-check-sync-token-controller.php   # Sync token validation
+    │   │   ├── class-rest-auth.php                     # Authentication API
+    │   │   ├── class-rest-base.php                     # Base REST controller
+    │   │   ├── class-rest-digest.php                   # Digest API
+    │   │   ├── class-rest-ingested-content.php         # Ingested content API
+    │   │   ├── class-session-check-controller.php      # Session validation
+    │   │   ├── class-sk-session-check.php              # SvelteKit session check
+    │   │   ├── class-sk-token-controller.php           # SvelteKit token controller
+    │   │   ├── class-sk-user-sync.php                  # SvelteKit user sync
+    │   │   ├── class-sync-token-controller.php         # Sync token management
+    │   │   ├── class-usage-metrics-controller.php      # Usage metrics API
+    │   │   ├── class-user-controller.php               # User management API
+    │   │   └── controllers/                            # Additional controllers
+    │   │       └── class-auth-webhook-controller.php   # Auth webhook handler
+    │   │
+    │   ├── auth/                          # Authentication system
+    │   │   ├── bootstrap.php                           # Auth bootstrap
+    │   │   ├── class-auth-config.php                   # Auth configuration
+    │   │   ├── class-auth-sync.php                     # Auth synchronization
+    │   │   └── class-user-actions.php                  # User action handlers
+    │   │
+    │   ├── content-processing/            # Content processing
+    │   │   ├── bootstrap.php                           # Processing bootstrap
+    │   │   ├── class-content-deduplicator.php          # Content deduplication
+    │   │   ├── class-content-processor.php             # Content processor
+    │   │   ├── class-content-quality-calculator.php    # Quality calculation
+    │   │   ├── class-content-quality.php               # Quality assessment
+    │   │   ├── class-content-validator.php             # Content validation
+    │   │   └── config.php                              # Processing configuration
+    │   │
+    │   ├── crawler/                       # Content crawler
+    │   │   ├── adapters/                              # Source adapters
+    │   │   │   ├── class-api-adapter.php              # API source adapter
+    │   │   │   ├── class-rss-adapter.php              # RSS feed adapter
+    │   │   │   └── class-scraper-adapter.php          # Web scraper adapter
+    │   │   ├── class-content-crawler.php              # Main crawler
+    │   │   ├── class-content-source-manager.php       # Source management
+    │   │   ├── class-content-storage.php              # Content storage
+    │   │   ├── class-scheduler.php                    # Crawler scheduler
+    │   │   └── interfaces/                            # Crawler interfaces
+    │   │       └── class-content-source-adapter.php   # Source adapter interface
+    │   │
+    │   ├── traits/                        # Shared traits
+    │   │   ├── session-mgmt.php                       # Session management trait
+    │   │   └── user-sync.php                          # User synchronization trait
+    │   │
+    │   ├── class-activator.php            # Plugin activation/deactivation
+    │   ├── class-admin-ajax.php           # Admin AJAX handling
+    │   ├── class-better-auth.php          # Enhanced authentication
+    │   ├── class-content-processor.php    # Content processing
+    │   ├── class-content-source-manager.php  # Content source management
+    │   ├── class-content-storage.php      # Content storage
+    │   ├── class-core.php                 # Core plugin singleton
+    │   ├── class-database.php             # Database management
+    │   ├── class-error-logger.php         # Error logging
+    │   ├── class-rest-base.php            # Base REST functionality
+    │   ├── class-usage-tracker.php        # Usage tracking
+    │   ├── class-user-actions.php         # User action handling
+    │   └── schema.php                     # Database schema
+    │
+    ├── templates/                         # Template files
+    │   └── digest-email.php               # Email template for digests
+    │
+    └── tests/                             # Testing
+        └── test-session-sync.php          # Session sync tests
+
+    ```
+
+    B. **Standardized Namespaces**
+
+    All namespaces have been standardized to use "ASAPDigest" instead of the mix of "ASAPDigest" and "AsapDigest". Here's the complete list of namespaces now used in the plugin:
+
+    1. `ASAPDigest\Admin` - Admin interface components
+    2. `ASAPDigest\Core` - Core plugin functionality
+    3. `ASAPDigest\Core\API` - API controllers and endpoints
+    4. `ASAPDigest\Core\API\Controllers` - Nested API controllers
+    5. `ASAPDigest\Core\Auth` - Authentication system
+    6. `ASAPDigest\Core\ContentProcessing` - Content processing components
+    7. `ASAPDigest\Core\Traits` - Shared traits
+    8. `ASAPDigest\Crawler` - Content crawler functionality
+    9. `ASAPDigest\Crawler\Adapters` - Source adapters
+    10. `ASAPDigest\Crawler\Interfaces` - Crawler interfaces
+    11. `ASAPDigest\AI` - AI service management
+    12. `ASAPDigest\AI\Adapters` - AI provider adapters
+    13. `ASAPDigest\AI\Diagnostics` - AI diagnostics utilities
+    14. `ASAPDigest\AI\Interfaces` - AI interfaces
+    15. `ASAPDigest\API` - Additional API components
+
+    C. **Database Tables**
+
+    Primary Operational Tables:
+    - `wp_asap_digests` - Store generated digests with content, podcast URLs, and user data
+    - `wp_asap_notifications` - User/admin push notification subscriptions
+    - `wp_asap_content_sources` - Content sources (URL, type, config, schedule, metrics)
+    - `wp_asap_source_metrics` - Source-specific metrics (items found/stored/rejected, processing time)
+    - `wp_asap_storage_metrics` - Content storage metrics by source, type and date
+    - `wp_asap_crawler_errors` - Crawler errors with source ID, message, context
+    - `wp_asap_ingested_content` - Crawled content with source data, quality score, metadata
+    - `wp_asap_content_index` - Searchable content index with quality scores and fingerprints
+    - `wp_asap_duplicate_log` - Tracks duplicate content detection and resolution
+    - `wp_asap_moderation_log` - Content moderation actions and decisions
+    - `wp_asap_activity_log` - User activity tracking log
+
+    Feature-Specific Tables:
+    - `wp_asap_moods` - Mood tracking for user digests
+    - `wp_asap_revisits` - Time Machine feature for digest revisiting
+    - `wp_asap_progress` - User progress tracking
+    - `wp_asap_performance` - System metrics and performance data
+    - `wp_asap_sync` - Multi-device synchronization data
+    - `wp_asap_sms_prefs` - SMS delivery preferences
+    - `wp_asap_sms_digests` - SMS-formatted digest content
+    - `wp_asap_error_log` - Structured error logging with context and severity
+
+    Analytics & Usage Tables:
+    - `wp_asap_usage_metrics` - Feature usage with user tracking
+    - `wp_asap_service_costs` - Cost info for external services
+    - `wp_asap_service_metrics` - Service-specific metrics
+    - `wp_asap_analytics` - System-wide analytics
+    - `wp_asap_usage_analytics` - User-specific analytics
+
+    Better Auth Tables:
+    - `ba_users` - Better Auth user records
+    - `ba_sessions` - User session management
+    - `ba_wp_user_map` - WordPress to Better Auth user mapping
+    - `ba_verifications` - User verification tokens
+    - `wp_ba_sync_tokens` - Synchronization tokens
+    - `ba_accounts` - OAuth provider accounts
+
+    All tables follow WordPress table name conventions with appropriate prefixes. Tables feature comprehensive indexing strategies including primary keys, foreign keys, and specialized indexes for common query patterns. For full schema details including columns, data types, and relationships, refer to DATABASE_SCHEMA.md.
+
+    D. **Integration Points**
+    - Better Auth Integration:
+      * User Synchronization System
+        - WordPress to Better Auth sync
+        - Role mapping and permissions
+        - Metadata synchronization
+        - Event handling
+      * Session Management
+        - Token generation and validation
+        - Session lifecycle management
+        - Security validation
+      * Security Features
+        - Request signature validation
+        - HMAC-SHA256 signatures
+        - Role-based access control
+    - Central Command Dashboard
+    - REST API Endpoints
+    - Service Cost Tracking
+
+    E. **Implementation Markers**
+    - File-level markers for LLM processing
+    - Database schema reference points
+    - Component integration markers
+    - Cross-reference mapping
+    - State management markers
+    - API integration points
+    - Error handling templates
+
+    F. **Development Tools**
+    - Implementation verification points
+    - Rollback procedures
+    - Integration checkpoints
+    - Testing points 
+
+13. **Development Implementation Markers:**
+
+    A. **File-Level Markers**
+    ```php
+    /**
+     * @file-marker ASAP_Digest_Core
+     * @location /wp-content/plugins/asapdigest-core/includes/class-core.php
+     */
+    ```
+    1. Core Infrastructure
+       - Plugin restructuring
+       - Database management
+       - Better Auth integration
+    2. Central Command
+       - Dashboard implementation
+       - Usage tracking
+       - Analytics system
+    3. Service Integration
+       - Cost tracking
+       - Performance monitoring
+       - Backup systems
+
+    B. **Database Reference Points**
+    ```sql
+    -- @schema-marker asap_usage_metrics
+    CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}asap_usage_metrics`
+    ```
+    - Follow file-level implementation markers
+    - Use provided database schema reference points
+    - Implement integration checkpoints
+    - Follow testing procedures
+    - Use rollback points when needed
+
+    C. **Component Integration**
+    ```javascript
+    // @component-marker CentralCommand
+    // @location /app/src/routes/admin/central-command/+page.svelte
+    ```
+    
+    D. **Implementation Context**
+    ```yaml
+    # @implementation-context
+    environment:
+      local:
+        wp_root: /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public
+        svelte_root: /Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app
+    ```
+
+    E. **Verification Points**
+    - Core initialization checks
+    - Database schema validation
+    - Integration testing
+    - Performance benchmarks
+    - Security validation
+
+    F. **Documentation Requirements**
+    - Update implementation markers
+    - Maintain cross-reference mapping
+    - Document API changes
+    - Track deprecations
+
+    G. **Development Tools**
+    - Implementation verification points
+    - Rollback procedures
+    - Integration checkpoints
+    - Testing points

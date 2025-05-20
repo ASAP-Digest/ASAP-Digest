@@ -7,7 +7,7 @@ alwaysApply: false
 1. **Initial Context Assessment**
    ```
    A. Environment Analysis
-   - MUST check for Project Environment Context (PE - CTXT)
+   - MUST check for Project Environment Context (`pe-ctxt`)
    - MUST identify current working directories
    - MUST verify available tools and permissions
    - MUST document system constraints
