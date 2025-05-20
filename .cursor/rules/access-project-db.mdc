@@ -7,14 +7,14 @@ alwaysApply: true
 
 *(Self-correction: v4.1 - Added explicit HALT on VS failure as an escape hatch)*
 
-**Core Principle:** Database connections via terminal MUST use the Unix socket specified in `@pe-ctxt` for reliability within the Local by Flywheel environment. Avoid using host/port connections.
+**Core Principle:** Database connections via terminal MUST use the Unix socket specified in [@pe-ctxt](.cursor/rules/pe-ctxt.mdc) for reliability within the Local by Flywheel environment. Avoid using host/port connections.
 
 **Initiation:** Use key term "Access DB" or alias "APDB".
 
 **LLM Instructions:**
-1.  **MUST** read the `@pe-ctxt` notepad context *before* formulating *any* commands from this rule. This context is the *sole source* for the required connection details.
-2.  **MUST** extract the *current* MySQL socket path (`mysqld.sock`) from the `Local DB Socket` field within `@pe-ctxt`.
-3.  **MUST** extract the *current* Database Name, Username, and Password from the `Database Name`, `Username`, and `Password` fields under the `Database Details` section within `@pe-ctxt`.
+1.  **MUST** read the [@pe-ctxt](.cursor/rules/pe-ctxt.mdc) notepad context *before* formulating *any* commands from this rule. This context is the *sole source* for the required connection details.
+2.  **MUST** extract the *current* MySQL socket path (`mysqld.sock`) from the `Local DB Socket` field within [@pe-ctxt](.cursor/rules/pe-ctxt.mdc).
+3.  **MUST** extract the *current* Database Name, Username, and Password from the `Database Name`, `Username`, and `Password` fields under the `Database Details` section within [@pe-ctxt](.cursor/rules/pe-ctxt.mdc).
 4.  **MUST** perform the **Pre-Connection Verification** step (see below) using the extracted socket path *before* proposing any connection commands (`BC`, `DDA`, `EQ`, etc.).
 5.  **MUST** substitute the *extracted, verified values* into the command templates below where `[SOCKET_PATH]`, `[DB_USER]`, `[DB_PASS]`, and `[DB_NAME]` are indicated. **DO NOT propose connection commands with placeholders or unverified paths.**
 6.  **MUST** use the `-S [SOCKET_PATH]` argument (with the *actual extracted and verified path*) in all `mysql` commands.
@@ -24,7 +24,7 @@ alwaysApply: true
 2.  **Report Verification Outcome:** Explicitly state the result of the `ls -la` command in your response. E.g., "Verified extracted socket path '[path]' exists." or "Verification FAILED: Extracted socket path '[path]' does not exist ('No such file or directory')."
 3.  **Halt on Failure:** If the `ls -la` command fails (returns "No such file or directory"), **MUST HALT** the protocol execution. Report the failure and request the user to confirm the correct socket path from the LocalWP UI. **DO NOT propose connection commands (`BC`, `DDA`, `EQ`, etc.) with the failed path. DO NOT propose alternative connection methods unless explicitly instructed by the user.**
 
-**Command Aliases & Templates (Placeholders MUST be replaced with actual, verified data from `@pe-ctxt` before proposing connection commands):**
+**Command Aliases & Templates (Placeholders MUST be replaced with actual, verified data from [@pe-ctxt](.cursor/rules/pe-ctxt.mdc) before proposing connection commands):**
 
 *   **VS / "Verify socket exists:"**
     ````bash

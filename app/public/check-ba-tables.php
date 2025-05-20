@@ -1,7 +1,7 @@
 <?php
 // Simple script to check if Better Auth tables exist in the database
 
-// Database connection details from PE-CTXT
+// Database connection details from [@pe-ctxt](.cursor/rules/pe-ctxt.mdc)
 $host = 'localhost';
 $port = 10018;
 $db_name = 'local';

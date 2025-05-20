@@ -21,7 +21,7 @@ alwaysApply: true
 ## 1. Initial Context Assessment
 ```
 A. Environment Analysis [Software Development Meta Protocol 1.A]
-   □ Check `@pe-ctxt` for environment state
+   □ Check [@pe-ctxt](.cursor/rules/pe-ctxt.mdc) for environment state
    □ Verify working directories
    □ Document system constraints
    □ Note available tools

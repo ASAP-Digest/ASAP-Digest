@@ -7,7 +7,7 @@ alwaysApply: false
 
 ## 1. Purpose
 
-This protocol defines a systematic process for auditing the current codebase structure, files, and functions to maintain an accurate inventory in the Project Environment Context (`@pe-ctxt`). While the `new-directory-protocol.mdc`, `new-file-protocol.mdc`, and `new-function-protocol.mdc` ensure proper documentation when creating new components, this protocol addresses the need to periodically refresh the entire inventory after multiple changes have accumulated. It also facilitates the detection of duplicate or unused files and functions to streamline codebase maintenance.
+This protocol defines a systematic process for auditing the current codebase structure, files, and functions to maintain an accurate inventory in the Project Environment Context [@pe-ctxt](.cursor/rules/pe-ctxt.mdc). While the `new-directory-protocol.mdc`, `new-file-protocol.mdc`, and `new-function-protocol.mdc` ensure proper documentation when creating new components, this protocol addresses the need to periodically refresh the entire inventory after multiple changes have accumulated. It also facilitates the detection of duplicate or unused files and functions to streamline codebase maintenance.
 
 ## 2. Protocol Integration Layer
 
@@ -37,7 +37,7 @@ This protocol defines a systematic process for auditing the current codebase str
   - `scope`: Limits the scan to a specific directory or file pattern (default: entire codebase)
   - `depth`: Controls how deep the scan should go (default: full depth)
   - `focus`: Type of inventory to focus on - "files", "functions", "directories", "duplicates", "unused", or "all" (default: "all")
-  - `output`: Output format - "pe-ctxt" (update PE-CTXT), "report" (generate report only), or "both" (default: "both")
+  - `output`: Output format - "pe-ctxt" ([@pe-ctxt](.cursor/rules/pe-ctxt.mdc)), "report" (generate report only), or "both" (default: "both")
   - `threshold`: For duplicate analysis, similarity threshold percentage (default: 80%)
 
 ## 4. Core Protocol Steps
@@ -89,7 +89,7 @@ This protocol defines a systematic process for auditing the current codebase str
    - Include metrics and statistics
 
 2. **pe-ctxt Integration:**
-   - Update `@pe-ctxt` with current inventory information
+   - Update [@pe-ctxt](.cursor/rules/pe-ctxt.mdc) with current inventory information
    - Document potential refactoring targets
 
 3. **Improvement Recommendations:**

@@ -35,7 +35,7 @@ description=Theme PHP files
 priority=1
 
 # Documentation Files - Always provide full context
-[.cursor/rules/pe-ctxt.mdc]
+[@pe-ctxt](.cursor/rules/pe-ctxt.mdc)
 description=Project Environment, Structure & Configuration
 max_context_lines=500
 priority=1

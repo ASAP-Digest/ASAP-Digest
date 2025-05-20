@@ -10,7 +10,7 @@ alwaysApply: true
 ## 1. Begin Work Protocol (Agent Actions Upon `IAW`)
 
 1.  **Run Status Check (`SC`):** The agent's first action upon `IAW` is to run `SC` v2.4+ (as executed *by WSAP v2.9+*) and report the status. **ONLY OUTPUT THE REPORT**.
-2.  **Review Project Environment Context (`@pe-ctxt`):** Internally review `@pe-ctxt`. **DO NOT OUTPUT**.
+2.  **Review Project Environment Context ([@pe-ctxt](.cursor/rules/pe-ctxt.mdc)):** Internally review [@pe-ctxt](.cursor/rules/pe-ctxt.mdc). **DO NOT OUTPUT**.
 3.  **Set Operational Context:** Internally log: `## 🛠️ Operational Context: [CWD] | Priority: [Task Name from SC]`.
 4.  **Clock In (Logging):** Log initiation time: `### 🕚 "MM.DD.YY | HH:MM AM/PM TimeZone"` (via `format-time.mdc v1.1+`).
 5.  **Ensure SK Directory, Check Server Status & Begin Work:** This combined step is handled *by WSAP v2.9+*:

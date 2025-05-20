@@ -54,7 +54,7 @@ class Class_Name {
 ```
 
 4. **File Creation Steps**
-   - Check current location against `@pe-ctxt`
+   - Check current location against [@pe-ctxt](.cursor/rules/pe-ctxt.mdc)
    - **Pre-Check:** Verify proposed class name doesn't conflict with existing classes using `grep_search`.
    - Verify file doesn't exist using `ls -la [filename]`.
    - Create file using `touch [filename]`.
