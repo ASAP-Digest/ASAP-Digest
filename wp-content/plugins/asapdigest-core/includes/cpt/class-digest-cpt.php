@@ -59,7 +59,7 @@ class Digest_CPT {
             'hierarchical'          => false,
             'public'                => true,
             'show_ui'               => true,
-            'show_in_menu'          => true,
+            'show_in_menu'          => false,
             'menu_position'         => 5,
             'menu_icon'             => 'dashicons-networking',
             'show_in_admin_bar'     => true,

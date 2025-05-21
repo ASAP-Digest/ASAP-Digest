@@ -124,6 +124,36 @@ final class ASAP_Digest_Core {
     public $content_quality;
 
     /**
+     * @var \ASAPDigest\CPT\Digest_CPT Digest CPT instance
+     */
+    public $digest_cpt;
+
+    /**
+     * @var \ASAPDigest\CPT\Module_CPT Module CPT instance
+     */
+    public $module_cpt;
+
+    /**
+     * @var \ASAPDigest\CPT\ASAP_Digest_Template_CPT Template CPT instance
+     */
+    public $template_cpt;
+
+    /**
+     * @var \ASAPDigest\Core\API\API API instance
+     */
+    public $api;
+
+    /**
+     * @var \ASAPDigest\Crawler\Crawler Crawler instance
+     */
+    public $crawler;
+
+    /**
+     * @var \ASAPDigest\Core\Content_Processing\Content_Processing Content processing instance
+     */
+    public $content_processing;
+
+    /**
      * Ensures only one instance is loaded or can be loaded.
      * 
      * @return ASAP_Digest_Core
@@ -256,6 +286,7 @@ final class ASAP_Digest_Core {
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/hooks.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/class-digest-cpt.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/class-module-cpt.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/class-asap-digest-template-cpt.php';
         
         error_log('ASAP_CORE_DEBUG: Completed load_dependencies()');
     }
@@ -386,8 +417,9 @@ final class ASAP_Digest_Core {
         // Assuming processors are registered within AIServiceManager or a bootstrap
 
         // Initialize new CPT registration classes
-        new \ASAPDigest\CPT\Digest_CPT();
-        new \ASAPDigest\CPT\Module_CPT();
+        $this->digest_cpt = new \ASAPDigest\CPT\Digest_CPT();
+        $this->module_cpt = new \ASAPDigest\CPT\Module_CPT();
+        $this->template_cpt = new \ASAPDigest\CPT\ASAP_Digest_Template_CPT();
         
         // Admin UI components (centralized in class-central-command.php)
             error_log('ASAP_CORE_DEBUG: Initializing Central Command');

@@ -168,6 +168,36 @@ class ASAP_Digest_Central_Command {
             [$this, 'render_dashboard']
         );
         
+        // Digests submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Digests', 'asapdigest-core'),
+            __('Digests', 'asapdigest-core'),
+            'edit_posts', // Capability to edit posts of this type
+            'edit.php?post_type=asap_digest',
+            '' // No rendering function needed; WordPress handles the CPT list table
+        );
+
+        // Modules submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Modules', 'asapdigest-core'),
+            __('Modules', 'asapdigest-core'),
+            'edit_posts', // Capability to edit posts of this type
+            'edit.php?post_type=asap_module',
+            '' // No rendering function needed
+        );
+
+        // Templates submenu
+        add_submenu_page(
+            'asap-central-command',
+            __('Templates', 'asapdigest-core'),
+            __('Templates', 'asapdigest-core'),
+            'edit_posts', // Capability to edit posts of this type
+            'edit.php?post_type=asap_digest_template',
+            '' // No rendering function needed
+        );
+        
         // Content Sources submenu
         add_submenu_page(
             'asap-central-command',

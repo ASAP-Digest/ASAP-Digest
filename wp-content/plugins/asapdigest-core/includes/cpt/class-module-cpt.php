@@ -60,7 +60,7 @@ class Module_CPT {
             'hierarchical'          => false,
             'public'                => false, // Modules are not typically public standalone entities
             'show_ui'               => true,
-            'show_in_menu'          => 'edit.php?post_type=asap_digest', // Show as submenu under Digests
+            'show_in_menu'          => false,
             'menu_icon'             => 'dashicons-screenoptions',
             'show_in_admin_bar'     => false,
             'show_in_nav_menus'     => false,
