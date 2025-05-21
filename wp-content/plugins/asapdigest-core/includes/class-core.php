@@ -104,6 +104,26 @@ final class ASAP_Digest_Core {
     public $scheduler;
 
     /**
+     * @var \ASAPDigest\AI\AIServiceManager AI Service Manager instance
+     */
+    public $ai_service_manager;
+
+    /**
+     * @var \ASAPDigest\ContentProcessing\ContentValidator Content validator instance
+     */
+    public $content_validator;
+
+    /**
+     * @var \ASAPDigest\ContentProcessing\ContentDeduplicator Content deduplicator instance
+     */
+    public $content_deduplicator;
+
+    /**
+     * @var \ASAPDigest\ContentProcessing\ContentQuality Content quality instance
+     */
+    public $content_quality;
+
+    /**
      * Ensures only one instance is loaded or can be loaded.
      * 
      * @return ASAP_Digest_Core
@@ -119,18 +139,35 @@ final class ASAP_Digest_Core {
      * Constructor - private to enforce singleton pattern
      */
     private function __construct() {
+        // Define constants first, as they might be used in dependency loading
         $this->define_constants();
         $this->load_dependencies();
         $this->init_components();
         $this->define_hooks();
         add_action('admin_init', [ $this, 'register_ai_settings_group' ]);
+
+        // Ensure correct hook priorities for CPT registration if needed
+        // The CPT classes hook into 'init' directly. 
+        // The old register_custom_types is also hooked to 'init' at priority 10.
+        // This should be fine as long as the new classes also use priority 10 or default.
+
+        error_log('ASAP_CORE_DEBUG: ASAP_Digest_Core constructed');
     }
 
     /**
-     * Define plugin constants
+     * Define ASAP Digest Core constants
      */
     private function define_constants() {
-        // Most constants now defined in main plugin file
+        if (!defined('ASAP_DIGEST_CORE_PATH')) {
+            define('ASAP_DIGEST_CORE_PATH', plugin_dir_path(dirname(__FILE__)));
+        }
+        if (!defined('ASAP_DIGEST_CORE_URL')) {
+            define('ASAP_DIGEST_CORE_URL', plugin_dir_url(dirname(__FILE__)));
+        }
+        if (!defined('ASAP_DIGEST_CORE_VERSION')) {
+            define('ASAP_DIGEST_CORE_VERSION', '1.0.0'); // Example version
+        }
+        error_log('ASAP_CORE_DEBUG: Constants defined. ASAP_DIGEST_CORE_PATH: ' . ASAP_DIGEST_CORE_PATH);
     }
 
     /**
@@ -210,7 +247,68 @@ final class ASAP_Digest_Core {
         require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-admin.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'admin/class-central-command.php';
         
+        // Autoloader for classes
+        spl_autoload_register([$this, 'autoloader']);
+
+        // Load individual files that are not classes or are structured differently
+        // Standardize require_once paths
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/utils.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/hooks.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/class-digest-cpt.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/class-module-cpt.php';
+        
         error_log('ASAP_CORE_DEBUG: Completed load_dependencies()');
+    }
+
+    /**
+     * Autoloader for plugin classes.
+     *
+     * @param string $class_name The name of the class to load.
+     */
+    public function autoloader($class_name) {
+        // Check if the class name starts with the main plugin namespace
+        $namespace = 'ASAPDigest\\Core\\';
+        if (strpos($class_name, $namespace) !== 0) {
+            // Not our namespace, let other autoloaders handle it.
+            return;
+        }
+
+        // Remove the base namespace to get the relative class path
+        $relative_class = str_replace($namespace, '', $class_name);
+
+        // Build the file path (assuming PSR-4 like structure within includes/)
+        // Replace namespace separators with directory separators
+        // Prepend the plugin includes directory path
+        $file_path = plugin_dir_path(dirname(__FILE__)) . 'includes/' . str_replace('\\', '/', $relative_class) . '.php';
+
+        // If the file exists, include it
+        if (file_exists($file_path)) {
+            require_once $file_path;
+            return;
+        }
+
+        // Add additional lookup paths if necessary (e.g., admin, api)
+        $admin_file_path = plugin_dir_path(dirname(__FILE__)) . 'admin/' . str_replace('\\', '/', $relative_class) . '.php';
+        if (file_exists($admin_file_path)) {
+             require_once $admin_file_path;
+             return;
+        }
+
+        $api_file_path = plugin_dir_path(dirname(__FILE__)) . 'includes/api/' . str_replace('\\', '/', $relative_class) . '.php';
+        if (file_exists($api_file_path)) {
+             require_once $api_file_path;
+             return;
+        }
+
+        // Add more specific paths if needed (e.g., includes/cpt)
+         $cpt_file_path = plugin_dir_path(dirname(__FILE__)) . 'includes/cpt/' . str_replace('\\', '/', $relative_class) . '.php';
+        if (file_exists($cpt_file_path)) {
+             require_once $cpt_file_path;
+             return;
+        }
+
+        // Optional: Log if a class within the namespace wasn't found
+        // error_log("ASAP_CORE_DEBUG: Autoloader failed to find class: " . $class_name . " (Expected path: " . $file_path . ")");
     }
 
     /**
@@ -282,6 +380,14 @@ final class ASAP_Digest_Core {
                 error_log('ASAP_CORE_DEBUG: ERROR - Scheduler class not found.');
             }
         $this->scheduler = new Scheduler([$this->content_crawler, 'run']);
+        
+        // Initialize AI Service Manager and Processors
+        $this->ai_service_manager = new \ASAPDigest\AI\AIServiceManager();
+        // Assuming processors are registered within AIServiceManager or a bootstrap
+
+        // Initialize new CPT registration classes
+        new \ASAPDigest\CPT\Digest_CPT();
+        new \ASAPDigest\CPT\Module_CPT();
         
         // Admin UI components (centralized in class-central-command.php)
             error_log('ASAP_CORE_DEBUG: Initializing Central Command');
@@ -404,62 +510,67 @@ final class ASAP_Digest_Core {
      */
     public function register_custom_types() {
         // Base arguments shared across all post types
-        $base_args = [
-            'public' => true,
-            'show_in_graphql' => true,
-            'supports' => ['title', 'editor', 'thumbnail'],
-            'has_archive' => true,
-            'menu_icon' => 'dashicons-admin-post',
-        ];
+        // $base_args = [
+        //     'public' => true,
+        //     'show_in_graphql' => true,
+        //     'supports' => ['title', 'editor', 'thumbnail'],
+        //     'has_archive' => true,
+        //     'menu_icon' => 'dashicons-admin-post',
+        // ];
 
         // Register each post type with unique GraphQL names
-        register_post_type('article', array_merge($base_args, [
-            'label' => '⚡️ - Articles',
-            'graphql_single_name' => 'Article',
-            'graphql_plural_name' => 'Articles'
-        ]));
+        // register_post_type('article', array_merge($base_args, [
+        //     'label' => '⚡️ - Articles',
+        //     'graphql_single_name' => 'Article',
+        //     'graphql_plural_name' => 'Articles'
+        // ]));
 
-        register_post_type('podcast', array_merge($base_args, [
-            'label' => '⚡️ - Podcasts',
-            'graphql_single_name' => 'Podcast',
-            'graphql_plural_name' => 'Podcasts'
-        ]));
+        // register_post_type('podcast', array_merge($base_args, [
+        //     'label' => '⚡️ - Podcasts',
+        //     'graphql_single_name' => 'Podcast',
+        //     'graphql_plural_name' => 'Podcasts'
+        // ]));
 
-        register_post_type('keyterm', array_merge($base_args, [
-            'label' => '⚡️ - Key Terms',
-            'graphql_single_name' => 'KeyTerm',
-            'graphql_plural_name' => 'KeyTerms'
-        ]));
+        // register_post_type('keyterm', array_merge($base_args, [
+        //     'label' => '⚡️ - Key Terms',
+        //     'graphql_single_name' => 'KeyTerm',
+        //     'graphql_plural_name' => 'KeyTerms'
+        // ]));
 
-        register_post_type('financial', array_merge($base_args, [
-            'label' => '⚡️ - Financial Bites',
-            'graphql_single_name' => 'Financial',
-            'graphql_plural_name' => 'Financials'
-        ]));
+        // register_post_type('financial', array_merge($base_args, [
+        //     'label' => '⚡️ - Financial Bites',
+        //     'graphql_single_name' => 'Financial',
+        //     'graphql_plural_name' => 'Financials'
+        // ]));
 
-        register_post_type('xpost', array_merge($base_args, [
-            'label' => '⚡️ - X Posts',
-            'graphql_single_name' => 'XPost',
-            'graphql_plural_name' => 'XPosts'
-        ]));
+        // register_post_type('xpost', array_merge($base_args, [
+        //     'label' => '⚡️ - X Posts',
+        //     'graphql_single_name' => 'XPost',
+        //     'graphql_plural_name' => 'XPosts'
+        // ]));
 
-        register_post_type('reddit', array_merge($base_args, [
-            'label' => '⚡️ - Reddit Buzz',
-            'graphql_single_name' => 'Reddit',
-            'graphql_plural_name' => 'Reddits'
-        ]));
+        // register_post_type('reddit', array_merge($base_args, [
+        //     'label' => '⚡️ - Reddit Buzz',
+        //     'graphql_single_name' => 'Reddit',
+        //     'graphql_plural_name' => 'Reddits'
+        // ]));
 
-        register_post_type('event', array_merge($base_args, [
-            'label' => '⚡️ - Events',
-            'graphql_single_name' => 'Event',
-            'graphql_plural_name' => 'Events'
-        ]));
+        // register_post_type('event', array_merge($base_args, [
+        //     'label' => '⚡️ - Events',
+        //     'graphql_single_name' => 'Event',
+        //     'graphql_plural_name' => 'Events'
+        // ]));
 
-        register_post_type('polymarket', array_merge($base_args, [
-            'label' => '⚡️ - Polymarket',
-            'graphql_single_name' => 'Polymarket',
-            'graphql_plural_name' => 'Polymarkets'
-        ]));
+        // register_post_type('polymarket', array_merge($base_args, [
+        //     'label' => '⚡️ - Polymarket',
+        //     'graphql_single_name' => 'Polymarket',
+        //     'graphql_plural_name' => 'Polymarkets'
+        // ]));
+
+        // The CPTs 'asap_digest' and 'asap_module' are now registered by their dedicated classes.
+        // This function is hooked to 'init' with priority 10.
+        // The new CPT classes also hook their registration to 'init'. 
+        // Ensure their hooks run, or adjust priority if needed. For now, this function can be left empty or just contain comments.
     }
     
     /**

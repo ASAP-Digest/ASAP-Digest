@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name:     ASAP Digest Core
+ * Plugin Name:     [⚡️ ASAP Digest Core ]
  * Plugin URI:      https://asapdigest.com/
- * Description:     Core functionality for ASAP Digest app
+ * Description:     Core functionality for ASAP Digest app <a href="https://app.asapdigest.com" target="_blank">https://app.asapdigest.com</a>
  * Author:          ASAP Digest Team
  * Author URI:      https://asapdigest.com
  * Text Domain:     asapdigest-core

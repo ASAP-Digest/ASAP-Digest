@@ -149,8 +149,8 @@ class ASAP_Digest_Central_Command {
     public function register_menus() {
         // Main menu
         add_menu_page(
-            __('⚡️ Central Command', 'asapdigest-core'),
-            __('⚡️ Central Command', 'asapdigest-core'),
+            __('Central Command', 'asapdigest-core'),
+            __('Central Command', 'asapdigest-core'),
             'manage_options',
             'asap-central-command',
             [$this, 'render_dashboard'],
