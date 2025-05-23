@@ -28,13 +28,13 @@
 
     // Simulate billing history
     billingHistory = [
-      {
+    {
         date: new Date('2024-03-01'),
         description: 'Pro Plan - Monthly',
         amount: 29.99,
         status: 'Paid'
-      },
-      {
+    },
+    {
         date: new Date('2024-02-01'),
         description: 'Pro Plan - Monthly',
         amount: 29.99,
@@ -65,8 +65,8 @@
       <p class="text-muted-foreground">Manage your subscription plan and view billing history</p>
     </header>
   </div>
-</div>
-
+    </div>
+    
 <!-- Current Plan Section -->
 <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
   <div class="grid-stack-item-content">
@@ -90,12 +90,12 @@
             {#each currentPlan.features as feature}
               <li class="flex items-center gap-2">
                 <Icon icon={Check} class="h-4 w-4 text-green-500" /> {feature}
-              </li>
-            {/each}
-          </ul>
+                  </li>
+                {/each}
+              </ul>
         {:else}
           <p class="text-muted-foreground">You do not currently have an active plan.</p>
-        {/if}
+          {/if}
       </CardContent>
       <CardFooter class="flex justify-end">
         {#if currentPlan}
@@ -106,7 +106,7 @@
       </CardFooter>
     </Card>
   </div>
-</div>
+      </div>
 
 <!-- Billing History Section -->
 <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">

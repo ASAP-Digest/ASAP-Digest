@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class ASAP_Digest_REST_Auth extends ASAP_Digest_REST_Base {
+class ASAP_Digest_REST_Auth extends REST_Base {
     /**
      * Constructor
      */

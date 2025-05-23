@@ -29,7 +29,7 @@ require_once plugin_dir_path( __FILE__ ) . 'class-rest-base.php';
 /**
  * Handles the /asap/v1/check-sk-session endpoint.
  */
-class SK_Session_Check extends ASAP_Digest_REST_Base {
+class SK_Session_Check extends REST_Base {
 
     /**
      * Register the REST API routes.

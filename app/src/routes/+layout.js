@@ -216,9 +216,13 @@ export async function load({ data, fetch, depends }) {
         };
       } else {
         log('[+layout.js] No WordPress session found, user is not logged in', 'info');
-        userStore.set(null);
-        authStore.set(null);
-        return { user: null, fallbackAuth: false };
+        // Don't clear existing user data if there was an error - maintain current state
+        // Only clear if we're certain there's no session
+        if (!data?.user) {
+          userStore.set(null);
+          authStore.set(null);
+        }
+        return { user: data?.user || null, fallbackAuth: false };
       }
     }
   } catch (error) {

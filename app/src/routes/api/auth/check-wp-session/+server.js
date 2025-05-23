@@ -26,8 +26,12 @@ import crypto from 'node:crypto';
 // import { SYNC_SECRET, WP_API_URL } from '$lib/config';
 
 // Get environment variables for server-to-server communication
-const SYNC_SECRET = process.env.BETTER_AUTH_SECRET || ''; // Must match WP's BETTER_AUTH_SECRET
+const SYNC_SECRET = process.env.BETTER_AUTH_SECRET || 'development-sync-secret-v6'; // Must match WP's BETTER_AUTH_SECRET
 const WP_API_URL = process.env.WP_API_URL || 'https://asapdigest.local/wp-json';
+
+// Log configuration for debugging
+console.log('[WordPress API Config] SYNC_SECRET length:', SYNC_SECRET.length);
+console.log('[WordPress API Config] WP_API_URL:', WP_API_URL);
 
 /**
  * @typedef {Object} WPUserData
@@ -104,6 +108,12 @@ export async function POST(event) {
 					: `${WP_API_URL}/wp-json`;
 			
 			const wpEndpointUrl = `${baseApiUrl}/asap/v1/get-active-sessions`;
+			
+			// Log the full request details for debugging
+			log(`[API /check-wp-session] Request details:`, 'debug');
+			log(`[API /check-wp-session] - URL: ${wpEndpointUrl}`, 'debug');
+			log(`[API /check-wp-session] - Secret length: ${SYNC_SECRET.length}`, 'debug');
+			log(`[API /check-wp-session] - Headers: X-ASAP-Sync-Secret, X-ASAP-Request-Source`, 'debug');
 		
 			log(`[API /check-wp-session] Making server request to: ${wpEndpointUrl}`);
 
@@ -112,7 +122,7 @@ export async function POST(event) {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'X-ASAP-Sync-Secret': 'development-sync-secret-v6', // Fixed value to match WordPress
+						'X-ASAP-Sync-Secret': SYNC_SECRET, // Use environment variable
 						'X-ASAP-Request-Source': 'sveltekit-server'
 					},
 					body: JSON.stringify({
@@ -135,8 +145,30 @@ export async function POST(event) {
 
 				if (!wpResponse.ok) {
 					const errorText = await wpResponse.text();
-					log(`[API /check-wp-session] WP request failed: ${errorText}`, 'error');
-					return json({ success: false, error: 'wp_request_failed' });
+					log(`[API /check-wp-session] WP request failed with status ${wpResponse.status}: ${errorText}`, 'error');
+					
+					// Parse the error if it's JSON
+					try {
+						const errorData = JSON.parse(errorText);
+						if (errorData.code === 'internal_server_error') {
+							log(`[API /check-wp-session] WordPress internal server error detected. This usually means the plugin is not properly configured or there's a PHP error.`, 'error');
+							return json({ 
+								success: false, 
+								error: 'wp_plugin_error', 
+								details: 'WordPress plugin may not be configured properly. Check WordPress error logs.',
+								status: wpResponse.status 
+							});
+						}
+					} catch (parseError) {
+						// Not JSON, continue with generic error
+					}
+					
+					return json({ 
+						success: false, 
+						error: 'wp_request_failed', 
+						details: errorText.substring(0, 200),
+						status: wpResponse.status 
+					});
 				}
 
 				const wpResult = await wpResponse.json();

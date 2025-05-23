@@ -11,7 +11,7 @@
 
 namespace ASAPDigest\Core\API\Controllers;
 
-use ASAPDigest\Core\API\ASAP_Digest_REST_Base;
+use ASAPDigest\Core\API\REST_Base;
 use ASAPDigest\Core\Auth\ASAP_Digest_Auth_Sync;
 use WP_Error;
 use WP_REST_Response;
@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
  * 
  * Handles Better Auth webhook endpoints
  */
-class ASAP_Digest_Auth_Webhook_Controller extends ASAP_Digest_REST_Base {
+class ASAP_Digest_Auth_Webhook_Controller extends REST_Base {
     /**
      * Constructor
      */

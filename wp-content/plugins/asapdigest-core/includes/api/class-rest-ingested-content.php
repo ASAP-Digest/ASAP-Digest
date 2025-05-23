@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-class ASAP_Digest_REST_Ingested_Content extends ASAP_Digest_REST_Base {
+class ASAP_Digest_REST_Ingested_Content extends REST_Base {
     /**
      * Constructor
      */

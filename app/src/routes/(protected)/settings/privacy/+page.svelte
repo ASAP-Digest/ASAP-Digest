@@ -120,105 +120,105 @@
 </script>
 
 <div class="grid-stack-item">
-  <div>
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold">Privacy Settings</h1>
-      <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
-    </div>
+<div>
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold">Privacy Settings</h1>
+    <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
+  </div>
+  
+  <div class="space-y-6">
+    {#if errorMessage}
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+        {errorMessage}
+      </div>
+    {/if}
     
-    <div class="space-y-6">
-      {#if errorMessage}
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-          {errorMessage}
-        </div>
-      {/if}
-      
-      {#if successMessage}
-        <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
-          {successMessage}
-        </div>
-      {/if}
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Sharing & Privacy Controls</CardTitle>
-          <CardDescription>Manage how your data is used and shared</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-medium">Data Sharing</h3>
-                <p class="text-sm text-muted-foreground">
-                  Share your data with partners to improve services
-                </p>
-              </div>
-              <Switch checked={dataSharing} onchange={() => dataSharing = !dataSharing} />
-            </div>
-            
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-medium">Content Tracking</h3>
-                <p class="text-sm text-muted-foreground">
-                  Allow tracking of content you view to improve recommendations
-                </p>
-              </div>
-              <Switch checked={contentTracking} onchange={() => contentTracking = !contentTracking} />
-            </div>
-            
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-medium">Personalization</h3>
-                <p class="text-sm text-muted-foreground">
-                  Allow us to personalize content based on your activity
-                </p>
-              </div>
-              <Switch checked={personalization} onchange={() => personalization = !personalization} />
-            </div>
-            
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-medium">Third-Party Integrations</h3>
-                <p class="text-sm text-muted-foreground">
-                  Allow third-party services to access your account data
-                </p>
-              </div>
-              <Switch checked={thirdPartyIntegration} onchange={() => thirdPartyIntegration = !thirdPartyIntegration} />
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={savePrivacySettings}>
-            {isSavingSettings ? 'Saving...' : 'Save Settings'}
-          </Button>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Data</CardTitle>
-          <CardDescription>Manage your personal data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div class="space-y-4">
+    {#if successMessage}
+      <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+        {successMessage}
+      </div>
+    {/if}
+    
+    <Card>
+      <CardHeader>
+        <CardTitle>Data Sharing & Privacy Controls</CardTitle>
+        <CardDescription>Manage how your data is used and shared</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium">Data Export</h3>
-              <p class="text-sm text-muted-foreground mb-2">
-                Download a copy of all your personal data
+              <h3 class="text-sm font-medium">Data Sharing</h3>
+              <p class="text-sm text-muted-foreground">
+                Share your data with partners to improve services
               </p>
-              <Button variant="outline" onclick={requestDataExport}>Request Data Export</Button>
             </div>
-            
-            <div>
-              <h3 class="text-sm font-medium">Data Deletion</h3>
-              <p class="text-sm text-muted-foreground mb-2">
-                Request deletion of your personal data (excluding required account information)
-              </p>
-              <Button variant="destructive" onclick={requestDataDeletion}>Request Data Deletion</Button>
-            </div>
+            <Switch checked={dataSharing} onchange={() => dataSharing = !dataSharing} />
           </div>
-        </CardContent>
-      </Card>
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Content Tracking</h3>
+              <p class="text-sm text-muted-foreground">
+                Allow tracking of content you view to improve recommendations
+              </p>
+            </div>
+            <Switch checked={contentTracking} onchange={() => contentTracking = !contentTracking} />
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Personalization</h3>
+              <p class="text-sm text-muted-foreground">
+                Allow us to personalize content based on your activity
+              </p>
+            </div>
+            <Switch checked={personalization} onchange={() => personalization = !personalization} />
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium">Third-Party Integrations</h3>
+              <p class="text-sm text-muted-foreground">
+                Allow third-party services to access your account data
+              </p>
+            </div>
+            <Switch checked={thirdPartyIntegration} onchange={() => thirdPartyIntegration = !thirdPartyIntegration} />
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={savePrivacySettings}>
+          {isSavingSettings ? 'Saving...' : 'Save Settings'}
+        </Button>
+      </CardFooter>
+    </Card>
+    
+    <Card>
+      <CardHeader>
+        <CardTitle>Your Data</CardTitle>
+        <CardDescription>Manage your personal data</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div class="space-y-4">
+          <div>
+            <h3 class="text-sm font-medium">Data Export</h3>
+            <p class="text-sm text-muted-foreground mb-2">
+              Download a copy of all your personal data
+            </p>
+            <Button variant="outline" onclick={requestDataExport}>Request Data Export</Button>
+          </div>
+          
+          <div>
+            <h3 class="text-sm font-medium">Data Deletion</h3>
+            <p class="text-sm text-muted-foreground mb-2">
+              Request deletion of your personal data (excluding required account information)
+            </p>
+            <Button variant="destructive" onclick={requestDataDeletion}>Request Data Deletion</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
     </div>
   </div>
 </div> 

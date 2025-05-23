@@ -345,8 +345,8 @@
       <p class="text-muted-foreground">Manage your profile information</p>
     </header>
   </div>
-</div>
-
+        </div>
+        
 <!-- Profile Form Section - Treat as Gridstack item -->
 <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
   <div class="grid-stack-item-content">
@@ -368,9 +368,9 @@
           <div class="flex flex-col space-y-1.5">
             <Label for="username">Username</Label>
             <Input id="username" placeholder="Your username" bind:value={username} />
-          </div>
         </div>
-      </CardContent>
+      </div>
+    </CardContent>
       <CardFooter class="flex justify-between">
         <Button on:click={updateProfile} disabled={loading}>
           {#if loading}
@@ -380,7 +380,7 @@
           {/if}
         </Button>
       </CardFooter>
-    </Card>
+  </Card>
   </div>
 </div>
 

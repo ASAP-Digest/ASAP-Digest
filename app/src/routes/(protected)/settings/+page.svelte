@@ -26,8 +26,8 @@
   <div class="grid-stack-item-content">
     <h1 class="text-2xl font-bold mb-8">Settings</h1>
   </div>
-</div>
-
+  </div>
+  
 <!-- Settings Options Section - Treat as Gridstack item -->
 <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
   <div class="grid-stack-item-content">
@@ -44,7 +44,7 @@
         <div>
           <h2 class="text-xl font-semibold">Security</h2>
           <p class="text-[hsl(var(--muted-foreground))] text-sm">Configure two-factor authentication, view active sessions.</p>
-        </div>
+      </div>
         <Icon icon={ChevronRight} size={24} />
       </a>
       

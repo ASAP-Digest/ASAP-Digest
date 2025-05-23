@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Controller for handling server-to-server session validation without relying on cookies
  */
-class Active_Sessions_Controller extends ASAP_Digest_REST_Base {
+class Active_Sessions_Controller extends REST_Base {
 
     public function __construct() {
         // Suppress PHP errors from appearing in REST API output

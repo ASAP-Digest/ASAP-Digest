@@ -160,9 +160,21 @@
       // Skip auto-login if returning from auth providers or pages
       log('[Layout V6] Checking for existing Better Auth session...', 'info');
       
-      // If we have session data already, don't trigger auto-login
-      if ($page.data.user || $session) {
+      // Check for existing session more thoroughly
+      if ($page.data.user || $session?.data?.user) {
         log('[Layout V6] Active Better Auth session found. Auto-login flow stopped.', 'info');
+        return;
+      }
+      
+      // Also check if we've already successfully auto-logged in this session
+      if (sessionStorage.getItem('auto_login_success') === 'true') {
+        log('[Layout V6] Auto-login already completed this session. Skipping.', 'info');
+        return;
+      }
+      
+      // Check if user manually logged out - don't auto-login in that case
+      if (sessionStorage.getItem('manual_logout') === 'true') {
+        log('[Layout V6] User manually logged out. Skipping auto-login.', 'info');
         return;
       }
     
@@ -224,6 +236,9 @@
             }
               
             log('[Layout V6] Auto-login completed, refreshing data...', 'info');
+            
+            // Mark auto-login as successful to prevent retries
+            sessionStorage.setItem('auto_login_success', 'true');
               
             // IMPROVED IMPLEMENTATION: Use SvelteKit's invalidateAll instead of forcing page reload
             // This leverages SvelteKit's reactivity system for a seamless experience
@@ -288,13 +303,14 @@
               log(`[Layout V6] Retrying auto-login (attempt #${retryCount})...`, "info");
               const success = await checkWpSession();
               
-              // If successful, clear the interval
-              if (success) {
-                  log(`[Layout V6] Auto-login successful after ${retryCount} retries, stopping further attempts`, "info");
-                  sessionStorage.removeItem('fallback_auth_attempted'); // Clear this flag to ensure future retries work
-                  sessionStorage.removeItem('auto_login_attempted'); // Clear the attempt flag
-                  if (autoLoginIntervalId) clearInterval(autoLoginIntervalId);
-              }
+                        // If successful, clear the interval
+          if (success) {
+            log(`[Layout V6] Auto-login successful after ${retryCount} retries, stopping further attempts`, "info");
+            sessionStorage.setItem('auto_login_success', 'true'); // Mark as successful
+            sessionStorage.removeItem('fallback_auth_attempted'); // Clear this flag to ensure future retries work
+            sessionStorage.removeItem('auto_login_attempted'); // Clear the attempt flag
+            if (autoLoginIntervalId) clearInterval(autoLoginIntervalId);
+          }
           }, retryIntervalMs);
           
       }, initialDelayMs);
@@ -555,6 +571,12 @@
   async function handleLogout() {
     try {
       log('[Layout] Attempting sign out...');
+      
+      // Clear auto-login flags to prevent immediate re-login
+      sessionStorage.removeItem('auto_login_success');
+      sessionStorage.removeItem('auto_login_attempted');
+      sessionStorage.setItem('manual_logout', 'true');
+      
       await auth.signOut({ redirect: true }); 
       log('[Layout] Sign out successful.');
     } catch (error) {
