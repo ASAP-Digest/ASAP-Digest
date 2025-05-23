@@ -1,6 +1,6 @@
 <script>
     import { createDraftDigest, getLayoutTemplates } from '../../api/digest-builder-api';
-    import { user } from '../../stores/authStore'; // Assuming an auth store provides user info
+    import { useSession } from '$lib/auth-client';
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
 
@@ -11,13 +11,16 @@
     //     { id: 'card-layout', name: 'Card Layout' },
     // ];
 
+    // Get session data using Better Auth
+    const { data: session } = useSession();
+
     // Reactive variable to hold fetched layout templates
     let layoutTemplates = $state([]);
     let loadingLayouts = $state(true);
 
-    let selectedLayoutId = null;
-    let creatingDigest = false;
-    let creationError = null;
+    let selectedLayoutId = $state(null);
+    let creatingDigest = $state(false);
+    let creationError = $state(null);
 
     // Fetch layout templates when the component mounts
     onMount(async () => {
@@ -37,7 +40,7 @@
             return;
         }
 
-        if (!$user || !$user.id) {
+        if (!session?.user?.id) {
             creationError = 'User not logged in.';
             // TODO: Redirect to login or handle appropriately
             return;
@@ -46,7 +49,7 @@
         creatingDigest = true;
         creationError = null;
 
-        const newDigest = await createDraftDigest($user.id, selectedLayoutId);
+        const newDigest = await createDraftDigest(session.user.id, selectedLayoutId);
 
         creatingDigest = false;
 
@@ -69,7 +72,7 @@
         {#each layoutTemplates as layout}
             <button
                 class="layout-button {selectedLayoutId === layout.id ? 'selected' : ''}"
-                on:click={() => handleLayoutSelect(layout.id)}
+                onclick={() => handleLayoutSelect(layout.id)}
                 disabled={creatingDigest}
             >
                 {layout.name}
@@ -83,7 +86,7 @@
     {/if}
 
     <button
-        on:click={handleCreateDigest}
+        onclick={handleCreateDigest}
         disabled={!selectedLayoutId || creatingDigest}
         class="create-button"
     >

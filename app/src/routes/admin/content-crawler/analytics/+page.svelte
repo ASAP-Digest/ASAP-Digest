@@ -13,7 +13,7 @@
   let sourceMetrics = [];
   let storageMetrics = [];
   let isLoading = true;
-  let error = '';
+  let error = $state('');
 
   async function loadMetrics() {
     isLoading = true;

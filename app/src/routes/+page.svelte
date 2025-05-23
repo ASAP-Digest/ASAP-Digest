@@ -133,8 +133,10 @@
 
 </script>
 
-<!-- Header Section -->
-<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+<!-- Main Gridstack Container -->
+<div class="grid-stack">
+  <!-- Header Section -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
   <div class="grid-stack-item-content">
     <div class="mb-10 space-y-3 p-3">
       <h1
@@ -287,6 +289,7 @@
     </div>
   </div>
 {/each}
+</div>
 
 <!-- Place the debug button outside the Gridstack container if it's not part of the grid layout -->
 <!-- Alternatively, if it should be movable, wrap it in a grid-stack-item -->

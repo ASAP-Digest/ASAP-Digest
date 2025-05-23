@@ -5,7 +5,7 @@
   // @ts-ignore - Svelte component import
   import DigestLayoutSelector from '$lib/components/digest/DigestLayoutSelector.svelte';
   import { getUsersDigests } from '$lib/api/digest-builder-api';
-  import { user } from '../../stores/authStore'; // Assuming an auth store provides user info
+  import { useSession } from '$lib/auth-client';
   import { error } from '@sveltejs/kit';
   import { goto } from '$app/navigation';
 
@@ -41,30 +41,8 @@
   /** @type {PageData} */
   const { data } = $props();
 
-  /**
-   * @param {PageLoadEvent} event
-   * @returns {Promise<{digests: Array<Digest>, userDigests: Array<UserDigest>}>}
-   */
-  export async function load(event) {
-      // Assuming user store is available on the server-side via hooks.server.js
-      const currentUser = $user;
-
-      if (!currentUser || !currentUser.id) {
-          // Redirect to login if user is not logged in
-          throw error(401, 'Unauthorized');
-      }
-
-      // TODO: Fetch public/trending digests data separately if needed for the 'digests' property
-      const publicDigests = []; // Placeholder for now
-
-      // Fetch user's own digests
-      const userDigestsData = await getUsersDigests(currentUser.id);
-
-      return {
-          digests: publicDigests, // Return placeholder for public digests
-          userDigests: userDigestsData
-      };
-  }
+  // Get session data using Better Auth
+  const { data: session } = useSession();
 
   // Make a copy of the server data for local use
   let recentDigests = $state(data.digests.slice(0, 4));

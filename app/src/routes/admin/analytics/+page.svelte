@@ -16,11 +16,11 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
 
   let usageMetrics = [];
-  let costAnalysis = [];
-  let isLoading = true;
-  let error = '';
-  let form = { service: '', usage: '', timestamp: '', user_id: '', cost: '' };
-  let formError = '';
+  let costAnalysis = $state([]);
+  let isLoading = $state(true);
+  let error = $state('');
+  let form = $state({ service: '', usage: '', timestamp: '', user_id: '', cost: '' });
+  let formError = $state('');
   let formSuccess = '';
   let loading = $state(true);
 

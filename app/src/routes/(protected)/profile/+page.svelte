@@ -164,10 +164,10 @@
   }
 
   // Initialize avatar state from user data
-  let avatarUrl = '';
-  let avatarType = 'gravatar'; // default to gravatar
-  let avatarLoaded = false; // Track if avatar has been loaded
-  let isSaving = false; // Track form submission status
+  let avatarUrl = $state('');
+  let avatarType = $state('gravatar'); // default to gravatar
+  let avatarLoaded = $state(false); // Track if avatar has been loaded
+  let isSaving = $state(false); // Track form submission status
   
   // Effect to initialize avatar from user data
   $effect(() => {
