@@ -22,6 +22,7 @@
   let form = { service: '', usage: '', timestamp: '', user_id: '', cost: '' };
   let formError = '';
   let formSuccess = '';
+  let loading = $state(true);
 
   async function loadAnalytics() {
     isLoading = true;
@@ -66,87 +67,58 @@
   onMount(loadAnalytics);
 </script>
 
-<div class="p-6">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold">Analytics Dashboard</h1>
-    <Button on:click={loadAnalytics} variant="outline">
-      <Icon icon={RefreshCw} class="w-4 h-4 mr-2" /> Refresh
-    </Button>
+<!-- The outermost div with grid-stack-item is already added by a previous edit -->
+<!-- Remove the inner wrapper and make sections direct grid-stack-items -->
+
+<!-- Analytics Header - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
+    <h1 class="text-2xl font-bold mb-6">Analytics Dashboard</h1>
+  </div>
+</div>
+
+{#if loading}
+  <!-- Loading State - Treat as Gridstack item -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="4">
+    <div class="grid-stack-item-content">
+      <div class="flex justify-center items-center h-full">
+        <p>Loading analytics data...</p>
+      </div>
+    </div>
+  </div>
+{:else if error}
+  <!-- Error State - Treat as Gridstack item -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="4">
+    <div class="grid-stack-item-content">
+      <div class="flex justify-center items-center h-full text-red-500">
+        <p>Error loading analytics data: {error.message}</p>
+      </div>
+    </div>
+  </div>
+{:else}
+  <!-- User Signups Section - Treat as Gridstack item -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+    <div class="grid-stack-item-content">
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">User Signups</h2>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <p>Signups data coming soon...</p>
+          <!-- Placeholder for signup chart/data -->
+        </div>
+      </section>
+    </div>
   </div>
 
-  {#if isLoading}
-    <p>Loading analytics...</p>
-  {:else if error}
-    <p class="text-red-500">{error}</p>
-  {:else}
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-2">Usage Metrics</h2>
-      <table class="min-w-full border text-sm mb-4">
-        <thead>
-          <tr>
-            <th class="px-3 py-2 border">ID</th>
-            <th class="px-3 py-2 border">Service</th>
-            <th class="px-3 py-2 border">Usage</th>
-            <th class="px-3 py-2 border">Timestamp</th>
-            <th class="px-3 py-2 border">User ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each usageMetrics as m}
-            <tr>
-              <td class="px-3 py-2 border">{m.id}</td>
-              <td class="px-3 py-2 border">{m.service}</td>
-              <td class="px-3 py-2 border">{m.usage}</td>
-              <td class="px-3 py-2 border">{m.timestamp}</td>
-              <td class="px-3 py-2 border">{m.user_id}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-2">Cost Analysis</h2>
-      <table class="min-w-full border text-sm mb-4">
-        <thead>
-          <tr>
-            <th class="px-3 py-2 border">ID</th>
-            <th class="px-3 py-2 border">Service</th>
-            <th class="px-3 py-2 border">Cost</th>
-            <th class="px-3 py-2 border">Timestamp</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each costAnalysis as c}
-            <tr>
-              <td class="px-3 py-2 border">{c.id}</td>
-              <td class="px-3 py-2 border">{c.service}</td>
-              <td class="px-3 py-2 border">{c.cost}</td>
-              <td class="px-3 py-2 border">{c.timestamp}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold mb-2">Submit Service Tracking</h2>
-      <form on:submit|preventDefault={submitTracking} class="space-y-4 max-w-xl">
-        <div class="flex gap-4">
-          <Input placeholder="Service" bind:value={form.service} required class="flex-1" />
-          <Input placeholder="Usage" type="number" step="any" bind:value={form.usage} required class="flex-1" />
+  <!-- Content Trends Section - Treat as Gridstack item -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+    <div class="grid-stack-item-content">
+      <section>
+        <h2 class="text-xl font-semibold mb-4">Content Trends</h2>
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <p>Content trends data coming soon...</p>
+          <!-- Placeholder for content trends chart/data -->
         </div>
-        <div class="flex gap-4">
-          <Input placeholder="Timestamp (YYYY-MM-DDTHH:MM:SSZ)" bind:value={form.timestamp} required class="flex-1" />
-          <Input placeholder="User ID (optional)" type="number" bind:value={form.user_id} class="flex-1" />
-          <Input placeholder="Cost (optional)" type="number" step="any" bind:value={form.cost} class="flex-1" />
-        </div>
-        <Button type="submit">Submit</Button>
-        {#if formError}
-          <p class="text-red-500 mt-2">{formError}</p>
-        {/if}
-        {#if formSuccess}
-          <p class="text-green-600 mt-2">{formSuccess}</p>
-        {/if}
-      </form>
+      </section>
     </div>
-  {/if}
-</div> 
+  </div>
+{/if} 

@@ -34,62 +34,70 @@
   }
 </script>
 
-<div class="space-y-8">
-  <section>
-    <h1 class="text-2xl font-bold mb-6">Explore Content</h1>
-    
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-      <div class="relative">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Icon icon={Search} size={18} class="text-gray-400" />
-        </div>
-        <input 
-          type="text" 
-          placeholder="Search for articles, podcasts, and more..." 
-          class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-        />
-      </div>
+<!-- Explore Content Header and Search/Filter Section - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
+    <section>
+      <h1 class="text-2xl font-bold mb-6">Explore Content</h1>
       
-      <div class="mt-4 flex flex-wrap gap-2">
-        <button 
-          class="flex items-center gap-1 {category === 'all' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('all')}
-        >
-          All
-        </button>
-        <button 
-          class="flex items-center gap-1 {category === 'finance' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('finance')}
-        >
-          Finance
-        </button>
-        <button 
-          class="flex items-center gap-1 {category === 'technology' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('technology')}
-        >
-          Technology
-        </button>
-        <button 
-          class="flex items-center gap-1 {category === 'health' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('health')}
-        >
-          Health
-        </button>
-        <button 
-          class="flex items-center gap-1 {category === 'environment' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('environment')}
-        >
-          Environment
-        </button>
-        <button 
-          class="flex items-center gap-1 {category === 'politics' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
-          onclick={() => filterByCategory('politics')}
-        >
-          Politics
-        </button>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Icon icon={Search} size={18} class="text-gray-400" />
+          </div>
+          <input 
+            type="text" 
+            placeholder="Search for articles, podcasts, and more..." 
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+        </div>
+        
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button 
+            class="flex items-center gap-1 {category === 'all' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('all')}
+          >
+            All
+          </button>
+          <button 
+            class="flex items-center gap-1 {category === 'finance' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('finance')}
+          >
+            Finance
+          </button>
+          <button 
+            class="flex items-center gap-1 {category === 'technology' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('technology')}
+          >
+            Technology
+          </button>
+          <button 
+            class="flex items-center gap-1 {category === 'health' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('health')}
+          >
+            Health
+          </button>
+          <button 
+            class="flex items-center gap-1 {category === 'environment' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('environment')}
+          >
+            Environment
+          </button>
+          <button 
+            class="flex items-center gap-1 {category === 'politics' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : 'bg-gray-200 dark:bg-gray-700'} px-3 py-1 rounded-full text-sm"
+            onclick={() => filterByCategory('politics')}
+          >
+            Politics
+          </button>
+        </div>
       </div>
-    </div>
-    
+    </section>
+  </div>
+</div>
+
+<!-- Content Grid Section - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {#each content as item}
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -109,8 +117,13 @@
         </div>
       {/each}
     </div>
-    
-    {#if pagination.totalPages > 1}
+  </div>
+</div>
+
+{#if pagination.totalPages > 1}
+  <!-- Pagination Section - Treat as Gridstack item -->
+  <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+    <div class="grid-stack-item-content">
       <div class="mt-8 flex justify-center gap-2">
         {#each Array(pagination.totalPages) as _, i}
           <a 
@@ -121,6 +134,6 @@
           </a>
         {/each}
       </div>
-    {/if}
-  </section>
-</div> 
+    </div>
+  </div>
+{/if} 

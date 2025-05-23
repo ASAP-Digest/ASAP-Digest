@@ -192,139 +192,141 @@
   }
 </script>
 
-<div>
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-bold">Security Settings</h1>
-    <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
-  </div>
-  
-  <div class="space-y-6">
-    <!-- Password Management -->
-    <Card>
-      <CardHeader>
-        <CardTitle>Password</CardTitle>
-        <CardDescription>Update your password</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {#if passwordErrorMessage}
-          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
-            {passwordErrorMessage}
-          </div>
-        {/if}
-        
-        {#if passwordSuccessMessage}
-          <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
-            {passwordSuccessMessage}
-          </div>
-        {/if}
-        
-        <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); updatePassword(e); }}>
-          <div class="space-y-2">
-            <Label for="currentPassword">Current Password</Label>
-            <Input id="currentPassword" type="password" bind:value={currentPassword} required />
-          </div>
-          
-          <div class="space-y-2">
-            <Label for="newPassword">New Password</Label>
-            <Input id="newPassword" type="password" bind:value={newPassword} required />
-          </div>
-          
-          <div class="space-y-2">
-            <Label for="confirmPassword">Confirm New Password</Label>
-            <Input id="confirmPassword" type="password" bind:value={confirmPassword} required />
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter>
-        <Button class="w-full sm:w-auto" disabled={isSavingPassword} onclick={(e) => { e.preventDefault(); updatePassword(e); }}>
-          {isSavingPassword ? 'Updating...' : 'Update Password'}
-        </Button>
-      </CardFooter>
-    </Card>
+<div class="grid-stack-item">
+  <div>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold">Security Settings</h1>
+      <a href=".." class="text-sm text-blue-600 hover:underline">← Back to Settings</a>
+    </div>
     
-    <!-- Two-Factor Authentication -->
-    <Card>
-      <CardHeader>
-        <CardTitle>Two-Factor Authentication</CardTitle>
-        <CardDescription>Add an extra layer of security to your account</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-medium">Enable Two-Factor Authentication</h3>
-            <p class="text-sm text-muted-foreground">
-              Protect your account with an additional authentication step
-            </p>
-          </div>
-          <Switch checked={is2FAEnabled} onchange={() => {
-            if (!is2FAEnabled) {
-              // If enabling 2FA, show setup dialog
-              setupTwoFactor();
-            } else {
-              // If disabling, just toggle the switch (will be saved later)
-              is2FAEnabled = !is2FAEnabled;
-            }
-          }} />
-        </div>
-      </CardContent>
-    </Card>
-    
-    <!-- Other Security Settings -->
-    <Card>
-      <CardHeader>
-        <CardTitle>Other Security Settings</CardTitle>
-        <CardDescription>Configure additional security options</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {#if settingsErrorMessage}
-          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
-            {settingsErrorMessage}
-          </div>
-        {/if}
-        
-        {#if settingsSuccessMessage}
-          <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
-            {settingsSuccessMessage}
-          </div>
-        {/if}
-        
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-medium">Track Login Sessions</h3>
-              <p class="text-sm text-muted-foreground">
-                Track and manage your active login sessions
-              </p>
+    <div class="space-y-6">
+      <!-- Password Management -->
+      <Card>
+        <CardHeader>
+          <CardTitle>Password</CardTitle>
+          <CardDescription>Update your password</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {#if passwordErrorMessage}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+              {passwordErrorMessage}
             </div>
-            <Switch checked={trackSessions} onchange={() => trackSessions = !trackSessions} />
-          </div>
+          {/if}
           
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-medium">API Access</h3>
-              <p class="text-sm text-muted-foreground">
-                Allow third-party applications to access your account via API
-              </p>
+          {#if passwordSuccessMessage}
+            <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
+              {passwordSuccessMessage}
             </div>
-            <Switch checked={allowAPIAccess} onchange={() => allowAPIAccess = !allowAPIAccess} />
-          </div>
+          {/if}
           
+          <form class="space-y-4" onsubmit={(e) => { e.preventDefault(); updatePassword(e); }}>
+            <div class="space-y-2">
+              <Label for="currentPassword">Current Password</Label>
+              <Input id="currentPassword" type="password" bind:value={currentPassword} required />
+            </div>
+            
+            <div class="space-y-2">
+              <Label for="newPassword">New Password</Label>
+              <Input id="newPassword" type="password" bind:value={newPassword} required />
+            </div>
+            
+            <div class="space-y-2">
+              <Label for="confirmPassword">Confirm New Password</Label>
+              <Input id="confirmPassword" type="password" bind:value={confirmPassword} required />
+            </div>
+          </form>
+        </CardContent>
+        <CardFooter>
+          <Button class="w-full sm:w-auto" disabled={isSavingPassword} onclick={(e) => { e.preventDefault(); updatePassword(e); }}>
+            {isSavingPassword ? 'Updating...' : 'Update Password'}
+          </Button>
+        </CardFooter>
+      </Card>
+      
+      <!-- Two-Factor Authentication -->
+      <Card>
+        <CardHeader>
+          <CardTitle>Two-Factor Authentication</CardTitle>
+          <CardDescription>Add an extra layer of security to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium">Security Alerts</h3>
+              <h3 class="text-sm font-medium">Enable Two-Factor Authentication</h3>
               <p class="text-sm text-muted-foreground">
-                Receive email notifications about important security events
+                Protect your account with an additional authentication step
               </p>
             </div>
-            <Switch checked={securityAlerts} onchange={() => securityAlerts = !securityAlerts} />
+            <Switch checked={is2FAEnabled} onchange={() => {
+              if (!is2FAEnabled) {
+                // If enabling 2FA, show setup dialog
+                setupTwoFactor();
+              } else {
+                // If disabling, just toggle the switch (will be saved later)
+                is2FAEnabled = !is2FAEnabled;
+              }
+            }} />
           </div>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={(e) => { e.preventDefault(); updateSecuritySettings(e); }}>
-          {isSavingSettings ? 'Saving...' : 'Save Settings'}
-        </Button>
-      </CardFooter>
-    </Card>
+        </CardContent>
+      </Card>
+      
+      <!-- Other Security Settings -->
+      <Card>
+        <CardHeader>
+          <CardTitle>Other Security Settings</CardTitle>
+          <CardDescription>Configure additional security options</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {#if settingsErrorMessage}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+              {settingsErrorMessage}
+            </div>
+          {/if}
+          
+          {#if settingsSuccessMessage}
+            <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
+              {settingsSuccessMessage}
+            </div>
+          {/if}
+          
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium">Track Login Sessions</h3>
+                <p class="text-sm text-muted-foreground">
+                  Track and manage your active login sessions
+                </p>
+              </div>
+              <Switch checked={trackSessions} onchange={() => trackSessions = !trackSessions} />
+            </div>
+            
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium">API Access</h3>
+                <p class="text-sm text-muted-foreground">
+                  Allow third-party applications to access your account via API
+                </p>
+              </div>
+              <Switch checked={allowAPIAccess} onchange={() => allowAPIAccess = !allowAPIAccess} />
+            </div>
+            
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium">Security Alerts</h3>
+                <p class="text-sm text-muted-foreground">
+                  Receive email notifications about important security events
+                </p>
+              </div>
+              <Switch checked={securityAlerts} onchange={() => securityAlerts = !securityAlerts} />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button class="w-full sm:w-auto" disabled={isSavingSettings} onclick={(e) => { e.preventDefault(); updateSecuritySettings(e); }}>
+            {isSavingSettings ? 'Saving...' : 'Save Settings'}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   </div>
 </div> 

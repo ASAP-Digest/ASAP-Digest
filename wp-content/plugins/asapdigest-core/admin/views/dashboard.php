@@ -394,7 +394,7 @@ $last_run = get_option('asap_crawler_last_run', '');
     .asap-card-actions {
         padding: 15px 20px;
         border-top: 1px solid #eee;
-        display: flex;
+        /* display: flex; */
         gap: 10px;
     }
 

@@ -34,7 +34,7 @@ if (!defined('ABSPATH')) {
  * @see \ASAPDigest\Core\ErrorLogger
  * @since 2.2.0
  */
-abstract class ASAP_Digest_REST_Base extends WP_REST_Controller {
+abstract class REST_Base extends WP_REST_Controller {
     /**
      * @var string API namespace
      */

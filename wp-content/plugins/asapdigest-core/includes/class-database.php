@@ -795,4 +795,269 @@ class ASAP_Digest_Database {
      * Usage:
      *   Use ErrorLogger::log() to insert errors. Query this table for admin error monitoring and alerting.
      */
+
+    /**
+     * Inserts a new module placement record into the database.
+     *
+     * @param array $data { Array of data for the module placement.
+     *     @type int $digest_id     Required. The ID of the digest.
+     *     @type int $module_cpt_id Required. The CPT ID of the module.
+     *     @type int $grid_x        Required. X coordinate on the grid.
+     *     @type int $grid_y        Required. Y coordinate on the grid.
+     *     @type int $grid_width    Required. Width on the grid.
+     *     @type int $grid_height   Required. Height on the grid.
+     *     @type int $order_in_grid Optional. Order within the grid cell. Default 0.
+     * }
+     * @return int|false The ID of the inserted row on success, false on failure.
+     */
+    public function insert_module_placement( $data ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digest_module_placements';
+
+        // Sanitize data - ensuring integers for grid positions and IDs
+        $sanitized_data = [
+            'digest_id'     => isset( $data['digest_id'] ) ? absint( $data['digest_id'] ) : 0,
+            'module_cpt_id' => isset( $data['module_cpt_id'] ) ? absint( $data['module_cpt_id'] ) : 0,
+            'grid_x'        => isset( $data['grid_x'] ) ? absint( $data['grid_x'] ) : 0,
+            'grid_y'        => isset( $data['grid_y'] ) ? absint( $data['grid_y'] ) : 0,
+            'grid_width'    => isset( $data['grid_width'] ) ? absint( $data['grid_width'] ) : 1,
+            'grid_height'   => isset( $data['grid_height'] ) ? absint( $data['grid_height'] ) : 1,
+            'order_in_grid' => isset( $data['order_in_grid'] ) ? absint( $data['order_in_grid'] ) : 0,
+        ];
+
+        // Basic validation for required fields before insertion
+        if ( empty( $sanitized_data['digest_id'] ) || empty( $sanitized_data['module_cpt_id'] ) ) {
+             // TODO: Log this validation error using ErrorLogger
+            return false; // Or a WP_Error
+        }
+
+        // Perform the insertion
+        $inserted = $wpdb->insert(
+            $table_name,
+            $sanitized_data,
+            ['%d', '%d', '%d', '%d', '%d', '%d', '%d'] // Format codes
+        );
+
+        if ( $inserted ) {
+            return $wpdb->insert_id; // Return the ID of the newly inserted row
+        } else {
+             // TODO: Log the database insertion error using ErrorLogger ($wpdb->last_error)
+            return false; // Insertion failed
+        }
+    }
+
+    /**
+     * Retrieves a specific digest and its associated module placements.
+     *
+     * @param int $digest_id The ID of the digest to retrieve.
+     * @return array|null An associative array containing digest data and an array of placements, or null if not found.
+     */
+    public function get_digest_with_placements( $digest_id ) {
+        global $wpdb;
+        $digests_table = $wpdb->prefix . 'asap_digests';
+        $placements_table = $wpdb->prefix . 'asap_digest_module_placements';
+        $posts_table = $wpdb->posts;
+
+        // Fetch the main digest record
+        $digest = $wpdb->get_row(
+            $wpdb->prepare("SELECT * FROM {$digests_table} WHERE id = %d", $digest_id),
+            ARRAY_A
+        );
+
+        if ( !$digest ) {
+            return null; // Digest not found
+        }
+
+        // Fetch all module placements for this digest and join with wp_posts to get module details
+        $placements = $wpdb->get_results(
+            $wpdb->prepare("
+                SELECT
+                    p.*,
+                    pl.id as placement_id,
+                    pl.digest_id,
+                    pl.module_cpt_id,
+                    pl.grid_x,
+                    pl.grid_y,
+                    pl.grid_width,
+                    pl.grid_height,
+                    pl.order_in_grid
+                FROM {$placements_table} AS pl
+                JOIN {$posts_table} AS p ON pl.module_cpt_id = p.ID
+                WHERE pl.digest_id = %d
+                AND p.post_type = 'asap_digest_module'
+                AND p.post_status = 'publish' -- Assuming modules must be published
+                ORDER BY order_in_grid ASC, grid_y ASC, grid_x ASC
+            ", $digest_id),
+            ARRAY_A
+        );
+
+        // Combine digest data with placements
+        $digest['module_placements'] = $placements;
+
+        return $digest;
+    }
+
+    /**
+     * Retrieves a list of digests for a specific user.
+     */
+    public function get_user_digests($user_id) {
+        global $wpdb;
+        $digests_table = $wpdb->prefix . 'asap_digests';
+
+        // Fetch all digests for the specified user
+        $digests = $wpdb->get_results(
+            $wpdb->prepare("SELECT * FROM {$digests_table} WHERE user_id = %d", $user_id),
+            ARRAY_A
+        );
+
+        return $digests;
+    }
+
+    /**
+     * Updates the placement details of a module within a digest.
+     *
+     * @param int   $placement_id The ID of the placement record to update.
+     * @param int   $digest_id    The ID of the digest the placement belongs to (for validation).
+     * @param array $data         An associative array of columns => values to update.
+     * @return int|false The number of rows affected on success, false on failure.
+     */
+    public function update_module_placement( $placement_id, $digest_id, $data ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digest_module_placements';
+
+        // Ensure data is an array and not empty
+        if ( ! is_array( $data ) || empty( $data ) ) {
+             // TODO: Log validation error using ErrorLogger
+            return false;
+        }
+
+        // Sanitize data based on expected column types
+        $sanitized_data = [];
+        $format = [];
+        foreach ( $data as $col => $value ) {
+            switch ( $col ) {
+                case 'grid_x':
+                case 'grid_y':
+                case 'grid_width':
+                case 'grid_height':
+                case 'order_in_grid':
+                     $sanitized_data[$col] = absint( $value );
+                     $format[] = '%d';
+                    break;
+                // Add other expected columns/sanitization if placement table expands
+                 default:
+                     // Ignore unknown columns
+                    continue 2; // Continue outer foreach
+            }
+        }
+
+        // Ensure there is still data to update after sanitization
+        if ( empty( $sanitized_data ) ) {
+             // TODO: Log validation error using ErrorLogger (e.g., no valid columns provided)
+            return false;
+        }
+
+        // Perform the update
+        // Add digest_id to WHERE clause for extra safety, ensuring placement belongs to the digest
+        $updated = $wpdb->update(
+            $table_name,
+            $sanitized_data,
+            [ 'id' => $placement_id, 'digest_id' => $digest_id ], // WHERE clause
+            $format, // Data format
+            ['%d', '%d'] // WHERE format (id is %d, digest_id is %d)
+        );
+
+        if ( $updated !== false ) {
+            return $updated; // Number of rows affected (0 or 1)
+        } else {
+             // TODO: Log database update error using ErrorLogger ($wpdb->last_error)
+            return false; // Update failed
+        }
+    }
+
+    /**
+     * Updates the status of a specific digest.
+     *
+     * @param int    $digest_id The ID of the digest to update.
+     * @param string $status    The new status (e.g., 'draft', 'published').
+     * @return int|false The number of rows affected on success, false on failure.
+     */
+    public function update_digest_status( $digest_id, $status ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digests';
+
+        // Basic validation for status
+        $allowed_statuses = ['draft', 'published', 'archived']; // Define allowed statuses
+        if ( ! in_array( $status, $allowed_statuses ) ) {
+             // TODO: Log validation error using ErrorLogger (invalid status)
+            return false; // Or a WP_Error
+        }
+
+        // Perform the update
+        $updated = $wpdb->update(
+            $table_name,
+            [ 'status' => $status ], // Data to update
+            [ 'id' => $digest_id ], // WHERE clause
+            ['%s'], // Data format (status is string)
+            ['%d'] // WHERE format (id is int)
+        );
+
+        if ( $updated !== false ) {
+            return $updated; // Number of rows affected (0 or 1)
+        } else {
+             // TODO: Log database update error using ErrorLogger ($wpdb->last_error)
+            return false; // Update failed
+        }
+    }
+
+    /**
+     * Deletes a module placement record from the database.
+     */
+    public function delete_module_placement( $placement_id ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digest_module_placements';
+
+        // Perform the deletion
+        $deleted = $wpdb->delete(
+            $table_name,
+            [ 'id' => $placement_id ], // WHERE clause
+            ['%d'] // WHERE format (id is %d)
+        );
+
+        if ( $deleted !== false ) {
+            return $deleted; // Number of rows affected (0 or 1)
+        } else {
+             // TODO: Log database deletion error using ErrorLogger ($wpdb->last_error)
+            return false; // Deletion failed
+        }
+    }
+
+    /**
+     * Deletes a digest record from the database.
+     *
+     * @param int $digest_id The ID of the digest to delete.
+     * @return int|false The number of rows affected on success (usually 1), false on failure.
+     */
+    public function delete_digest_by_id( $digest_id ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digests';
+
+        // Sanitize the digest ID
+        $sanitized_digest_id = absint( $digest_id );
+
+        // Perform the deletion
+        // Note: ON DELETE CASCADE in the database schema should handle deleting related module placements.
+        $deleted = $wpdb->delete(
+            $table_name,
+            [ 'id' => $sanitized_digest_id ], // WHERE clause
+            ['%d'] // WHERE format (id is %d)
+        );
+
+        if ( $deleted !== false ) {
+            return $deleted; // Number of rows affected (usually 1)
+        } else {
+             // TODO: Log database deletion error using ErrorLogger ($wpdb->last_error)
+            return false; // Deletion failed
+        }
+    }
 } 

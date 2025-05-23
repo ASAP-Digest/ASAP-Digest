@@ -1,0 +1,4550 @@
+{
+    "key": "group_682e11a96d24d",
+    "title": "moduleCustomFields",
+    "fields": [
+        {
+            "key": "field_682e11aaad48b",
+            "label": "_asap_module_type",
+            "name": "_asap_module_type",
+            "aria-label": "",
+            "type": "select",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": {
+                "article_summary": "article_summary",
+                "podcast_segment": "podcast_segment",
+                "podcast_summary": "podcast_summary",
+                "podcast_multi_segment": "podcast_multi_segment",
+                "youtube_summary": "youtube_summary",
+                "youtube_multi_segment": "youtube_multi_segment",
+                "key_term": "key_term",
+                "financial_quote": "financial_quote",
+                "product_price_history": "product_price_history",
+                "weather_forecast": "weather_forecast",
+                "sports_score_update": "sports_score_update",
+                "timeline_summary": "timeline_summary",
+                "x_post": "x_post",
+                "reddit_thread": "reddit_thread",
+                "event_item": "event_item",
+                "polymarket_card": "polymarket_card",
+                "image_display": "image_display",
+                "video_embed": "video_embed",
+                "text_block": "text_block",
+                "generic_embed": "generic_embed"
+            },
+            "default_value": false,
+            "return_format": "value",
+            "multiple": 0,
+            "max": "",
+            "prepend": "",
+            "append": "",
+            "allow_null": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleType",
+            "graphql_non_null": 0,
+            "ajax": 0,
+            "placeholder": "",
+            "create_options": 0,
+            "save_options": 0,
+            "allow_custom": 0,
+            "search_placeholder": "",
+            "min": ""
+        },
+        {
+            "key": "field_682e47cdb5158",
+            "label": "_asap_module_source_ingested_content_id",
+            "name": "_asap_module_source_ingested_content_id",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleSourceIngestedContentId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e47e9b5159",
+            "label": "_asap_module_original_source_url",
+            "name": "_asap_module_original_source_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleOriginalSourceUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e480bb515a",
+            "label": "_asap_module_data_provider_name",
+            "name": "_asap_module_data_provider_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleDataProviderName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e4826b515b",
+            "label": "_asap_module_ai_generated_title",
+            "name": "_asap_module_ai_generated_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAiGeneratedTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e4841b515c",
+            "label": "_asap_module_ai_summary_text",
+            "name": "_asap_module_ai_summary_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAiSummaryText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e484eb515d",
+            "label": "_asap_module_ai_keywords_json",
+            "name": "_asap_module_ai_keywords_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleAiKeywordsJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_682e486cb515e",
+            "label": "_asap_module_ai_entities_json",
+            "name": "_asap_module_ai_entities_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleAiEntitiesJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_682e487eb515f",
+            "label": "_asap_module_ai_sentiment_score",
+            "name": "_asap_module_ai_sentiment_score",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAiSentimentScore",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e48b5b5160",
+            "label": "_asap_module_ai_sentiment_details_json",
+            "name": "_asap_module_ai_sentiment_details_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleAiSentimentDetailsJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_682e48c2b5161",
+            "label": "_asap_module_ai_content_quality_score",
+            "name": "_asap_module_ai_content_quality_score",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAiContentQualityScore",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e48e0b5162",
+            "label": "_asap_module_ai_tts_audio_url",
+            "name": "_asap_module_ai_tts_audio_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAiTtsAudioUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e48fbb5163",
+            "label": "_asap_module_is_expanded_by_default",
+            "name": "_asap_module_is_expanded_by_default",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleIsExpandedByDefault",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e4911b5164",
+            "label": "_asap_module_allow_user_resize",
+            "name": "_asap_module_allow_user_resize",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAllowUserResize",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e4922b5165",
+            "label": "_asap_module_allow_user_close",
+            "name": "_asap_module_allow_user_close",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleAllowUserClose",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e493bb5166",
+            "label": "_asap_module_show_source_link_explicitly",
+            "name": "_asap_module_show_source_link_explicitly",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleShowSourceLinkExplicitly",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e4952b5167",
+            "label": "_asap_module_show_publish_date",
+            "name": "_asap_module_show_publish_date",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleShowPublishDate",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e4966b5168",
+            "label": "_asap_module_enable_sharing_options",
+            "name": "_asap_module_enable_sharing_options",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEnableSharingOptions",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_682e4984b5169",
+            "label": "_asap_module_custom_css_classes",
+            "name": "_asap_module_custom_css_classes",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleCustomCssClasses",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e4997b516a",
+            "label": "_asap_module_primary_data_json",
+            "name": "_asap_module_primary_data_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModulePrimaryDataJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_682e49a1b516b",
+            "label": "_asap_module_secondary_text",
+            "name": "_asap_module_secondary_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleSecondaryText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e49bdb516c",
+            "label": "_asap_module_primary_image_url",
+            "name": "_asap_module_primary_image_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePrimaryImageUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e49d6b516d",
+            "label": "_asap_module_primary_link_url",
+            "name": "_asap_module_primary_link_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePrimaryLinkUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e49f1b516e",
+            "label": "_asap_module_link_text",
+            "name": "_asap_module_link_text",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleLinkText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e4a20b516f",
+            "label": "_asap_module_user_notes_text",
+            "name": "_asap_module_user_notes_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": 0,
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleUserNotesText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682e4a70b5170",
+            "label": "_asap_module_article_original_title",
+            "name": "_asap_module_article_original_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "article_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleArticleOriginalTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682ff0edac424",
+            "label": "_asap_module_article_author_name",
+            "name": "_asap_module_article_author_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "article_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleArticleAuthorName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682ff10cac425",
+            "label": "_asap_module_article_publication_date_iso",
+            "name": "_asap_module_article_publication_date_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "article_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682ff146ac426",
+            "label": "_asap_module_article_featured_image_url",
+            "name": "_asap_module_article_featured_image_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "article_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleArticleFeaturedImageUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682ff164ac427",
+            "label": "_asap_module_article_full_content_ref_id",
+            "name": "_asap_module_article_full_content_ref_id",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "article_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleArticleFullContentRefId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_682ff18bac428",
+            "label": "_asap_module_podcast_episode_title",
+            "name": "_asap_module_podcast_episode_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastEpisodeTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300d0c3fc6e",
+            "label": "_asap_module_podcast_show_name",
+            "name": "_asap_module_podcast_show_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastShowName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300d2b3fc6f",
+            "label": "_asap_module_podcast_audio_url",
+            "name": "_asap_module_podcast_audio_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastAudioUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300d503fc70",
+            "label": "_asap_module_podcast_segment_start_time_ms",
+            "name": "_asap_module_podcast_segment_start_time_ms",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastSegmentStartTimeMs",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300d793fc71",
+            "label": "_asap_module_podcast_segment_end_time_ms",
+            "name": "_asap_module_podcast_segment_end_time_ms",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastSegmentEndTimeMs",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300d923fc72",
+            "label": "_asap_module_podcast_transcript_segment_json",
+            "name": "_asap_module_podcast_transcript_segment_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModulePodcastTranscriptSegmentJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_68300daf3fc73",
+            "label": "_asap_module_podcast_cover_art_url",
+            "name": "_asap_module_podcast_cover_art_url",
+            "aria-label": "",
+            "type": "image",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "uploader": "",
+            "return_format": "array",
+            "library": "all",
+            "upload_folder": "",
+            "acfe_thumbnail": 0,
+            "min_width": "",
+            "min_height": "",
+            "min_size": "",
+            "max_width": "",
+            "max_height": "",
+            "max_size": "",
+            "mime_types": "",
+            "allow_in_bindings": 0,
+            "preview_size": "medium",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastCoverArtUrl"
+        },
+        {
+            "key": "field_68300de1d0d9c",
+            "label": "_asap_module_keyterm_related_terms_json",
+            "name": "_asap_module_keyterm_related_terms_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "key_term"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleKeytermRelatedTermsJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_68300df7d0d9d",
+            "label": "_asap_module_keyterm_source_references_json",
+            "name": "_asap_module_keyterm_source_references_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "key_term"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleKeytermSourceReferencesJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_68300e343fcfe",
+            "label": "_asap_module_financial_symbol",
+            "name": "_asap_module_financial_symbol",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleFinancialSymbol",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300e483fcff",
+            "label": "_asap_module_financial_instrument_type",
+            "name": "_asap_module_financial_instrument_type",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleFinancialInstrumentType",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300e6c3fd00",
+            "label": "_asap_module_financial_current_price_decimal",
+            "name": "_asap_module_financial_current_price_decimal",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300eaa3fd01",
+            "label": "_asap_module_financial_change_amount_decimal",
+            "name": "_asap_module_financial_change_amount_decimal",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleFinancialChangeAmountDecimal",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300f0a3fd02",
+            "label": "_asap_module_financial_change_percent_decimal",
+            "name": "_asap_module_financial_change_percent_decimal",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300f323fd03",
+            "label": "_asap_module_financial_market_cap_string",
+            "name": "_asap_module_financial_market_cap_string",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleFinancialMarketCapString",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300f6d3fd04",
+            "label": "_asap_module_financial_last_updated_iso",
+            "name": "_asap_module_financial_last_updated_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68300f953fd05",
+            "label": "_asap_module_financial_chart_data_json",
+            "name": "_asap_module_financial_chart_data_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "financial_quote"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleFinancialChartDataJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_6830630d0b3aa",
+            "label": "_asap_module_xpost_id_str",
+            "name": "_asap_module_xpost_id_str",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleXpostIdStr",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683063270b3ab",
+            "label": "_asap_module_xpost_author_username",
+            "name": "_asap_module_xpost_author_username",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleXpostAuthorUsername",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830633e0b3ac",
+            "label": "_asap_module_xpost_author_display_name",
+            "name": "_asap_module_xpost_author_display_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleXpostAuthorDisplayName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830635a0b3ad",
+            "label": "_asap_module_xpost_text_content",
+            "name": "_asap_module_xpost_text_content",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleXpostTextContent",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683063700b3ae",
+            "label": "_asap_module_xpost_created_at_iso",
+            "name": "_asap_module_xpost_created_at_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683063a60b3af",
+            "label": "_asap_module_xpost_metrics_json",
+            "name": "_asap_module_xpost_metrics_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleXpostMetricsJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_683063ed0b3b0",
+            "label": "_asap_module_xpost_media_json",
+            "name": "_asap_module_xpost_media_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "x_post"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleXpostMediaJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_6830642f0b3b1",
+            "label": "_asap_module_reddit_post_id",
+            "name": "_asap_module_reddit_post_id",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditPostId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830644c0b3b2",
+            "label": "_asap_module_reddit_subreddit_prefixed",
+            "name": "_asap_module_reddit_subreddit_prefixed",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditSubredditPrefixed",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683064610b3b3",
+            "label": "_asap_module_reddit_post_title",
+            "name": "_asap_module_reddit_post_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditPostTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683064780b3b4",
+            "label": "_asap_module_reddit_author_username",
+            "name": "_asap_module_reddit_author_username",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditAuthorUsername",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830648e0b3b5",
+            "label": "_asap_module_reddit_score_int",
+            "name": "_asap_module_reddit_score_int",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditScoreInt",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683064aa0b3b6",
+            "label": "_asap_module_reddit_num_comments_int",
+            "name": "_asap_module_reddit_num_comments_int",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditNumCommentsInt",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683064ca0b3b7",
+            "label": "_asap_module_reddit_created_at_iso",
+            "name": "_asap_module_reddit_created_at_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditCreatedAtIso",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683064e50b3b8",
+            "label": "_asap_module_reddit_top_comments_summary_json",
+            "name": "_asap_module_reddit_top_comments_summary_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleRedditTopCommentsSummaryJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_683065020b3b9",
+            "label": "_asap_module_reddit_post_url",
+            "name": "_asap_module_reddit_post_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "reddit_thread"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleRedditPostUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683065370b3ba",
+            "label": "_asap_module_event_start_datetime_iso",
+            "name": "_asap_module_event_start_datetime_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventStartDatetimeIso",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683065510b3bb",
+            "label": "_asap_module_event_end_datetime_iso",
+            "name": "_asap_module_event_end_datetime_iso",
+            "aria-label": "",
+            "type": "date_time_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "d\/m\/Y g:i a",
+            "return_format": "d\/m\/Y g:i a",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "min_time": "",
+            "max_time": "",
+            "no_weekends": 0,
+            "min_hour": "",
+            "max_hour": "",
+            "min_min": "",
+            "max_min": "",
+            "min_sec": "",
+            "max_sec": "",
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventEndDatetimeIso",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830658e0b3bc",
+            "label": "_asap_module_event_timezone_str",
+            "name": "_asap_module_event_timezone_str",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventTimezoneStr",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683065ba0b3bd",
+            "label": "_asap_module_event_location_text",
+            "name": "_asap_module_event_location_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventLocationText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683065d00b3be",
+            "label": "_asap_module_event_geo_coordinates_json",
+            "name": "_asap_module_event_geo_coordinates_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleEventGeoCoordinatesJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_683066100b3bf",
+            "label": "_asap_module_event_registration_url",
+            "name": "_asap_module_event_registration_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventRegistrationUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683066210b3c0",
+            "label": "_asap_module_event_organizer_name",
+            "name": "_asap_module_event_organizer_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "event_item"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEventOrganizerName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830665c0b3c1",
+            "label": "_asap_module_polymarket_market_slug_or_id",
+            "name": "_asap_module_polymarket_market_slug_or_id",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "polymarket_card"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePolymarketMarketSlugOrId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683066710b3c2",
+            "label": "_asap_module_polymarket_outcomes_data_json",
+            "name": "_asap_module_polymarket_outcomes_data_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "polymarket_card"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModulePolymarketOutcomesDataJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_6830668a0b3c3",
+            "label": "_asap_module_polymarket_resolution_criteria_text",
+            "name": "_asap_module_polymarket_resolution_criteria_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "polymarket_card"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePolymarketResolutionCriteriaText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683066aa0b3c4",
+            "label": "_asap_module_polymarket_market_url",
+            "name": "_asap_module_polymarket_market_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "polymarket_card"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePolymarketMarketUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683066eb0b3c5",
+            "label": "_asap_module_image_alt_text",
+            "name": "_asap_module_image_alt_text",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "image_display"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleImageAltText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067000b3c6",
+            "label": "_asap_module_image_source_credit_text",
+            "name": "_asap_module_image_source_credit_text",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "image_display"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleImageSourceCreditText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067270b3c7",
+            "label": "_asap_module_image_source_credit_url",
+            "name": "_asap_module_image_source_credit_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "image_display"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067510b3c8",
+            "label": "_asap_module_video_embed_url_or_id",
+            "name": "_asap_module_video_embed_url_or_id",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "video_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleVideoEmbedUrlOrId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067850b3c9",
+            "label": "_asap_module_video_platform_slug",
+            "name": "_asap_module_video_platform_slug",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "video_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleVideoPlatformSlug",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067ae0b3ca",
+            "label": "_asap_module_text_formatting_options_json",
+            "name": "_asap_module_text_formatting_options_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "text_block"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleTextFormattingOptionsJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_683067d10b3cb",
+            "label": "_asap_module_embed_iframe_src_url",
+            "name": "_asap_module_embed_iframe_src_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "generic_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEmbedIframeSrcUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683067fe0b3cc",
+            "label": "_asap_module_embed_script_tag_url",
+            "name": "_asap_module_embed_script_tag_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "generic_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEmbedScriptTagUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683068210b3cd",
+            "label": "_asap_module_embed_raw_html_code",
+            "name": "_asap_module_embed_raw_html_code",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "generic_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEmbedRawHtmlCode",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_6830683c0b3ce",
+            "label": "_asap_module_embed_height_px",
+            "name": "_asap_module_embed_height_px",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "video_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEmbedHeightPx",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683068660b3cf",
+            "label": "_asap_module_embed_is_responsive",
+            "name": "_asap_module_embed_is_responsive",
+            "aria-label": "",
+            "type": "true_false",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "generic_embed"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "message": "",
+            "default_value": 0,
+            "allow_in_bindings": 0,
+            "ui": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleEmbedIsResponsive",
+            "graphql_non_null": 0,
+            "ui_on_text": "",
+            "ui_off_text": "",
+            "style": ""
+        },
+        {
+            "key": "field_683068940b3d0",
+            "label": "_asap_module_product_identifier",
+            "name": "_asap_module_product_identifier",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "product_price_history"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleProductIdentifier",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683068ae0b3d1",
+            "label": "_asap_module_product_name",
+            "name": "_asap_module_product_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "product_price_history"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleProductName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683068e80b3d2",
+            "label": "_asap_module_product_url",
+            "name": "_asap_module_product_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "product_price_history"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683069130b3d3",
+            "label": "_asap_module_price_data",
+            "name": "_asap_module_price_data",
+            "aria-label": "",
+            "type": "repeater",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "product_price_history"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "acfe_repeater_stylised_button": 0,
+            "layout": "table",
+            "pagination": 0,
+            "min": 0,
+            "max": 0,
+            "collapsed": "",
+            "button_label": "Add Row",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0,
+            "rows_per_page": 20,
+            "sub_fields": [
+                {
+                    "key": "field_683069350b3d4",
+                    "label": "_asap_module_price_data_timestamp",
+                    "name": "_asap_module_price_data_timestamp",
+                    "aria-label": "",
+                    "type": "date_time_picker",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "display_format": "d\/m\/Y g:i a",
+                    "return_format": "d\/m\/Y g:i a",
+                    "first_day": 1,
+                    "placeholder": "",
+                    "min_date": "",
+                    "max_date": "",
+                    "min_time": "",
+                    "max_time": "",
+                    "no_weekends": 0,
+                    "min_hour": "",
+                    "max_hour": "",
+                    "min_min": "",
+                    "max_min": "",
+                    "min_sec": "",
+                    "max_sec": "",
+                    "allow_in_bindings": 0,
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePriceDataTimestamp",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683069130b3d3"
+                },
+                {
+                    "key": "field_683069550b3d5",
+                    "label": "_asap_module_price_data_value",
+                    "name": "_asap_module_price_data_value",
+                    "aria-label": "",
+                    "type": "number",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "min": "",
+                    "max": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "step": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePriceDataValue",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683069130b3d3"
+                },
+                {
+                    "key": "field_6830696b0b3d6",
+                    "label": "_asap_module_price_data_currency",
+                    "name": "_asap_module_price_data_currency",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePriceDataCurrency",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683069130b3d3"
+                }
+            ]
+        },
+        {
+            "key": "field_6830699a0b3d7",
+            "label": "_asap_module_price_trend_summary",
+            "name": "_asap_module_price_trend_summary",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "product_price_history"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePriceTrendSummary",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683069cc0b3d8",
+            "label": "_asap_module_location_identifier",
+            "name": "_asap_module_location_identifier",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleLocationIdentifier",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683069e00b3d9",
+            "label": "_asap_module_current_conditions",
+            "name": "_asap_module_current_conditions",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleCurrentConditions",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683069fa0b3da",
+            "label": "_asap_module_current_temperature",
+            "name": "_asap_module_current_temperature",
+            "aria-label": "",
+            "type": "number",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "min": "",
+            "max": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "step": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306a130b3db",
+            "label": "_asap_module_temperature_unit",
+            "name": "_asap_module_temperature_unit",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTemperatureUnit",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306a570b3dc",
+            "label": "_asap_module_weather_icon_slug",
+            "name": "_asap_module_weather_icon_slug",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleWeatherIconSlug",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306a750b3dd",
+            "label": "_asap_module_forecast_highlights",
+            "name": "_asap_module_forecast_highlights",
+            "aria-label": "",
+            "type": "repeater",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "weather_forecast"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "acfe_repeater_stylised_button": 0,
+            "layout": "table",
+            "pagination": 0,
+            "min": 0,
+            "max": 0,
+            "collapsed": "",
+            "button_label": "Add Row",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0,
+            "rows_per_page": 20,
+            "sub_fields": [
+                {
+                    "key": "field_68306a9a0b3de",
+                    "label": "_asap_module_forecast_time",
+                    "name": "_asap_module_forecast_time",
+                    "aria-label": "",
+                    "type": "date_time_picker",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "display_format": "d\/m\/Y g:i a",
+                    "return_format": "d\/m\/Y g:i a",
+                    "first_day": 1,
+                    "placeholder": "",
+                    "min_date": "",
+                    "max_date": "",
+                    "min_time": "",
+                    "max_time": "",
+                    "no_weekends": 0,
+                    "min_hour": "",
+                    "max_hour": "",
+                    "min_min": "",
+                    "max_min": "",
+                    "min_sec": "",
+                    "max_sec": "",
+                    "allow_in_bindings": 0,
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModuleForecastTime",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_68306a750b3dd"
+                },
+                {
+                    "key": "field_68306aa80b3df",
+                    "label": "_asap_module_forecast_summary",
+                    "name": "_asap_module_forecast_summary",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModuleForecastSummary",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_68306a750b3dd"
+                },
+                {
+                    "key": "field_68306ac10b3e0",
+                    "label": "_asap_module_forecast_icon_slug",
+                    "name": "_asap_module_forecast_icon_slug",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModuleForecastIconSlug",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_68306a750b3dd"
+                }
+            ]
+        },
+        {
+            "key": "field_68306adc0b3e1",
+            "label": "_asap_module_sport_type",
+            "name": "_asap_module_sport_type",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleSportType",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306af50b3e2",
+            "label": "_asap_module_league_name",
+            "name": "_asap_module_league_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleLeagueName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b0d0b3e3",
+            "label": "_asap_module_team_1_name",
+            "name": "_asap_module_team_1_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTeam1Name",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b250b3e4",
+            "label": "_asap_module_team_2_name",
+            "name": "_asap_module_team_2_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTeam2Name",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b3b0b3e5",
+            "label": "_asap_module_score_team_1",
+            "name": "_asap_module_score_team_1",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleScoreTeam1",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b550b3e6",
+            "label": "_asap_module_score_team_2",
+            "name": "_asap_module_score_team_2",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleScoreTeam2",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b690b3e7",
+            "label": "_asap_module_game_status",
+            "name": "_asap_module_game_status",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleGameStatus",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306b840b3e8",
+            "label": "_asap_module_game_highlights",
+            "name": "_asap_module_game_highlights",
+            "aria-label": "",
+            "type": "repeater",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "acfe_repeater_stylised_button": 0,
+            "layout": "table",
+            "pagination": 0,
+            "min": 0,
+            "max": 0,
+            "collapsed": "",
+            "button_label": "Add Row",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleGameHighlights",
+            "graphql_non_null": 0,
+            "rows_per_page": 20,
+            "sub_fields": [
+                {
+                    "key": "field_68306bb10b3e9",
+                    "label": "_asap_module_highlight_time",
+                    "name": "_asap_module_highlight_time",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModuleHighlightTime",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_68306b840b3e8"
+                },
+                {
+                    "key": "field_68306bb80b3ea",
+                    "label": "_asap_module_highlight_description",
+                    "name": "_asap_module_highlight_description",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModuleHighlightDescription",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_68306b840b3e8"
+                }
+            ]
+        },
+        {
+            "key": "field_68306bda0b3eb",
+            "label": "_asap_module_match_link_url",
+            "name": "_asap_module_match_link_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "sports_score_update"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleMatchLinkUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306c120b3ec",
+            "label": "_asap_module_podcast_episode_title",
+            "name": "_asap_module_podcast_episode_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastEpisodeTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306c2a0b3ed",
+            "label": "_asap_module_podcast_show_name",
+            "name": "_asap_module_podcast_show_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastShowName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306c530b3ee",
+            "label": "_asap_module_podcast_audio_url",
+            "name": "_asap_module_podcast_audio_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastAudioUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306ca10b3ef",
+            "label": "_asap_module_podcast_summary_text",
+            "name": "_asap_module_podcast_summary_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "",
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306cd70b3f0",
+            "label": "_asap_module_podcast_cover_art_url",
+            "name": "_asap_module_podcast_cover_art_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastCoverArtUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306cfa0b3f1",
+            "label": "_asap_module_podcast_episode_title",
+            "name": "_asap_module_podcast_episode_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastEpisodeTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306d140b3f2",
+            "label": "_asap_module_podcast_show_name",
+            "name": "_asap_module_podcast_show_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastShowName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306d3d0b3f3",
+            "label": "_asap_module_podcast_audio_url",
+            "name": "_asap_module_podcast_audio_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastAudioUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306d8f0b3f4",
+            "label": "_asap_module_podcast_multi_segment_data_json",
+            "name": "_asap_module_podcast_multi_segment_data_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModulePodcastMultiSegmentDataJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_68306db70b3f5",
+            "label": "_asap_module_podcast_cover_art_url",
+            "name": "_asap_module_podcast_cover_art_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "podcast_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModulePodcastCoverArtUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306dd80b3f6",
+            "label": "_asap_module_youtube_video_id",
+            "name": "_asap_module_youtube_video_id",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeVideoId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306e130b3f7",
+            "label": "_asap_module_youtube_video_title",
+            "name": "_asap_module_youtube_video_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeVideoTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306e2e0b3f8",
+            "label": "_asap_module_youtube_channel_name",
+            "name": "_asap_module_youtube_channel_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeChannelName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306e490b3f9",
+            "label": "_asap_module_youtube_summary_text",
+            "name": "_asap_module_youtube_summary_text",
+            "aria-label": "",
+            "type": "textarea",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "acfe_textarea_code": 0,
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "rows": "",
+            "placeholder": "",
+            "new_lines": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeSummaryText",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306e7c0b3fa",
+            "label": "_asap_module_youtube_thumbnail_url",
+            "name": "_asap_module_youtube_thumbnail_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeThumbnailUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306e980b3fb",
+            "label": "_asap_module_youtube_video_id",
+            "name": "_asap_module_youtube_video_id",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeVideoId",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306f000b3fc",
+            "label": "_asap_module_youtube_video_title",
+            "name": "_asap_module_youtube_video_title",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeVideoTitle",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306f3f0b3fd",
+            "label": "_asap_module_youtube_channel_name",
+            "name": "_asap_module_youtube_channel_name",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeChannelName",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306f500b3fe",
+            "label": "_asap_module_youtube_multi_segment_data_json",
+            "name": "_asap_module_youtube_multi_segment_data_json",
+            "aria-label": "",
+            "type": "json",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "graphql_field_name": "asapModuleYoutubeMultiSegmentDataJson",
+            "allow_in_bindings": 0
+        },
+        {
+            "key": "field_68306f7d0b3ff",
+            "label": "_asap_module_youtube_thumbnail_url",
+            "name": "_asap_module_youtube_thumbnail_url",
+            "aria-label": "",
+            "type": "url",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "youtube_multi_segment"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleYoutubeThumbnailUrl",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306fbc0b400",
+            "label": "_asap_module_timeline_topic",
+            "name": "_asap_module_timeline_topic",
+            "aria-label": "",
+            "type": "text",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "default_value": "",
+            "maxlength": "",
+            "allow_in_bindings": 0,
+            "placeholder": "",
+            "prepend": "",
+            "append": "",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelineTopic",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_68306ffb0b401",
+            "label": "_asap_module_timeline_start_date",
+            "name": "_asap_module_timeline_start_date",
+            "aria-label": "",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "d\/m\/Y",
+            "return_format": "d\/m\/Y",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "no_weekends": 0,
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelineStartDate",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683070270b402",
+            "label": "_asap_module_timeline_end_date",
+            "name": "_asap_module_timeline_end_date",
+            "aria-label": "",
+            "type": "date_picker",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "display_format": "d\/m\/Y",
+            "return_format": "d\/m\/Y",
+            "first_day": 1,
+            "placeholder": "",
+            "min_date": "",
+            "max_date": "",
+            "no_weekends": 0,
+            "allow_in_bindings": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelineEndDate",
+            "graphql_non_null": 0
+        },
+        {
+            "key": "field_683070570b403",
+            "label": "_asap_module_timeline_points",
+            "name": "_asap_module_timeline_points",
+            "aria-label": "",
+            "type": "repeater",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "acfe_repeater_stylised_button": 0,
+            "layout": "table",
+            "pagination": 0,
+            "min": 0,
+            "max": 0,
+            "collapsed": "",
+            "button_label": "Add Row",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelinePoints",
+            "graphql_non_null": 0,
+            "rows_per_page": 20,
+            "sub_fields": [
+                {
+                    "key": "field_683070850b404",
+                    "label": "_asap_module_point_date",
+                    "name": "_asap_module_point_date",
+                    "aria-label": "",
+                    "type": "date_time_picker",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "display_format": "d\/m\/Y g:i a",
+                    "return_format": "d\/m\/Y g:i a",
+                    "first_day": 1,
+                    "placeholder": "",
+                    "min_date": "",
+                    "max_date": "",
+                    "min_time": "",
+                    "max_time": "",
+                    "no_weekends": 0,
+                    "min_hour": "",
+                    "max_hour": "",
+                    "min_min": "",
+                    "max_min": "",
+                    "min_sec": "",
+                    "max_sec": "",
+                    "allow_in_bindings": 0,
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePointDate",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683070570b403"
+                },
+                {
+                    "key": "field_683070920b405",
+                    "label": "_asap_module_point_summary",
+                    "name": "_asap_module_point_summary",
+                    "aria-label": "",
+                    "type": "wysiwyg",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "acfe_wysiwyg_auto_init": 0,
+                    "acfe_wysiwyg_height": 300,
+                    "acfe_wysiwyg_max_height": "",
+                    "acfe_wysiwyg_valid_elements": "",
+                    "acfe_wysiwyg_custom_style": "",
+                    "acfe_wysiwyg_disable_wp_style": 0,
+                    "acfe_wysiwyg_autoresize": 0,
+                    "acfe_wysiwyg_disable_resize": 0,
+                    "acfe_wysiwyg_remove_path": 0,
+                    "acfe_wysiwyg_menubar": 0,
+                    "acfe_wysiwyg_transparent": 0,
+                    "acfe_wysiwyg_merge_toolbar": 0,
+                    "acfe_wysiwyg_custom_toolbar": 0,
+                    "allow_in_bindings": 0,
+                    "tabs": "all",
+                    "toolbar": "full",
+                    "media_upload": 1,
+                    "delay": 0,
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePointSummary",
+                    "graphql_non_null": 0,
+                    "acfe_wysiwyg_min_height": 300,
+                    "acfe_wysiwyg_toolbar_buttons": [],
+                    "parent_repeater": "field_683070570b403"
+                },
+                {
+                    "key": "field_683070b50b406",
+                    "label": "_asap_module_point_source_name",
+                    "name": "_asap_module_point_source_name",
+                    "aria-label": "",
+                    "type": "text",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "prepend": "",
+                    "append": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePointSourceName",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683070570b403"
+                },
+                {
+                    "key": "field_683070c10b407",
+                    "label": "_asap_module_point_source_url",
+                    "name": "_asap_module_point_source_url",
+                    "aria-label": "",
+                    "type": "url",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "allow_in_bindings": 0,
+                    "placeholder": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePointSourceUrl",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683070570b403"
+                },
+                {
+                    "key": "field_683070e10b408",
+                    "label": "_asap_module_point_ai_summary_long",
+                    "name": "_asap_module_point_ai_summary_long",
+                    "aria-label": "",
+                    "type": "textarea",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "default_value": "",
+                    "acfe_textarea_code": 0,
+                    "maxlength": "",
+                    "allow_in_bindings": 0,
+                    "rows": "",
+                    "placeholder": "",
+                    "new_lines": "",
+                    "show_in_graphql": 1,
+                    "graphql_description": "",
+                    "graphql_field_name": "asapModulePointAiSummaryLong",
+                    "graphql_non_null": 0,
+                    "parent_repeater": "field_683070570b403"
+                },
+                {
+                    "key": "field_683071090b409",
+                    "label": "_asap_module_point_visual_asset",
+                    "name": "_asap_module_point_visual_asset",
+                    "aria-label": "",
+                    "type": "icon_picker",
+                    "instructions": "",
+                    "required": 0,
+                    "conditional_logic": 0,
+                    "wrapper": {
+                        "width": "",
+                        "class": "",
+                        "id": ""
+                    },
+                    "graphql_field_name": "asapModulePointVisualAsset",
+                    "tabs": [
+                        "dashicons",
+                        "media_library",
+                        "url"
+                    ],
+                    "return_format": "string",
+                    "allow_in_bindings": 0,
+                    "library": "all",
+                    "default_value": {
+                        "type": null,
+                        "value": null
+                    },
+                    "parent_repeater": "field_683070570b403"
+                }
+            ]
+        },
+        {
+            "key": "field_6830714a0b40a",
+            "label": "_asap_module_timeline_layout_preference",
+            "name": "_asap_module_timeline_layout_preference",
+            "aria-label": "",
+            "type": "radio",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": [],
+            "default_value": "",
+            "return_format": "value",
+            "allow_null": 0,
+            "other_choice": 0,
+            "allow_in_bindings": 0,
+            "layout": "vertical",
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelineLayoutPreference",
+            "graphql_non_null": 0,
+            "save_other_choice": 0
+        },
+        {
+            "key": "field_683071820b40b",
+            "label": "_asap_module_timeline_source_types_included",
+            "name": "_asap_module_timeline_source_types_included",
+            "aria-label": "",
+            "type": "checkbox",
+            "instructions": "",
+            "required": 0,
+            "conditional_logic": [
+                [
+                    {
+                        "field": "field_682e11aaad48b",
+                        "operator": "==",
+                        "value": "timeline_summary"
+                    }
+                ]
+            ],
+            "wrapper": {
+                "width": "",
+                "class": "",
+                "id": ""
+            },
+            "choices": [],
+            "default_value": [],
+            "return_format": "value",
+            "min": "",
+            "max": "",
+            "allow_custom": 0,
+            "allow_in_bindings": 0,
+            "layout": "vertical",
+            "toggle": 0,
+            "show_in_graphql": 1,
+            "graphql_description": "",
+            "graphql_field_name": "asapModuleTimelineSourceTypesIncluded",
+            "graphql_non_null": 0,
+            "save_custom": 0,
+            "custom_choice_button_text": "Add new choice"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "post_type",
+                "operator": "==",
+                "value": "asap_module"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "",
+    "show_in_rest": 0,
+    "acfe_autosync": [
+        "json"
+    ],
+    "acfe_form": 0,
+    "acfe_display_title": "",
+    "show_in_graphql": 1,
+    "graphql_field_name": "moduleCustomFields",
+    "map_graphql_types_from_location_rules": 0,
+    "graphql_types": "",
+    "acfe_meta": "",
+    "acfe_note": "",
+    "modified": 1748006811
+}

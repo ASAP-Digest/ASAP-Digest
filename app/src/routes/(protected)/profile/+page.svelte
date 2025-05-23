@@ -4,7 +4,7 @@
   import { User, Settings, Bell, LogOut, BookOpen, Share2 } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import * as Avatar from '$lib/components/ui/avatar';
-  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '$lib/components/ui/card';
   import { CircleUser, Mail, Globe, Shield } from '$lib/utils/lucide-compat.js';
   import { getAvatarUrl, createGravatarUrl } from '$lib/stores/user.js';
   import * as RadioGroup from '$lib/components/ui/radio-group';
@@ -14,6 +14,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Input } from '$lib/components/ui/input';
   import { Button } from '$lib/components/ui/button';
+  import { onMount } from 'svelte';
 
   /** @type {import('./$types').PageData} */
   const { data } = $props();
@@ -220,59 +221,176 @@
     
     console.log('Updated avatar:', { avatarType, avatarUrl });
   }
+
+  let loading = $state(false);
+  let full_name = $state('');
+  let username = $state('');
+
+  $effect(() => {
+    if (data && data.user) {
+      full_name = data.user.displayName;
+      username = data.user.username;
+    }
+  });
+
+  async function updateProfile() {
+    if (!userForm) return;
+    
+    console.log('Updating profile', userForm);
+    
+    try {
+      loading = true;
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      
+      // Get all existing cookies to ensure we're sending the session cookie
+      const allCookies = document.cookie;
+      console.log('Using cookies for auth:', allCookies);
+      
+      // Prepare the data to save - include all necessary fields
+      const profileData = {
+        id: userForm.id,
+        displayName: userForm.displayName,
+        email: userForm.email,
+        avatarUrl: userForm.avatarUrl, // Include the current avatarUrl
+        updatedAt: new Date().toISOString(),
+        preferences: {
+          ...(userForm.preferences || {}),
+          avatar: {
+            type: avatarType,
+            url: avatarUrl
+          }
+        }
+      };
+      
+      console.log('Sending profile data:', profileData);
+      
+      const response = await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'Cookie': allCookies
+        },
+        body: JSON.stringify(profileData),
+        credentials: 'include'
+      });
+      
+      // Log full response for debugging
+      console.log('Profile update response status:', response.status);
+      console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+      
+      const result = await response.json();
+      console.log('Profile update result:', result);
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to update profile: ${response.status} ${response.statusText}`);
+      }
+      
+      if (result.success) {
+        toasts.show('Profile updated successfully', 'success');
+        await invalidateAll();
+      } else {
+        throw new Error(result.error || 'Unknown error updating profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toasts.show(error.message || 'Failed to update profile', 'error');
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function signOut() {
+    try {
+      loading = true;
+      
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      // Log full response for debugging
+      console.log('Signout response status:', response.status);
+      console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+      
+      if (!response.ok) {
+        throw new Error(`Failed to sign out: ${response.status} ${response.statusText}`);
+      }
+      
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else {
+        toasts.show('Signout successful', 'success');
+        await invalidateAll();
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toasts.show(error.message || 'Failed to sign out', 'error');
+    } finally {
+      loading = false;
+    }
+  }
 </script>
 
-<div class="container mx-auto py-8">
-  <Card class="">
-    <CardHeader class="">
-      <CardTitle class="">Profile Information</CardTitle>
-    </CardHeader>
-    <CardContent class="">
-      <div class="flex flex-col items-center space-y-4 md:flex-row md:space-x-6 md:space-y-0">
-        <div class="relative h-24 w-24 flex-shrink-0">
-          <!-- Use getAvatarUrl to ensure consistent avatar display -->
-          <Avatar.Root class="h-full w-full">
-            <Avatar.Image class="" src={getAvatarUrl(data.user) || '/images/default-avatar.svg'} alt={data.user?.displayName || 'User'} />
-            <Avatar.Fallback class="">
-              <Icon icon={CircleUser} class="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-            </Avatar.Fallback>
-          </Avatar.Root>
-        </div>
-        
-        <div class="flex flex-col space-y-4">
-          <div class="space-y-1">
-            <div class="flex items-center space-x-2">
-              <Icon icon={CircleUser} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <span class="text-sm font-medium">Name</span>
-            </div>
-            <p class="text-lg font-semibold">{data.user?.displayName || 'User'}</p>
+<!-- The outermost div with grid-stack-item is already added by a previous edit -->
+<!-- Remove the inner container wrapper and make sections direct grid-stack-items -->
+
+<!-- Profile Header - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
+    <header class="mb-8">
+      <h1 class="text-3xl font-bold">Profile</h1>
+      <p class="text-muted-foreground">Manage your profile information</p>
+    </header>
+  </div>
+</div>
+
+<!-- Profile Form Section - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
+    <Card class="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Update Profile</CardTitle>
+        <CardDescription>Update your account's profile information.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div class="grid w-full items-center gap-4">
+          <div class="flex flex-col space-y-1.5">
+            <Label for="email">Email</Label>
+            <Input id="email" type="email" value={$page.data.session?.user.email} disabled />
           </div>
-          
-          <div class="space-y-1">
-            <div class="flex items-center space-x-2">
-              <Icon icon={Mail} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <span class="text-sm font-medium">Email</span>
-            </div>
-            <p class="text-[hsl(var(--muted-foreground))]">{data.user?.email || 'user@example.com'}</p>
+          <div class="flex flex-col space-y-1.5">
+            <Label for="fullName">Full Name</Label>
+            <Input id="fullName" placeholder="Your full name" bind:value={full_name} />
           </div>
-          
-          <div class="space-y-1">
-            <div class="flex items-center space-x-2">
-              <Icon icon={Shield} class="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <span class="text-sm font-medium">Roles</span>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              {#each data.user?.roles || [] as role}
-                <span class="rounded-full bg-[hsl(var(--muted))] px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--muted-foreground))]">
-                  {role}
-                </span>
-              {/each}
-            </div>
+          <div class="flex flex-col space-y-1.5">
+            <Label for="username">Username</Label>
+            <Input id="username" placeholder="Your username" bind:value={username} />
           </div>
         </div>
-      </div>
-    </CardContent>
-  </Card>
+      </CardContent>
+      <CardFooter class="flex justify-between">
+        <Button on:click={updateProfile} disabled={loading}>
+          {#if loading}
+            Loading...
+          {:else}
+            Update profile
+          {/if}
+        </Button>
+      </CardFooter>
+    </Card>
+  </div>
+</div>
+
+<!-- Logout Section - Treat as Gridstack item -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
+  <div class="grid-stack-item-content">
+    <div class="mt-8 max-w-md mx-auto text-right">
+      <Button variant="outline" on:click={signOut}>Sign Out</Button>
+    </div>
+  </div>
 </div>
 
 <style>

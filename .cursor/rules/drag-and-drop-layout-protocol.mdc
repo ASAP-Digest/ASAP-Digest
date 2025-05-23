@@ -3,12 +3,16 @@ description:
 globs: 
 alwaysApply: false
 ---
-
-# Drag-and-Drop Layout Protocol v1.0
+# Grid Layout Protocol v1.3
+---
+description: Defines the standard approach for implementing interactive grid layouts and drag-and-drop functionality within the ASAP Digest project using the gridstack.js library.
+globs: []
+alwaysApply: false
+---
 
 ## 1. Purpose
 
-This protocol defines the standard approach for implementing drag-and-drop functionality within the ASAP Digest project using the `svelte-dnd-action` library. It ensures all drag-and-drop interactions adhere to the Golden Ratio Design System, maintain consistent animations, and provide an accessible, intuitive user experience.
+This protocol defines the standard approach for implementing interactive grid layouts and drag-and-drop functionality within the ASAP Digest project using the `gridstack.js` library. It ensures all grid interactions and drag-and-drop operations adhere to the Golden Ratio Design System, maintain consistent animations, and provide an accessible, intuitive user experience, particularly for the digest creation UI.
 
 ## 2. Protocol Integration Layer
 
@@ -21,9 +25,9 @@ This protocol defines the standard approach for implementing drag-and-drop funct
 │ 3. golden-ratio-design-system-protocol  │ // Core Visual Standards
 │ 4. strict-visual-enforcement-protocol   │ // Syntax-level Checks
 │ 5. visual-style-enforcement-protocol    │ // Visual Verification
-│ 6. icon-management.mdc                  │ // Drag Handle Icons
+│ 6. icon-management.mdc                 │ // Drag Handle Icons
 │ 7. sk2-scns5-t4-int.mdc                 │ // SvelteKit Integration
-│ 8. svelte-dnd-action                    │ // Drag-and-Drop Library
+│ 8. gridstack.js                         │ // Grid Layout Library
 │ 9. ui-check.mdc                         │ // Visual Review
 │ 10. component-dependency-usage-protocol │ // Package Integration
 └─────────────────────────────────────────┘
@@ -31,579 +35,380 @@ This protocol defines the standard approach for implementing drag-and-drop funct
 
 ## 3. Core Principles
 
-1. **Integration with Design System:** All drag-and-drop elements MUST adhere to the Golden Ratio Design System for spacing, colors, motion, and states.
-2. **Consistent Animation:** Animations MUST use the design system's duration and easing variables.
-3. **Clear Affordances:** Draggable elements MUST provide clear visual affordances indicating they can be dragged.
-4. **Accessibility:** All drag-and-drop functionality MUST remain accessible via keyboard and screen readers.
-5. **Performance:** Animations MUST be optimized for performance, preferring CSS properties that trigger only composition.
+1. **Integration with Design System:** All grid elements and widgets MUST adhere to the Golden Ratio Design System for spacing, colors, motion, and states. Use CSS variables defined in the design system for styling grid items and containers.
+2. **Consistent Animation:** Gridstack's built-in animations should be used where appropriate. If custom animations are needed, they MUST use the design system's duration and easing variables.
+3. **Clear Affordances:** Draggable and resizable grid items MUST provide clear visual affordances indicating their interactive capabilities.
+4. **Accessibility:** All grid and drag-and-drop functionality MUST remain accessible via keyboard and screen readers. Utilize appropriate ARIA attributes and ensure keyboard navigation is possible.
+5. **Performance:** Grid operations and animations MUST be optimized for performance. Avoid complex calculations in drag/resize events and prefer CSS for visual changes where possible.
 
 ## 4. Library Integration
 
-### 4.1. Package Integration
+### 4.1. Package Installation
 
-```javascript
-// In package.json - Add dependency
-"dependencies": {
-  "svelte-dnd-action": "^0.9.26",
-  // ... other dependencies
-}
+Install `gridstack` using pnpm in the SvelteKit root directory (`/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`):
+
+```bash
+pnpm install gridstack
 ```
 
-### 4.2. Component Import
+### 4.2. Component Import and Initialization
+
+Import the necessary components and CSS in your Svelte component:
 
 ```javascript
 <script>
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { GripVertical } from '$lib/utils/lucide-compat.js';
-  // ... other imports
+  import { GridStack } from 'gridstack';
+  import 'gridstack/dist/gridstack.min.css';
+  import { onMount, onDestroy } from 'svelte';
+
+  let gridContainer;
+  let grid;
+
+  onMount(() => {
+    // Initialize the gridstack instance with relevant options
+    grid = GridStack.init({
+      // --- General Options ---
+      column: 12, // Default 12 column grid (responsive)
+      cellHeight: 'auto', // Or a specific pixel value (e.g., 50)
+      margin: 'var(--spacing-md)', // Example: using design system spacing
+      float: false, // Items will not float up when space is available
+      disableResize: false, // Enable/disable resizing globally
+      disableDrag: false, // Enable/disable dragging globally
+      handle: '.drag-handle', // CSS selector for the drag handle (within grid items)
+      // acceptWidgets: '.new-widget', // CSS selector for droppable items from outside the grid
+      // minRow: 1, // Minimum number of rows
+      // maxRow: 0, // Maximum number of rows (0 for unlimited)
+
+      // --- Responsive Options (v10+) ---
+      // Use columnOpts for flexible responsive breakpoint configuration
+      columnOpts: {
+        // Example breakpoints: switch to 6 columns below 768px, and 1 column below 480px
+        breakpoints: [
+          { w: 768, c: 6 },
+          { w: 480, c: 1 }
+        ]
+      },
+      alwaysShowResizeHandle: 'mobile', // show handles on mobile (requires gridstack v6+)
+
+      // --- Appearance/Behavior ---
+      // animation: true, // Enable/disable animations (default is true)
+      // removePanel: '.trash', // CSS selector for a trash zone to remove widgets
+      // More options available: https://github.com/gridstack/gridstack.js/tree/master/doc#gridstackoptions
+
+    }, gridContainer);
+
+    // --- Event Handling ---
+    // Use grid.on() to subscribe to various events. Key events for state management are 'added', 'removed', and 'change'.
+    // Interactive feedback can be handled with 'dragstart', 'dragstop', 'resizestart', 'resizestop'.
+    grid.on('added', (event, items) => {
+      console.log('Items added:', items);
+      // Handle added items (e.g., update internal state, assign IDs if not already present)
+      // items is an array of GridStackNode
+    });
+
+    grid.on('removed', (event, items) => {
+      console.log('Items removed:', items);
+      // Handle removed items (e.g., update internal state)
+      // items is an array of GridStackNode
+    });
+
+    grid.on('change', (event, items) => {
+      console.log('Items changed:', items);
+      // This event is crucial for saving the layout state after any modification
+      // (drag, resize, add, remove). Save the result of grid.save().
+      // items is an array of GridStackNode showing changed widgets
+      // Example: saveLayout(grid.save());
+    });
+
+    // Example of drag/resize events for real-time feedback or specific logic
+    // grid.on('dragstart', (event, el) => { console.log('dragstart', el); });
+    // grid.on('dragstop', (event, el) => { console.log('dragstop', el); });
+    // grid.on('resizestart', (event, el) => { console.log('resizestart', el); });
+    // grid.on('resizestop', (event, el) => { console.log('resizestop', el); });
+
+  });
+
+  onDestroy(() => {
+    // Clean up the gridstack instance on component destroy to prevent memory leaks
+    grid.destroy();
+  });
+
+  // Example function to save layout (implement based on your state management)
+  // function saveLayout(layout) {
+  //   console.log('Saving layout:', layout);
+  //   // Implement saving to store, local storage, or backend
+  // }
+
 </script>
-```
+
+<div bind:this={gridContainer} class="grid-stack">
+  <!-- Grid items will be added here, either initially in HTML or dynamically -->
+</div>
+
+*Note: Gridstack v12+ uses CSS variables for columns and cell heights, eliminating the need for `gridstack-extra.css`.*
+*Note: As of v11, passing HTML strings directly as `content` in `addWidget` is deprecated. Prefer creating DOM elements or using a rendering callback (`GridStack.renderCB`).*
 
 ## 5. Standard Implementation
 
-### 5.1. Basic DnD Container Implementation
+### 5.1. Adding and Removing Widgets
 
-```svelte
-<script>
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  
-  /**
-   * @typedef {Object} DndItem
-   * @property {string} id - Unique identifier (REQUIRED by svelte-dnd-action)
-   * @property {any} [additionalProps] - Any other properties needed
-   */
-  
-  /** @type {DndItem[]} */
-  let items = [
-    { id: '1', title: 'Item 1' },
-    { id: '2', title: 'Item 2' },
-    { id: '3', title: 'Item 3' }
-  ];
-  
-  // Duration MUST use design system variable
-  const flipDurationMs = 200; // Should match --duration-normal (300ms) or --duration-fast (150ms)
-  
-  /**
-   * Update items when drag events occur
-   * @param {CustomEvent} e - The dnd event
-   */
-  function handleSort(e) {
-    items = e.detail.items;
-  }
-</script>
+Widgets can be added dynamically using the `addWidget` method, defined initially in the HTML, or added from existing DOM elements. When adding dynamically, prefer passing a `GridStackWidget` object.
 
-<section 
-  use:dndzone={{items, flipDurationMs}}
-  on:consider={handleSort}
-  on:finalize={handleSort}
-  class="grid gap-4 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
->
-  {#each items as item (item.id)}
-    <div 
-      class="p-4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
-             hover:shadow-[var(--shadow-md)] cursor-grab active:cursor-grabbing transition-all
-             duration-[var(--duration-fast)] ease-[var(--ease-out)]"
-      animate:flip={{duration: flipDurationMs}}
-    >
-      {item.title}
-    </div>
-  {/each}
-</section>
-```
-
-### 5.2. Adding Drag Handles
-
-```svelte
-<script>
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { GripVertical } from '$lib/utils/lucide-compat.js';
-  
-  /** @type {DndItem[]} */
-  let items = [ /* ... */ ];
-  
-  const flipDurationMs = 200;
-  
-  function handleSort(e) {
-    items = e.detail.items;
-  }
-</script>
-
-<section 
-  use:dndzone={{items, flipDurationMs, dragHandle: '.drag-handle'}}
-  on:consider={handleSort}
-  on:finalize={handleSort}
-  class="grid gap-4 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
->
-  {#each items as item (item.id)}
-    <div 
-      class="flex items-center p-4 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
-             hover:shadow-[var(--shadow-md)] transition-all
-             duration-[var(--duration-fast)] ease-[var(--ease-out)]"
-      animate:flip={{duration: flipDurationMs}}
-    >
-      <div class="drag-handle mr-2 cursor-grab active:cursor-grabbing">
-        <Icon icon={GripVertical} class="w-5 h-5 text-[hsl(var(--text-2))]" aria-hidden="true" />
-      </div>
-      <span>{item.title}</span>
-    </div>
-  {/each}
-</section>
-```
-
-### 5.3. Multi-Container (Between Lists) Implementation
-
-```svelte
-<script>
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  
-  /** @type {DndItem[]} */
-  let leftItems = [ /* items with ids */ ];
-  
-  /** @type {DndItem[]} */
-  let rightItems = [ /* items with ids */ ];
-  
-  const flipDurationMs = 200;
-  
-  /**
-   * Handle sorting within the left container
-   * @param {CustomEvent} e - The dnd event
-   */
-  function handleSortLeft(e) {
-    leftItems = e.detail.items;
-  }
-  
-  /**
-   * Handle sorting within the right container
-   * @param {CustomEvent} e - The dnd event
-   */
-  function handleSortRight(e) {
-    rightItems = e.detail.items;
-  }
-</script>
-
-<div class="flex gap-4">
-  <!-- Left Container -->
-  <section
-    use:dndzone={{items: leftItems, flipDurationMs, type: 'shared-list'}}
-    on:consider={handleSortLeft}
-    on:finalize={handleSortLeft}
-    class="w-1/2 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
-  >
-    {#each leftItems as item (item.id)}
-      <div
-        class="p-4 my-2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)]
-               cursor-grab active:cursor-grabbing"
-        animate:flip={{duration: flipDurationMs}}
-      >
-        {item.title}
-      </div>
-    {/each}
-  </section>
-  
-  <!-- Right Container -->
-  <section
-    use:dndzone={{items: rightItems, flipDurationMs, type: 'shared-list'}}
-    on:consider={handleSortRight}
-    on:finalize={handleSortRight}
-    class="w-1/2 p-4 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)]"
-  >
-    {#each rightItems as item (item.id)}
-      <div
-        class="p-4 my-2 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)]
-               cursor-grab active:cursor-grabbing"
-        animate:flip={{duration: flipDurationMs}}
-      >
-        {item.title}
-      </div>
-    {/each}
-  </section>
-</div>
-```
-
-### 5.4. Nested DnD Zones (Board-like Implementation)
-
-```svelte
-<script>
-  import { dndzone } from 'svelte-dnd-action';
-  import { flip } from 'svelte/animate';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { GripVertical } from '$lib/utils/lucide-compat.js';
-  
-  /**
-   * @typedef {Object} CardItem
-   * @property {string} id - Unique identifier
-   * @property {string} title - Card title
-   */
-  
-  /**
-   * @typedef {Object} ColumnItem
-   * @property {string} id - Unique identifier
-   * @property {string} title - Column title
-   * @property {CardItem[]} cards - Cards in this column
-   */
-  
-  /** @type {ColumnItem[]} */
-  let columns = [
-    {
-      id: 'col1',
-      title: 'Todo',
-      cards: [
-        { id: 'card1', title: 'Task 1' },
-        { id: 'card2', title: 'Task 2' }
-      ]
-    },
-    {
-      id: 'col2',
-      title: 'In Progress',
-      cards: [
-        { id: 'card3', title: 'Task 3' }
-      ]
-    }
-  ];
-  
-  const flipDurationMs = 200;
-  
-  /**
-   * Handle column reordering
-   * @param {CustomEvent} e - The dnd event
-   */
-  function handleColumnSort(e) {
-    columns = e.detail.items;
-  }
-  
-  /**
-   * Handle card sorting within a column
-   * @param {CustomEvent} e - The dnd event
-   * @param {string} columnId - The column ID
-   */
-  function handleCardSort(e, columnId) {
-    const columnIndex = columns.findIndex(col => col.id === columnId);
-    if (columnIndex !== -1) {
-      columns = columns.map((col, i) => {
-        if (i === columnIndex) {
-          return { ...col, cards: e.detail.items };
-        }
-        return col;
-      });
-    }
-  }
-</script>
-
-<!-- Board container -->
-<div
-  use:dndzone={{items: columns, flipDurationMs, type: 'columns'}}
-  on:consider={handleColumnSort}
-  on:finalize={handleColumnSort}
-  class="flex gap-4 p-4 overflow-x-auto"
->
-  {#each columns as column (column.id)}
-    <!-- Column -->
-    <div
-      animate:flip={{duration: flipDurationMs}}
-      class="flex flex-col w-80 shrink-0 bg-[hsl(var(--surface-1))] rounded-[var(--radius-md)] p-4 border border-[hsl(var(--border))]"
-    >
-      <!-- Column header -->
-      <div class="flex items-center mb-4">
-        <div class="cursor-grab active:cursor-grabbing mr-2">
-          <Icon icon={GripVertical} class="w-5 h-5 text-[hsl(var(--text-2))]" aria-hidden="true" />
-        </div>
-        <h3 class="text-[var(--font-size-lg)] font-[var(--font-weight-semibold)]">{column.title}</h3>
-      </div>
-      
-      <!-- Cards container -->
-      <div
-        use:dndzone={{items: column.cards, flipDurationMs, type: 'cards'}}
-        on:consider={e => handleCardSort(e, column.id)}
-        on:finalize={e => handleCardSort(e, column.id)}
-        class="flex-grow flex flex-col gap-2"
-      >
-        {#each column.cards as card (card.id)}
-          <!-- Card -->
-          <div
-            animate:flip={{duration: flipDurationMs}}
-            class="p-3 bg-[hsl(var(--surface-2))] rounded-[var(--radius-sm)] border border-[hsl(var(--border))]
-                   cursor-grab active:cursor-grabbing shadow-[var(--shadow-sm)]
-                   hover:shadow-[var(--shadow-md)] transition-all
-                   duration-[var(--duration-fast)] ease-[var(--ease-out)]"
-          >
-            {card.title}
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/each}
-</div>
-```
-
-## 6. Accessibility Requirements
-
-1. **Semantic Structure:**
-   - Use proper ARIA roles for draggable items (`role="listitem"` and `aria-grabbed`)
-   - Include `aria-live` regions to announce changes after drag operations
-
-2. **Keyboard Navigation:**
-   - Implement keyboard commands for drag operations:
-     - `Space` - Select item for dragging
-     - `Arrow Keys` - Move item
-     - `Enter` - Drop item
-     - `Escape` - Cancel drag operation
-
-3. **Screen Reader Support:**
-   - Include descriptive instructions for drag operations
-   - Announce new positions after drag completion
-
-```svelte
-<!-- Example with accessibility features -->
-<div 
-  role="list"
-  aria-label="Draggable items list"
->
-  <div
-    role="listitem"
-    tabindex="0"
-    aria-grabbed="false"
-    aria-roledescription="draggable item"
-    aria-describedby="drag-instructions"
-  >
-    Item content
-  </div>
-  
-  <!-- Hidden instructions for screen readers -->
-  <div id="drag-instructions" class="sr-only">
-    Press Space to pick up an item, use arrow keys to move, and press Enter to drop. Press Escape to cancel.
-  </div>
-  
-  <!-- Live region for announcing results -->
-  <div aria-live="polite" class="sr-only">
-    <!-- Updated dynamically after drag operations -->
-  </div>
-</div>
-```
-
-## 7. Animation Standards
-
-1. **Duration Variables:**
-   - MUST use design system duration variables:
-     ```css
-     duration-[var(--duration-fast)] /* 150ms */
-     duration-[var(--duration-normal)] /* 300ms */
-     ```
-
-2. **Easing Variables:**
-   - MUST use design system easing variables:
-     ```css
-     ease-[var(--ease-out)]
-     ```
-
-3. **Animation Properties:**
-   - SHOULD prioritize CSS properties that trigger only composition:
-     ```css
-     transform, opacity
-     ```
-   - SHOULD avoid properties that trigger layout recalculation:
-     ```css
-     width, height, top, left
-     ```
-
-4. **Responsive Animations:**
-   - MAY reduce animation duration on smaller screens:
-     ```css
-     duration-[var(--duration-normal)] md:duration-[var(--duration-fast)]
-     ```
-
-## 8. Visual State Guidelines
-
-1. **Draggable Element States:**
-   - **Default:** Subtle visual affordance (drop shadow, border)
-   - **Hover:** Enhanced affordance (deeper shadow, slight scaling)
-   - **Active (During Drag):** Clear visual differentiation (rotation, scaling, opacity)
-   - **Disabled:** Standard disabled state (opacity-50, cursor-not-allowed)
-
-2. **Drop Zone States:**
-   - **Default:** Standard surface styling
-   - **Active (Potential Drop Target):** Visual highlight (border color change, background color change)
-   - **Invalid Drop Target:** Visual warning (colored border or background)
-
-3. **CSS Implementation:**
-```css
-/* Draggable Element */
-.draggable {
-  @apply cursor-grab 
-         bg-[hsl(var(--surface-2))] 
-         border border-[hsl(var(--border))] 
-         rounded-[var(--radius-sm)]
-         shadow-[var(--shadow-sm)]
-         transition-all
-         duration-[var(--duration-fast)]
-         ease-[var(--ease-out)];
-}
-
-.draggable:hover {
-  @apply shadow-[var(--shadow-md)]
-         transform scale-[1.01];
-}
-
-.draggable:active {
-  @apply cursor-grabbing
-         transform scale-[1.03] rotate-[1deg];
-}
-
-.draggable[disabled] {
-  @apply opacity-50 cursor-not-allowed;
-}
-
-/* Drop Zone */
-.dropzone {
-  @apply bg-[hsl(var(--surface-1))]
-         border border-[hsl(var(--border))]
-         rounded-[var(--radius-md)]
-         transition-all
-         duration-[var(--duration-fast)]
-         ease-[var(--ease-out)];
-}
-
-.dropzone.active {
-  @apply border-[hsl(var(--brand))];
-}
-
-.dropzone.invalid {
-  @apply border-[hsl(var(--functional-error))];
-}
-```
-
-## 9. Verification & Testing
-
-### 9.1. Manual Verification Checklist
-
-1. **Visual Consistency:**
-   - [ ] Draggable elements use design system color variables
-   - [ ] Spacing follows 8pt grid
-   - [ ] Border radii use defined variables
-   - [ ] Shadows use defined variables
-   - [ ] Typography uses design system size and weight variables
-   - [ ] Animations use design system duration and easing variables
-
-2. **Functional Testing:**
-   - [ ] Drag and drop works between intended containers
-   - [ ] Animation smoothness during drag operations
-   - [ ] Correct behavior on item drop
-   - [ ] No visual glitches during transitions
-   - [ ] Scrolling behavior works as expected
-   - [ ] Touch/mobile interaction functions correctly
-
-3. **Accessibility Testing:**
-   - [ ] Keyboard navigation works for all drag operations
-   - [ ] Screen readers announce drag operations
-   - [ ] Focus management is appropriate
-   - [ ] ARIA attributes correctly implemented
-   - [ ] Color contrast meets accessibility standards
-
-### 9.2. Automated Verification
+#### Adding a Widget Dynamically
 
 ```javascript
-// Example: Verify component with strict-visual-enforcement-protocol
-// This would be executed via the protocol's mechanisms
-async function verifyDragDropComponent(targetFile) {
-  // 1. Run strict-visual-enforcement-protocol
-  const strictResult = await runStrictVisualEnforcement(targetFile);
-  if (!strictResult.pass) {
-    return {
-      pass: false,
-      errors: strictResult.errors,
-      message: "Failed strict visual enforcement checks"
-    };
-  }
-  
-  // 2. Run visual-style-enforcement-protocol
-  const visualResult = await runVisualStyleEnforcement(targetFile);
-  if (!visualResult.pass) {
-    return {
-      pass: false,
-      errors: visualResult.errors,
-      message: "Failed visual style enforcement checks"
-    };
-  }
-  
-  // 3. Additional drag-and-drop specific checks
-  const dndResult = await runDragDropSpecificChecks(targetFile);
-  if (!dndResult.pass) {
-    return {
-      pass: false,
-      errors: dndResult.errors,
-      message: "Failed drag-and-drop specific checks"
-    };
-  }
-  
-  return {
-    pass: true,
-    message: "Component passes all verification checks"
-  };
-}
+// Assuming 'grid' is your initialized GridStack instance
+
+// Define widget properties using a GridStackWidget object
+// This is the preferred method in recent gridstack versions (v11+)
+const widget = { 
+  x: 0, y: 0, w: 3, h: 2, // Position and size in grid units
+  id: 'unique-widget-id', // Unique ID is highly recommended for tracking and state management
+  // Add custom properties relevant to your widget type and data
+  // widgetType: 'text', 
+  // contentData: { text: 'Initial text content' },
+
+  // Use the content property for a basic HTML string *if* NOT using renderCB
+  // content: '<div class="grid-stack-item-content bg-[hsl(var(--surface-2))] p-4">New Text Widget</div>' 
+};
+
+// Add widget using the object format
+grid.addWidget(widget);
+
+// Adding a widget from an existing HTML element
+// This is useful for dragging items from a sidebar into the grid.
+// let newElement = document.createElement('div');
+// newElement.classList.add('grid-stack-item'); // Add required class
+// newElement.setAttribute('data-gs-w', '2'); // Set initial width
+// newElement.setAttribute('data-gs-h', '2'); // Set initial height
+// newElement.innerHTML = '<div class="grid-stack-item-content bg-[hsl(var(--surface-2))] p-4">Existing Element Widget</div>';
+// grid.addWidget(newElement, { x: 4, y: 0 }); // Optionally pass position/size options to override data-gs-* attributes
+```
+*Note: When adding dynamic content, consider using `GridStack.renderCB` (see below) instead of relying solely on the `content` property or manual `innerHTML` for better Svelte integration and security.*
+
+#### Removing a Widget
+
+```javascript
+// Assuming 'grid' is your initialized GridStack instance
+// and 'widgetElementOrObject' is the DOM element of the widget to remove or the widget object itself
+
+// Remove a specific widget by its DOM element or widget object
+grid.removeWidget(widgetElementOrObject);
+
+// Removing all widgets from the grid
+// grid.removeAll();
 ```
 
-## 10. Common Anti-Patterns & Corrections
+### 5.2. Saving and Loading Layouts
 
-1. **❌ Incorrect:** Using hardcoded duration values
-   ```svelte
-   <div animate:flip={{duration: 250}}>Item</div>
-   ```
-   **✅ Correct:** Using design system duration variables
-   ```svelte
-   <div animate:flip={{duration: flipDurationMs}}>Item</div>
-   <!-- where flipDurationMs matches a design system value -->
-   ```
+Gridstack provides robust methods to serialize and load the current grid layout, essential for persisting user configurations.
 
-2. **❌ Incorrect:** Using direct Tailwind color classes
-   ```svelte
-   <div class="bg-blue-500">Item</div>
-   ```
-   **✅ Correct:** Using HSL variables
-   ```svelte
-   <div class="bg-[hsl(var(--brand))]">Item</div>
-   ```
+#### Saving Layout
 
-3. **❌ Incorrect:** Missing accessibility attributes
-   ```svelte
-   <div>Draggable item</div>
-   ```
-   **✅ Correct:** Including proper accessibility attributes
-   ```svelte
-   <div role="listitem" aria-grabbed="false" tabindex="0">Draggable item</div>
-   ```
+```javascript
+// Assuming 'grid' is your initialized GridStack instance
 
-4. **❌ Incorrect:** Inconsistent animation styles
-   ```svelte
-   <div class="transition-transform duration-200 hover:scale-105">Item</div>
-   ```
-   **✅ Correct:** Using design system variables
-   ```svelte
-   <div class="transition-all duration-[var(--duration-fast)] ease-[var(--ease-out)] hover:scale-[1.05]">Item</div>
-   ```
+// Get the serialized layout as an array of widget definitions (GridStackWidget objects)
+// This array contains position (x, y), size (w, h), and potentially other properties like id.
+const layout = grid.save();
 
-## 11. Integration with Other Protocols
+// Example 'layout' array structure:
+// [
+//   {x: 0, y: 0, w: 3, h: 2, id: 'unique-widget-id-1', ...},
+//   {x: 3, y: 0, w: 2, h: 2, id: 'unique-widget-id-2', ...}
+//   // ... other widget definitions
+// ]
+// The 'content' property might be included depending on configuration, but typically rely on 'id' or other custom properties for re-creating content on load.
 
-This protocol is designed to work in conjunction with:
+// You MUST then store this layout data persistently (e.g., in a Svelte store, local storage, or backend database).
+// Example: localStorage.setItem('dashboardLayout', JSON.stringify(layout));
+```
 
-1. **golden-ratio-design-system-protocol.mdc:** All visual styling MUST adhere to the defined variables and specifications.
+#### Loading Layout
 
-2. **strict-visual-enforcement-protocol.mdc:** All components MUST pass the automated verification checks defined in this protocol.
+```javascript
+// Assuming 'grid' is your initialized GridStack instance
 
-3. **visual-style-enforcement-protocol.mdc:** Visual review via `ui-check.mdc` SHOULD be performed for drag-and-drop layouts.
+// Retrieve the saved layout data (array of GridStackWidget objects)
+// const savedLayout = JSON.parse(localStorage.getItem('dashboardLayout'));
 
-4. **sk2-scns5-t4-int.mdc:** Implementation MUST follow the defined patterns for SvelteKit, Svelte, and Tailwind integration.
+// Clear existing widgets before loading (optional, depends on desired behavior)
+// grid.removeAll();
 
-5. **icon-management.mdc:** All icons (e.g., drag handles) MUST be imported and used according to the icon management protocol.
+// Load the layout from the data array.
+// The items in the data array should have at least x, y, w, h properties.
+// If the grid already contains DOM elements with matching data-gs-id attributes, they will be updated.
+// Otherwise, new widgets will be created IF the data contains a `content` property OR the grid option `autoAdd` is true.
+// For dynamic content and Svelte components, it is highly recommended to use a rendering callback (`GridStack.renderCB`) during load/initialization.
+grid.load(savedLayout);
 
-## 12. Implementation Examples
+// After loading, you might need to manually hydrate or render your Svelte components within the loaded grid items,
+// especially if not using GridStack.renderCB.
+```
 
-See sections 5.1 through 5.4 for implementation examples covering:
-- Basic single container drag-and-drop
-- Drag handles
-- Multi-container drag-and-drop
-- Nested drag-and-drop (board-like layout)
+### 5.3. Widget Options and Attributes
+
+Widget properties define the behavior and appearance of individual items. They can be set via the `addWidget` options object (preferred for dynamic creation) or directly as `data-gs-*` attributes on the HTML element for static initial setup.
+
+```html
+<div class="grid-stack">
+  <div class="grid-stack-item" data-gs-x="0" data-gs-y="0" data-gs-w="6" data-gs-h="4" data-gs-id="my-widget-id" data-gs-no-resize="true" data-gs-locked="false">
+    <div class="grid-stack-item-content bg-[hsl(var(--surface-2))] p-4">
+      Widget Content
+    </div>
+  </div>
+</div>
+```
+
+Common `data-gs-*` attributes (mirror `GridStackWidget` properties):
+
+- `data-gs-x`, `data-gs-y`: Position (column, row) - required
+- `data-gs-w`, `data-gs-h`: Size (width, height in grid units) - required
+- `data-gs-id`: Unique identifier - highly recommended
+- `data-gs-min-w`, `data-gs-min-h`: Minimum size
+- `data-gs-max-w`, `data-gs-max-h`: Maximum size
+- `data-gs-no-resize`: Disable resizing for this widget (`true` or `false`)
+- `data-gs-no-move`: Disable dragging for this widget (`true` or `false`)
+- `data-gs-locked`: Lock widget position/size (`true` or `false`)
+- `data-gs-auto-position`: Let gridstack find the first available position (`true` or `false`) - useful for dynamic adds without explicit x, y
+
+### 5.4. Drag Handles
+
+You can specify a drag handle within a widget using the `handle` option during grid initialization or the `data-gs-handle` attribute on the item element. The element matching the selector within the widget will be the only draggable part.
+
+```javascript
+// Initialize grid with a default drag handle selector for all widgets
+grid = GridStack.init({
+  handle: '.drag-handle', // CSS selector for the drag handle element within grid items
+  // ... other options
+}, gridContainer);
+```
+
+```html
+<div class="grid-stack">
+  <div class="grid-stack-item" data-gs-x="0" data-gs-y="0" data-gs-w="6" data-gs-h="4" data-gs-handle=".widget-title-bar">
+    <div class="grid-stack-item-content bg-[hsl(var(--surface-2))] p-4">
+      <div class="widget-title-bar cursor-grab active:cursor-grabbing">
+        <!-- Icon or title for drag handle -->
+        <!-- Use Icon component from icon-management.mdc -->
+        <Icon icon={GripVertical} class="w-5 h-5 text-[hsl(var(--text-2))]" aria-hidden="true" />
+        Widget Title
+  </div>
+      <div>Widget Content</div>
+  </div>
+  </div>
+</div>
+```
+
+### 5.5. Responsive Design
+
+Gridstack supports responsive layouts through the `column` option, the `columnOpts` breakpoint configuration, and dynamically changing the number of columns using `grid.column(N)`. Item positions and sizes are automatically adjusted or restacked when the column count changes.
+
+```javascript
+// Example: Initialize grid with a default column count and responsive breakpoints
+grid = GridStack.init({
+  column: 12, // Default columns
+  // Use columnOpts for flexible responsive breakpoint configuration (v10+)
+  columnOpts: {
+    // Example breakpoints: switch to 6 columns below 768px, and 1 column below 480px
+    breakpoints: [
+      { w: 768, c: 6 },
+      { w: 480, c: 1 }
+    ]
+  },
+  // ... other options
+}, gridContainer);
+
+// Gridstack automatically adjusts the layout when the container size changes (e.g., window resize)
+
+// You can also manually change columns:
+// grid.column(6); // Change to 6 columns programmatically
+```
+*Note: Gridstack v10+ introduced the more powerful `columnOpts` which replaces `oneColumnSize` and provides flexible breakpoint control.*
+
+### 5.6. Multi-Grid and Nested Grids
+
+Gridstack supports multiple independent grids on a page and nesting grid instances within grid items. These advanced use cases require careful implementation, particularly regarding drag-and-drop interactions between grids and managing the lifecycle of nested grid instances.
+
+#### Multi-Grid
+Multiple grid instances can be initialized on different container elements. Implementing drag-and-drop between separate grid instances requires using the `acceptWidgets` option on the target grid and potentially handling `dragstart`/`dragstop` events on the source grid to manage data transfer.
+
+#### Nested Grids
+A new `GridStack` instance can be initialized within a `grid-stack-item-content` element of a parent grid item. This allows for hierarchical layouts. Ensure nested grid instances are properly initialized *after* the parent grid item exists and destroyed when the parent item is removed.
+
+### 5.7. Touch Device Support
+
+Gridstack v6+ includes native mouse and touch event support for drag and resize operations. Ensure `alwaysShowResizeHandle: 'mobile'` is set in options for improved usability on touch devices, making resize handles visible.
+
+### 5.8. Rendering Custom Widget Content (`GridStack.renderCB`)
+
+For integrating with frameworks like Svelte and managing complex or dynamic widget content (e.g., different module types), the recommended approach in modern Gridstack (v11+) is to use `GridStack.renderCB`. This callback is invoked by Gridstack when a widget needs to render its content, allowing you to use your framework's rendering mechanisms.
+
+```javascript
+// Define a global rendering callback (can be set once)
+GridStack.renderCB = function(el: HTMLElement, w: GridStackNode) {
+  // 'el' is the grid-stack-item-content DOM element
+  // 'w' is the GridStackNode representing the widget, including its properties like id, widgetType, contentData, etc.
+
+  // Use Svelte's rendering capabilities here to mount/update components within 'el'
+  // Based on w.id, w.widgetType, or other custom properties in 'w', render the appropriate Svelte component.
+  console.log('Rendering widget:', w);
+
+  // Example (conceptual Svelte rendering - actual implementation depends on your Svelte setup):
+  // if (w.widgetType === 'text') {
+  //   renderTextWidget(el, w.contentData);
+  // } else if (w.widgetType === 'image') {
+  //   renderImageWidget(el, w.contentData);
+  // }
+
+  // IMPORTANT: You are responsible for managing the lifecycle (mounting and destroying) of your Svelte components within the Gridstack item's DOM element ('el').
+};
+
+// Initialize Gridstack AFTER setting the renderCB
+// grid = GridStack.init({...}, gridContainer);
+
+// When using addWidget or load, ensure your widget definition objects include data 
+// (like widgetType, contentData) that your renderCB can use.
+// grid.addWidget({ x: 0, y: 0, w: 4, h: 3, id: 'text-1', widgetType: 'text', contentData: { text: 'Hello, Gridstack!' } });
+// grid.load(savedLayoutData); // Assuming saved data includes widgetType and contentData
+```
+*Note: `GridStack.renderCB` gives you full control over rendering and is crucial for tightly integrating Gridstack with Svelte components and handling different module types.*
+
+### 5.9. API Documentation
+
+For the most detailed and up-to-date information on Gridstack options, methods, events, and widget properties, always refer to the official documentation:
+
+- **Website & Demos:** [http://gridstackjs.com/](mdc:http:/gridstackjs.com)
+- **GitHub Repository & README:** [https://github.com/gridstack/gridstack.js](mdc:https:/github.com/gridstack/gridstack.js)
+- **API Documentation (GitHub `/doc` folder):** [https://github.com/gridstack/gridstack.js/tree/master/doc](mdc:https:/github.com/gridstack/gridstack.js/tree/master/doc)
+
+## 6. Visual Integration & Styling
+
+1. **Container:** Apply appropriate design system classes (e.g., `bg-[hsl(var(--surface-1))]`, padding) to the main `.grid-stack` container element.
+2. **Grid Items:** Apply design system classes to `.grid-stack-item` elements or their `.grid-stack-item-content` children for background, padding, border radius, shadows, etc. (e.g., `bg-[hsl(var(--surface-2))]`, `p-4`, `rounded-[var(--radius-md)]`). Use CSS variables for consistency.
+3. **Drag Handle Styling:** Style the drag handle element (identified by the `handle` selector) using design system cursors (`cursor-grab`, `active:cursor-grabbing`) and appropriate colors for icons or text (`text-[hsl(var(--text-2))]`). Ensure the drag handle area provides clear visual feedback on hover and active states.
+4. **Resize Handles:** Gridstack provides default resize handles via its CSS. Ensure their appearance is consistent with the theme's contrast and color palette. Customizing resize handles may require overriding default gridstack styles or using the `resizable.handles` option.
+5. **Motion:** Verify gridstack animations (drag, resize, rearrangement) use reasonable durations and easing functions consistent with the design system. Direct control over gridstack's internal animation timing might be limited; visual verification via `ui-check.mdc` is necessary.
+6. **Accessibility:** Ensure sufficient contrast for grid items and handles. Verify focus states are visible on interactive grid items or their content, allowing keyboard users to understand which element is currently active. Use ARIA attributes (e.g., `aria-grabbed`, `aria-haspopup`) where dynamic content or interactions significantly impact accessibility, supplementing gridstack's built-in attributes.
+
+## 7. Event Handling and State Management
+
+- The `change` event is the primary event for capturing layout modifications (drag, resize, add, remove). Handle this event to get the updated layout data (`grid.save()`).
+- Store the serialized layout obtained from `grid.save()` in a persistent manner (e.g., Svelte store, local storage, backend database) to reconstruct the grid on future visits.
+- Load the layout using `grid.load(savedLayoutData)` when the grid is initialized or when a specific saved layout needs to be displayed.
+- Utilize other events like `added`, `removed`, `dragstop`, `resizestop` for specific logic related to widget lifecycle, data updates, or post-interaction processes.
+
+## 8. Verification
+
+- [ ] Gridstack initialized correctly with appropriate options.
+- [ ] Widgets can be added dynamically (via `addWidget`) and from initial HTML.
+- [ ] Drag and resize functionality works as expected for widgets.
+- [ ] Layout is saved correctly using `grid.save()` and loaded accurately using `grid.load()`.
+- [ ] Custom widget content is rendered correctly, especially when using `GridStack.renderCB`.
+- [ ] Styling adheres to the Golden Ratio Design System for containers, items, and handles.
+- [ ] Drag handles and resize affordances are clear and interactive states are visible.
+- [ ] Responsive behavior works as defined by `columnOpts` breakpoints.
+- [ ] Touch functionality for drag and resize works on mobile devices.
+- [ ] Accessibility requirements (keyboard navigation, ARIA, contrast) are met.
+- [ ] Performance is acceptable during grid operations.
+- [ ] Console logs are checked for any gridstack errors or warnings during development.

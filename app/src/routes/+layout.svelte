@@ -139,7 +139,7 @@
   });
 
   // Initialize on mount
-  onMount(() => {
+  onMount(async () => {
     if (!browser) return; // Only run client-side
 
     // Remove the stored auto-login success check since we now handle toast directly in the login flow
@@ -393,6 +393,37 @@
 
     // Initialize theme system on mount
     console.log('🚀 App layout mounted, initializing theme system');
+    
+    // --- Gridstack Initialization ---
+    console.log('Initializing Gridstack for main content layout...');
+    // Import GridStack dynamically client-side
+    let GridStack;
+    let gridContainer;
+    let grid;
+
+    // Dynamically import GridStack
+    const gridstackModule = await import('gridstack');
+    GridStack = gridstackModule.GridStack;
+    // Dynamically import Gridstack CSS client-side
+    await import('gridstack/dist/gridstack.min.css');
+
+    grid = GridStack.init({
+      column: 12, // Default desktop columns
+      columnOpts: {
+        breakpoints: [
+          { w: 1024, c: 12 }, // Desktop (optional, explicit for clarity)
+          { w: 768, c: 8 },  // Tablet
+          { w: 480, c: 4 }   // Mobile
+        ]
+      },
+      margin: 'var(--spacing-md)', // Use design system spacing
+      float: false,
+      disableDrag: true, // Disable drag for general layout items
+      disableResize: true, // Disable resize for general layout items
+      // Add other options as needed for the general layout
+    }, gridContainer);
+    console.log('Gridstack initialized.');
+    // --- End Gridstack Initialization ---
     
     // Log available themes for debugging
     console.log('Available themes in layout:', getAvailableThemes());
@@ -717,14 +748,16 @@
         <InstallPrompt />
       {/if}
       
-      <!-- Main content -->
-      <div>
+      <!-- Main content - Wrapped in Gridstack container -->
+      <div bind:this={gridContainer} class="grid-stack">
         {#if $navigating}
-          <div class="flex justify-center items-center min-h-[50vh]">
+          <div class="grid-stack-item grid-stack-item-content flex justify-center items-center min-h-[50vh]">
             <!-- Use Icon wrapper -->
             <Icon icon={Loader2} class="w-8 h-8 animate-spin text-[hsl(var(--primary))]" />
           </div>
         {:else}
+          <!-- Route content goes here -->
+          <!-- Ensure content within here uses grid-stack-item classes for direct children that should be part of the grid -->
           {@render children?.()}
         {/if}
       </div>

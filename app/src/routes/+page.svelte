@@ -3,7 +3,6 @@
   import PodcastWidget from '$lib/components/widgets/PodcastWidget.svelte';
   import { onMount } from 'svelte';
   import { page } from '$app/stores'; // Needed to check sidebar state via layout data if passed
-  import WidgetGrid from '$lib/components/layout/WidgetGrid.svelte';
   
   /**
    * @typedef {'normal'|'large'|'full-mobile'|'full-tablet'} WidgetSize
@@ -43,16 +42,6 @@
     { id: 'personal-2', type: 'podcast', title: 'Topics You Follow', episode: 1, duration: 15, summary: 'Audio updates on topics you have expressed interest in.', size: 'full-mobile' }
   ];
 
-  // Keep track of dragged widget
-  /** @type {string|null} */
-  let draggedWidget = null;
-  
-  /** @type {HTMLElement|null} */
-  let draggedElement = null;
-  
-  /** @type {HTMLElement|null} */
-  let dropTarget = null;
-  
   // NEW: Get sidebar state from layout (assuming it's passed down or available globally)
   // For simplicity, let's assume we can derive it from screen width for now
   // A better approach might involve a shared store or context API
@@ -63,328 +52,41 @@
   });
   
   /**
-   * Setup drag and drop functionality
-   */
-  onMount(() => {
-    // Initialize draggable widgets
-    initDraggableWidgets();
-    
-    // Clean up event listeners when component is destroyed
-    return () => {
-      cleanupDraggableWidgets();
-    };
-  });
-  
-  /**
-   * Initialize drag and drop functionality
-   */
-  function initDraggableWidgets() {
-    if (typeof window === 'undefined') return;
-    
-    const widgetElements = document.querySelectorAll('.draggable-widget');
-    
-    widgetElements.forEach(element => {
-      element.setAttribute('draggable', 'true');
-      
-      // Add event listeners
-      element.addEventListener('dragstart', handleDragStart);
-      element.addEventListener('dragend', handleDragEnd);
-      element.addEventListener('dragover', handleDragOver);
-      element.addEventListener('dragenter', handleDragEnter);
-      element.addEventListener('dragleave', handleDragLeave);
-      element.addEventListener('drop', handleDrop);
-    });
-  }
-  
-  /**
-   * Clean up drag and drop event listeners
-   */
-  function cleanupDraggableWidgets() {
-    if (typeof window === 'undefined') return;
-    
-    const widgetElements = document.querySelectorAll('.draggable-widget');
-    
-    widgetElements.forEach(element => {
-      // Remove event listeners
-      element.removeEventListener('dragstart', handleDragStart);
-      element.removeEventListener('dragend', handleDragEnd);
-      element.removeEventListener('dragover', handleDragOver);
-      element.removeEventListener('dragenter', handleDragEnter);
-      element.removeEventListener('dragleave', handleDragLeave);
-      element.removeEventListener('drop', handleDrop);
-    });
-  }
-  
-  /**
-   * Handle drag start event
-   * @param {Event} event - The drag event
-   */
-  function handleDragStart(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    if (!dragEvent.target) return;
-    
-    // Type cast target to HTMLElement
-    const target = /** @type {HTMLElement} */ (dragEvent.target);
-    draggedElement = target;
-    draggedWidget = target.getAttribute('data-id');
-    
-    if (dragEvent.dataTransfer) {
-      dragEvent.dataTransfer.effectAllowed = 'move';
-      dragEvent.dataTransfer.setData('text/plain', draggedWidget || '');
-      
-      // Add dragging class for visual feedback
-      setTimeout(() => {
-        target.classList.add('dragging');
-      }, 0);
-    }
-  }
-  
-  /**
-   * Handle drag end event
-   * @param {Event} event - The drag event
-   */
-  function handleDragEnd(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    if (!dragEvent.target) return;
-    
-    // Type cast target to HTMLElement
-    const target = /** @type {HTMLElement} */ (dragEvent.target);
-    
-    // Remove dragging class
-    target.classList.remove('dragging');
-    
-    // Reset drag state
-    draggedElement = null;
-    draggedWidget = null;
-    
-    // Remove drop target highlights
-    const dropZones = document.querySelectorAll('.drag-over');
-    dropZones.forEach(element => {
-      element.classList.remove('drag-over');
-    });
-  }
-  
-  /**
-   * Handle drag over event
-   * @param {Event} event - The drag event
-   */
-  function handleDragOver(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    
-    // Allow dropping
-    dragEvent.preventDefault();
-    if (dragEvent.dataTransfer) {
-      dragEvent.dataTransfer.dropEffect = 'move';
-    }
-  }
-  
-  /**
-   * Handle drag enter event
-   * @param {Event} event - The drag event
-   */
-  function handleDragEnter(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    if (!dragEvent.target) return;
-    
-    // Add class to highlight drop target
-    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
-    if (target && draggedElement && target !== draggedElement) {
-      target.classList.add('drag-over');
-      dropTarget = target;
-    }
-  }
-  
-  /**
-   * Handle drag leave event
-   * @param {Event} event - The drag event
-   */
-  function handleDragLeave(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    if (!dragEvent.target) return;
-    
-    // Remove highlight from drop target
-    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
-    if (target) {
-      target.classList.remove('drag-over');
-    }
-  }
-  
-  /**
-   * Handle drop event
-   * @param {Event} event - The drag event
-   */
-  function handleDrop(event) {
-    // Type cast event to DragEvent
-    const dragEvent = /** @type {DragEvent} */ (event);
-    dragEvent.preventDefault();
-    
-    if (!dragEvent.target) return;
-    
-    // Get the dropped element
-    const target = findDropTarget(/** @type {HTMLElement} */ (dragEvent.target));
-    
-    if (target && draggedElement && target !== draggedElement) {
-      // Get parent containers for both elements
-      const sourceContainer = draggedElement.parentNode;
-      const targetContainer = target.parentNode;
-      
-      if (sourceContainer && targetContainer) {
-        // Get references to next sibling of source
-        const sourceNextSibling = draggedElement.nextElementSibling;
-        
-        // Swap the elements or insert at the right position
-        if (targetContainer === sourceContainer) {
-          // Same container, swap order
-          targetContainer.insertBefore(draggedElement, target);
-        } else {
-          // Different containers, insert at each other's positions
-          targetContainer.insertBefore(draggedElement, target);
-          
-          // If sourceNextSibling is null, it means dragged element was last
-          if (sourceNextSibling) {
-            sourceContainer.insertBefore(target, sourceNextSibling);
-          } else {
-            sourceContainer.appendChild(target);
-          }
-        }
-        
-        // Save the new layout configuration (in a real app, this would go to a DB or localStorage)
-        saveLayout();
-      }
-    }
-    
-    // Clear drag over state
-    if (target) {
-      target.classList.remove('drag-over');
-    }
-  }
-  
-  /**
-   * Find the closest draggable widget parent
-   * @param {HTMLElement} element - The element to check
-   * @returns {HTMLElement|null} - The closest draggable widget
-   */
-  function findDropTarget(element) {
-    if (!element) return null;
-    
-    if (element.classList && element.classList.contains('draggable-widget')) {
-      return element;
-    }
-    
-    // Walk up the DOM tree to find the closest draggable widget
-    let current = element;
-    while (current && (!current.classList || !current.classList.contains('draggable-widget'))) {
-      const parent = current.parentElement;
-      if (!parent) break;
-      current = parent;
-    }
-    
-    return current.classList && current.classList.contains('draggable-widget') ? current : null;
-  }
-  
-  /**
-   * Save the current layout configuration
-   */
-  function saveLayout() {
-    if (typeof window === 'undefined') return;
-    
-    // In a real application, you would save the new layout to localStorage or a database
-    console.log('Layout saved');
-  }
-
-  /**
-   * NEW: Enhanced Get column span classes based on widget size and sidebar presence
-   * @param {'sm' | 'md' | 'lg'} size
-   * @param {{ hasSidebar: boolean }} [options={ hasSidebar: true }]
-   * @returns {string}
-   */
-  function getColSpanClasses(size, options = { hasSidebar: true }) {
-    const { hasSidebar } = options;
-    const baseClasses = 'transition-all duration-300';
-
-    // Define column spans for different breakpoints and sidebar states
-    const columnSpans = {
-      // Mobile first (base) - Sidebar not visible
-      base: {
-        large: 'col-span-12',
-        'full-mobile': 'col-span-12',
-        'full-tablet': 'col-span-12',
-        normal: 'col-span-12'
-      },
-      // Mobile landscape (sm) - Sidebar not visible
-      sm: {
-        large: 'sm:col-span-12',
-        'full-mobile': 'sm:col-span-6',
-        'full-tablet': 'sm:col-span-12',
-        normal: 'sm:col-span-6'
-      },
-      // Tablet (md) - Sidebar not visible
-      md: {
-        large: 'md:col-span-8',
-        'full-mobile': 'md:col-span-6',
-        'full-tablet': 'md:col-span-12',
-        normal: 'md:col-span-6'
-      },
-      // Desktop with sidebar (lg)
-      lgWithSidebar: {
-        large: 'lg:col-span-8', // Takes more space
-        'full-mobile': 'lg:col-span-4',
-        'full-tablet': 'lg:col-span-6',
-        normal: 'lg:col-span-4' // Standard 1/3
-      },
-      // Desktop without sidebar (lg) - Widgets can take more relative space
-      lgWithoutSidebar: {
-        large: 'lg:col-span-6', // Takes half
-        'full-mobile': 'lg:col-span-3', // Takes quarter
-        'full-tablet': 'lg:col-span-4', // Takes third
-        normal: 'lg:col-span-3' // Takes quarter
-      }
-    };
-
-    // Determine desktop classes based on sidebar presence
-    const lgClasses = hasSidebar
-      ? columnSpans.lgWithSidebar[size] || columnSpans.lgWithSidebar.normal
-      : columnSpans.lgWithoutSidebar[size] || columnSpans.lgWithoutSidebar.normal;
-
-    // Combine classes for all breakpoints
-    return `${baseClasses} ${columnSpans.base[size] || columnSpans.base.normal} ${columnSpans.sm[size] || columnSpans.sm.normal} ${columnSpans.md[size] || columnSpans.md.normal} ${lgClasses}`;
-  }
-  
-  /**
    * Toggle grid debug mode for development
-   * This enables the commented-out debug styles to help visualize the grid
+   * This enables debug styles to help visualize the grid
    */
   function toggleGridDebug() {
     if (typeof window === 'undefined') return;
     
+    // Toggle debug class on body to enable debug styles
     document.body.classList.toggle('debug-grid');
+    
+    const grid = document.querySelector('.grid-stack');
+    if (grid) {
+      // Toggle the Gridstack animation class for visual debugging
+      grid.classList.toggle('grid-stack-animate'); 
+    }
   }
 
   // Enable grid debugging with a key press (Shift+Alt+D)
   function setupDebugToggle() {
     window.addEventListener('keydown', (e) => {
       if (e.shiftKey && e.altKey && e.key === 'D') {
-        document.body.classList.toggle('debug-grid');
+        toggleGridDebug(); 
       }
     });
   }
 
   // Toggle debug mode with button
   function toggleDebugGrid() {
-    document.body.classList.toggle('debug-grid');
+    toggleGridDebug(); 
   }
 
   // Set up debug toggle on mount
   onMount(() => {
     setupDebugToggle();
-    initDraggableWidgets(); // Ensure drag/drop is initialized
     return () => {
-      cleanupDraggableWidgets(); // Cleanup listeners
+      // No custom cleanup needed for the old dnd
     };
   });
 
@@ -393,186 +95,215 @@
    */
 
   /** @type {PageData} */
-  let { data } = $props(); // Ensure this line is correct
+  let { data } = $props(); 
 
   // Reactive states based on data or local interactions
   let showOnboarding = $state(!data?.user?.hasCompletedOnboarding);
+
+  // Function to determine default Gridstack item dimensions based on widget size
+  function getDefaultGridstackDimensions(widgetSize, hasSidebar) {
+    let w, h;
+    // Assign width and height based on your desired default layout
+    // These are example values and should be refined based on the Golden Ratio Design System
+    switch (widgetSize) {
+      case 'large':
+        w = hasSidebar ? 8 : 6; // Example: Wider without sidebar
+        h = 4; // Example height
+        break;
+      case 'full-mobile':
+        w = 12; // Always full width on mobile column count
+        h = 3; // Example height
+        break;
+      case 'full-tablet':
+        w = hasSidebar ? 12 : 8; // Example: Full width on tablet column count (8), wider without sidebar
+        h = 3; // Example height
+        break;
+      case 'normal':
+      default:
+        w = hasSidebar ? 4 : 3; // Example: Standard 1/3 or 1/4 width
+        h = 3; // Example height
+        break;
+    }
+    // Ensure width is within bounds (1-12 for a 12-column grid)
+    w = Math.max(1, Math.min(12, w));
+    // Ensure height is reasonable (e.g., minimum 1)
+    h = Math.max(1, h);
+    return { w, h };
+  }
+
 </script>
 
-<!-- NEW: Wrap everything in the content-grid -->
-<div class="content-grid">
-  <!-- Section Headers - Span full width of the content grid -->
-  <div class="col-span-12 mb-10 space-y-3 p-3">
-    <h1
-      class="mb-3 text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
-    >
-      Your ASAP Digest
-    </h1>
-    <p class="text-[var(--font-size-base)] font-[var(--font-body)] text-[hsl(var(--muted-foreground))]">
-      Customized content based on your interests
-    </p>
+<!-- Header Section -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+  <div class="grid-stack-item-content">
+    <div class="mb-10 space-y-3 p-3">
+      <h1
+        class="mb-3 text-[var(--font-size-3xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
+      >
+        Your ASAP Digest
+      </h1>
+      <p class="text-[var(--font-size-base)] font-[var(--font-body)] text-[hsl(var(--muted-foreground))]">
+        Customized content based on your interests
+      </p>
+    </div>
   </div>
+</div>
 
-  <!-- News Section Header - Full width -->
-  <div class="col-span-12 mb-4 mt-2">
-    <h2
-      class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
-    >
-      Latest News
-    </h2>
-    </div>
-    
-    <!-- News Widgets -->
-  {#each newsWidgets as widget (widget.id)}
-      <div 
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      draggable="true"
+<!-- Latest News Section Header -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+  <div class="grid-stack-item-content">
+    <div class="mb-4 mt-2">
+      <h2
+        class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
       >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
-    
-    <!-- Finance Section Header - Full width -->
-  <div class="col-span-12 mb-4 mt-6">
-    <h2
-      class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
-    >
-      Financial Updates
-    </h2>
+        Latest News
+      </h2>
     </div>
-    
-    <!-- Finance Widgets -->
-  {#each financeWidgets as widget (widget.id)}
-      <div 
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      draggable="true"
+  </div>
+</div>
+
+<!-- News Widgets -->
+{#each newsWidgets as widget (widget.id)}
+  {@const { w, h } = getDefaultGridstackDimensions(widget.size, hasSidebar)}
+  <div
+    class="grid-stack-item" 
+    data-gs-id={widget.id} 
+    data-gs-w={w} 
+    data-gs-h={h} 
+    data-gs-auto-position="true"
+  >
+    <div class="grid-stack-item-content">
+      {#if widget.type === 'article'}
+        <ArticleWidget 
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  </div>
+{/each}
+
+<!-- Financial Updates Section Header -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+  <div class="grid-stack-item-content">
+    <div class="mb-4 mt-6">
+      <h2
+        class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
       >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
-    
-    <!-- Personalized Section Header - Full width -->
-  <div class="col-span-12 mb-4 mt-6">
+        Financial Updates
+      </h2>
+    </div>
+  </div>
+</div>
+
+<!-- Finance Widgets -->
+{#each financeWidgets as widget (widget.id)}
+  {@const { w, h } = getDefaultGridstackDimensions(widget.size, hasSidebar)}
+  <div
+    class="grid-stack-item" 
+    data-gs-id={widget.id} 
+    data-gs-w={w} 
+    data-gs-h={h} 
+    data-gs-auto-position="true"
+  >
+    <div class="grid-stack-item-content">
+      {#if widget.type === 'article'}
+        <ArticleWidget 
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  </div>
+{/each}
+
+<!-- Your Interests Section Header -->
+<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="1">
+  <div class="grid-stack-item-content">
     <h2
       class="text-[var(--font-size-xl)] font-[var(--font-weight-bold)] leading-[var(--line-height-tight)] text-[hsl(var(--foreground))]"
     >
       Your Interests
     </h2>
-    </div>
-    
-    <!-- Personalized Widgets -->
-  {#each personalWidgets as widget (widget.id)}
-      <div 
-      class="draggable-widget cursor-move {getColSpanClasses(widget.size, { hasSidebar })}"
-        data-id={widget.id} 
-        data-size={widget.size}
-      draggable="true"
-      >
-        {#if widget.type === 'article'}
-          <ArticleWidget 
-            id={widget.id || ''}
-            title={widget.title || ''}
-            excerpt={widget.excerpt || ''}
-            source={widget.source || ''}
-            date={widget.date || ''}
-            tags={widget.tags || []}
-            sourceUrl={widget.sourceUrl || ''}
-          />
-        {:else if widget.type === 'podcast'}
-          <PodcastWidget
-            id={widget.id || ''}
-            title={widget.title || ''}
-            episode={typeof widget.episode === 'number' ? widget.episode : 1}
-            duration={typeof widget.duration === 'number' ? widget.duration : 0}
-            summary={widget.summary || ''}
-          />
-        {/if}
-      </div>
-    {/each}
-
-  <!-- Debug button - Keep outside the grid if desired -->
-  <button class="debug-toggle col-span-12" onclick={toggleDebugGrid}>Toggle Grid Debug</button>
+  </div>
 </div>
 
+<!-- Personal Widgets -->
+{#each personalWidgets as widget (widget.id)}
+  {@const { w, h } = getDefaultGridstackDimensions(widget.size, hasSidebar)}
+  <div
+    class="grid-stack-item" 
+    data-gs-id={widget.id} 
+    data-gs-w={w} 
+    data-gs-h={h} 
+    data-gs-auto-position="true"
+  >
+    <div class="grid-stack-item-content">
+      {#if widget.type === 'article'}
+        <ArticleWidget 
+          id={widget.id || ''}
+          title={widget.title || ''}
+          excerpt={widget.excerpt || ''}
+          source={widget.source || ''}
+          date={widget.date || ''}
+          tags={widget.tags || []}
+          sourceUrl={widget.sourceUrl || ''}
+        />
+      {:else if widget.type === 'podcast'}
+        <PodcastWidget
+          id={widget.id || ''}
+          title={widget.title || ''}
+          episode={typeof widget.episode === 'number' ? widget.episode : 1}
+          duration={typeof widget.duration === 'number' ? widget.duration : 0}
+          summary={widget.summary || ''}
+        />
+      {/if}
+    </div>
+  </div>
+{/each}
+
+<!-- Place the debug button outside the Gridstack container if it's not part of the grid layout -->
+<!-- Alternatively, if it should be movable, wrap it in a grid-stack-item -->
+<button class="debug-toggle" onclick={toggleDebugGrid}>Toggle Grid Debug</button>
+
 <style>
-  /* Styling for draggable elements */
-  .cursor-move {
-    transition: all var(--duration-normal) var(--ease-out);
-  }
-  
-  .cursor-move:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
-  }
-  
-  /* Drag and drop styles */
-  .draggable-widget {
-    user-select: none;
-    width: 100%; /* Ensure widgets take full width of their grid cell */
-    display: block; /* Ensure widgets display properly */
-    /* Removed margin-bottom, gap is handled by content-grid */
-  }
-  
-  .dragging {
-    opacity: 0.5;
-    transform: scale(0.95);
-  }
-  
-  .drag-over {
-    border: 2px dashed hsl(var(--primary));
-    border-radius: var(--radius-md);
-    background-color: hsl(var(--accent) / 0.2);
-  }
+  /* Removed old custom drag and drop styles */
 
   /* Grid Debug Styles - Only active when body has debug-grid class */
-  /* :global selector needed as body class is outside component scope */
-  :global(body.debug-grid .content-grid > *) {
+  /* Updated selectors to target Gridstack items and the grid container */
+  :global(body.debug-grid .grid-stack > .grid-stack-item > .grid-stack-item-content) {
     outline: 1px solid hsl(var(--primary) / 0.5);
     position: relative;
   }
-  
-  :global(body.debug-grid .content-grid > *::before) {
-    content: attr(class); /* Show classes */
+
+  :global(body.debug-grid .grid-stack > .grid-stack-item > .grid-stack-item-content::before) {
+    content: '[x:' attr(data-gs-x) ' y:' attr(data-gs-y) ' w:' attr(data-gs-w) ' h:' attr(data-gs-h) ']'; /* Show Gridstack attributes */
     position: absolute;
     top: 0;
     left: 0;
@@ -587,14 +318,14 @@
     white-space: nowrap;
     pointer-events: none; /* Prevent interference */
   }
-  
-  :global(body.debug-grid .content-grid) {
+
+  :global(body.debug-grid .grid-stack) {
     outline: 1px solid hsl(var(--secondary) / 0.7);
     position: relative;
   }
 
-  :global(body.debug-grid .content-grid::before) {
-    content: 'CONTENT-GRID';
+  :global(body.debug-grid .grid-stack::before) {
+    content: 'GRIDSTACK';
     position: absolute;
     top: -16px;
     left: 0;
@@ -605,7 +336,7 @@
     color: hsl(var(--secondary));
     pointer-events: none; /* Prevent interference */
   }
-  
+
   /* Add debug button to toggle grid debug mode */
   :global(.debug-toggle) {
     position: fixed;
@@ -622,7 +353,7 @@
     opacity: 0.5;
     transition: opacity 0.2s;
   }
-  
+
   :global(.debug-toggle:hover) {
     opacity: 1;
   }

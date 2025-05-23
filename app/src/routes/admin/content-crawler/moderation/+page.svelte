@@ -57,7 +57,7 @@
   }
 </script>
 
-<div class="p-6">
+<div class="p-6 grid-stack-item">
   <div class="flex justify-between items-center mb-6">
     <h1 class="text-2xl font-bold">Moderation Queue</h1>
     <Button on:click={loadQueue} variant="outline">
