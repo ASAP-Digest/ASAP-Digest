@@ -137,6 +137,15 @@ export async function load({ data, fetch, depends }) {
     const normalizedUser = normalizeUser(data.user);
     userStore.set(normalizedUser);
     authStore.set(normalizedUser);
+    
+    // Persist to localStorage immediately
+    try {
+      localStorage.setItem('asap_digest_last_auth', JSON.stringify(normalizedUser));
+      console.log('[+layout.js] Persisted server user to localStorage');
+    } catch (storageError) {
+      console.warn('[+layout.js] Error saving server user to localStorage:', storageError);
+    }
+    
     return data;
   }
 

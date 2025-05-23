@@ -398,8 +398,17 @@
     console.log('Initializing Gridstack for main content layout...');
     // Import GridStack dynamically client-side
     let GridStack;
-    let gridContainer;
     let grid;
+
+    // Wait for DOM to be ready
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Find the grid container
+    const gridContainer = document.querySelector('.grid-stack');
+    if (!gridContainer) {
+      console.warn('Grid container not found, skipping GridStack initialization');
+      return;
+    }
 
     // Dynamically import GridStack
     const gridstackModule = await import('gridstack');
@@ -416,13 +425,13 @@
           { w: 480, c: 4 }   // Mobile
         ]
       },
-      margin: 'var(--spacing-md)', // Use design system spacing
+      margin: '10px', // Use fixed margin for now
       float: false,
       disableDrag: true, // Disable drag for general layout items
       disableResize: true, // Disable resize for general layout items
       // Add other options as needed for the general layout
     }, gridContainer);
-    console.log('Gridstack initialized.');
+    console.log('Gridstack initialized successfully.');
     // --- End Gridstack Initialization ---
     
     // Log available themes for debugging
@@ -441,11 +450,14 @@
     // Subscribe to theme changes for debugging
     const unsubscribe = theme.subscribe(value => {
       console.log(`📱 Theme changed to: ${value}`);
-      // Force re-application of theme to ensure proper rendering
-      if (value === 'default') {
-        document.documentElement.removeAttribute('data-theme');
-      } else {
-        document.documentElement.setAttribute('data-theme', value);
+      // Only apply theme if it's different from current
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      if (currentTheme !== value) {
+        if (value === 'default') {
+          document.documentElement.removeAttribute('data-theme');
+        } else {
+          document.documentElement.setAttribute('data-theme', value);
+        }
       }
     });
     
@@ -749,7 +761,7 @@
       {/if}
       
       <!-- Main content - Wrapped in Gridstack container -->
-      <div bind:this={gridContainer} class="grid-stack">
+      <div class="grid-stack">
         {#if $navigating}
           <div class="grid-stack-item grid-stack-item-content flex justify-center items-center min-h-[50vh]">
             <!-- Use Icon wrapper -->
