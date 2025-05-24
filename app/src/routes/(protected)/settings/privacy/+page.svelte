@@ -19,6 +19,7 @@
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getUserData } from '$lib/stores/user.js';
   
   /**
    * @typedef {Object} PageData
@@ -31,6 +32,7 @@
   
   // Create reactive derived state for user data to ensure updates during navigation
   let user = $derived(data?.user || null);
+  let userData = $derived(getUserData(user));
   
   // Initialize privacy settings with defaults
   let dataSharing = $state(false);
@@ -40,11 +42,11 @@
   
   // Update privacy settings when user data changes
   $effect(() => {
-    if (user?.privacy) {
-      dataSharing = user.privacy.dataSharing ?? false;
-      contentTracking = user.privacy.contentTracking ?? true;
-      personalization = user.privacy.personalization ?? true;
-      thirdPartyIntegration = user.privacy.thirdPartyIntegration ?? false;
+    if (userData?.privacy) {
+      dataSharing = userData.privacy.dataSharing ?? false;
+      contentTracking = userData.privacy.contentTracking ?? true;
+      personalization = userData.privacy.personalization ?? true;
+      thirdPartyIntegration = userData.privacy.thirdPartyIntegration ?? false;
     }
   });
   

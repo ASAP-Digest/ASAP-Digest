@@ -51,6 +51,8 @@ export const GET = async (event) => {
     
     console.log('[API /session] GET request received. Cookie present:', !!sessionToken);
     console.log('[API /session] User authenticated:', response.authenticated);
+    console.log('[API /session] event.locals keys:', Object.keys(event.locals || {}));
+    console.log('[API /session] User data:', user ? { id: user.id, email: user.email } : 'null');
     
     // Add debug info in dev mode
     if (process.env.NODE_ENV !== 'production') {
@@ -58,7 +60,9 @@ export const GET = async (event) => {
             hasToken: !!sessionToken,
             tokenLength: sessionToken ? sessionToken.length : 0,
             hasUser: !!user,
-            userId: user?.id || null
+            userId: user?.id || null,
+            localsKeys: Object.keys(event.locals || {}),
+            timestamp: new Date().toISOString()
         };
     }
     

@@ -21,6 +21,7 @@
   import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group';
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getUserData } from '$lib/stores/user.js';
   import { getCSRFToken } from '$lib/auth-client.js';
   import { toasts } from '$lib/stores/toast.js';
   
@@ -35,6 +36,7 @@
   
   // Create reactive derived state for user data to ensure updates during navigation
   let user = $derived(data?.user || null);
+  let userData = $derived(getUserData(user));
   
   // Initialize notification settings with defaults
   let emailNotifications = $state(true);
@@ -67,9 +69,9 @@
     try {
       // Prepare update data
       const updateData = {
-        id: data.user.id,
+        id: userData.id,
         preferences: {
-          ...data.user.preferences,
+          ...userData.preferences,
           notifications: {
             email: emailNotifications,
             inApp: inAppNotifications,

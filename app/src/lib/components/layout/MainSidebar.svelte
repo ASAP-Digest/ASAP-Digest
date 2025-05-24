@@ -37,7 +37,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from "$lib/components/ui/icon/icon.svelte";
-  import { user as userStore } from '$lib/stores/user.js';
+  import { user as userStore, getUserData } from '$lib/stores/user.js';
   import { setTheme, theme } from '$lib/stores/theme.js';
 
   /**
@@ -487,12 +487,14 @@
   });
 
   let userValue = $state(null);
+  let userData = $state(null);
   const unsubscribe = userStore.subscribe(value => { 
-    userValue = value; 
+    userValue = value;
+    userData = value ? getUserData(value) : null;
     // Remove these console.log statements
     // console.log('[ADMIN-ROLES DEBUG] User value updated:', userValue);
-    // console.log('[ADMIN-ROLES DEBUG] User roles array:', userValue?.roles);
-    // console.log('[ADMIN-ROLES DEBUG] Is administrator:', userValue?.roles?.includes('administrator'));
+    // console.log('[ADMIN-ROLES DEBUG] User roles array:', userData?.roles);
+    // console.log('[ADMIN-ROLES DEBUG] Is administrator:', userData?.isAdmin);
   });
   onDestroy(unsubscribe);
 

@@ -10,9 +10,9 @@
   import { Button } from '$lib/components/ui/button';
   import { RefreshCw } from '$lib/utils/lucide-compat.js';
 
-  let sourceMetrics = [];
-  let storageMetrics = [];
-  let isLoading = true;
+  let sourceMetrics = $state([]);
+  let storageMetrics = $state([]);
+  let isLoading = $state(true);
   let error = $state('');
 
   async function loadMetrics() {

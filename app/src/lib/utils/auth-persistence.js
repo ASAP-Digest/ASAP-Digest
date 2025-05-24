@@ -8,7 +8,7 @@
 import { browser } from '$app/environment';
 import { writable, derived } from 'svelte/store';
 import { goto } from '$app/navigation';
-import { user as userRootStore } from '$lib/stores/user.js';
+import { user as userRootStore, getUserData } from '$lib/stores/user.js';
 
 // Constants
 const LOCAL_AUTH_KEY = 'asap_digest_auth';
@@ -43,12 +43,12 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
  */
 
 /**
- * Sync data between authStore and user store
+ * Sync data between authStore and user store using the comprehensive getUserData helper
  * This ensures both stores have the same data for consistency
  * @param {AuthData|null} authDataValue - User data from authStore (AuthData type)
  * @param {boolean} [forceUpdate=false] - Whether to force update userRootStore even if data seems unchanged
  */
-function syncUserStores(authDataValue, forceUpdate = false) {
+export function syncUserStores(authDataValue, forceUpdate = false) {
   if (browser) {
     /** @type {import('$lib/stores/user').User | null} */
     let currentUserRootData = null;
@@ -58,66 +58,17 @@ function syncUserStores(authDataValue, forceUpdate = false) {
     let userToSetInRoot = null;
 
     if (authDataValue && typeof authDataValue === 'object' && typeof authDataValue.id === 'string') {
-      /** @type {import('$lib/stores/user').UserPlan | undefined} */
-      let finalPlanForRootStore;
-      const rawPlan = authDataValue.plan;
-      if (typeof rawPlan === 'object' && rawPlan !== null && typeof rawPlan.name === 'string') {
-        finalPlanForRootStore = { name: rawPlan.name }; 
-      } else if (typeof rawPlan === 'string') {
-        finalPlanForRootStore = { name: rawPlan }; 
-      } else {
-        finalPlanForRootStore = { name: 'Free' }; 
-      }
+      // Use the comprehensive getUserData helper to process the auth data
+      const userDataHelper = getUserData(authDataValue);
+      // Convert to JSON format for the store
+      userToSetInRoot = userDataHelper.toJSON();
       
-      /** @type {string[] | undefined} */
-      let finalRolesForRootStore;
-      if (authDataValue.metadata && Array.isArray(authDataValue.metadata.roles)) {
-        finalRolesForRootStore = authDataValue.metadata.roles;
-      } else if (Array.isArray(authDataValue.roles)) { // Fallback for potential direct roles on AuthData
-        finalRolesForRootStore = authDataValue.roles;
-        console.warn('[Auth Store] Using direct roles from AuthData, consider moving to metadata.roles');
-      } else {
-        finalRolesForRootStore = undefined; 
+      // Ensure updatedAt is set for sync tracking
+      if (userToSetInRoot && !userToSetInRoot.updatedAt) {
+        userToSetInRoot.updatedAt = typeof authDataValue.lastSynced === 'number' 
+          ? new Date(authDataValue.lastSynced).toISOString() 
+          : new Date().toISOString();
       }
-
-      // Extract metadata following Better Auth protocols
-      /** @type {Object | undefined} */
-      let finalMetadataForRootStore;
-      if (authDataValue.metadata && typeof authDataValue.metadata === 'object' && authDataValue.metadata !== null) {
-        // Follow Better Auth metadata structure - preserve all metadata fields
-        finalMetadataForRootStore = {
-          ...authDataValue.metadata,
-          // Ensure roles are properly structured in metadata
-          roles: finalRolesForRootStore || authDataValue.metadata.roles || []
-        };
-      } else {
-        // Create minimal metadata structure if none exists
-        finalMetadataForRootStore = {
-          roles: finalRolesForRootStore || []
-        };
-      }
-
-      // Extract preferences following Better Auth protocols
-      /** @type {Object | undefined} */
-      let finalPreferencesForRootStore;
-      if (authDataValue.preferences && typeof authDataValue.preferences === 'object' && authDataValue.preferences !== null) {
-        finalPreferencesForRootStore = authDataValue.preferences;
-      } else if (authDataValue.metadata && authDataValue.metadata.preferences) {
-        // Check if preferences are nested in metadata (some Better Auth configurations)
-        finalPreferencesForRootStore = authDataValue.metadata.preferences;
-      }
-
-      userToSetInRoot = {
-        id: authDataValue.id,
-        email: authDataValue.email, 
-        displayName: authDataValue.displayName,
-        avatarUrl: authDataValue.avatarUrl,
-        plan: finalPlanForRootStore,
-        updatedAt: typeof authDataValue.lastSynced === 'number' ? new Date(authDataValue.lastSynced).toISOString() : new Date().toISOString(),
-        roles: finalRolesForRootStore,
-        metadata: finalMetadataForRootStore,
-        ...(finalPreferencesForRootStore && { preferences: finalPreferencesForRootStore })
-      };
     } else if (authDataValue === null) {
       userToSetInRoot = null;
     }
@@ -164,7 +115,10 @@ function createAuthStore() {
   const { subscribe, set: svelteSet, update: svelteUpdate } = writable(initialValue);
   
   if (browser) {
-    const syncIntervalId = setInterval(() => { syncWithServer(false); }, SYNC_INTERVAL);
+    const syncIntervalId = setInterval(() => { 
+      console.log('[Auth Store] Automatic sync interval triggered');
+      syncWithServer(false); 
+    }, SYNC_INTERVAL);
     window.addEventListener('beforeunload', () => { clearInterval(syncIntervalId); });
   }
   
@@ -206,6 +160,18 @@ function createAuthStore() {
     try {
       const currentUser = get(); 
       const now = Date.now();
+      
+      // Don't sync too soon after auto-login to avoid clearing the session
+      const autoLoginSuccess = sessionStorage.getItem('auto_login_success');
+      if (!force && autoLoginSuccess === 'true' && currentUser) {
+        const userUpdatedAt = /** @type {any} */ (currentUser).updatedAt;
+        const timeSinceUpdate = now - new Date(userUpdatedAt || 0).getTime();
+        if (timeSinceUpdate < 60000) { // Wait at least 1 minute after auto-login
+          console.log('[Auth Store] syncWithServer: Skipping sync due to recent auto-login');
+          return true;
+        }
+      }
+      
       if (!force && currentUser && currentUser.lastSynced && (now - currentUser.lastSynced < SYNC_INTERVAL)) {
         return true;
       }
@@ -227,7 +193,16 @@ function createAuthStore() {
         });
         return true;
       } else {
-        if (currentUser) clear();
+        console.log('[Auth Store] syncWithServer: Server response indicates no authentication. Response:', JSON.stringify(responseData));
+        // Don't immediately clear if we just had a successful auto-login
+        const autoLoginSuccess = sessionStorage.getItem('auto_login_success');
+        if (currentUser && autoLoginSuccess === 'true') {
+          console.log('[Auth Store] syncWithServer: Preserving user data due to recent auto-login success');
+          return true; // Don't clear the user data
+        } else if (currentUser) {
+          console.log('[Auth Store] syncWithServer: Clearing user data due to failed authentication');
+          clear();
+        }
         return false;
       }
     } catch (error) {
@@ -511,46 +486,24 @@ export async function requireAuth(redirectTo = '/login') {
 
 /**
  * Normalize a user object from any source to ensure consistent properties
+ * Uses the comprehensive getUserData helper for consistent processing
  * @param {Object} inputUser - Raw user object
  * @returns {Object} Normalized user object
  */
 function normalizeUserData(inputUser) {
   if (!inputUser) return null;
   
-  // Create a case-normalized properties map
-  const props = {};
-  
-  // Map all properties to lowercase for case-insensitive normalization
-  Object.keys(inputUser).forEach(key => {
-    const lowerKey = key.toLowerCase();
-    props[lowerKey] = inputUser[key];
-  });
-  
-  // Get potential nested roles
-  const metadataRoles = props.metadata?.roles || [];
-  const rolesFromMeta = Array.isArray(metadataRoles) ? metadataRoles : [];
-  
-  // Get direct roles property (could be uppercase)
-  const directRoles = props.roles || inputUser.ROLES || inputUser.Roles || [];
-  const normalizedRoles = Array.isArray(directRoles) ? directRoles : [];
-  
-  // Combine roles from both sources (unique values only)
-  const combinedRoles = [...new Set([...normalizedRoles, ...rolesFromMeta])];
+  // Use the comprehensive getUserData helper for normalization
+  const userDataHelper = getUserData(inputUser);
+  const normalizedData = userDataHelper.toJSON();
   
   // Add timestamp for session tracking
   const now = Date.now();
   
-  // Construct normalized user
   return {
-    id: props.id || inputUser.ID || inputUser.Id || '',
-    email: props.email || inputUser.EMAIL || inputUser.Email || '',
-    displayName: props.displayname || inputUser.DISPLAYNAME || inputUser.DisplayName || props.name || '',
-    avatarUrl: props.avatarurl || inputUser.AVATARURL || inputUser.AvatarUrl || '',
-    roles: combinedRoles,
-    metadata: props.metadata || {},
-    plan: props.plan || 'Free',
-    updatedAt: props.updatedat || inputUser.UPDATEDAT || new Date().toISOString(),
-    lastSynced: now
+    ...normalizedData,
+    lastSynced: now,
+    updatedAt: normalizedData.updatedAt || new Date().toISOString()
   };
 }
 

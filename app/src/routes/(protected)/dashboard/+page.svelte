@@ -8,10 +8,9 @@
 
   // Access the streamed data from the page store
   const dashboardData = $derived($page.data.streamed?.dashboardData);
-  const user = $derived($page.data.user);
   
-  // Get user data helper for cleaner access
-  const userData = $derived(getUserData($page.data.session?.user));
+  const user = $derived($page.data.user);
+  const userData = $derived(getUserData(user));
   
   onMount(() => {
     log('Dashboard page mounted', 'debug');

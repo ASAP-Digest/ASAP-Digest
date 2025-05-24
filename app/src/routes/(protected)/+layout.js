@@ -7,6 +7,7 @@
  */
 
 import { authMiddleware, refreshAuthState, isAuthenticated, authStore } from '$lib/utils/auth-persistence';
+import { getUserData } from '$lib/stores/user.js';
 import { error, redirect } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 
@@ -24,15 +25,44 @@ export async function load(event) {
     
     let userToUse = event.data?.user;
 
-    if (browser && userToUse && (userToUse.avatarUrl === undefined || userToUse.plan === undefined)) {
-      console.warn(`[Protected Layout] event.data.user seems incomplete. Trying authStore.get(). Event.data.user:`, JSON.stringify(userToUse));
+    if (browser && userToUse) {
+      // Use getUserData helper to normalize and complete user data
+      const userData = getUserData(userToUse);
       const storeUser = authStore.get();
-      if (storeUser && storeUser.id === userToUse.id) {
-        console.log(`[Protected Layout] Found user in authStore.get() with more complete data:`, JSON.stringify(storeUser));
-        // Prefer storeUser if it seems more complete for essential fields
-        if (storeUser.avatarUrl !== undefined && storeUser.plan !== undefined) {
-          userToUse = storeUser;
-        }
+      
+      // Check if we need to enhance the user data with store data
+      let needsEnhancement = false;
+      const missingFields = [];
+      
+      // Check for missing fields that might be in the store
+      if (!userToUse.avatarUrl && storeUser?.avatarUrl) {
+        missingFields.push('avatarUrl');
+        needsEnhancement = true;
+      }
+      if (!userToUse.plan && storeUser?.plan) {
+        missingFields.push('plan');
+        needsEnhancement = true;
+      }
+      if (!userToUse.preferences && storeUser?.preferences) {
+        missingFields.push('preferences');
+        needsEnhancement = true;
+      }
+      
+      if (needsEnhancement && storeUser && storeUser.id === userToUse.id) {
+        console.log(`[Protected Layout] Enhancing user data with ${missingFields.length} fields from store: ${missingFields.join(', ')}`);
+        
+        // Merge the data, preferring storeUser for missing fields
+        userToUse = {
+          ...userToUse,
+          // Only use storeUser fields if they exist and current user doesn't have them
+          ...(userToUse.avatarUrl === undefined && storeUser.avatarUrl !== undefined && { avatarUrl: storeUser.avatarUrl }),
+          ...(userToUse.plan === undefined && storeUser.plan !== undefined && { plan: storeUser.plan }),
+          ...(userToUse.preferences === undefined && storeUser.preferences !== undefined && { preferences: storeUser.preferences })
+        };
+      } else {
+        // Use getUserData helper to provide defaults for missing fields
+        userToUse = userData.toJSON();
+        console.log(`[Protected Layout] User data normalized with getUserData helper`);
       }
     }
     

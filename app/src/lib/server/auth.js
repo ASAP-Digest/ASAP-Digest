@@ -17,7 +17,6 @@
 
 import { betterAuth } from 'better-auth';
 import mysql from 'mysql2/promise';
-import { Kysely } from 'kysely';
 import { MysqlDialect } from 'kysely';
 import crypto from 'node:crypto';
 import { 
@@ -29,7 +28,6 @@ import {
     BETTER_AUTH_SECRET,
     BETTER_AUTH_URL
 } from '$env/static/private'; // Restored import
-import { createPool } from 'mysql2/promise';
 import { log } from '$lib/utils/log';
 
 /**

@@ -29,8 +29,9 @@
   
   // Initial load of themes - don't wait for onMount
   try {
-    themes = getAvailableThemes();
-    console.log('Initial themes load in dropdown:', themes.length);
+    const initialThemes = getAvailableThemes();
+    themes = initialThemes;
+    console.log('Initial themes load in dropdown:', initialThemes.length);
   } catch (error) {
     console.error('Error loading themes initially:', error);
     loadError = error.message;
@@ -118,6 +119,7 @@
 <div 
   class={`theme-dropdown ${floating ? 'theme-dropdown-floating' : ''} ${className}`} 
   role="menu" 
+  tabindex="0"
   onclick={(e) => e.stopPropagation()}
   onkeydown={(e) => {
     if (e.key === 'Escape' && floating) {

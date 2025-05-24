@@ -56,7 +56,7 @@
   import { getUserData } from '$lib/stores/user.js';
   import { theme, setTheme, getAvailableThemes } from '$lib/stores/theme.js';
   import { getSession, useSession, auth } from '$lib/auth-client.js';
-  import { syncUserStores } from '$lib/utils/auth-persistence.js';
+  import { updateUserData } from '$lib/stores/user.js';
   import AuthButtons from '$lib/components/AuthButtons.svelte';
   import { navigating } from '$app/stores';
   import Icon from '$lib/components/ui/icon/icon.svelte';
@@ -88,10 +88,10 @@
   // Store previous user update timestamp and signature to avoid unnecessary toasts
   let previousUserUpdatedAt = $state($page.data.user?.updatedAt);
   let previousUserSignature = $state($page.data.user ? JSON.stringify({
-    displayName: $page.data.user.displayName,
-    email: $page.data.user.email,
-    avatarUrl: $page.data.user.avatarUrl,
-    preferences: $page.data.user.preferences
+    displayName: userData.displayName,
+    email: userData.email,
+    avatarUrl: userData.avatarUrl,
+    preferences: userData.preferences
   }) : null);
 
   // Get user data helper for cleaner access
@@ -105,26 +105,29 @@
 
   // Update user store when page data changes
   $effect(() => {
-    if ($page.data.user) {
-      const pageUserData = getUserData($page.data.user);
-      syncUserStores({
-        displayName: pageUserData.displayName,
-        email: pageUserData.email,
-        avatarUrl: pageUserData.avatarUrl,
-        preferences: pageUserData.preferences
-      });
-      
-      log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${$page.data.user.updatedAt}. Showing toast.`); // DEBUG
-      
-      // Show welcome toast for new users or returning users
-      if ($page.data.user.updatedAt !== previousUserUpdatedAt) {
-        toasts.show(
-          'Your profile details have been updated.', // Simpler message
-          'success'
-        );
+    try {
+      if ($page.data.user) {
+        log('[Layout Effect] Processing user data update...', 'debug');
+        const pageUserData = getUserData($page.data.user);
+        // Use the comprehensive user data helper to update the store
+        updateUserData(pageUserData.toJSON());
+        
+        log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${userData.updatedAt}. Showing toast.`); // DEBUG
+        
+        // Show welcome toast for new users or returning users
+        if (userData.updatedAt !== previousUserUpdatedAt) {
+      toasts.show(
+        'Your profile details have been updated.', // Simpler message
+        'success'
+      );
+    }
+    
+        previousUserUpdatedAt = userData.updatedAt;
+        log('[Layout Effect] User data update completed successfully', 'debug');
       }
-      
-      previousUserUpdatedAt = $page.data.user.updatedAt;
+    } catch (error) {
+      log(`[Layout Effect] Error updating user data: ${error.message}`, 'error');
+      console.error('[Layout Effect] Full error:', error);
     }
   });
 
@@ -239,13 +242,17 @@
               
             // IMPROVED IMPLEMENTATION: Use SvelteKit's invalidateAll instead of forcing page reload
             // This leverages SvelteKit's reactivity system for a seamless experience
+            log('[Layout V6] Calling invalidateAll()...', 'debug');
             await invalidateAll();
+            log('[Layout V6] invalidateAll() completed', 'debug');
               
             // Show success toast using the toasts store
+            log('[Layout V6] Showing welcome toast...', 'debug');
             toasts.show(
               `Welcome back, ${data.user.displayName || data.user.email}!`,
               'success'
             );
+            log('[Layout V6] Welcome toast shown', 'debug');
               
             // Always return true to indicate success
             return true;
@@ -339,7 +346,7 @@
             console.log('[Layout Sync Listener] Received message:', data); // DEBUG
 
             if (data.type === 'user-update') {
-              const currentUserId = $page.data.user?.id; 
+              const currentUserId = userData?.id; 
               console.log(`[Layout Sync Listener] User update received. Target User: ${data.userId}, Current User: ${currentUserId}, Timestamp in message: ${data.updatedAt}`); // DEBUG
               
               if (currentUserId && data.userId === currentUserId && data.updatedAt) { 
@@ -653,9 +660,9 @@
                   src={userData.avatarUrl || '/images/default-avatar.svg'}
                   alt={userData.displayName}
                   loading="lazy"
-                  onerror={handleImageError} 
-                />
-              {/key}
+                    onerror={handleImageError} 
+                  />
+                {/key}
             </div>
           </button>
           
@@ -665,23 +672,17 @@
               
               <!-- User & Email -->
               <div class="border-b border-[hsl(var(--border))] p-2 dark:border-[hsl(var(--muted-foreground)/0.2)]">
-                <!-- Use real user data -->
+                <!-- Use userData helper for cleaner access -->
                 <div class="font-semibold">
-                  {$page.data.user.displayName || 'User Name'}
+                  {userData.displayName || 'User Name'}
                 </div>
                 <div class="text-xs text-[hsl(var(--muted-foreground))] dark:text-[hsl(var(--muted-foreground)/0.8)]">
-                  {$page.data.user.email || 'user@example.com'}
+                  {userData.email || 'user@example.com'}
                 </div>
                 <!-- Add plan display -->
-                {#if $page.data.user.plan}
+                {#if userData.plan}
                   <div class="text-xs text-[hsl(var(--primary)/0.8)] mt-1">
-                    {#if typeof $page.data.user.plan === 'object' && $page.data.user.plan !== null}
-                      {$page.data.user.plan.name || 'Free'}
-                    {:else if typeof $page.data.user.plan === 'string'}
-                      {$page.data.user.plan}
-                    {:else}
-                      Free
-                    {/if}
+                    {userData.plan.name || 'Free'}
                   </div>
                 {/if}
               </div>

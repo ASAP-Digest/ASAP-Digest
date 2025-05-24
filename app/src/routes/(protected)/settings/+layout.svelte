@@ -15,6 +15,7 @@
   import { Wifi, WifiOff } from '$lib/utils/lucide-compat.js';
   import { onMount } from 'svelte';
   import { user as userStore, authStore } from '$lib/utils/auth-persistence';
+  import { getUserData } from '$lib/stores/user.js';
   import { goto } from '$app/navigation';
   
   /**
@@ -95,6 +96,7 @@
   
   // Derived values - fix syntax to match Svelte 5 runes
   let effectiveUser = $derived(data?.user || userValue);
+  let userData = $derived(getUserData(effectiveUser));
   let pageTitle = $derived($page.route.id?.split('/').pop() || 'Settings');
   let formattedTitle = $derived(pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1));
 </script>

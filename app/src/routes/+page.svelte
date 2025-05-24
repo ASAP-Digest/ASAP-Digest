@@ -98,7 +98,17 @@
   let { data } = $props(); 
 
   // Reactive states based on data or local interactions
-  let showOnboarding = $state(!data?.user?.hasCompletedOnboarding);
+  import { getUserData } from '$lib/stores/user.js';
+  
+  const userData = $derived(() => {
+    try {
+      return getUserData(data?.user);
+    } catch (error) {
+      console.error('[Home Page] Error getting user data:', error);
+      return getUserData(null); // Return default user data
+    }
+  });
+  let showOnboarding = $state(!userData?.hasCompletedOnboarding);
 
   // Function to determine default Gridstack item dimensions based on widget size
   function getDefaultGridstackDimensions(widgetSize, hasSidebar) {

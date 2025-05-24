@@ -97,12 +97,14 @@ export function createGravatarUrl(email) {
 export function getAvatarUrl(user) {
   if (!user) return '/images/default-avatar.svg';
   
-  // Debug logging but with more useful info
-  console.debug('[Avatar Debug] User avatar data:', {
-    url: user.avatarUrl,
-    email: user.email,
-    pref: user.preferences?.avatarSource
-  });
+  // Debug logging (only when preferences are missing)
+  if (!user.preferences) {
+    console.debug('[Avatar Debug] User missing preferences, using defaults:', {
+      url: user.avatarUrl || 'none',
+      email: user.email || 'none',
+      hasPreferences: false
+    });
+  }
   
   // PRIORITY 1: Always check for WordPress/auth synced avatar
   // This is the top priority - if we have an avatarUrl that looks like a synced one

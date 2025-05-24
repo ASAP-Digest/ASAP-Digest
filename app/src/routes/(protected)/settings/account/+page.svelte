@@ -34,8 +34,16 @@
   const userData = $derived(getUserData(data.user));
   
   // Initialize form fields with user data
-  let displayName = $state(userData.displayName || '');
-  let email = $state(userData.email || '');
+  let displayName = $state('');
+  let email = $state('');
+  
+  // Initialize form fields when userData changes
+  $effect(() => {
+    if (userData) {
+      displayName = userData.displayName || '';
+      email = userData.email || '';
+    }
+  });
   
   let isSaving = $state(false);
   let errorMessage = $state('');

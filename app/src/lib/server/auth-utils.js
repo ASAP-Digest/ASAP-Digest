@@ -20,7 +20,6 @@
 
 import { auth } from '$lib/server/auth.js'; // Import the configured Better Auth instance
 import crypto from 'node:crypto';
-import { Kysely } from 'kysely'; // Add Kysely import for JSDoc
 import { error } from '@sveltejs/kit'; // For potential error responses
 import { log as appLog } from '$lib/utils/log.js'; // Rename imported log
 
@@ -223,7 +222,7 @@ export async function syncWordPressUserAndCreateSession(wpUserDetails) {
  * Useful for syncing profile updates (Roadmap Task 3.2: Implement Profile Page) 
  * or other metadata changes triggered from SvelteKit.
  * 
- * @param {Kysely<any>} db - The Kysely database instance (pass from calling context, e.g., imported from auth.js or created in endpoint).
+ * @param {any} db - The Kysely database instance (pass from calling context, e.g., imported from auth.js or created in endpoint).
  * @param {string} userId - Better Auth User ID.
  * @param {object} metadata - The complete metadata object to save (will be JSON stringified).
  * @returns {Promise<boolean>} Success status.

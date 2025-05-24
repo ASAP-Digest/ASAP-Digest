@@ -21,6 +21,7 @@
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
   import { user as userStore } from '$lib/utils/auth-persistence';
+  import { getUserData } from '$lib/stores/user.js';
   import { getCSRFToken } from '$lib/auth-client.js';
   import { toasts } from '$lib/stores/toast.js';
   
@@ -35,6 +36,7 @@
   
   // Create reactive derived state for user data to ensure updates during navigation
   let user = $derived(data?.user || null);
+  let userData = $derived(getUserData(user));
   
   // Password fields
   let currentPassword = $state('');
@@ -49,11 +51,11 @@
   
   // Update security settings when user data changes
   $effect(() => {
-    if (user?.security) {
-      is2FAEnabled = user.security.twoFactorEnabled ?? false;
-      trackSessions = user.security.trackSessions ?? true;
-      allowAPIAccess = user.security.allowAPIAccess ?? false;
-      securityAlerts = user.security.securityAlerts ?? true;
+    if (userData?.security) {
+      is2FAEnabled = userData.security.twoFactorEnabled ?? false;
+      trackSessions = userData.security.trackSessions ?? true;
+      allowAPIAccess = userData.security.allowAPIAccess ?? false;
+      securityAlerts = userData.security.securityAlerts ?? true;
     }
   });
   

@@ -5,7 +5,7 @@
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import { log } from '$lib/utils/log.js';
-import { user as userStore } from '$lib/stores/user.js';
+import { user as userStore, getUserData } from '$lib/stores/user.js';
 import { authStore } from '$lib/utils/auth-persistence';
 
 /**
@@ -31,69 +31,37 @@ import { authStore } from '$lib/utils/auth-persistence';
 
 /**
  * Normalize a user object from any source (server, session, or WordPress)
- * to ensure it has consistent structure and properties.
+ * using the comprehensive getUserData helper for consistent processing.
  * 
  * @param {any} inputUser - The user object to normalize
  * @returns {import('$lib/stores/user').User} - Normalized user object compatible with userStore
  */
 function normalizeUser(inputUser) {
-  // Create an empty user object with default values to satisfy the User type
-  // This ensures we never return null which would violate our type contract
-  const emptyUser = {
-    id: '',
-    email: '', // Always provide a string value for email (empty string if not available)
-    displayName: '',
-    avatarUrl: '',
-    roles: [],
-    metadata: {},
-    plan: { name: 'Free' }, // Must be an object with name property to match UserPlan type
-    updatedAt: new Date().toISOString()
-  };
-  
-  if (!inputUser) return emptyUser;
+  if (!inputUser) {
+    // Return empty user object with default values to satisfy the User type
+    return {
+      id: '',
+      email: '', // Always provide a string value for email (empty string if not available)
+      displayName: '',
+      avatarUrl: '',
+      roles: [],
+      metadata: {},
+      plan: { name: 'Free' }, // Must be an object with name property to match UserPlan type
+      updatedAt: new Date().toISOString()
+    };
+  }
   
   // Log the input to diagnose issues
   log(`[+layout.js] Normalizing user object: ${JSON.stringify(inputUser)}`, 'debug');
   
-  // Create a case-normalized properties map
-  const props = {};
+  // Use the comprehensive getUserData helper for normalization
+  const userDataHelper = getUserData(inputUser);
+  const normalizedUser = userDataHelper.toJSON();
   
-  // Map all properties to lowercase for case-insensitive normalization
-  Object.keys(inputUser).forEach(key => {
-    const lowerKey = key.toLowerCase();
-    props[lowerKey] = inputUser[key];
-  });
-  
-  // Get potential nested roles
-  const metadataRoles = props.metadata?.roles || [];
-  const rolesFromMeta = Array.isArray(metadataRoles) ? metadataRoles : [];
-  
-  // Get direct roles property (could be uppercase)
-  const directRoles = props.roles || inputUser.ROLES || inputUser.Roles || [];
-  const normalizedRoles = Array.isArray(directRoles) ? directRoles : [];
-  
-  // Combine roles from both sources (unique values only)
-  const combinedRoles = [...new Set([...normalizedRoles, ...rolesFromMeta])];
-  
-  // Process the plan data
-  // If it's already in the correct format (object with name), use it
-  // Otherwise, create a valid plan object
-  let planData = props.plan || { name: 'Free' };
-  if (typeof planData === 'string') {
-    planData = { name: planData };
+  // Ensure updatedAt is set for compatibility
+  if (!normalizedUser.updatedAt) {
+    normalizedUser.updatedAt = new Date().toISOString();
   }
-  
-  // Construct final normalized user with defaults for optional properties
-  const normalizedUser = {
-    id: props.id || inputUser.ID || inputUser.Id || '',
-    email: props.email || inputUser.EMAIL || inputUser.Email || '', // Ensure email is never undefined
-    displayName: props.displayname || inputUser.DISPLAYNAME || inputUser.DisplayName || props.name || '',
-    avatarUrl: props.avatarurl || inputUser.AVATARURL || inputUser.AvatarUrl || '',
-    roles: combinedRoles,
-    metadata: props.metadata || {},
-    plan: planData, // Properly formatted plan object
-    updatedAt: props.updatedat || inputUser.UPDATEDAT || new Date().toISOString() // Default current date for updatedAt
-  };
   
   // Log the normalized result
   log(`[+layout.js] Normalized user result: ${JSON.stringify(normalizedUser)}`, 'debug');
