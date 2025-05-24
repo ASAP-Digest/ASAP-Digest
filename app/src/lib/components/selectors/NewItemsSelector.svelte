@@ -39,6 +39,9 @@
   import FilterPanel from './FilterPanel.svelte';
   import { useSession } from '$lib/auth-client.js';
   
+  // Create content manager instance
+  const contentManager = createContentManager();
+  
   const dispatch = createEventDispatcher();
   
   // Props
@@ -50,6 +53,13 @@
     allowMultiple = true,         // Allow multiple selections
     onSelect = undefined,         // Optional callback for selection
     initiallySelected = [],       // List of items to initially select
+    // NEW: Digest creation mode props
+    mode = 'standard',           // 'standard' | 'digest-builder' | 'module-selector'
+    targetPosition = null,       // Grid position for digest building (x, y, w, h)
+    onModuleSelect = undefined,  // Callback for module selection in digest mode
+    singleSelect = false,        // Force single selection mode
+    showPositionInfo = false,    // Show grid position info in header
+    compactMode = false,         // Use compact layout for mobile/modal
   } = $props();
   
   // State variables using Svelte 5 runes
@@ -197,15 +207,46 @@
   
   // Selection logic using persistent store
   function toggleItemSelection(item) {
-    if (allowMultiple) {
-    selectedItems.toggle(item);
+    // Handle digest builder mode differently
+    if (mode === 'digest-builder' || mode === 'module-selector') {
+      handleModuleSelection(item);
+      return;
+    }
+    
+    if (allowMultiple && !singleSelect) {
+      selectedItems.toggle(item);
     } else {
       // Single select mode: clear all, then add
       selectedItems.clear();
       selectedItems.add(item);
     }
     if (onSelect) {
-      onSelect(allowMultiple ? get(selectedItems) : get(selectedItems)[0]);
+      onSelect((allowMultiple && !singleSelect) ? get(selectedItems) : get(selectedItems)[0]);
+    }
+  }
+
+  // Handle module selection for digest creation
+  function handleModuleSelection(item) {
+    const moduleData = {
+      id: item.id,
+      type: selectedType,
+      title: item.title,
+      excerpt: item.excerpt || item.summary || '',
+      url: item.url,
+      publishedAt: item.publishedAt,
+      source: item.source,
+      image: item.image,
+      metadata: item.metadata || {},
+      targetPosition: targetPosition
+    };
+
+    if (onModuleSelect) {
+      onModuleSelect(moduleData);
+    }
+    
+    // Close the selector after module selection
+    if (mode === 'module-selector') {
+      resetAndClose();
     }
   }
   
@@ -247,6 +288,44 @@
     } finally {
       addLoading = false;
     }
+  }
+
+  // Start digest creation with selected item - Phase 2 Enhanced
+  function startDigestWithSelected() {
+    const items = get(selectedItems);
+    if (items.length === 1) {
+      const selectedItem = items[0];
+      startDigestCreationFlow(selectedItem);
+    }
+  }
+
+  // Start digest creation with specific item - Phase 2 Enhanced
+  function startDigestWithItem(item) {
+    startDigestCreationFlow(item);
+  }
+
+  // Phase 2: Enhanced digest creation flow
+  function startDigestCreationFlow(preSelectedItem) {
+    // Store the pre-selected item in sessionStorage for the digest creation page
+    if (preSelectedItem) {
+      sessionStorage.setItem('digest-preselected-module', JSON.stringify({
+        id: preSelectedItem.id,
+        type: selectedType,
+        title: preSelectedItem.title,
+        excerpt: preSelectedItem.excerpt || preSelectedItem.summary || '',
+        url: preSelectedItem.url,
+        publishedAt: preSelectedItem.publishedAt,
+        source: preSelectedItem.source,
+        image: preSelectedItem.image,
+        metadata: preSelectedItem.metadata || {}
+      }));
+    }
+    
+    // Close the current selector
+    resetAndClose();
+    
+    // Navigate to the enhanced digest creation page
+    window.location.href = '/digest/create';
   }
   
   // Close the content type selection flyout
@@ -361,10 +440,29 @@
           {#if selectedType}
             {#if contentTypes.find(t => t.id === selectedType)}
               {@const type = contentTypes.find(t => t.id === selectedType)}
-              <span>Select {type.label} Content</span>
+              <span>
+                {#if mode === 'module-selector'}
+                  Select Module for Grid Position
+                {:else if mode === 'digest-builder'}
+                  Add {type.label} to Digest
+                {:else}
+                  Select {type.label} Content
+                {/if}
+              </span>
             {/if}
           {:else}
-            <span>Select Content</span>
+            <span>
+              {#if mode === 'module-selector' || mode === 'digest-builder'}
+                Choose Content Type
+              {:else}
+                Select Content
+              {/if}
+            </span>
+          {/if}
+          {#if showPositionInfo && targetPosition}
+            <span class="text-sm text-muted-foreground ml-2">
+              (Position: {targetPosition.x}, {targetPosition.y} - {targetPosition.w}×{targetPosition.h})
+            </span>
           {/if}
         </DialogTitle>
       </DialogHeader>
@@ -486,14 +584,39 @@
             </Button>
           </div>
           <div class="selector-actions-right">
-            <span class="selector-count-text">{get(selectedItems).length} selected</span>
-            <Button 
-              variant="default" 
-              onclick={addSelectedItems} 
-              disabled={get(selectedItems).length === 0 || addLoading}
-            >
-              {addLoading ? 'Adding...' : 'Add Selected'}
-            </Button>
+            {#if mode === 'module-selector'}
+              <!-- Module selector mode: just show instruction -->
+              <span class="selector-count-text">Click a module to add to grid position</span>
+            {:else if mode === 'digest-builder'}
+              <!-- Digest builder mode: show selection count and add button -->
+              <span class="selector-count-text">{get(selectedItems).length} selected</span>
+              <Button 
+                variant="default" 
+                onclick={addSelectedItems} 
+                disabled={get(selectedItems).length === 0 || addLoading}
+              >
+                {addLoading ? 'Adding...' : 'Add to Digest'}
+              </Button>
+            {:else}
+              <!-- Standard mode: show all options -->
+              <span class="selector-count-text">{get(selectedItems).length} selected</span>
+              {#if get(selectedItems).length === 1}
+                <Button 
+                  variant="outline" 
+                  onclick={startDigestWithSelected}
+                  disabled={addLoading}
+                >
+                  Start Digest
+                </Button>
+              {/if}
+              <Button 
+                variant="default" 
+                onclick={addSelectedItems} 
+                disabled={get(selectedItems).length === 0 || addLoading}
+              >
+                {addLoading ? 'Adding...' : 'Add Selected'}
+              </Button>
+            {/if}
           </div>
         </div>
         
@@ -547,13 +670,38 @@
         <Button variant="outline" onclick={() => { detailView = false; detailItem = null; }}>
           ← Back
         </Button>
-        <Button 
-          variant={isSelected(detailItem) ? 'outline' : 'default'} 
-          onclick={() => { if (!isSelected(detailItem)) toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
-          disabled={isSelected(detailItem)}
-        >
-          {isSelected(detailItem) ? 'Added to Digest' : 'Add to Digest'}
-        </Button>
+        <div class="flex gap-2">
+          {#if mode === 'module-selector'}
+            <Button 
+              variant="default" 
+              onclick={() => { toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
+            >
+              Select This Module
+            </Button>
+          {:else if mode === 'digest-builder'}
+            <Button 
+              variant={isSelected(detailItem) ? 'outline' : 'default'} 
+              onclick={() => { if (!isSelected(detailItem)) toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
+              disabled={isSelected(detailItem)}
+            >
+              {isSelected(detailItem) ? 'Added to Digest' : 'Add to Digest'}
+            </Button>
+          {:else}
+            <Button 
+              variant="outline" 
+              onclick={() => startDigestWithItem(detailItem)}
+            >
+              Start Digest
+            </Button>
+            <Button 
+              variant={isSelected(detailItem) ? 'outline' : 'default'} 
+              onclick={() => { if (!isSelected(detailItem)) toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
+              disabled={isSelected(detailItem)}
+            >
+              {isSelected(detailItem) ? 'Added to Digest' : 'Add to Digest'}
+            </Button>
+          {/if}
+        </div>
       </div>
     </DialogContent>
   </Dialog>

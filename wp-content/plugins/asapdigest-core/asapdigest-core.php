@@ -144,10 +144,7 @@ add_action('admin_menu', [$asap_digest_central_command, 'register_menus'], 30);
  * @return array Modified headers array.
  */
 function asap_filter_graphql_cors_headers( $headers ) {
-    // Only act on OPTIONS preflight requests
-    if ( ! isset( $_SERVER['REQUEST_METHOD'] ) || $_SERVER['REQUEST_METHOD'] !== 'OPTIONS' ) {
-        return $headers;
-    }
+    // Handle both OPTIONS preflight and actual GraphQL requests
 
     // Determine allowed origin based on environment
     $allowed_origin = '';
@@ -192,3 +189,5 @@ function asap_filter_graphql_cors_headers( $headers ) {
  * Environment-aware for SvelteKit frontend origins.
  */
 // add_action( 'send_headers', 'asap_add_graphql_cors_headers_on_send' );
+// Hook the CORS function to the GraphQL headers filter
+add_filter('graphql_response_headers_to_send', 'asap_filter_graphql_cors_headers', 10, 1);

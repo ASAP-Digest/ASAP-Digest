@@ -223,6 +223,7 @@ final class ASAP_Digest_Core {
         error_log('ASAP_CORE_DEBUG: Loading API components');
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-base.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-digest.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-digest-builder.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-auth.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-rest-ingested-content.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/api/class-session-check-controller.php';
@@ -474,6 +475,11 @@ final class ASAP_Digest_Core {
             $digest_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Digest();
         $digest_api->register_routes();
             error_log('ASAP_CORE_DEBUG: Registered Digest API routes');
+
+            // Digest Builder API (NEW - Phase 2)
+            $digest_builder_api = new \ASAPDigest\Core\API\REST_Digest_Builder();
+            $digest_builder_api->register_routes();
+            error_log('ASAP_CORE_DEBUG: Registered Digest Builder API routes');
 
             // Auth API
             $auth_api = new \ASAPDigest\Core\API\ASAP_Digest_REST_Auth();

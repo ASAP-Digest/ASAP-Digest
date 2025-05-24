@@ -218,19 +218,45 @@ class ASAP_Digest_Database {
             $sql_digests = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_digests (
                 id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
                 user_id bigint(20) UNSIGNED NOT NULL,
-                content LONGTEXT NOT NULL,
-                podcast_url TEXT DEFAULT NULL,
+                status VARCHAR(20) DEFAULT 'draft',
+                layout_template_id VARCHAR(50) DEFAULT NULL,
+                content TEXT DEFAULT NULL,
                 sentiment_score VARCHAR(20) DEFAULT NULL,
                 life_moment TEXT DEFAULT NULL,
                 is_saved BOOLEAN DEFAULT FALSE,
                 reminders TEXT DEFAULT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                share_link VARCHAR(255) DEFAULT NULL,
+                podcast_url VARCHAR(255) DEFAULT NULL,
                 PRIMARY KEY (id),
-                KEY user_created_at (user_id, created_at),
-                FULLTEXT (content)
+                KEY idx_user_id (user_id),
+                KEY idx_sentiment (sentiment_score),
+                KEY idx_created_at (created_at),
+                FOREIGN KEY (user_id) REFERENCES {$wpdb->users}(ID) ON DELETE CASCADE
             ) $charset_collate;";
             
             dbDelta($sql_digests);
+
+            // ASAP Digest Module Placements Table
+            $sql_digest_module_placements = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_digest_module_placements (
+                id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+                digest_id bigint(20) UNSIGNED NOT NULL,
+                module_cpt_id bigint(20) UNSIGNED NOT NULL,
+                grid_x int(11) NOT NULL DEFAULT 0,
+                grid_y int(11) NOT NULL DEFAULT 0,
+                grid_width int(11) NOT NULL DEFAULT 1,
+                grid_height int(11) NOT NULL DEFAULT 1,
+                order_in_grid int(11) NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_digest_id (digest_id),
+                KEY idx_module_cpt_id (module_cpt_id),
+                KEY idx_grid_position (grid_x, grid_y),
+                FOREIGN KEY (digest_id) REFERENCES {$wpdb->prefix}asap_digests(id) ON DELETE CASCADE,
+                FOREIGN KEY (module_cpt_id) REFERENCES {$wpdb->posts}(ID) ON DELETE CASCADE
+            ) $charset_collate;";
+            
+            dbDelta($sql_digest_module_placements);
 
             // ASAP Notifications Table
             $sql_notifications = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}asap_notifications (
@@ -852,20 +878,27 @@ class ASAP_Digest_Database {
      * @param int $digest_id The ID of the digest to retrieve.
      * @return array|null An associative array containing digest data and an array of placements, or null if not found.
      */
-    public function get_digest_with_placements( $digest_id ) {
+    /**
+     * Retrieves a digest with its module placements, with ownership validation.
+     *
+     * @param int $digest_id The ID of the digest to retrieve.
+     * @param int $current_user_id The ID of the current user for ownership validation.
+     * @return array|null The digest data with placements on success, null if not found or no permissions.
+     */
+    public function get_digest_with_placements( $digest_id, $current_user_id ) {
         global $wpdb;
         $digests_table = $wpdb->prefix . 'asap_digests';
         $placements_table = $wpdb->prefix . 'asap_digest_module_placements';
         $posts_table = $wpdb->posts;
 
-        // Fetch the main digest record
+        // Fetch the main digest record with ownership validation
         $digest = $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM {$digests_table} WHERE id = %d", $digest_id),
+            $wpdb->prepare("SELECT * FROM {$digests_table} WHERE id = %d AND user_id = %d", $digest_id, $current_user_id),
             ARRAY_A
         );
 
         if ( !$digest ) {
-            return null; // Digest not found
+            return null; // Digest not found or user doesn't own it
         }
 
         // Fetch all module placements for this digest and join with wp_posts to get module details
@@ -898,36 +931,59 @@ class ASAP_Digest_Database {
     }
 
     /**
-     * Retrieves a list of digests for a specific user.
+     * Retrieves a list of digests for a specific user, optionally filtered by status.
+     *
+     * @param int $user_id The ID of the user whose digests to retrieve.
+     * @param string|null $status Optional. Filter digests by status (e.g., 'draft', 'published', 'archived').
+     * @return array Array of digest records.
      */
-    public function get_user_digests($user_id) {
+    public function get_user_digests($user_id, $status = null) {
         global $wpdb;
         $digests_table = $wpdb->prefix . 'asap_digests';
 
-        // Fetch all digests for the specified user
-        $digests = $wpdb->get_results(
-            $wpdb->prepare("SELECT * FROM {$digests_table} WHERE user_id = %d", $user_id),
-            ARRAY_A
-        );
+        // Build the query with optional status filtering
+        if ($status) {
+            $digests = $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM {$digests_table} WHERE user_id = %d AND status = %s ORDER BY created_at DESC", $user_id, $status),
+                ARRAY_A
+            );
+        } else {
+            $digests = $wpdb->get_results(
+                $wpdb->prepare("SELECT * FROM {$digests_table} WHERE user_id = %d ORDER BY created_at DESC", $user_id),
+                ARRAY_A
+            );
+        }
 
         return $digests;
     }
 
     /**
-     * Updates the placement details of a module within a digest.
+     * Updates the placement details of a module within a digest with ownership validation.
      *
      * @param int   $placement_id The ID of the placement record to update.
      * @param int   $digest_id    The ID of the digest the placement belongs to (for validation).
+     * @param int   $current_user_id The ID of the current user for ownership validation.
      * @param array $data         An associative array of columns => values to update.
      * @return int|false The number of rows affected on success, false on failure.
      */
-    public function update_module_placement( $placement_id, $digest_id, $data ) {
+    public function update_module_placement( $placement_id, $digest_id, $current_user_id, $data ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'asap_digest_module_placements';
+        $digests_table = $wpdb->prefix . 'asap_digests';
 
         // Ensure data is an array and not empty
         if ( ! is_array( $data ) || empty( $data ) ) {
              // TODO: Log validation error using ErrorLogger
+            return false;
+        }
+
+        // First, verify that the digest belongs to the current user
+        $digest_owner = $wpdb->get_var(
+            $wpdb->prepare("SELECT user_id FROM {$digests_table} WHERE id = %d", $digest_id)
+        );
+
+        if ( !$digest_owner || (int)$digest_owner !== (int)$current_user_id ) {
+            // User doesn't own this digest
             return false;
         }
 
@@ -976,13 +1032,14 @@ class ASAP_Digest_Database {
     }
 
     /**
-     * Updates the status of a specific digest.
+     * Updates the status of a specific digest with ownership validation.
      *
      * @param int    $digest_id The ID of the digest to update.
      * @param string $status    The new status (e.g., 'draft', 'published').
+     * @param int    $current_user_id The ID of the current user for ownership validation.
      * @return int|false The number of rows affected on success, false on failure.
      */
-    public function update_digest_status( $digest_id, $status ) {
+    public function update_digest_status( $digest_id, $status, $current_user_id ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'asap_digests';
 
@@ -993,13 +1050,13 @@ class ASAP_Digest_Database {
             return false; // Or a WP_Error
         }
 
-        // Perform the update
+        // Perform the update with ownership validation
         $updated = $wpdb->update(
             $table_name,
             [ 'status' => $status ], // Data to update
-            [ 'id' => $digest_id ], // WHERE clause
+            [ 'id' => $digest_id, 'user_id' => $current_user_id ], // WHERE clause with ownership check
             ['%s'], // Data format (status is string)
-            ['%d'] // WHERE format (id is int)
+            ['%d', '%d'] // WHERE format (id and user_id are integers)
         );
 
         if ( $updated !== false ) {
@@ -1011,17 +1068,33 @@ class ASAP_Digest_Database {
     }
 
     /**
-     * Deletes a module placement record from the database.
+     * Deletes a module placement record from the database with ownership validation.
+     *
+     * @param int $placement_id The ID of the placement record to delete.
+     * @param int $digest_id The ID of the digest the placement belongs to (for validation).
+     * @param int $current_user_id The ID of the current user for ownership validation.
+     * @return int|false The number of rows affected on success, false on failure.
      */
-    public function delete_module_placement( $placement_id ) {
+    public function delete_module_placement( $placement_id, $digest_id, $current_user_id ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'asap_digest_module_placements';
+        $digests_table = $wpdb->prefix . 'asap_digests';
 
-        // Perform the deletion
+        // First, verify that the digest belongs to the current user
+        $digest_owner = $wpdb->get_var(
+            $wpdb->prepare("SELECT user_id FROM {$digests_table} WHERE id = %d", $digest_id)
+        );
+
+        if ( !$digest_owner || (int)$digest_owner !== (int)$current_user_id ) {
+            // User doesn't own this digest
+            return false;
+        }
+
+        // Perform the deletion with digest_id validation for extra safety
         $deleted = $wpdb->delete(
             $table_name,
-            [ 'id' => $placement_id ], // WHERE clause
-            ['%d'] // WHERE format (id is %d)
+            [ 'id' => $placement_id, 'digest_id' => $digest_id ], // WHERE clause
+            ['%d', '%d'] // WHERE format (id and digest_id are %d)
         );
 
         if ( $deleted !== false ) {
@@ -1033,24 +1106,26 @@ class ASAP_Digest_Database {
     }
 
     /**
-     * Deletes a digest record from the database.
+     * Deletes a digest record from the database with ownership validation.
      *
      * @param int $digest_id The ID of the digest to delete.
+     * @param int $current_user_id The ID of the current user for ownership validation.
      * @return int|false The number of rows affected on success (usually 1), false on failure.
      */
-    public function delete_digest_by_id( $digest_id ) {
+    public function delete_digest_by_id( $digest_id, $current_user_id ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'asap_digests';
 
-        // Sanitize the digest ID
+        // Sanitize the digest ID and user ID
         $sanitized_digest_id = absint( $digest_id );
+        $sanitized_user_id = absint( $current_user_id );
 
-        // Perform the deletion
+        // Perform the deletion with ownership validation
         // Note: ON DELETE CASCADE in the database schema should handle deleting related module placements.
         $deleted = $wpdb->delete(
             $table_name,
-            [ 'id' => $sanitized_digest_id ], // WHERE clause
-            ['%d'] // WHERE format (id is %d)
+            [ 'id' => $sanitized_digest_id, 'user_id' => $sanitized_user_id ], // WHERE clause with ownership check
+            ['%d', '%d'] // WHERE format (id and user_id are %d)
         );
 
         if ( $deleted !== false ) {
@@ -1058,6 +1133,43 @@ class ASAP_Digest_Database {
         } else {
              // TODO: Log database deletion error using ErrorLogger ($wpdb->last_error)
             return false; // Deletion failed
+        }
+    }
+
+    /**
+     * Inserts a new digest record into the database.
+     *
+     * @param int $user_id The ID of the user creating the digest.
+     * @param string $layout_template_id The ID of the selected layout template.
+     * @param string $status The initial status of the digest (e.g., 'draft').
+     * @return int|false The ID of the newly inserted digest on success, false on failure.
+     */
+    public function insert_digest( $user_id, $layout_template_id, $status = 'draft' ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'asap_digests';
+
+        $data = array(
+            'user_id'            => $user_id,
+            'layout_template_id' => $layout_template_id,
+            'status'             => $status,
+            // Add other default values for columns if necessary, e.g., 'content' => '', 'created_at' => current_time('mysql'),
+        );
+
+        // Specify data types for sanitization
+        $format = array(
+            '%d',   // user_id (integer)
+            '%s',   // layout_template_id (string)
+            '%s',   // status (string)
+        );
+
+        $result = $wpdb->insert( $table_name, $data, $format );
+
+        if ( $result ) {
+            return $wpdb->insert_id; // Return the ID of the newly inserted row
+        } else {
+            // Log or handle error if insert failed
+            // $wpdb->print_error(); // For debugging
+            return false; // Indicate failure
         }
     }
 } 

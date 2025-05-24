@@ -79,6 +79,11 @@ For detailed documentation:
 - [Auto Login API Reference](md-docs/auto-login/auto-login-api.md): Technical API details
 - [Auto Login Developer Guide](md-docs/auto-login/auto-login-developer-guide.md): Practical guidance
 - [V6 Upgrade Summary](md-docs/auto-login/v6-auto-login-upgrade-summary.md): Implementation changes
+- [Troubleshooting Guide](md-docs/auto-login/troubleshooting.md): Common issues and solutions
+
+## Project Updates
+
+For a complete history of changes and improvements, see our [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

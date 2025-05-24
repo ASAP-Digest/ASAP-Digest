@@ -30,7 +30,7 @@
   // Initial load of themes - don't wait for onMount
   try {
     themes = getAvailableThemes();
-    console.log('Initial themes load in dropdown:', $state.snapshot(themes));
+    console.log('Initial themes load in dropdown:', themes.length);
   } catch (error) {
     console.error('Error loading themes initially:', error);
     loadError = error.message;
@@ -78,7 +78,7 @@
     try {
       loadError = '';
       themes = getAvailableThemes();
-      console.log('Loaded themes in dropdown after refresh:', $state.snapshot(themes));
+      console.log('Loaded themes in dropdown after refresh:', themes.length);
       
       if (themes.length === 0) {
         loadError = 'No themes were found. Try reloading the page.';
@@ -115,7 +115,16 @@
   }
 </script>
 
-<div class={`theme-dropdown ${floating ? 'theme-dropdown-floating' : ''} ${className}`} onclick={(e) => e.stopPropagation()}>
+<div 
+  class={`theme-dropdown ${floating ? 'theme-dropdown-floating' : ''} ${className}`} 
+  role="menu" 
+  onclick={(e) => e.stopPropagation()}
+  onkeydown={(e) => {
+    if (e.key === 'Escape' && floating) {
+      onClose();
+    }
+  }}
+>
   <div class="theme-dropdown-header p-2 text-sm font-medium flex justify-between items-center">
     <span>Theme Selection</span>
     <div class="flex space-x-1">

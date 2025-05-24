@@ -1,12 +1,12 @@
 <?php
+namespace ASAPDigest\Core\API;
+
 /**
  * REST API Endpoint for Digest Building and Module Placement
  *
  * @package ASAPDigest_Core
  * @subpackage API
  */
-
-namespace ASAPDigest\Core\API;
 
 // Include the parent REST_Base class
 require_once plugin_dir_path( __FILE__ ) . 'class-rest-base.php';
@@ -35,8 +35,8 @@ class REST_Digest_Builder extends REST_Base {
         // You may need to adjust this based on the actual implementation in class-core.php
         $this->database = new ASAP_Digest_Database();
 
-        // Hook into the REST API initialization
-        add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+        // Note: register_routes() is now called directly from the core class
+        // No need to hook into rest_api_init here since it's handled by the core
     }
 
     /**
@@ -193,19 +193,69 @@ class REST_Digest_Builder extends REST_Base {
      * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
      */
     public function get_layout_templates( $request ) {
-        // TODO: Implement logic to fetch real layout templates from a database or predefined source
-        // For now, return dummy data matching the frontend structure
-        $layout_templates = [
-            [ 'id' => 'default-grid', 'name' => 'Default Grid Layout' ],
-            [ 'id' => 'sidebar-layout', 'name' => 'Sidebar Layout' ],
-            [ 'id' => 'card-layout', 'name' => 'Card Layout' ],
-        ];
+        // Fetch layout templates from the asap_digest_template CPT
+        $template_posts = get_posts([
+            'post_type' => 'asap_digest_template',
+            'post_status' => 'publish',
+            'numberposts' => -1,
+            'orderby' => 'menu_order',
+            'order' => 'ASC'
+        ]);
 
-        return new WP_REST_Response( [
+        $layout_templates = [];
+
+        foreach ($template_posts as $template_post) {
+            // Get template metadata
+            $gridstack_config = get_post_meta($template_post->ID, 'gridstack_config', true);
+            $predefined_slots = get_post_meta($template_post->ID, 'predefined_slots', true);
+            $template_type = get_post_meta($template_post->ID, 'template_type', true);
+            $is_default = get_post_meta($template_post->ID, 'is_default', true);
+
+            // Parse JSON metadata
+            $gridstack_config = $gridstack_config ? json_decode($gridstack_config, true) : [];
+            $predefined_slots = $predefined_slots ? json_decode($predefined_slots, true) : [];
+
+            // Format for frontend consumption
+            $layout_templates[] = [
+                'id' => $template_post->ID,
+                'name' => $template_post->post_title,
+                'description' => $template_post->post_content ?: 'Custom layout template',
+                'preview_image' => get_the_post_thumbnail_url($template_post->ID, 'medium') ?: null,
+                'max_modules' => count($predefined_slots),
+                'gridstack_config' => array_merge([
+                    'column' => 12,
+                    'cellHeight' => 80,
+                    'verticalMargin' => 10,
+                    'horizontalMargin' => 10,
+                    'animate' => true,
+                    'float' => false,
+                    'disableDrag' => false,
+                    'disableResize' => false,
+                    'handle' => '.drag-handle'
+                ], $gridstack_config),
+                'predefined_slots' => $predefined_slots,
+                'template_type' => $template_type ?: 'gridstack',
+                'is_default' => (bool) $is_default,
+                'created_at' => $template_post->post_date,
+                'modified_at' => $template_post->post_modified
+            ];
+        }
+
+        // If no templates found, return empty array with message
+        if (empty($layout_templates)) {
+            return new WP_REST_Response([
+                'success' => true,
+                'message' => 'No layout templates found. Default templates will be created.',
+                'data' => []
+            ], 200);
+        }
+
+        return new WP_REST_Response([
             'success' => true,
             'message' => 'Layout templates fetched successfully.',
             'data' => $layout_templates,
-        ], 200 );
+            'count' => count($layout_templates)
+        ], 200);
     }
 
     /**
@@ -215,18 +265,35 @@ class REST_Digest_Builder extends REST_Base {
      * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
      */
     public function get_available_modules( $request ) {
-        // TODO: Implement logic to fetch real module CPTs
-        // For now, return dummy data
-        $modules = [
-            [ 'id' => 1, 'name' => 'Headline Module', 'description' => 'Displays a prominent headline.' ],
-            [ 'id' => 2, 'name' => 'Content Block Module', 'description' => 'Displays a block of text.' ],
-            [ 'id' => 3, 'name' => 'Image Module', 'description' => 'Displays an image.' ],
-        ];
+        // Fetch real module CPTs
+        $modules = get_posts( [
+            'post_type'      => 'asap_digest_module',
+            'post_status'    => 'publish', // Only fetch published modules
+            'posts_per_page' => -1,          // Get all matching modules
+            'fields'         => 'ids',       // Fetch only IDs initially
+        ] );
+
+        if ( empty( $modules ) ) {
+            return new WP_REST_Response( [], 200 ); // Return empty array if no modules found
+        }
+
+        $formatted_modules = [];
+        foreach ( $modules as $module_id ) {
+            // Fetch module title (name)
+            $module_post = get_post( $module_id );
+            if ( $module_post ) {
+                 $formatted_modules[] = [
+                    'id'          => $module_id,
+                    'name'        => $module_post->post_title,
+                    // TODO: Potentially add description or other relevant data
+                ];
+            }
+        }
 
         return new WP_REST_Response( [
             'success' => true,
-            'message' => 'Available modules fetched successfully.',
-            'data' => $modules,
+            'message' => __( 'Available modules fetched successfully.', 'asap-digest-core' ),
+            'data' => $formatted_modules,
         ], 200 );
     }
 
@@ -241,118 +308,148 @@ class REST_Digest_Builder extends REST_Base {
         $user_id = (int) $request['user_id'];
         $layout_template_id = sanitize_text_field( $request['layout_template_id'] );
 
-        // TODO: Implement logic to create a new draft digest entry in wp_asap_digests
-        // You'll need to call a method in ASAP_Digest_Database to insert the new digest record
-        // Ensure 'status' is set to 'draft' and 'layout_template_id' is stored
-        // Return the newly created digest ID and possibly some basic info
-
-        // Example placeholder response:
-        $new_digest_id = 0; // Replace with actual new digest ID from DB insertion
-        if ( $new_digest_id ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Draft digest created.',
-                'digest_id' => $new_digest_id,
-                'layout_template_id' => $layout_template_id,
-                'status' => 'draft',
-            ], 201 );
-        } else {
-             return new WP_Error( 'digest_creation_failed', 'Could not create draft digest.', ['status' => 500] );
+        // Validate input data
+        if ( empty( $user_id ) || empty( $layout_template_id ) ) {
+            return new WP_Error(
+                'asap_digest_error', // Error code
+                __( 'User ID and Layout Template ID are required.', 'asap-digest-core' ), // Error message
+                [ 'status' => 400 ] // HTTP status code
+            );
         }
 
-        // Implement logic to create a new draft digest entry in wp_asap_digests
-        $data = [
-            'user_id'            => $user_id,
-            'layout_template_id' => $layout_template_id,
-            'status'             => 'draft',
-        ];
+        // Use the database handler to insert a new draft digest
+        // Assuming ASAP_Digest_Database has a method like insert_digest
+        $new_digest_id = $this->database->insert_digest(
+            $user_id,
+            $layout_template_id,
+            'draft' // Set status to draft
+        );
 
-        // Assuming ASAP_Digest_Database has an insert method, e.g., insert_digest()
-        // This method should handle sanitization and validation internally or rely on prior validation.
-        $new_digest_id = $this->database->insert_digest( $data );
-
-        if ( $new_digest_id ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Draft digest created.',
-                'digest_id' => $new_digest_id,
-                'layout_template_id' => $layout_template_id,
-                'status' => 'draft',
-            ], 201 );
-        } else {
-             // Log the database insertion error
-             // ErrorLogger::log('rest_api', 'create_digest_db_error', 'Failed to insert new digest record.', ['user_id' => $user_id, 'layout_template_id' => $layout_template_id], 'error');
-             return new WP_Error( 'digest_creation_failed', 'Could not create draft digest due to a database error.', ['status' => 500] );
+        if ( is_wp_error( $new_digest_id ) ) {
+            // Handle database insertion error
+             return new WP_Error(
+                'asap_digest_db_error', // Error code
+                __( 'Failed to create digest draft in database.', 'asap-digest-core' ), // Error message
+                [ 'status' => 500 ] // HTTP status code
+            );
         }
+
+        if ( ! $new_digest_id ) {
+             // Handle case where insertion failed but didn't return WP_Error (e.g., insert returned false/0)
+             return new WP_Error(
+                'asap_digest_insert_failed', // Error code
+                __( 'Digest draft creation failed.', 'asap-digest-core' ), // Error message
+                [ 'status' => 500 ] // HTTP status code
+            );
+        }
+
+        // Return success response with the new digest ID
+        return new WP_REST_Response( [
+            'success' => true,
+            'message' => __( 'Digest draft created successfully.', 'asap-digest-core' ),
+            'data' => [ 'digest_id' => $new_digest_id ]
+        ], 200 );
     }
 
     /**
-     * Handles adding a module to a draft digest.
+     * Handles adding a module placement to a digest.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint allows adding a content module to a specific draft digest.
+     * It records the placement details in the database.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the target draft digest. (Required)
+     *     @type int $module_cpt_id The ID of the module CPT to add. (Required)
+     *     @type int $grid_x The x-coordinate on the grid. (Optional, default 0)
+     *     @type int $grid_y The y-coordinate on the grid. (Optional, default 0)
+     *     @type int $grid_width The width on the grid. (Optional, default 1)
+     *     @type int $grid_height The height on the grid. (Optional, default 1)
+     *     @type int $order_in_grid The order within the grid cell. (Optional, default 0)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (containing new placement ID), WP_Error on failure.
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function add_module_to_digest( $request ) {
+        // Extract data from request
         $digest_id = (int) $request['digest_id'];
         $module_cpt_id = (int) $request['module_cpt_id'];
 
-        // Optional placement data
-        $grid_x = isset( $request['grid_x'] ) ? (int) $request['grid_x'] : 0;
-        $grid_y = isset( $request['grid_y'] ) ? (int) $request['grid_y'] : 0;
-        $grid_width = isset( $request['grid_width'] ) ? (int) $request['grid_width'] : 1; // Default width
-        $grid_height = isset( $request['grid_height'] ) ? (int) $request['grid_height'] : 1; // Default height
-        $order_in_grid = isset( $request['order_in_grid'] ) ? (int) $request['order_in_grid'] : 0;
+        // Extract optional placement data
+        $grid_x = isset( $request['grid_x'] ) ? (int) $request['grid_x'] : 0; // Default to 0
+        $grid_y = isset( $request['grid_y'] ) ? (int) $request['grid_y'] : 0; // Default to 0
+        $grid_width = isset( $request['grid_width'] ) && is_numeric( $request['grid_width'] ) && $request['grid_width'] > 0 ? (int) $request['grid_width'] : 1; // Default to 1, ensure positive
+        $grid_height = isset( $request['grid_height'] ) && is_numeric( $request['grid_height'] ) && $request['grid_height'] > 0 ? (int) $request['grid_height'] : 1; // Default to 1, ensure positive
+        $order_in_grid = isset( $request['order_in_grid'] ) ? (int) $request['order_in_grid'] : 0; // Default to 0
 
-        // TODO: Implement logic to add a new entry to wp_asap_digest_module_placements
-        // - Validate that the digest_id exists and is in 'draft' status
-        // - Validate that the module_cpt_id exists (e.g., is a valid CPT entry)
-        // - Potentially trigger content ingestion/AI processing if the module is new (refer to Bridge plan)
-        // - Call a method in ASAP_Digest_Database to insert the new module placement record
-        // Return the newly created placement ID
-
-         $new_placement_id = 0; // Replace with actual new placement ID from DB insertion
-         if ( $new_placement_id ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Module added to digest.',
-                'placement_id' => $new_placement_id,
-            ], 201 );
-        } else {
-             // TODO: Validate that the digest_id exists and is in 'draft' status
-             // TODO: Validate that the module_cpt_id exists (e.g., is a valid CPT entry)
-             // TODO: Potentially trigger content ingestion/AI processing if the module is new (refer to Bridge plan)
-
-             $data = [
-                 'digest_id'     => $digest_id,
-                 'module_cpt_id' => $module_cpt_id,
-                 'grid_x'        => $grid_x,
-                 'grid_y'        => $grid_y,
-                 'grid_width'    => $grid_width,
-                 'grid_height'   => $grid_height,
-                 'order_in_grid' => $order_in_grid,
-             ];
-
-             // Assuming ASAP_Digest_Database has an insert_module_placement method
-             $new_placement_id = $this->database->insert_module_placement( $data );
-
-             if ( $new_placement_id ) {
-                 return new WP_REST_Response( [
-                    'success' => true,
-                    'message' => 'Module added to digest.',
-                    'placement_id' => $new_placement_id,
-                ], 201 );
-             } else {
-                 // TODO: Log the database insertion error using ErrorLogger
-                 return new WP_Error( 'add_module_failed', 'Could not add module to digest due to a database error.', ['status' => 500] );
-             }
+        // Validate required input data
+        if ( empty( $digest_id ) || empty( $module_cpt_id ) ) {
+            return new WP_Error(
+                'asap_digest_error', // Error code
+                __( 'Digest ID and Module CPT ID are required.', 'asap-digest-core' ), // Error message
+                [ 'status' => 400 ] // HTTP status code
+            );
         }
+
+        // Prepare data for insertion
+        $data = array(
+            'digest_id'     => $digest_id,
+            'module_cpt_id' => $module_cpt_id,
+            'grid_x'        => $grid_x,
+            'grid_y'        => $grid_y,
+            'grid_width'    => $grid_width,
+            'grid_height'   => $grid_height,
+            'order_in_grid' => $order_in_grid,
+        );
+
+        // Use the database handler to insert the module placement
+        // Assuming ASAP_Digest_Database has a method like insert_module_placement
+        $new_placement_id = $this->database->insert_module_placement( $data );
+
+        if ( is_wp_error( $new_placement_id ) ) {
+            // Handle database insertion error
+             return new WP_Error(
+                'asap_digest_db_error', // Error code
+                __( 'Failed to add module placement to database.', 'asap-digest-core' ), // Error message
+                [ 'status' => 500 ] // HTTP status code
+            );
+        }
+
+        if ( ! $new_placement_id ) {
+             // Handle case where insertion failed but didn't return WP_Error
+             return new WP_Error(
+                'asap_digest_insert_failed', // Error code
+                __( 'Module placement creation failed.', 'asap-digest-core' ), // Error message
+                [ 'status' => 500 ] // HTTP status code
+            );
+        }
+
+        // Return success response with the new placement ID
+        return new WP_REST_Response( [
+            'success' => true,
+            'message' => __( 'Module placement added successfully.', 'asap-digest-core' ),
+            'data' => [ 'placement_id' => $new_placement_id ]
+        ], 200 );
     }
 
     /**
      * Handles updating the placement details of a module in a digest.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint allows updating the grid position, size, and order
+     * of an existing module placement within a draft digest.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the digest containing the placement. (Required, from URL)
+     *     @type int $placement_id The ID of the module placement to update. (Required, from URL)
+     *     @type int $grid_x The new x-coordinate. (Optional)
+     *     @type int $grid_y The new y-coordinate. (Optional)
+     *     @type int $grid_width The new width. (Optional, must be > 0)
+     *     @type int $grid_height The new height. (Optional, must be > 0)
+     *     @type int $order_in_grid The new order within the grid cell. (Optional)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with updated count), WP_Error on failure.
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function update_module_placement( $request ) {
         $digest_id = (int) $request['digest_id'];
@@ -366,201 +463,196 @@ class REST_Digest_Builder extends REST_Base {
         if ( isset( $request['grid_height'] ) ) $update_data['grid_height'] = (int) $request['grid_height'];
         if ( isset( $request['order_in_grid'] ) ) $update_data['order_in_grid'] = (int) $request['order_in_grid'];
 
-        // TODO: Implement logic to update an entry in wp_asap_digest_module_placements
-        // - Validate that the digest_id and placement_id exist
-        // - Ensure the digest is in 'draft' status
-        // - Call a method in ASAP_Digest_Database to update the placement record
-
-         $updated = false; // Replace with actual result of update operation
-         if ( $updated ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Module placement updated.',
-            ], 200 );
-        } else {
-             // Consider more specific error handling (e.g., placement not found, digest not draft)
-             return new WP_Error( 'update_placement_failed', 'Could not update module placement.', ['status' => 500] );
-        }
-
-        // TODO: Validate that the digest_id and placement_id exist and belong to the user
-        // TODO: Ensure the digest is in 'draft' status
-
         // Ensure there is data to update
         if ( empty( $update_data ) ) {
              return new WP_Error( 'no_data_to_update', 'No valid placement data provided for update.', ['status' => 400] );
         }
 
-        // Assuming ASAP_Digest_Database has an update_module_placement method
-        // This method should handle validation (e.g., checking digest status internally)
-        $updated = $this->database->update_module_placement( $placement_id, $digest_id, $update_data );
+        // Get current user ID for ownership validation
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
+        }
 
-        if ( $updated !== false ) { // Check for false specifically, as 0 could mean no rows affected but not an error
+        // Assuming ASAP_Digest_Database has an update_module_placement method
+        // This method should handle validation (e.g., checking digest status internally
+        // and ownership based on the provided user ID).
+        $updated = $this->database->update_module_placement( $placement_id, $digest_id, $current_user_id, $update_data );
+
+        if ( $updated !== false && $updated >= 0 ) { // Check for false specifically, as 0 could mean no rows affected but not an error
              return new WP_REST_Response( [
                 'success' => true,
                 'message' => 'Module placement updated.',
                 'updated_count' => $updated // $wpdb->update returns number of rows affected or false
             ], 200 );
         } else {
-             // TODO: Log the database update error using ErrorLogger ($wpdb->last_error)
-             // Consider more specific error handling (e.g., placement not found, digest not draft)
-             return new WP_Error( 'update_placement_failed', 'Could not update module placement due to a database error or invalid parameters.', ['status' => 500] );
+             // TODO: Log the database update error using ErrorLogger ($wpdb->last_error) if $updated === false
+             // Consider more specific error handling based on the database method's return value if it indicates specific issues like not found or not draft.
+             return new WP_Error( 'update_placement_failed', 'Could not update module placement due to a database error, invalid parameters, or insufficient permissions.', ['status' => 500] );
         }
     }
 
-     /**
+    /**
      * Handles removing a module from a digest.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint allows removing a specific module placement
+     * from a draft digest.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the digest containing the placement. (Required, from URL)
+     *     @type int $placement_id The ID of the module placement to remove. (Required, from URL)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with deleted count), WP_Error on failure.
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function remove_module_from_digest( $request ) {
         $digest_id = (int) $request['digest_id'];
         $placement_id = (int) $request['placement_id'];
 
-        // TODO: Implement logic to delete an entry from wp_asap_digest_module_placements
-        // - Validate that the digest_id and placement_id exist and belong to the user
-        // - Ensure the digest is in 'draft' status
-        // - Call a method in ASAP_Digest_Database to delete the placement record
-
-         $deleted = false; // Replace with actual result of delete operation
-         if ( $deleted ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Module removed from digest.',
-            ], 200 );
-        } else {
-             // Consider more specific error handling (e.g., placement not found, digest not draft)
-             return new WP_Error( 'remove_module_failed', 'Could not remove module from digest.', ['status' => 500] );
+        // Get current user ID for ownership validation
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
 
-        // TODO: Validate that the digest_id and placement_id exist and belong to the user
-        // TODO: Ensure the digest is in 'draft' status
-
         // Assuming ASAP_Digest_Database has a delete_module_placement method
-        // This method should handle validation (e.g., checking digest status internally)
-        $deleted = $this->database->delete_module_placement( $placement_id, $digest_id );
+        // This method should handle validation (e.g., checking digest status internally
+        // and ownership based on the provided user ID).
+        $deleted = $this->database->delete_module_placement( $placement_id, $digest_id, $current_user_id );
 
-        if ( $deleted !== false ) { // Check for false specifically
+        if ( $deleted !== false && $deleted >= 0 ) { // Check for false specifically
              return new WP_REST_Response( [
                 'success' => true,
                 'message' => 'Module removed from digest.',
                 'deleted_count' => $deleted // $wpdb->delete returns number of rows affected or false
             ], 200 );
         } else {
-             // TODO: Log the database deletion error using ErrorLogger ($wpdb->last_error)
-             // Consider more specific error handling (e.g., placement not found, digest not draft)
-             return new WP_Error( 'remove_module_failed', 'Could not remove module from digest due to a database error or invalid parameters.', ['status' => 500] );
+             // TODO: Log the database deletion error using ErrorLogger ($wpdb->last_error) if $deleted === false
+             // Consider more specific error handling based on the database method's return value if it indicates specific issues like not found or not draft.
+             return new WP_Error( 'remove_module_failed', 'Could not remove module from digest due to a database error, invalid parameters, or insufficient permissions.', ['status' => 500] );
         }
     }
 
     /**
      * Handles retrieving a specific digest with its modules.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint fetches a specific digest and all of its associated
+     * module placements, including relevant content details.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the digest to retrieve. (Required, from URL)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with digest data),
+     *     WP_Error on failure (e.g., not found, permissions).
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function get_digest( $request ) {
         $digest_id = (int) $request['digest_id'];
 
-        // TODO: Implement logic to retrieve a digest and its module placements
-        // - Fetch the digest record from wp_asap_digests
-        // - Fetch all associated module placement records from wp_asap_digest_module_placements
-        // - Join with wp_posts or wp_asap_ingested_content/wp_asap_ai_processed_content to get module content details
-        // - Structure the response to include digest details and an array of modules with placement info and content previews
-        // - Ensure user can only retrieve their own digests unless they have higher permissions
+        // Get current user ID for ownership validation
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
+        }
 
-        $digest_data = null; // Replace with fetched digest data
+        // Assuming ASAP_Digest_Database has a get_digest_with_placements method
+        // This method should handle fetching the digest and its related module placements.
+        // It might also join with other tables to get module details (e.g., title, type).
+        // It should also handle ownership validation based on the provided user ID.
+        $digest_data = $this->database->get_digest_with_placements( $digest_id, $current_user_id );
+
         if ( $digest_data ) {
-             return new WP_REST_Response( $digest_data, 200 );
+            // TODO: Potentially format the response data structure further if needed by the frontend
+            return new WP_REST_Response( [
+                 'success' => true,
+                 'message' => 'Digest fetched successfully.',
+                 'data' => $digest_data
+             ], 200 );
         } else {
-             // TODO: Ensure user can only retrieve their own digests unless they have higher permissions
-
-             // Assuming ASAP_Digest_Database has a get_digest_with_placements method
-             // This method should handle fetching the digest and its related module placements.
-             // It might also join with other tables to get module details (e.g., title, type).
-             $digest_data = $this->database->get_digest_with_placements( $digest_id );
-
-             if ( $digest_data ) {
-                 // TODO: Potentially format the response data structure further if needed
-                 return new WP_REST_Response( $digest_data, 200 );
-             } else {
-                 // TODO: Log the error if needed (e.g., digest_id doesn't exist or database error)
-                 return new WP_Error( 'digest_not_found', 'Digest not found.', ['status' => 404] );
-             }
+             // TODO: Log the error if needed (e.g., database error) if $digest_data === false or null
+             // The database method should return false or null if not found or no permissions.
+             return new WP_Error( 'digest_not_found_or_no_permissions', 'Digest not found or you do not have permissions to view it.', ['status' => 404] );
         }
     }
 
-     /**
+    /**
      * Handles listing digests for a specific user.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint fetches a list of digests created by a specific user,
+     * optionally filtered by status.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $user_id The ID of the user whose digests to retrieve. (Required, from URL)
+     *     @type string $status Optional. Filter digests by status (e.g., 'draft', 'published', 'archived').
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with list of digests),
+     *     WP_Error on failure (e.g., permissions).
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function get_users_digests( $request ) {
         $user_id = (int) $request['user_id'];
         $status = isset( $request['status'] ) ? sanitize_text_field( $request['status'] ) : null;
 
-        // TODO: Implement logic to fetch a list of digests for the user
-        // - Query wp_asap_digests table filtered by user_id
-        // - Optionally filter by status if provided
-        // - Return a list of digest summaries (e.g., ID, creation date, status, layout ID, perhaps number of modules)
-        // - Ensure user can only list their own digests unless they have higher permissions
-
-        $digests_list = []; // Replace with fetched list of digests
-        if ( ! empty( $digests_list ) || ( isset( $request['status'] ) && $status === 'draft' ) ) { // Return empty list if querying for drafts and none exist
-             return new WP_REST_Response( $digests_list, 200 );
-        } else if ( isset( $request['status'] ) && $status !== 'draft' ) {
-             return new WP_Error( 'no_digests_found', 'No published or archived digests found for this user.', ['status' => 404] );
-        } else {
-             // Handle case where no digests (of any status) are found
-              return new WP_REST_Response( [], 200 );
+        // Get current user ID and ensure it matches the requested user_id for security
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
 
-        // TODO: Ensure user can only list their own digests unless they have higher permissions
-        // TODO: Add validation for user_id (e.g., does the user exist?)
+        // Ensure the requested user ID matches the authenticated user ID, unless user has admin capabilities
+        // TODO: Implement capability check for administrators to view other users' digests
+        if ( $current_user_id !== $user_id /* && ! current_user_can( 'manage_options' ) */ ) {
+             return new WP_Error( 'asap_digest_permission_denied', 'You do not have permission to view digests for this user.', ['status' => 403] );
+        }
 
         // Fetch digests from the database
         // Assuming get_user_digests method in ASAP_Digest_Database handles optional status filtering
         $digests_list = $this->database->get_user_digests( $user_id, $status );
 
         if ( ! empty( $digests_list ) ) {
-             return new WP_REST_Response( $digests_list, 200 );
+             return new WP_REST_Response( [
+                'success' => true,
+                'message' => 'User digests fetched successfully.',
+                'data' => $digests_list
+             ], 200 );
         } else {
              // Return an empty array if no digests are found, consistent with REST API best practices for collections
-             return new WP_REST_Response( [], 200 );
+             return new WP_REST_Response( [
+                 'success' => true,
+                 'message' => 'No digests found for this user with the specified status.',
+                 'data' => []
+              ], 200 );
         }
     }
 
     /**
      * Handles publishing a draft digest.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint changes the status of a draft digest to 'published'.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the draft digest to publish. (Required, from URL)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with success message),
+     *     WP_Error on failure (e.g., not found, not draft, permissions, database error).
+     *
+     * @created 05.23.25 | 06:23 PM PDT
      */
     public function publish_digest( $request ) {
          $digest_id = (int) $request['digest_id'];
 
-        // TODO: Implement logic to change digest status from 'draft' to 'published'
-        // - Validate that the digest_id exists and is in 'draft' status and belongs to the user
-        // - Update the status column in wp_asap_digests
-
-        $published = false; // Replace with actual result of update operation
-        if ( $published ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Digest published.',
-            ], 200 );
-        } else {
-             // Consider more specific error handling (e.g., digest not draft, not found)
-             return new WP_Error( 'publish_failed', 'Could not publish digest.', ['status' => 500] );
+        // Get current user ID for ownership validation
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
 
-        // TODO: Validate that the digest_id exists and belongs to the user
-        // TODO: Ensure the digest is in 'draft' status
-
         // Assuming ASAP_Digest_Database has an update_digest_status method
-        // This method should handle validation (e.g., checking current status internally)
-        $updated = $this->database->update_digest_status( $digest_id, 'published' );
+        // This method should handle validation (e.g., checking current status internally and ownership).
+        $updated = $this->database->update_digest_status( $digest_id, 'published', $current_user_id );
 
         if ( $updated !== false ) { // Check for false specifically
              return new WP_REST_Response( [
@@ -568,101 +660,134 @@ class REST_Digest_Builder extends REST_Base {
                 'message' => 'Digest published successfully.',
             ], 200 );
         } else {
-             // TODO: Log the database update error using ErrorLogger ($wpdb->last_error)
-             // Consider more specific error handling (e.g., digest not draft, not found, no rows affected)
-             return new WP_Error( 'publish_failed', 'Could not publish digest due to a database error or invalid state.', ['status' => 500] );
+             // TODO: Log the database update error using ErrorLogger ($wpdb->last_error) if the database method returns false due to DB error.
+             // Consider more specific error handling based on the database method's return value if it indicates specific issues (e.g., digest not draft, not found, no rows affected).
+             return new WP_Error( 'publish_failed', 'Could not publish digest due to a database error, invalid ID, or invalid state (must be draft). ', ['status' => 500] );
         }
     }
 
      /**
      * Handles deleting a digest.
      *
-     * @param WP_REST_Request $request Full details about the request.
-     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     * This endpoint deletes a digest and all its associated module placements.
+     * The database schema includes ON DELETE CASCADE for module placements,
+     * so deleting the digest automatically deletes associated placements.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $digest_id The ID of the digest to delete. (Required, from URL)
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with deletion confirmation),
+     *     WP_Error on failure (e.g., not found, permissions, database error).
+     *
+     * @created 12.10.24 | 06:30 PM PDT
      */
     public function delete_digest( $request ) {
          $digest_id = (int) $request['digest_id'];
 
-        // TODO: Implement logic to delete a digest
-        // - Validate that the digest_id exists and belongs to the user
-        // - Delete the record from wp_asap_digests (module placements should cascade delete)
-
-        $deleted = false; // Replace with actual result of delete operation
-        if ( $deleted ) {
-             return new WP_REST_Response( [
-                'success' => true,
-                'message' => 'Digest deleted.',
-            ], 200 );
-        } else {
-             return new WP_Error( 'delete_failed', 'Could not delete digest.', ['status' => 500] );
+        // Get current user ID for ownership validation
+        $current_user_id = get_current_user_id();
+        if ( ! $current_user_id ) {
+             return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
 
-        // TODO: Validate that the digest_id exists and belongs to the user
-
         // Assuming ASAP_Digest_Database has a delete_digest_by_id method
-        // This method should handle deleting the digest record.
+        // This method should handle ownership validation and deleting the digest record.
         // Note: The database schema includes ON DELETE CASCADE for module placements,
         // so deleting the digest should automatically delete associated placements.
-        $deleted = $this->database->delete_digest_by_id( $digest_id );
+        $deleted = $this->database->delete_digest_by_id( $digest_id, $current_user_id );
 
-        if ( $deleted !== false ) { // Check for false specifically
+        if ( $deleted !== false && $deleted > 0 ) { // Check for false specifically and ensure rows were affected
              return new WP_REST_Response( [
                 'success' => true,
                 'message' => 'Digest deleted successfully.',
                 'deleted_count' => $deleted // $wpdb->delete returns number of rows affected or false
             ], 200 );
+        } else if ( $deleted === 0 ) {
+             // No rows affected - digest not found or user doesn't own it
+             return new WP_Error( 'digest_not_found_or_no_permissions', 'Digest not found or you do not have permission to delete it.', ['status' => 404] );
         } else {
-             // TODO: Log the database deletion error using ErrorLogger ($wpdb->last_error)
-             // Consider more specific error handling (e.g., digest not found, database error)
-             return new WP_Error( 'delete_failed', 'Could not delete digest due to a database error or invalid ID.', ['status' => 500] );
+             // Database error occurred
+             return new WP_Error( 'delete_failed', 'Could not delete digest due to a database error.', ['status' => 500] );
         }
     }
 
     /**
-     * Checks if a given request has permission to get items.
+     * Check permissions for fetching items (digest lists).
      *
      * @param WP_REST_Request $request Full details about the request.
-     * @return bool|WP_Error True if permissions are granted, WP_Error otherwise.
+     * @return bool|WP_Error Whether the current user has permissions to fetch items.
      */
     public function get_items_permissions_check( $request ) {
-        // TODO: Implement permission checks. E.g., is the user logged in? Can they access digests for the requested user_id?
-        // For now, a placeholder:
-         return current_user_can( 'read' ); // Or a more specific capability
+        // Require authentication for fetching digest lists
+        if ( ! is_user_logged_in() ) {
+            return new WP_Error( 'asap_digest_auth_required', 'Authentication required to fetch digests.', ['status' => 401] );
+        }
+
+        // For user-specific digest lists, check if user can view the requested user's digests
+        if ( isset( $request['user_id'] ) ) {
+            $requested_user_id = (int) $request['user_id'];
+            $current_user_id = get_current_user_id();
+            
+            // Users can view their own digests, or admins can view any user's digests
+            if ( $current_user_id !== $requested_user_id && ! current_user_can( 'manage_options' ) ) {
+                return new WP_Error( 'asap_digest_permission_denied', 'You do not have permission to view digests for this user.', ['status' => 403] );
+            }
+        }
+
+        return true;
     }
 
-     /**
-     * Checks if a given request has permission to get a single item.
+    /**
+     * Check permissions for fetching a single item (individual digest).
      *
      * @param WP_REST_Request $request Full details about the request.
-     * @return bool|WP_Error True if permissions are granted, WP_Error otherwise.
+     * @return bool|WP_Error Whether the current user has permissions to fetch the item.
      */
     public function get_item_permissions_check( $request ) {
-        // TODO: Implement permission checks. E.g., is the user logged in? Is this their digest?
-         return current_user_can( 'read' ); // Or a more specific capability
+        // Require authentication for fetching individual digests
+        if ( ! is_user_logged_in() ) {
+            return new WP_Error( 'asap_digest_auth_required', 'Authentication required to fetch digest.', ['status' => 401] );
+        }
+
+        // Additional ownership validation will be handled in the endpoint method itself
+        // since we need to query the database to check digest ownership
+        return true;
     }
 
-     /**
-     * Checks if a given request has permission to update an item.
+    /**
+     * Check permissions for updating items (digest operations).
      *
      * @param WP_REST_Request $request Full details about the request.
-     * @return bool|WP_Error True if permissions are granted, WP_Error otherwise.
+     * @return bool|WP_Error Whether the current user has permissions to update items.
      */
     public function update_item_permissions_check( $request ) {
-        // TODO: Implement permission checks. E.g., is the user logged in? Can they edit this digest?
-         return current_user_can( 'edit_posts' ); // Or a more specific capability
+        // Require authentication for all digest update operations
+        if ( ! is_user_logged_in() ) {
+            return new WP_Error( 'asap_digest_auth_required', 'Authentication required to update digests.', ['status' => 401] );
+        }
+
+        // Additional ownership validation will be handled in the endpoint methods themselves
+        // since we need to query the database to check digest ownership
+        return true;
     }
 
-     /**
-     * Checks if a given request has permission to delete an item.
+    /**
+     * Check permissions for deleting items (digest deletion).
      *
      * @param WP_REST_Request $request Full details about the request.
-     * @return bool|WP_Error True if permissions are granted, WP_Error otherwise.
+     * @return bool|WP_Error Whether the current user has permissions to delete items.
      */
     public function delete_item_permissions_check( $request ) {
-        // TODO: Implement permission checks. E.g., is the user logged in? Can they delete this digest?
-         return current_user_can( 'delete_posts' ); // Or a more specific capability
+        // Require authentication for digest deletion
+        if ( ! is_user_logged_in() ) {
+            return new WP_Error( 'asap_digest_auth_required', 'Authentication required to delete digests.', ['status' => 401] );
+        }
+
+        // Additional ownership validation will be handled in the delete_digest method itself
+        // since we need to query the database to check digest ownership
+        return true;
     }
 }
 
-// Instantiate the controller to register the routes
-new REST_Digest_Builder();
+// Note: This controller is now instantiated and registered in the main core class
+// See: wp-content/plugins/asapdigest-core/includes/class-core.php -> register_rest_routes()

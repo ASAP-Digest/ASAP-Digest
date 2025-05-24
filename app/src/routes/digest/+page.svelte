@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { Calendar, Clock } from '$lib/utils/lucide-compat.js';
+  import { Calendar, Clock, Plus } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   // @ts-ignore - Svelte component import
   import DigestLayoutSelector from '$lib/components/digest/DigestLayoutSelector.svelte';
@@ -8,8 +8,8 @@
   import { useSession } from '$lib/auth-client';
   import { error } from '@sveltejs/kit';
   import { goto } from '$app/navigation';
-
-  /** @typedef {Object} Digest
+  
+  /** @typedef {Object} Digest 
    * @property {string} id - Digest ID
    * @property {string} title - Digest title
    * @property {string} date - Publication date
@@ -17,7 +17,7 @@
    * @property {string} category - Digest category
    * @property {string} description - Digest description
    */
-
+  
   /** @typedef {Object} UserDigest
    * @property {number} id - Digest ID
    * @property {number} user_id - User ID
@@ -43,18 +43,18 @@
 
   // Get session data using Better Auth
   const { data: session } = useSession();
-
+  
   // Make a copy of the server data for local use
   let recentDigests = $state(data.digests.slice(0, 4));
   let trendingDigests = $state(data.digests.slice(4));
 
   let myDigests = $state(data.userDigests);
   
-   /**
-    * Format date to a more readable format
-    * @param {string} dateString - ISO date string
-    * @returns {string} - Formatted date
-    */
+  /**
+   * Format date to a more readable format
+   * @param {string} dateString - ISO date string
+   * @returns {string} - Formatted date
+   */
   function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -174,9 +174,20 @@
     </div>
   </section>
 
-  <div class="new-digest-section">
-    <h2>Create New Digest</h2>
-    <DigestLayoutSelector />
+  <div class="new-digest-section mb-8">
+    <h2 class="text-xl font-semibold mb-4">Create New Digest</h2>
+    <div class="flex gap-4">
+      <a href="/digest/create" class="px-6 py-3 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-lg hover:bg-[hsl(var(--primary)/0.9)] transition-colors font-medium flex items-center gap-2">
+        <Icon icon={Plus} size={20} />
+        Create New Digest
+      </a>
+      <a href="/digest/test" class="px-4 py-2 bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] rounded hover:bg-[hsl(var(--secondary)/0.9)] transition-colors">
+        Test API
+      </a>
+    </div>
+    <p class="text-sm text-[hsl(var(--muted-foreground))] mt-2">
+      Start with content selection or choose from layout templates
+    </p>
   </div>
 
   <section class="mb-10">

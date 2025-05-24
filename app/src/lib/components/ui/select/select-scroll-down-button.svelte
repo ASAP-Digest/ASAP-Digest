@@ -7,10 +7,10 @@
 	let { ref = $bindable(null), class: className, ...restProps } = $props();
 </script>
 
-<SelectPrimitive.ScrollDownButton
-	bind:ref
+<button
+	bind:this={ref}
 	class={cn("flex cursor-default items-center justify-center py-1", className)}
 	{...restProps}
 >
 	<Icon icon={ChevronDown} class="size-4" />
-</SelectPrimitive.ScrollDownButton>
+</button>

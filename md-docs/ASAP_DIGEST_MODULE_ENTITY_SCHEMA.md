@@ -1,4 +1,6 @@
 
+> **📝 NOTE:** This document describes the module entity design using WordPress Custom Post Types (CPTs). This design is **still applicable** as modules continue to use the WordPress CPT system, while digests now use custom database tables. See `CURRENT_DATABASE_IMPLEMENTATION.md` for the complete current architecture.
+
 Okay, based on our conversation and the functionalities outlined in the project (especially from the roadmap and your focus on a versatile "Swiss Army knife" platform), here's a comprehensive schema for the "Module" entity.
 
 We'll use a single Custom Post Type (CPT) named `asap_module` and a meta field `_asap_module_type` to differentiate between various kinds of modules.
