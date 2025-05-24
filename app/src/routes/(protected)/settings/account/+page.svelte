@@ -19,6 +19,7 @@
   import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '$lib/components/ui/card';
   import { user as userStore } from '$lib/utils/auth-persistence';
   import { getCSRFToken } from '$lib/auth-client.js';
+  import { getUserData } from '$lib/stores/user.js';
 
   /**
    * @typedef {Object} PageData
@@ -29,28 +30,12 @@
   /** @type {PageData} */
   let { data } = $props();
   
-  // Create reactive derived state for user data to ensure updates during navigation
-  let user = $derived(data?.user || null);
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(data.user));
   
-  // Initialize state variables
-  let displayName = $state('');
-  let email = $state('');
-  
-  // Set initial values and respond to user changes
-  $effect(() => {
-    if (user) {
-      displayName = user.displayName || '';
-      email = user.email || '';
-    }
-  });
-  
-  // Also listen to userStore directly for local updates
-  $effect(() => {
-    if ($userStore) {
-      displayName = $userStore.displayName || displayName;
-      email = $userStore.email || email;
-    }
-  });
+  // Initialize form fields with user data
+  let displayName = $state(userData.displayName || '');
+  let email = $state(userData.email || '');
   
   let isSaving = $state(false);
   let errorMessage = $state('');
@@ -70,7 +55,7 @@
     try {
       // Prepare the update data
       const updateData = {
-        id: data.user.id,
+        id: userData.id,
         displayName: formData.displayName,
         email: formData.email,
         preferences: formData.preferences || {},
@@ -113,6 +98,29 @@
       console.error('Error saving profile:', error);
     } finally {
       isSaving = false;
+    }
+  }
+
+  // Form submission
+  async function handleSubmit() {
+    try {
+      const response = await fetch('/api/user/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: userData.id,
+          displayName,
+          email
+        })
+      });
+
+      if (response.ok) {
+        toasts.show('Account settings updated successfully', 'success');
+      } else {
+        throw new Error('Failed to update account settings');
+      }
+    } catch (error) {
+      toasts.show('Failed to update account settings', 'error');
     }
   }
 </script>
@@ -169,10 +177,10 @@
       </CardHeader>
       <CardContent>
         <div class="text-sm">
-          {#if user && user.subscription}
-            <p>Current plan: <strong>{user.subscription.name}</strong></p>
-            <p>Status: <span class="text-green-600">Active</span></p>
-            <p>Next billing date: {user.subscription.nextBillingDate || 'N/A'}</p>
+          {#if userData.subscription}
+            <p>Current plan: <strong>{userData.subscription.name}</strong></p>
+            <p>Status: {userData.subscription.status}</p>
+            <p>Next billing date: {userData.subscription.nextBillingDate || 'N/A'}</p>
           {:else}
             <p>You do not have an active subscription.</p>
           {/if}

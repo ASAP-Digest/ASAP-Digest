@@ -24,6 +24,7 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
 /**
  * @typedef {Object} AuthDataMetadata
  * @property {string[]} [roles]
+ * @property {Object} [preferences] - User preferences (can be nested in metadata)
  * // Add other potential metadata fields here
  */
 
@@ -34,7 +35,8 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
  * @property {string} [displayName] - User display name
  * @property {string} [avatarUrl] - User avatar URL
  * @property {AuthDataPlan | string} [plan] - User plan information
- * @property {AuthDataMetadata} [metadata] - Additional user metadata, including roles
+ * @property {AuthDataMetadata} [metadata] - Additional user metadata, including roles and preferences
+ * @property {Object} [preferences] - User preferences (Better Auth standard field)
  * @property {number} [lastSynced] - Timestamp of last server sync
  * @property {number} [version] - Schema version
  * @property {string[]} [roles] - Deprecated: prefer metadata.roles, but handle for backward compatibility if necessary
@@ -78,6 +80,33 @@ function syncUserStores(authDataValue, forceUpdate = false) {
         finalRolesForRootStore = undefined; 
       }
 
+      // Extract metadata following Better Auth protocols
+      /** @type {Object | undefined} */
+      let finalMetadataForRootStore;
+      if (authDataValue.metadata && typeof authDataValue.metadata === 'object' && authDataValue.metadata !== null) {
+        // Follow Better Auth metadata structure - preserve all metadata fields
+        finalMetadataForRootStore = {
+          ...authDataValue.metadata,
+          // Ensure roles are properly structured in metadata
+          roles: finalRolesForRootStore || authDataValue.metadata.roles || []
+        };
+      } else {
+        // Create minimal metadata structure if none exists
+        finalMetadataForRootStore = {
+          roles: finalRolesForRootStore || []
+        };
+      }
+
+      // Extract preferences following Better Auth protocols
+      /** @type {Object | undefined} */
+      let finalPreferencesForRootStore;
+      if (authDataValue.preferences && typeof authDataValue.preferences === 'object' && authDataValue.preferences !== null) {
+        finalPreferencesForRootStore = authDataValue.preferences;
+      } else if (authDataValue.metadata && authDataValue.metadata.preferences) {
+        // Check if preferences are nested in metadata (some Better Auth configurations)
+        finalPreferencesForRootStore = authDataValue.metadata.preferences;
+      }
+
       userToSetInRoot = {
         id: authDataValue.id,
         email: authDataValue.email, 
@@ -86,9 +115,8 @@ function syncUserStores(authDataValue, forceUpdate = false) {
         plan: finalPlanForRootStore,
         updatedAt: typeof authDataValue.lastSynced === 'number' ? new Date(authDataValue.lastSynced).toISOString() : new Date().toISOString(),
         roles: finalRolesForRootStore,
-        // TODO: Map preferences and other metadata fields if User type requires them and they exist on AuthData
-        // preferences: authDataValue.preferences, 
-        // metadata: authDataValue.metadata, (if User type has a plain metadata object)
+        metadata: finalMetadataForRootStore,
+        ...(finalPreferencesForRootStore && { preferences: finalPreferencesForRootStore })
       };
     } else if (authDataValue === null) {
       userToSetInRoot = null;

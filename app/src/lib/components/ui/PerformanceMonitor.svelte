@@ -126,6 +126,8 @@
 
 <style>
   .performance-monitor {
+    display: none;
+    visibility: hidden;
     position: fixed;
     bottom: 5rem;
     right: 1rem;

@@ -40,6 +40,97 @@ class REST_Digest_Builder extends REST_Base {
     }
 
     /**
+     * Helper method to get WordPress user ID from Better Auth UUID
+     * @param string $ba_user_id Better Auth user ID (UUID)
+     * @return int|false WordPress user ID or false if not found
+     */
+    private function get_wp_user_id_from_ba_id($ba_user_id) {
+        global $wpdb;
+        
+        if (empty($ba_user_id)) {
+            return false;
+        }
+        
+        $table_name = $wpdb->prefix . 'ba_wp_user_map';
+        $wp_user_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT wp_user_id FROM {$table_name} WHERE ba_user_id = %s LIMIT 1",
+            $ba_user_id
+        ));
+        
+        return $wp_user_id ? (int) $wp_user_id : false;
+    }
+
+    /**
+     * Helper method to convert Better Auth UUID to WordPress user ID
+     * 
+     * @param string $ba_user_id Better Auth user ID (UUID)
+     * @return int|false WordPress user ID or false if not found
+     */
+    private function get_wp_user_id_from_ba_uuid($ba_user_id) {
+        global $wpdb;
+        
+        // Better Auth tables don't use WordPress prefix
+        $table_name = 'ba_wp_user_map';
+        $wp_user_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT wp_user_id FROM {$table_name} WHERE ba_user_id = %s",
+            $ba_user_id
+        ));
+        
+        return $wp_user_id ? (int) $wp_user_id : false;
+    }
+
+    /**
+     * Authenticate user using Better Auth session token
+     * 
+     * @param WP_REST_Request $request Full details about the request
+     * @return int|false WordPress user ID if authenticated, false otherwise
+     */
+    private function authenticate_with_better_auth($request) {
+        // Check for Authorization header with Bearer token
+        $auth_header = $request->get_header('Authorization');
+        if (!$auth_header || !preg_match('/Bearer\s+(.+)/', $auth_header, $matches)) {
+            return false;
+        }
+        
+        $session_token = $matches[1];
+        
+        // Query Better Auth sessions table to validate token
+        global $wpdb;
+        // Better Auth tables don't use WordPress prefix
+        $sessions_table = 'ba_sessions';
+        
+        $session = $wpdb->get_row($wpdb->prepare(
+            "SELECT user_id, expires_at FROM {$sessions_table} WHERE token = %s AND expires_at > NOW()",
+            $session_token
+        ));
+        
+        if (!$session) {
+            return false;
+        }
+        
+        // Convert Better Auth user ID to WordPress user ID
+        $wp_user_id = $this->get_wp_user_id_from_ba_uuid($session->user_id);
+        
+        return $wp_user_id;
+    }
+
+    /**
+     * Enhanced authentication check that supports both WordPress sessions and Better Auth tokens
+     * 
+     * @param WP_REST_Request $request Full details about the request
+     * @return int|false WordPress user ID if authenticated, false otherwise
+     */
+    private function get_authenticated_user_id($request) {
+        // First try WordPress session authentication
+        if (is_user_logged_in()) {
+            return get_current_user_id();
+        }
+        
+        // If WordPress session auth fails, try Better Auth token authentication
+        return $this->authenticate_with_better_auth($request);
+    }
+
+    /**
      * Register the REST API routes for the digest builder.
      */
     public function register_routes() {
@@ -174,7 +265,7 @@ class REST_Digest_Builder extends REST_Base {
         register_rest_route( $this->namespace, '/' . $this->rest_base . '/layouts', [
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => [ $this, 'get_layout_templates' ],
-            'permission_callback' => [ $this, 'get_items_permissions_check' ], // Implement appropriate permission checks
+            'permission_callback' => '__return_true', // Layout templates are publicly accessible
         ] );
 
         register_rest_route( $this->namespace, '/' . $this->rest_base . '/modules', [
@@ -193,6 +284,8 @@ class REST_Digest_Builder extends REST_Base {
      * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
      */
     public function get_layout_templates( $request ) {
+        error_log("ASAP_API_DEBUG: get_layout_templates called");
+        
         // Fetch layout templates from the asap_digest_template CPT
         $template_posts = get_posts([
             'post_type' => 'asap_digest_template',
@@ -201,6 +294,8 @@ class REST_Digest_Builder extends REST_Base {
             'orderby' => 'menu_order',
             'order' => 'ASC'
         ]);
+        
+        error_log("ASAP_API_DEBUG: Found " . count($template_posts) . " template posts");
 
         $layout_templates = [];
 
@@ -243,6 +338,7 @@ class REST_Digest_Builder extends REST_Base {
 
         // If no templates found, return empty array with message
         if (empty($layout_templates)) {
+            error_log("ASAP_API_DEBUG: No layout templates found, returning empty array");
             return new WP_REST_Response([
                 'success' => true,
                 'message' => 'No layout templates found. Default templates will be created.',
@@ -250,6 +346,7 @@ class REST_Digest_Builder extends REST_Base {
             ], 200);
         }
 
+        error_log("ASAP_API_DEBUG: Returning " . count($layout_templates) . " layout templates");
         return new WP_REST_Response([
             'success' => true,
             'message' => 'Layout templates fetched successfully.',
@@ -596,8 +693,8 @@ class REST_Digest_Builder extends REST_Base {
         $user_id = (int) $request['user_id'];
         $status = isset( $request['status'] ) ? sanitize_text_field( $request['status'] ) : null;
 
-        // Get current user ID and ensure it matches the requested user_id for security
-        $current_user_id = get_current_user_id();
+        // Get current user ID using enhanced authentication (supports both WordPress sessions and Better Auth tokens)
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
@@ -718,19 +815,20 @@ class REST_Digest_Builder extends REST_Base {
      * @return bool|WP_Error Whether the current user has permissions to fetch items.
      */
     public function get_items_permissions_check( $request ) {
-        // Require authentication for fetching digest lists
-        if ( ! is_user_logged_in() ) {
+        // Try both WordPress session and Better Auth token authentication
+        $user_id = $this->get_authenticated_user_id($request);
+        
+        if (!$user_id) {
             return new WP_Error( 'asap_digest_auth_required', 'Authentication required to fetch digests.', ['status' => 401] );
         }
 
         // For user-specific digest lists, check if user can view the requested user's digests
         if ( isset( $request['user_id'] ) ) {
             $requested_user_id = (int) $request['user_id'];
-            $current_user_id = get_current_user_id();
             
-            // Users can view their own digests, or admins can view any user's digests
-            if ( $current_user_id !== $requested_user_id && ! current_user_can( 'manage_options' ) ) {
-                return new WP_Error( 'asap_digest_permission_denied', 'You do not have permission to view digests for this user.', ['status' => 403] );
+            // Users can only access their own digests unless they're an admin
+            if ( $user_id !== $requested_user_id && ! user_can( $user_id, 'manage_options' ) ) {
+                return new WP_Error( 'asap_digest_forbidden', 'You can only access your own digests.', ['status' => 403] );
             }
         }
 
@@ -744,8 +842,10 @@ class REST_Digest_Builder extends REST_Base {
      * @return bool|WP_Error Whether the current user has permissions to fetch the item.
      */
     public function get_item_permissions_check( $request ) {
-        // Require authentication for fetching individual digests
-        if ( ! is_user_logged_in() ) {
+        // Try both WordPress session and Better Auth token authentication
+        $user_id = $this->get_authenticated_user_id($request);
+        
+        if (!$user_id) {
             return new WP_Error( 'asap_digest_auth_required', 'Authentication required to fetch digest.', ['status' => 401] );
         }
 
@@ -761,8 +861,10 @@ class REST_Digest_Builder extends REST_Base {
      * @return bool|WP_Error Whether the current user has permissions to update items.
      */
     public function update_item_permissions_check( $request ) {
-        // Require authentication for all digest update operations
-        if ( ! is_user_logged_in() ) {
+        // Try both WordPress session and Better Auth token authentication
+        $user_id = $this->get_authenticated_user_id($request);
+        
+        if (!$user_id) {
             return new WP_Error( 'asap_digest_auth_required', 'Authentication required to update digests.', ['status' => 401] );
         }
 
@@ -778,8 +880,10 @@ class REST_Digest_Builder extends REST_Base {
      * @return bool|WP_Error Whether the current user has permissions to delete items.
      */
     public function delete_item_permissions_check( $request ) {
-        // Require authentication for digest deletion
-        if ( ! is_user_logged_in() ) {
+        // Try both WordPress session and Better Auth token authentication
+        $user_id = $this->get_authenticated_user_id($request);
+        
+        if (!$user_id) {
             return new WP_Error( 'asap_digest_auth_required', 'Authentication required to delete digests.', ['status' => 401] );
         }
 

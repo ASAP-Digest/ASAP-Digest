@@ -224,9 +224,9 @@ class Active_Sessions_Controller extends REST_Base {
                     'displayName' => $user->display_name,
                     'firstName'   => get_user_meta( $user_id, 'first_name', true ),
                     'lastName'    => get_user_meta( $user_id, 'last_name', true ),
-                    'roles'       => $user->roles,
                     'avatarUrl'   => get_avatar_url( $user_id, array( 'size' => 96 ) ),
                     'metadata'    => array(
+                        'roles' => $user->roles,
                         'registered' => $user->user_registered,
                         'nicename'   => $user->user_nicename,
                     ),

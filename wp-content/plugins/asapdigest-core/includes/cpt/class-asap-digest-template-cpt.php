@@ -99,8 +99,11 @@ class ASAP_Digest_Template_CPT {
         ]);
 
         if (!empty($existing_templates)) {
+            error_log("ASAP_CORE_DEBUG: Default templates already exist. Found " . count($existing_templates) . " templates.");
             return; // Templates already exist
         }
+
+        error_log("ASAP_CORE_DEBUG: No existing templates found. Creating default templates...");
 
         // Create default templates based on the schema
         $default_templates = [
@@ -227,8 +230,40 @@ class ASAP_Digest_Template_CPT {
             if ($post_id && !is_wp_error($post_id)) {
                 error_log("ASAP_CORE_DEBUG: Created default template: {$template['name']} (ID: {$post_id})");
             } else {
-                error_log("ASAP_CORE_DEBUG: Failed to create template: {$template['name']}");
+                $error_message = is_wp_error($post_id) ? $post_id->get_error_message() : 'Unknown error';
+                error_log("ASAP_CORE_DEBUG: Failed to create template: {$template['name']} - Error: {$error_message}");
             }
         }
+        
+        error_log("ASAP_CORE_DEBUG: Finished creating default templates.");
+    }
+
+    /**
+     * Force create default templates (for debugging/manual trigger)
+     */
+    public function force_create_default_templates() {
+        error_log("ASAP_CORE_DEBUG: Force creating default templates...");
+        
+        // Delete existing default templates first
+        $existing_templates = get_posts([
+            'post_type' => 'asap_digest_template',
+            'post_status' => 'any',
+            'numberposts' => -1,
+            'meta_query' => [
+                [
+                    'key' => 'created_by_system',
+                    'value' => true,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+
+        foreach ($existing_templates as $template) {
+            wp_delete_post($template->ID, true);
+            error_log("ASAP_CORE_DEBUG: Deleted existing system template: {$template->post_title} (ID: {$template->ID})");
+        }
+
+        // Now create fresh templates
+        $this->create_default_templates();
     }
 } 

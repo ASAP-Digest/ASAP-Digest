@@ -4,10 +4,14 @@
   import { log } from '$lib/utils/log';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import { FileText, BarChart2, BookmarkIcon, Calendar, Clock, Activity } from '$lib/utils/lucide-compat.js';
-  
+  import { getUserData } from '$lib/stores/user.js';
+
   // Access the streamed data from the page store
-  $: dashboardData = $page.data.streamed?.dashboardData;
-  $: user = $page.data.user;
+  const dashboardData = $derived($page.data.streamed?.dashboardData);
+  const user = $derived($page.data.user);
+  
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData($page.data.session?.user));
   
   onMount(() => {
     log('Dashboard page mounted', 'debug');
@@ -30,7 +34,7 @@
 <!-- Welcome Section - Treat as Gridstack item -->
 <div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
   <div class="grid-stack-item-content">
-    <h1 class="text-2xl font-bold mb-6">Welcome, {$page.data.session?.user.email}!</h1>
+    <h1 class="text-2xl font-bold mb-6">Welcome, {userData.email}!</h1>
     <div class="bg-[hsl(var(--card))] p-6 rounded-lg shadow-sm mb-8">
       <p class="text-[hsl(var(--muted-foreground))]">
         This is your dashboard. Get a quick overview of your activity and access key features.

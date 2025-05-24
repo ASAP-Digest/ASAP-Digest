@@ -150,6 +150,18 @@
     }, 50);
   }
   
+  // Handle digest creation start from NewItemsSelector
+  function handleDigestStart(event) {
+    console.log('Global FAB: Digest creation started with item:', event.detail);
+    
+    // Close the selector
+    showSelector = false;
+    selectedType = '';
+    
+    // The NewItemsSelector will handle the navigation to digest creation
+    // We just need to close our modal here
+  }
+  
   // Handle when items are added through the selector
   function handleAdd(event) {
     // Dispatch both component event and global event
@@ -240,14 +252,18 @@
   {/if}
 </div>
 
-<!-- Content Selector Modal -->
+<!-- Content Selector Modal - Enhanced for Digest Creation Flow -->
 {#if showSelector}
   <NewItemsSelector 
     showFab={false}
     startOpen={true}
     initialType={selectedType}
+    mode="digest-creation"
+    singleSelect={true}
+    allowMultiple={false}
     onclose={() => { showSelector = false; selectedType = ''; }}
     onadd={handleAdd}
+    on:digestStart={handleDigestStart}
   />
 {/if}
 

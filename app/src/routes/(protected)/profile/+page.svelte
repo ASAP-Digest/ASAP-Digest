@@ -6,7 +6,7 @@
   import * as Avatar from '$lib/components/ui/avatar';
   import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '$lib/components/ui/card';
   import { CircleUser, Mail, Globe, Shield } from '$lib/utils/lucide-compat.js';
-  import { getAvatarUrl, createGravatarUrl } from '$lib/stores/user.js';
+  import { getUserData, createGravatarUrl } from '$lib/stores/user.js';
   import * as RadioGroup from '$lib/components/ui/radio-group';
   import { toasts } from '$lib/stores/toast.js';
   import { invalidateAll } from '$app/navigation';
@@ -19,21 +19,21 @@
   /** @type {import('./$types').PageData} */
   const { data } = $props();
 
-  /** 
-   * Local reactive copy of user data for form binding
-   * @type {import('app').App.User | null} 
-   */
-  let userForm = $state(data.user ? {
-    id: data.user.id,
-    email: data.user.email,
-    displayName: data.user.displayName,
-    avatarUrl: data.user.avatarUrl,
-    gravatarUrl: data.user.gravatarUrl || createGravatarUrl(data.user.email),
-    preferences: data.user.preferences || { 
-      avatarSource: 'synced' // Default to synced as primary option
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(data.user));
+  
+  // Initialize user form with helper data
+  let userForm = $state({
+    id: userData.id,
+    email: userData.email,
+    displayName: userData.displayName,
+    avatarUrl: userData.avatarUrl,
+    gravatarUrl: userData.gravatarUrl || createGravatarUrl(userData.email),
+    preferences: userData.preferences || {
+      avatarSource: 'synced'
     },
-    roles: data.user.roles || []
-  } : null);
+    roles: userData.roles || []
+  });
   
   // Original user data for comparison/reference
   const user = $derived(data.user);
@@ -147,8 +147,8 @@
   function getCurrentAvatarUrl() {
     if (!userForm) return '/images/default-avatar.svg';
     
-    // Use the getAvatarUrl function from user store
-    return getAvatarUrl(userForm);
+    // Use the getUserData function from user store
+    return getUserData(userForm).avatarUrl;
   }
 
   // Add image error handler
@@ -169,60 +169,22 @@
   let avatarLoaded = $state(false); // Track if avatar has been loaded
   let isSaving = $state(false); // Track form submission status
   
-  // Effect to initialize avatar from user data
-  $effect(() => {
-    if (data && data.user && !avatarLoaded) {
-      console.log('Initializing avatar from user data:', data.user);
-      
-      // Check user preferences
-      if (data.user.preferences?.avatar?.type) {
-        // Use the saved preference
-        avatarType = data.user.preferences.avatar.type;
-        avatarUrl = data.user.preferences.avatar.url || '';
-      } else if (data.user.avatarUrl) {
-        // If there's an avatar URL but no preference, assume it's a custom avatar
-        avatarType = 'custom';
-        avatarUrl = data.user.avatarUrl;
+  // Initialize avatar settings from user data
+  if (userData.preferences?.avatar?.type) {
+    // Custom avatar preference
+    avatarType = userData.preferences.avatar.type;
+    avatarUrl = userData.preferences.avatar.url || '';
+  } else if (userData.avatarUrl) {
+    // Synced avatar (default)
+    avatarType = 'synced';
+    avatarUrl = userData.avatarUrl;
       } else {
-        // Fall back to gravatar
+    // Gravatar fallback
         avatarType = 'gravatar';
-        avatarUrl = createGravatarUrl(data.user.email);
-      }
-      
-      console.log('Avatar initialized:', { avatarType, avatarUrl });
-      avatarLoaded = true;
-    }
-  });
-  
-  // Update avatar on type change
-  function handleAvatarTypeChange(type) {
-    console.log('Avatar type changed:', type);
-    avatarType = type;
-    
-    if (type === 'gravatar') {
-      avatarUrl = createGravatarUrl(userForm.email);
-    } else if (type === 'custom') {
-      // Keep existing custom URL if there is one
-      if (!avatarUrl || avatarUrl.includes('gravatar.com')) {
-        avatarUrl = '';
-      }
-    }
-    
-    // Update user form with new preference
-    if (userForm && userForm.preferences) {
-      userForm.preferences = {
-        ...userForm.preferences,
-        avatar: {
-          type: avatarType,
-          url: avatarUrl
-        }
-      };
-    }
-    
-    console.log('Updated avatar:', { avatarType, avatarUrl });
+    avatarUrl = createGravatarUrl(userData.email);
   }
-
-  let loading = $state(false);
+  
+  // Initialize form fields
   let full_name = $state('');
   let username = $state('');
 
@@ -410,7 +372,7 @@
       <!-- Use background-image for avatar to avoid event handler issues -->
       <div 
         class="w-24 h-24 rounded-full border-4 border-white dark:border-gray-700 shadow-md bg-cover bg-center"
-        style="background-image: url({getAvatarUrl(data.user) || '/images/default-avatar.svg'});"
+        style="background-image: url({userData.avatarUrl || '/images/default-avatar.svg'});"
       ></div>
       <div class="text-center md:text-left">
         <h1 class="text-2xl font-bold">{data.user?.displayName || 'User'}</h1>

@@ -442,7 +442,9 @@ const wordPressSessionHandle = async ({ event, resolve }) => {
                         id: sessionRow.id,
                         email: userEmail,
                         displayName: sessionRow.name || sessionRow.username || userEmail,
-                        roles: roles
+                        roles: roles,
+                        metadata: metadata || {},
+                        wp_user_id: metadata?.wp_user_id || null // Add wp_user_id directly to user object
                         // Avoid adding betterAuthId directly as it's not part of App.User type
                     };
                     

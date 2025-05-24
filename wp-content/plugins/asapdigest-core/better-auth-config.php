@@ -37,7 +37,7 @@ if (!defined('BETTER_AUTH_DB_PASSWORD')) {
 }
 
 // Include Admin UI class
-use ASAPDigest\Core\ASAP_Digest_Admin_UI;
+use ASAPDigest\Admin\ASAP_Digest_Admin_UI;
 require_once plugin_dir_path(__FILE__) . 'admin/class-admin-ui.php';
 
 /**
@@ -409,7 +409,9 @@ function asap_validate_wp_session_token($request) {
             'display_name' => $user->display_name,
             'email' => $user->user_email,
             'avatar_url' => get_avatar_url($user->ID),
-            'roles' => $user->roles,
+            'metadata' => [
+                'roles' => $user->roles, // Move roles to metadata.roles
+            ],
             'sync_status' => $sync_success ? 'synced' : 'sync_failed'
         ];
     } catch (Exception $e) {

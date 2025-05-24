@@ -1,298 +1,302 @@
 /**
- * Digest Builder API Client
- * 
- * Provides functions to interact with the WordPress REST API
- * for digest creation and management.
+ * Digest Builder API
+ * Handles all API calls for the new digest creation flow
  */
 
-const API_BASE = '/wp-json/asap/v1/digest-builder';
+import { getApiUrl } from '$lib/utils/api-config.js';
+import { getSession } from '$lib/auth-client.js';
+
+const API_BASE = getApiUrl();
 
 /**
- * Fetch available layout templates
- * @returns {Promise<Object>} Response with layout templates
+ * Get the current Better Auth session token
+ * @returns {Promise<string|null>} Session token or null if not found
  */
-export async function fetchLayoutTemplates() {
+async function getSessionToken() {
   try {
-    const response = await fetch(`${API_BASE}/layouts`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch layout templates: ${response.statusText}`);
+    const sessionData = await getSession();
+    // Better Auth handles tokens via HTTP-only cookies, so we may not have direct access
+    // Check if session data has the token in the expected structure
+    if (sessionData && typeof sessionData === 'object' && 'data' in sessionData) {
+      // @ts-ignore - Better Auth session structure may vary
+      return sessionData.data?.session?.token || null;
     }
-
-    const data = await response.json();
-    return data;
+    // If no token is directly accessible, return null and rely on credentials: 'include'
+    return null;
   } catch (error) {
-    console.error('Error fetching layout templates:', error);
-    throw error;
+    console.error('Error getting session token:', error);
+    return null;
   }
 }
 
 /**
- * Fetch available modules for digest building
- * @returns {Promise<Object>} Response with available modules
+ * Get headers for API requests including authentication
+ * @returns {Promise<Object>} Headers object
  */
-export async function fetchAvailableModules() {
+async function getApiHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  const sessionToken = await getSessionToken();
+  if (sessionToken) {
+    headers['Authorization'] = `Bearer ${sessionToken}`;
+  }
+  
+  return headers;
+}
+
+/**
+ * Fetch available layout templates
+ */
+export async function fetchLayoutTemplates() {
   try {
-    const response = await fetch(`${API_BASE}/modules`, {
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/layouts`, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getApiHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch available modules: ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
-    console.error('Error fetching available modules:', error);
-    throw error;
+    console.error('Error fetching layout templates:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
  * Create a new draft digest
- * @param {number} userId - User ID
+ * @param {number} userId - WordPress user ID
  * @param {string} layoutTemplateId - Layout template ID
- * @returns {Promise<Object>} Response with new digest ID
+ * @returns {Promise<Object>} Response object
  */
 export async function createDraftDigest(userId, layoutTemplateId) {
   try {
-    const response = await fetch(`${API_BASE}/create-draft`, {
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/create-draft`, {
       method: 'POST',
+      headers: await getApiHeaders(),
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         user_id: userId,
         layout_template_id: layoutTemplateId,
-      }),
+        status: 'draft'
+      })
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to create draft digest: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
     console.error('Error creating draft digest:', error);
-    throw error;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
  * Add a module to a digest
- * @param {number} digestId - Digest ID
- * @param {number} moduleCptId - Module CPT ID
- * @param {Object} placement - Optional placement data (grid_x, grid_y, grid_width, grid_height, order_in_grid)
- * @returns {Promise<Object>} Response with placement ID
  */
-export async function addModuleToDigest(digestId, moduleCptId, placement = {}) {
+export async function addModuleToDigest(digestId, moduleData, gridPosition) {
   try {
-    const response = await fetch(`${API_BASE}/add-module`, {
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/add-module`, {
       method: 'POST',
+      headers: await getApiHeaders(),
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         digest_id: digestId,
-        module_cpt_id: moduleCptId,
-        ...placement,
-      }),
+        module_cpt_id: moduleData.id,
+        module_type: moduleData.type,
+        grid_x: gridPosition.x,
+        grid_y: gridPosition.y,
+        grid_width: gridPosition.w,
+        grid_height: gridPosition.h,
+        module_data: {
+          title: moduleData.title,
+          excerpt: moduleData.excerpt,
+          image: moduleData.image,
+          source: moduleData.source,
+          publishedAt: moduleData.publishedAt
+        }
+      })
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to add module to digest: ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
     console.error('Error adding module to digest:', error);
-    throw error;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
- * Update module placement in a digest
- * @param {number} digestId - Digest ID
- * @param {number} placementId - Placement ID
- * @param {Object} placement - Placement data to update
- * @returns {Promise<Object>} Response with update status
- */
-export async function updateModulePlacement(digestId, placementId, placement) {
-  try {
-    const response = await fetch(`${API_BASE}/${digestId}/update-placement/${placementId}`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(placement),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update module placement: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error updating module placement:', error);
-    throw error;
-  }
-}
-
-/**
- * Remove a module from a digest
- * @param {number} digestId - Digest ID
- * @param {number} placementId - Placement ID
- * @returns {Promise<Object>} Response with removal status
- */
-export async function removeModuleFromDigest(digestId, placementId) {
-  try {
-    const response = await fetch(`${API_BASE}/${digestId}/remove-module/${placementId}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to remove module from digest: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error removing module from digest:', error);
-    throw error;
-  }
-}
-
-/**
- * Fetch a specific digest with its placements
- * @param {number} digestId - Digest ID
- * @returns {Promise<Object>} Response with digest data
+ * Fetch a specific digest with its modules
  */
 export async function fetchDigest(digestId) {
   try {
-    const response = await fetch(`${API_BASE}/${digestId}`, {
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/${digestId}`, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getApiHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch digest: ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
     console.error('Error fetching digest:', error);
-    throw error;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
  * Fetch user's digests
- * @param {number} userId - User ID
- * @param {string} status - Optional status filter ('draft', 'published', 'archived')
- * @returns {Promise<Object>} Response with user's digests
+ * @param {number} userId - WordPress user ID
+ * @param {string} status - Digest status (draft, published, etc.)
+ * @returns {Promise<Object>} Response object
  */
-export async function fetchUserDigests(userId, status = null) {
+export async function fetchUserDigests(userId, status = 'draft') {
   try {
-    const url = new URL(`${API_BASE}/user/${userId}`, window.location.origin);
-    if (status) {
-      url.searchParams.append('status', status);
-    }
-
-    const response = await fetch(url, {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/user/${userId}?${params}`, {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getApiHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch user digests: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
     console.error('Error fetching user digests:', error);
-    throw error;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
- * Publish a draft digest
- * @param {number} digestId - Digest ID
- * @returns {Promise<Object>} Response with publish status
+ * Update digest status (draft -> published, etc.)
  */
-export async function publishDigest(digestId) {
+export async function updateDigestStatus(digestId, status) {
   try {
-    const response = await fetch(`${API_BASE}/${digestId}/publish`, {
-      method: 'PUT',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    let response;
+    
+    // For now, only support publishing. Other status updates can be added later.
+    if (status === 'published') {
+      response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/${digestId}/publish`, {
+        method: 'PUT',
+        headers: await getApiHeaders(),
+        credentials: 'include'
+      });
+    } else {
+      throw new Error(`Status update to '${status}' is not yet supported`);
+    }
 
     if (!response.ok) {
-      throw new Error(`Failed to publish digest: ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
-    console.error('Error publishing digest:', error);
-    throw error;
+    console.error('Error updating digest status:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
 /**
- * Delete a digest
- * @param {number} digestId - Digest ID
- * @returns {Promise<Object>} Response with deletion status
+ * Remove a module from a digest
  */
-export async function deleteDigest(digestId) {
+export async function removeModuleFromDigest(digestId, placementId) {
   try {
-    const response = await fetch(`${API_BASE}/${digestId}`, {
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/${digestId}/remove-module/${placementId}`, {
       method: 'DELETE',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await getApiHeaders(),
+      credentials: 'include'
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete digest: ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data;
+    return {
+      success: true,
+      data: data
+    };
   } catch (error) {
-    console.error('Error deleting digest:', error);
-    throw error;
+    console.error('Error removing module from digest:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
+}
+
+/**
+ * Save digest layout changes
+ * TODO: Implement backend endpoint for layout saving
+ */
+export async function saveDigestLayout(digestId, layoutData) {
+  // Placeholder - backend endpoint not yet implemented
+  console.warn('saveDigestLayout: Backend endpoint not yet implemented');
+  return {
+    success: true,
+    data: { message: 'Layout saving not yet implemented' }
+  };
 } 

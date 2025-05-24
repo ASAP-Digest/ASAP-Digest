@@ -4,6 +4,7 @@
   import { Input } from '$lib/components/ui/input';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import { onMount } from 'svelte';
+  import { getUserData } from '$lib/stores/user.js';
   
   /**
    * @typedef {Object} HeaderProps
@@ -38,10 +39,13 @@
     }
   }
 
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(user));
+
   // Add console logging for user object and roles
   $effect(() => {
     console.log('[Header] User object in dropdown:', user);
-    console.log('[Header] user.roles:', user?.roles);
+    console.log('[Header] user.roles:', userData.roles);
   });
 </script>
 
@@ -89,9 +93,9 @@
             aria-haspopup="true"
           >
             <img
-              src={user.avatar || `/images/default-avatar.png`}
-              alt={user.displayName || "User"}
-              class="w-8 h-8 rounded-full"
+              src={userData.avatarUrl || `/images/default-avatar.png`}
+              alt={userData.displayName || "User"}
+              class="w-8 h-8 rounded-full object-cover"
               onerror={handleImageError}
             />
           </button>
@@ -101,10 +105,10 @@
             <div class="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface-1))] border border-[hsl(var(--border))] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] z-10">
               <div class="p-3 border-b border-[hsl(var(--border))]">
                 <p class="text-[var(--font-size-base)] font-[var(--font-weight-semibold)] text-[hsl(var(--text-1))]">
-                  {user.displayName || "User"}
+                  {userData.displayName || "User"}
                 </p>
                 <p class="text-[var(--font-size-sm)] text-[hsl(var(--text-2))]">
-                  {user.email}
+                  {userData.email}
                 </p>
               </div>
               
@@ -121,7 +125,7 @@
                 >
                   Settings
                 </a>
-                {#if user.roles && user.roles.includes('administrator')}
+                {#if userData.isAdmin}
                   {console.log('[Header] Rendering Analytics Dashboard menu item for administrator')}
                   <!-- Show Analytics Dashboard link for administrator users only -->
                   <a

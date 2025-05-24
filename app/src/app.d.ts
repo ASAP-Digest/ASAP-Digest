@@ -13,6 +13,7 @@ declare global {
 		syncStatus?: string;
 		sessionToken?: string;
 		updatedAt?: string; // Timestamp of last update from ba_users (ISO 8601 format)
+		wp_user_id?: number; // WordPress user ID for API calls
 		metadata?: {
 			wp_user_id?: number;
 			roles?: string[];
@@ -171,6 +172,7 @@ declare global {
 			stats?: UserStats;
 			metadata?: Record<string, any>;
 			updatedAt?: string;
+			wp_user_id?: number; // WordPress user ID for API calls
 		}
 	}
 

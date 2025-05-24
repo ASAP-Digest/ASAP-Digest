@@ -9,7 +9,7 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
   import { Settings, CreditCard, LogOut } from '$lib/utils/lucide-compat.js';
-  import { getAvatarUrl } from '$lib/stores/user.js';
+  import { getUserData } from '$lib/stores/user.js';
 
   /**
    * @typedef {Object} LayoutData
@@ -155,6 +155,9 @@
   async function handleLogout() {
     // ... existing code ...
   }
+
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(user));
 </script>
 
 {#if user}
@@ -164,22 +167,22 @@
         <Avatar.Root class="h-9 w-9">
           <Avatar.Image 
             class="" 
-            src={getAvatarUrl(user) || '/images/default-avatar.svg'} 
-            alt={user?.displayName || 'User Avatar'} 
+            src={userData.avatarUrl || '/images/default-avatar.svg'} 
+            alt={userData.displayName || 'User Avatar'} 
           />
           <Avatar.Fallback class="">
             <Icon icon={CircleUser} class="w-8 h-8 text-[hsl(var(--muted-foreground))]" color="currentColor" />
           </Avatar.Fallback>
         </Avatar.Root>
         <div class="user-details">
-          <span class="display-name">{user?.displayName || 'User'}</span>
-          <span class="email">{user?.email || ''}</span>
-          {#if user?.plan}
+          <span class="display-name">{userData.displayName || 'User'}</span>
+          <span class="email">{userData.email || ''}</span>
+          {#if userData.planName}
             <span class="plan">
-              {#if typeof user.plan === 'object' && user.plan !== null}
-                {user.plan.name || 'Free'}
-              {:else if typeof user.plan === 'string'}
-                {user.plan}
+              {#if typeof userData.plan === 'object' && userData.plan !== null}
+                {userData.plan.name || 'Free'}
+              {:else if typeof userData.plan === 'string'}
+                {userData.plan}
               {:else}
                 Free
               {/if}
@@ -195,13 +198,13 @@
         </DropdownMenu.Trigger>
         <DropdownMenu.Content class="w-56" align="end">
           <DropdownMenu.Label>
-            {user.displayName || user.email}
-            {#if user?.plan}
+            {userData.displayName || userData.email}
+            {#if userData.planName}
               <span class="block text-xs text-[hsl(var(--primary)/0.8)] mt-1">
-                {#if typeof user.plan === 'object' && user.plan !== null}
-                  {user.plan.name || 'Free Plan'}
-                {:else if typeof user.plan === 'string'}
-                  {user.plan}
+                {#if typeof userData.plan === 'object' && userData.plan !== null}
+                  {userData.plan.name || 'Free Plan'}
+                {:else if typeof userData.plan === 'string'}
+                  {userData.plan}
                 {:else}
                   Free Plan
                 {/if}

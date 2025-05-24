@@ -13,9 +13,13 @@
   import CardContent from '$lib/components/ui/card/card-content.svelte';
   import CardHeader from '$lib/components/ui/card/card-header.svelte';
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
+  import { getUserData } from '$lib/stores/user.js';
 
   // Get user session
   const { data: session } = useSession();
+
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(session?.user));
 
   let testResults = $state([]);
   let isRunning = $state(false);
@@ -46,10 +50,10 @@
       }
 
       // Test 2: Fetch User Digests
-      if (session?.user?.id) {
+      if (userData.wpUserId) {
         addResult('Fetching user digests...', null, null);
         try {
-          const userDigestsResponse = await fetchUserDigests(session.user.id);
+          const userDigestsResponse = await fetchUserDigests(userData.wpUserId);
           addResult('Fetch User Digests', true, userDigestsResponse);
         } catch (err) {
           addResult('Fetch User Digests', false, null, err.message);
@@ -58,7 +62,7 @@
         // Test 3: Create Draft Digest
         addResult('Creating draft digest...', null, null);
         try {
-          const draftResponse = await createDraftDigest(session.user.id, 'solo-focus');
+          const draftResponse = await createDraftDigest(userData.wpUserId, 'solo-focus');
           addResult('Create Draft Digest', true, draftResponse);
 
           if (draftResponse.success && draftResponse.data?.digest_id) {
@@ -125,10 +129,10 @@
     </div>
   </div>
 
-  {#if session?.user}
+  {#if userData.wpUserId}
     <div class="mb-4 p-4 bg-muted/30 rounded-lg">
       <p class="text-sm">
-        <strong>User:</strong> {session.user.email || session.user.id}
+        <strong>User:</strong> {userData.email || userData.id}
       </p>
     </div>
   {:else}

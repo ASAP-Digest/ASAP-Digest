@@ -54,7 +54,7 @@
     onSelect = undefined,         // Optional callback for selection
     initiallySelected = [],       // List of items to initially select
     // NEW: Digest creation mode props
-    mode = 'standard',           // 'standard' | 'digest-builder' | 'module-selector'
+    mode = 'standard',           // 'standard' | 'digest-builder' | 'module-selector' | 'digest-creation'
     targetPosition = null,       // Grid position for digest building (x, y, w, h)
     onModuleSelect = undefined,  // Callback for module selection in digest mode
     singleSelect = false,        // Force single selection mode
@@ -214,7 +214,7 @@
     }
     
     if (allowMultiple && !singleSelect) {
-      selectedItems.toggle(item);
+    selectedItems.toggle(item);
     } else {
       // Single select mode: clear all, then add
       selectedItems.clear();
@@ -589,7 +589,7 @@
               <span class="selector-count-text">Click a module to add to grid position</span>
             {:else if mode === 'digest-builder'}
               <!-- Digest builder mode: show selection count and add button -->
-              <span class="selector-count-text">{get(selectedItems).length} selected</span>
+            <span class="selector-count-text">{get(selectedItems).length} selected</span>
               <Button 
                 variant="default" 
                 onclick={addSelectedItems} 
@@ -609,13 +609,13 @@
                   Start Digest
                 </Button>
               {/if}
-              <Button 
-                variant="default" 
-                onclick={addSelectedItems} 
-                disabled={get(selectedItems).length === 0 || addLoading}
-              >
-                {addLoading ? 'Adding...' : 'Add Selected'}
-              </Button>
+            <Button 
+              variant="default" 
+              onclick={addSelectedItems} 
+              disabled={get(selectedItems).length === 0 || addLoading}
+            >
+              {addLoading ? 'Adding...' : 'Add Selected'}
+            </Button>
             {/if}
           </div>
         </div>
@@ -679,13 +679,13 @@
               Select This Module
             </Button>
           {:else if mode === 'digest-builder'}
-            <Button 
-              variant={isSelected(detailItem) ? 'outline' : 'default'} 
-              onclick={() => { if (!isSelected(detailItem)) toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
-              disabled={isSelected(detailItem)}
-            >
-              {isSelected(detailItem) ? 'Added to Digest' : 'Add to Digest'}
-            </Button>
+        <Button 
+          variant={isSelected(detailItem) ? 'outline' : 'default'} 
+          onclick={() => { if (!isSelected(detailItem)) toggleItemSelection(detailItem); detailView = false; detailItem = null; }}
+          disabled={isSelected(detailItem)}
+        >
+          {isSelected(detailItem) ? 'Added to Digest' : 'Add to Digest'}
+        </Button>
           {:else}
             <Button 
               variant="outline" 

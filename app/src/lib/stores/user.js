@@ -60,6 +60,9 @@ import { browser } from '$app/environment';
  * @property {UserPlan} [plan] - Subscription plan info
  * @property {UserStats} [stats] - User analytics and progress
  * @property {Object} [metadata] - Additional metadata
+ * @property {number} [metadata.wp_user_id] - WordPress user ID for API calls
+ * @property {string[]} [metadata.roles] - User roles from metadata
+ * @property {number} [wp_user_id] - WordPress user ID for API calls (direct access)
  * @property {string} [updatedAt] - When user data was last updated
  */
 
@@ -268,11 +271,398 @@ export function clearUserData() {
   updateUserData(null);
 }
 
+/**
+ * Get the WordPress user ID from user object
+ * Checks both direct wp_user_id property and metadata.wp_user_id
+ * 
+ * @param {object} user The user object
+ * @returns {number|null} The WordPress user ID or null if not found
+ */
+export function getWordPressUserId(user) {
+  if (!user) return null;
+  
+  // Check direct property first
+  if (user.wp_user_id && typeof user.wp_user_id === 'number') {
+    return user.wp_user_id;
+  }
+  
+  // Check metadata
+  if (user.metadata?.wp_user_id && typeof user.metadata.wp_user_id === 'number') {
+    return user.metadata.wp_user_id;
+  }
+  
+  console.debug('[WordPress User ID] Not found in user object:', {
+    hasDirectProperty: !!user.wp_user_id,
+    hasMetadata: !!user.metadata?.wp_user_id,
+    userKeys: Object.keys(user)
+  });
+  
+  return null;
+}
+
+/**
+ * Get comprehensive user data with unified access to all user properties.
+ * This function normalizes user data from various sources and provides consistent access patterns.
+ * 
+ * Returns an object with getters and methods for:
+ * - Core identity: id, betterAuthId, email, wpUserId
+ * - Display info: displayName, shortDisplayName, username, firstName, lastName, fullName
+ * - Avatar & visual: avatarUrl, gravatarUrl
+ * - Roles & permissions: roles, isAdmin, isEditor, hasRole(), primaryRole
+ * - Subscription: plan, planName, isPremium
+ * - Preferences: preferences, avatarPreference, theme, isDarkMode
+ * - Statistics: stats, digestsRead, lastActive
+ * - Sync status: syncStatus, isSynced, updatedAt, lastSynced
+ * - Session: sessionToken, hasActiveSession
+ * - Utilities: metadata, rawUser, hasMetadata(), getMetadata(), isValid, isComplete
+ * - Debug: debugInfo, toJSON()
+ * 
+ * @param {object|null} user The user object from any source (Better Auth, WordPress, etc.)
+ * @returns {object} Comprehensive user data object with getters and methods
+ */
+export function getUserData(user) {
+  if (!user) {
+    return createEmptyUserHelper();
+  }
+
+  return {
+    // Core Identity
+    get id() { return user.id || user.betterAuthId || null; },
+    get betterAuthId() { return user.betterAuthId || user.id || null; },
+    get email() { return user.email || null; },
+    
+    // WordPress Integration
+    get wpUserId() { 
+      return user.wp_user_id || 
+             user.metadata?.wp_user_id || 
+             (typeof user.metadata?.wp_sync?.wp_user_id === 'number' ? user.metadata.wp_sync.wp_user_id : null);
+    },
+    
+    // Display Information
+    get displayName() { 
+      return user.displayName || 
+             user.name || 
+             user.username || 
+             (user.email ? user.email.split('@')[0] : 'User');
+    },
+    get shortDisplayName() { 
+      const name = this.displayName;
+      if (name.length > 12) {
+        return name.substring(0, 12) + '...';
+      }
+      return name;
+    },
+    get username() { return user.username || user.name || null; },
+    get firstName() { 
+      return user.firstName || 
+             user.metadata?.firstName || 
+             user.metadata?.first_name || 
+             null;
+    },
+    get lastName() { 
+      return user.lastName || 
+             user.metadata?.lastName || 
+             user.metadata?.last_name || 
+             null;
+    },
+    get fullName() {
+      const first = this.firstName;
+      const last = this.lastName;
+      if (first && last) return `${first} ${last}`;
+      if (first) return first;
+      if (last) return last;
+      return this.displayName;
+    },
+    
+    // Avatar & Visual Identity
+    get avatarUrl() { 
+      return getAvatarUrl(user);
+    },
+    get gravatarUrl() { 
+      return user.gravatarUrl || 
+             (user.email ? createGravatarUrl(user.email) : null);
+    },
+    
+    // Roles & Permissions
+    get roles() { 
+      // Priority: direct roles > metadata.roles > default
+      if (Array.isArray(user.roles) && user.roles.length > 0) {
+        return user.roles;
+      }
+      if (Array.isArray(user.metadata?.roles) && user.metadata.roles.length > 0) {
+        return user.metadata.roles;
+      }
+      return ['subscriber']; // Default role
+    },
+    get isAdmin() { 
+      return this.roles.includes('administrator') || this.roles.includes('admin');
+    },
+    get isEditor() { 
+      return this.roles.includes('editor') || this.isAdmin;
+    },
+    hasRole(role) { 
+      return this.roles.includes(role);
+    },
+    get primaryRole() {
+      const roleHierarchy = ['administrator', 'admin', 'editor', 'author', 'contributor', 'subscriber'];
+      for (const role of roleHierarchy) {
+        if (this.roles.includes(role)) return role;
+      }
+      return this.roles[0] || 'subscriber';
+    },
+    
+    // Subscription & Plan
+    get plan() { 
+      if (typeof user.plan === 'object' && user.plan?.name) {
+        return user.plan;
+      }
+      if (typeof user.plan === 'string') {
+        return { name: user.plan };
+      }
+      if (user.metadata?.plan) {
+        return typeof user.metadata.plan === 'object' ? user.metadata.plan : { name: user.metadata.plan };
+      }
+      return { name: 'Free' };
+    },
+    get planName() { 
+      return this.plan.name || 'Free';
+    },
+    get isPremium() { 
+      const premiumPlans = ['Spark', 'Pulse', 'Bolt', 'Pro', 'Premium'];
+      return premiumPlans.includes(this.planName);
+    },
+    
+    // Preferences
+    get preferences() { 
+      return user.preferences || user.metadata?.preferences || {};
+    },
+    get avatarPreference() { 
+      return this.preferences.avatarSource || 'synced';
+    },
+    get theme() { 
+      return this.preferences.display?.theme || 'light';
+    },
+    get isDarkMode() { 
+      return this.preferences.display?.darkMode || false;
+    },
+    
+    // Statistics & Usage
+    get stats() { 
+      return user.stats || user.metadata?.stats || {};
+    },
+    get digestsRead() { 
+      return this.stats.digestsRead || 0;
+    },
+    get lastActive() { 
+      return user.lastActive || 
+             user.metadata?.lastActive || 
+             user.updatedAt || 
+             null;
+    },
+    
+    // Sync & Status Information
+    get syncStatus() { 
+      return user.syncStatus || 
+             user.metadata?.syncStatus || 
+             (this.wpUserId ? 'synced' : 'pending');
+    },
+    get isSynced() { 
+      return this.syncStatus === 'synced' && !!this.wpUserId;
+    },
+    get updatedAt() { 
+      return user.updatedAt || user.metadata?.updatedAt || null;
+    },
+    get lastSynced() { 
+      return user.lastSynced || 
+             user.metadata?.lastSynced || 
+             user.metadata?.wp_sync?.synced_at || 
+             null;
+    },
+    
+    // Session Information
+    get sessionToken() { 
+      return user.sessionToken || user.metadata?.sessionToken || null;
+    },
+    get hasActiveSession() { 
+      return !!this.sessionToken;
+    },
+    
+    // Raw Data Access
+    get metadata() { 
+      return user.metadata || {};
+    },
+    get rawUser() { 
+      return user;
+    },
+    
+    // Utility Methods
+    hasMetadata(key) { 
+      return key in this.metadata;
+    },
+    getMetadata(key, defaultValue = null) { 
+      return this.metadata[key] ?? defaultValue;
+    },
+    
+    // Validation Methods
+    get isValid() { 
+      return !!(this.id && this.email);
+    },
+    get isComplete() { 
+      return !!(this.id && this.email && this.displayName && this.wpUserId);
+    },
+    
+    // Debug Information
+    get debugInfo() {
+      return {
+        id: this.id,
+        betterAuthId: this.betterAuthId,
+        wpUserId: this.wpUserId,
+        email: this.email,
+        displayName: this.displayName,
+        roles: this.roles,
+        syncStatus: this.syncStatus,
+        isSynced: this.isSynced,
+        isValid: this.isValid,
+        isComplete: this.isComplete,
+        hasMetadata: Object.keys(this.metadata).length > 0,
+        metadataKeys: Object.keys(this.metadata)
+      };
+    },
+    
+    // Serialization
+    toJSON() {
+      return {
+        id: this.id,
+        betterAuthId: this.betterAuthId,
+        email: this.email,
+        displayName: this.displayName,
+        username: this.username,
+        avatarUrl: this.avatarUrl,
+        roles: this.roles,
+        plan: this.plan,
+        preferences: this.preferences,
+        stats: this.stats,
+        wpUserId: this.wpUserId,
+        syncStatus: this.syncStatus,
+        updatedAt: this.updatedAt,
+        metadata: this.metadata
+      };
+    }
+  };
+}
+
+/**
+ * Creates an empty user helper for null/undefined users
+ * @returns {object} Empty user helper with safe defaults
+ */
+function createEmptyUserHelper() {
+  return {
+    // Core Identity
+    get id() { return null; },
+    get betterAuthId() { return null; },
+    get email() { return null; },
+    
+    // WordPress Integration
+    get wpUserId() { return null; },
+    
+    // Display Information
+    get displayName() { return 'Guest'; },
+    get shortDisplayName() { return 'Guest'; },
+    get username() { return null; },
+    get firstName() { return null; },
+    get lastName() { return null; },
+    get fullName() { return 'Guest'; },
+    
+    // Avatar & Visual Identity
+    get avatarUrl() { return '/images/default-avatar.svg'; },
+    get gravatarUrl() { return null; },
+    
+    // Roles & Permissions
+    get roles() { return []; },
+    get isAdmin() { return false; },
+    get isEditor() { return false; },
+    hasRole(role) { 
+      return this.roles.includes(role);
+    },
+    get primaryRole() { return 'guest'; },
+    
+    // Subscription & Plan
+    get plan() { return { name: 'Free' }; },
+    get planName() { return 'Free'; },
+    get isPremium() { return false; },
+    
+    // Preferences
+    get preferences() { return {}; },
+    get avatarPreference() { return 'default'; },
+    get theme() { return 'light'; },
+    get isDarkMode() { return false; },
+    
+    // Statistics & Usage
+    get stats() { return {}; },
+    get digestsRead() { return 0; },
+    get lastActive() { return null; },
+    
+    // Sync & Status Information
+    get syncStatus() { return 'none'; },
+    get isSynced() { return false; },
+    get updatedAt() { return null; },
+    get lastSynced() { return null; },
+    
+    // Session Information
+    get sessionToken() { return null; },
+    get hasActiveSession() { return false; },
+    
+    // Raw Data Access
+    get metadata() { return {}; },
+    get rawUser() { return null; },
+    
+    // Utility Methods
+    hasMetadata(key) { return false; },
+    getMetadata(key, defaultValue = null) { return defaultValue; },
+    
+    // Validation Methods
+    get isValid() { return false; },
+    get isComplete() { return false; },
+    
+    // Debug Information
+    get debugInfo() {
+      return {
+        id: null,
+        betterAuthId: null,
+        wpUserId: null,
+        email: null,
+        displayName: 'Guest',
+        roles: [],
+        syncStatus: 'none',
+        isSynced: false,
+        isValid: false,
+        isComplete: false,
+        hasMetadata: false,
+        metadataKeys: []
+      };
+    },
+    
+    // Serialization
+    toJSON() {
+      return {
+        id: null,
+        email: null,
+        displayName: 'Guest',
+        roles: [],
+        plan: { name: 'Free' },
+        isGuest: true
+      };
+    }
+  };
+}
+
 export default { 
   store: userStore, 
   rootStore: userRootStore,
   updateUserData, 
   clearUserData,
   getAvatarUrl,
-  getShortDisplayName
+  getShortDisplayName,
+  getWordPressUserId,
+  getUserData
 }; 

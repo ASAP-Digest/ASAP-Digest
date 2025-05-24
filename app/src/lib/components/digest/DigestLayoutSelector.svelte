@@ -3,6 +3,7 @@
     import { useSession } from '$lib/auth-client';
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { getUserData } from '$lib/stores/user.js';
 
     // Dummy layout data - TODO: Fetch real layout templates from backend API
     // const layoutTemplates = [
@@ -13,6 +14,9 @@
 
     // Get session data using Better Auth
     const { data: session } = useSession();
+
+    // Get user data helper for cleaner access
+    const userData = $derived(getUserData(session?.user));
 
     // Reactive variable to hold fetched layout templates
     let layoutTemplates = $state([]);
@@ -30,8 +34,20 @@
     });
 
     async function handleLayoutSelect(layoutId) {
-        selectedLayoutId = layoutId;
-        // TODO: Add visual indication of selection
+        if (!userData.wpUserId) {
+            console.error('No WordPress user ID available');
+            return;
+        }
+
+        try {
+            const newDigest = await createDraftDigest(userData.wpUserId, selectedLayoutId);
+            if (newDigest.success) {
+                // Handle success
+                console.log('Draft digest created:', newDigest.data);
+            }
+        } catch (error) {
+            console.error('Error creating draft digest:', error);
+        }
     }
 
     async function handleCreateDigest() {
@@ -40,7 +56,7 @@
             return;
         }
 
-        if (!session?.user?.id) {
+        if (!userData.wpUserId) {
             creationError = 'User not logged in.';
             // TODO: Redirect to login or handle appropriately
             return;
@@ -49,7 +65,7 @@
         creatingDigest = true;
         creationError = null;
 
-        const newDigest = await createDraftDigest(session.user.id, selectedLayoutId);
+        const newDigest = await createDraftDigest(userData.wpUserId, selectedLayoutId);
 
         creatingDigest = false;
 

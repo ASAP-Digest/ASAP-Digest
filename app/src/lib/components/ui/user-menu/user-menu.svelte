@@ -14,11 +14,15 @@
   import { CircleUser, Settings, LogOut } from '$lib/utils/lucide-compat.js';
   import Icon from '../icon/icon.svelte';
   import { onMount } from 'svelte';
+  import { getUserData } from '$lib/stores/user.js';
 
   /** @type {{ user: import('app').App.User }} */
   const { data } = $props();
 
   const user = $derived(data.user);
+
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(user));
 
   /**
    * @description Minimal theme switcher logic for avatar dropdown
@@ -73,17 +77,15 @@
       class="relative h-10 w-10 rounded-full"
       builders={[builder]}
     >
-      {#if user.avatarUrl}
-        <Avatar.Root>
-          <Avatar.Image src={user.avatarUrl} alt={user.displayName} />
-          <Avatar.Fallback>
-            <Icon icon={CircleUser} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
-          </Avatar.Fallback>
+      {#if userData.avatarUrl}
+        <Avatar.Root class="h-8 w-8">
+          <Avatar.Image src={userData.avatarUrl} alt={userData.displayName} />
+          <Avatar.Fallback>{userData.displayName?.charAt(0) || 'U'}</Avatar.Fallback>
         </Avatar.Root>
       {:else}
-        <div class="avatar-placeholder">
-          <Icon icon={CircleUser} class="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
-        </div>
+        <Avatar.Root class="h-8 w-8">
+          <Avatar.Fallback>{userData.displayName?.charAt(0) || 'U'}</Avatar.Fallback>
+        </Avatar.Root>
       {/if}
     </Button>
   </DropdownMenuTrigger>
@@ -91,8 +93,8 @@
   <DropdownMenuContent class="w-56" align="end">
     <DropdownMenuLabel>
       <div class="flex flex-col space-y-1">
-        <p class="text-sm font-medium leading-none">{user.displayName}</p>
-        <p class="text-xs leading-none text-muted-foreground">{user.email}</p>
+        <p class="text-sm font-medium leading-none">{userData.displayName}</p>
+        <p class="text-xs leading-none text-muted-foreground">{userData.email}</p>
       </div>
     </DropdownMenuLabel>
 

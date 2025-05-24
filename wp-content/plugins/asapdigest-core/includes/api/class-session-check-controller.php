@@ -114,8 +114,8 @@ class Session_Check_Controller extends WP_REST_Controller {
                 'displayName' => $user->display_name,
                 'firstName' => $user->first_name,
                 'lastName' => $user->last_name,
-                'roles' => $user->roles,
                 'metadata' => [
+                    'roles' => $user->roles,
                     'description' => $user->description,
                     'nickname' => $user->nickname,
                     // Add any other metadata needed

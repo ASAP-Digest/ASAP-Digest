@@ -49,13 +49,21 @@
   // Import the new GraphQL helper
   import { fetchGraphQL } from '$lib/utils/fetchGraphQL.js';
   // Import session store/hook (assuming useSession exists or similar)
-  // import { useSession } from '$lib/stores/session'; // Placeholder - Adjust if store name/structure differs
   import { log } from '$lib/utils/log.js'; // Assuming a logging utility
   // Remove the problematic import and use a constant instead
   // import { PUBLIC_WP_API_URL } from '$env/dynamic/public'; 
   // Import the enhanced user utils
-  import { getAvatarUrl } from '$lib/stores/user.js';
+  import { getUserData } from '$lib/stores/user.js';
   import { theme, setTheme, getAvailableThemes } from '$lib/stores/theme.js';
+  import { getSession, useSession, auth } from '$lib/auth-client.js';
+  import { syncUserStores } from '$lib/utils/auth-persistence.js';
+  import AuthButtons from '$lib/components/AuthButtons.svelte';
+  import { navigating } from '$app/stores';
+  import Icon from '$lib/components/ui/icon/icon.svelte';
+  import { Loader2 } from '$lib/utils/lucide-compat.js';
+
+  // Initialize session for Better Auth
+  const { data: session } = useSession();
 
   // State management with Svelte 5 runes
   let isSidebarOpen = $state(false);
@@ -86,49 +94,38 @@
     preferences: $page.data.user.preferences
   }) : null);
 
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData($page.data.user));
+
   // Log user data from page store on mount AND whenever it changes
   $effect(() => {
     // This log runs both on the server (during SSR) and client
     log('[Layout $effect] $page.data.user:', JSON.stringify($page.data.user || null));
   });
 
-  // Effect to show toast on user data update (coming from invalidateAll or SSE)
-  // But ONLY when actual profile data changes, not just timestamps
+  // Update user store when page data changes
   $effect(() => {
-    const currentUser = $page.data.user;
-    
-    // Skip if no user data
-    if (!currentUser) {
-      previousUserUpdatedAt = null;
-      previousUserSignature = null;
-      return;
-    }
-    
-    // Create a signature of user data we care about, excluding timestamp
-    const currentSignature = JSON.stringify({
-      displayName: currentUser.displayName,
-      email: currentUser.email,
-      avatarUrl: currentUser.avatarUrl,
-      preferences: currentUser.preferences
-    });
-    
-    // Only show toast if the signature changed (actual data changed)
-    // AND there was a previous user (not first load)
-    if (previousUserSignature && 
-        currentSignature !== previousUserSignature &&
-        previousUserUpdatedAt) {
+    if ($page.data.user) {
+      const pageUserData = getUserData($page.data.user);
+      syncUserStores({
+        displayName: pageUserData.displayName,
+        email: pageUserData.email,
+        avatarUrl: pageUserData.avatarUrl,
+        preferences: pageUserData.preferences
+      });
       
-      log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${currentUser.updatedAt}. Showing toast.`); // DEBUG
+      log(`[Layout Toast Effect] User data updated. Old: ${previousUserUpdatedAt}, New: ${$page.data.user.updatedAt}. Showing toast.`); // DEBUG
       
-      toasts.show(
-        'Your profile details have been updated.', // Simpler message
-        'success'
-      );
+      // Show welcome toast for new users or returning users
+      if ($page.data.user.updatedAt !== previousUserUpdatedAt) {
+        toasts.show(
+          'Your profile details have been updated.', // Simpler message
+          'success'
+        );
+      }
+      
+      previousUserUpdatedAt = $page.data.user.updatedAt;
     }
-    
-    // Always update both the timestamp and signature
-    previousUserUpdatedAt = currentUser.updatedAt;
-    previousUserSignature = currentSignature;
   });
 
   // Effects using Svelte 5 runes
@@ -161,7 +158,7 @@
       log('[Layout V6] Checking for existing Better Auth session...', 'info');
       
       // Check for existing session more thoroughly
-      if ($page.data.user || $session?.data?.user) {
+      if ($page.data.user || session?.data?.user) {
         log('[Layout V6] Active Better Auth session found. Auto-login flow stopped.', 'info');
         return;
       }
@@ -193,7 +190,7 @@
           log('[Layout V6] Checking for WordPress session...', 'debug');
           
           // If we have session data already, don't trigger auto-login again
-          if ($page.data.user || $session) {
+          if ($page.data.user || session) {
             log('[Layout V6] Active Better Auth session found. Skipping auto-login check.', 'info');
             return true;
           }
@@ -549,14 +546,6 @@
     log('[Layout] initializeLayout finished (minimal execution).'); // Add log
   }
 
-  import { auth, useSession } from '$lib/auth-client';
-  import AuthButtons from '$lib/components/AuthButtons.svelte';
-  import { navigating } from '$app/stores';
-  import Icon from '$lib/components/ui/icon/icon.svelte';
-  import { Loader2 } from '$lib/utils/lucide-compat.js';
-
-  const { data: session } = useSession();
-
   /**
    * @param {Event & { target: EventTarget | null }} e - The event object.
    */
@@ -658,21 +647,15 @@
           >
             <div class="h-8 w-8 overflow-hidden rounded-full bg-[hsl(var(--muted)/0.2)]">
               <!-- Consistent avatar handling for hydration -->
-              {#if $page.data.user}
-                {#key $page.data.user.updatedAt || 'initial-render'}
-                  <img
-                    src={getAvatarUrl($page.data.user) || '/images/default-avatar.svg'}
-                    alt={$page.data.user.displayName || 'User Avatar'}
-                    class="h-full w-full object-cover"
-                    onerror={handleImageError} 
-                  />
-                {/key}
-              {:else}
-                <!-- Default avatar fallback -->
-                <div class="h-full w-full flex items-center justify-center text-[hsl(var(--muted-foreground))]">
-                  <Icon icon={User} class="w-5 h-5" />
-                </div>
-              {/if}
+              {#key userData.updatedAt || 'initial-render'}
+                <img
+                  class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                  src={userData.avatarUrl || '/images/default-avatar.svg'}
+                  alt={userData.displayName}
+                  loading="lazy"
+                  onerror={handleImageError} 
+                />
+              {/key}
             </div>
           </button>
           
@@ -815,7 +798,7 @@
 
   <GlobalFAB />
 
-  {#if $session}
+  {#if session}
     <div class="fixed bottom-4 right-4 p-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-full shadow-lg">
       <span class="flex items-center gap-2">
         <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>

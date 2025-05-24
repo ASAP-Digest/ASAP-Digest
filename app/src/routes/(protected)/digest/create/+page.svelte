@@ -13,7 +13,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { useSession } from '$lib/auth-client.js';
+  import { authStore } from '$lib/utils/auth-persistence.js';
   import { 
     fetchLayoutTemplates, 
     createDraftDigest, 
@@ -34,32 +34,134 @@
   import { ArrowLeft, Plus, Grid, Layout, Smartphone, Trash2, FolderPlus, FileEdit, PanelLeft, X, Maximize, RefreshCw } from '$lib/utils/lucide-compat.js';
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import NewItemsSelector from '$lib/components/selectors/NewItemsSelector.svelte';
+  import { getUserData } from '$lib/stores/user.js';
 
-  // State management for the refined flow
-  let currentStep = $state('destination-choice'); // 'destination-choice', 'layout-selection', 'digest-building'
-  let selectedLayout = $state(null);
+  // State management
+  let isLoading = $state(false);
+  let isLoadingUserDigests = $state(false);
+  let currentUserId = $state(null);
+  let userDigestsRetryCount = $state(0);
+  let maxRetries = 3;
+  let error = $state('');
   let layoutTemplates = $state([]);
   let userDigests = $state([]);
+  let selectedLayout = $state(null);
   let currentDigest = $state(null);
-  let gridStackInstance = $state(null);
-  let isLoading = $state(false);
-  let error = $state('');
-  let showModuleSelector = $state(false);
-  let selectedModuleForPlacement = $state(null);
-  let targetGridPosition = $state(null);
+  let currentStep = $state('layout-selection'); // 'layout-selection', 'destination-choice', 'digest-building'
   let preSelectedModule = $state(null);
-
-  // Phase 2: Enhanced UI state
-  let isMobile = $state(false);
   let showSplitView = $state(false);
   let splitViewMode = $state('desktop'); // 'desktop' | 'mobile'
+  let isMobile = $state(false);
+  let gridStackInstance = $state(null);
+  let targetGridPosition = $state(null);
+  let currentUser = $state(null);
+
+  // Phase 2: Enhanced UI state
+  let showModuleSelector = $state(false);
   let moduleBrowserCollapsed = $state(false);
   let selectedModulePreview = $state(null);
   let draggedModule = $state(null);
   let isFullscreen = $state(false);
 
-  // Get user session
-  const { data: session } = useSession();
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData(currentUser));
+
+  // Reactive effect to load data when user becomes available
+  $effect(() => {
+    const user = authStore.get();
+    currentUser = user;
+    
+    if (user?.id) {
+      // Load layout templates if not already loaded and not currently loading
+      if (layoutTemplates.length === 0 && !isLoading) {
+        loadLayoutTemplates();
+      }
+      
+      // Load user digests with retry limit and proper guards
+      if (!userDigests.length && 
+          !isLoadingUserDigests && 
+          currentUserId !== user.id && 
+          userDigestsRetryCount < maxRetries) {
+        currentUserId = user.id; // Track which user we've loaded digests for
+        loadUserDigests();
+      }
+    }
+  });
+
+  // Fallback templates in case backend is not available
+  function getFallbackTemplates() {
+    return [
+      {
+        id: 'fallback-solo',
+        name: 'Solo Focus',
+        description: 'Single module layout for focused content',
+        max_modules: 1,
+        gridstack_config: {
+          cellHeight: 80,
+          verticalMargin: 10,
+          horizontalMargin: 10,
+          column: 12,
+          animate: true,
+          float: false,
+          disableDrag: false,
+          disableResize: false,
+          handle: '.drag-handle'
+        },
+        predefined_slots: [
+          { x: 0, y: 0, w: 12, h: 4, id: 'widget-1', content: 'Module 1' }
+        ],
+        template_type: 'gridstack',
+        is_default: true
+      },
+      {
+        id: 'fallback-duo',
+        name: 'Dynamic Duo',
+        description: 'Two-module layout for balanced content',
+        max_modules: 2,
+        gridstack_config: {
+          cellHeight: 80,
+          verticalMargin: 10,
+          horizontalMargin: 10,
+          column: 12,
+          animate: true,
+          float: false,
+          disableDrag: false,
+          disableResize: false,
+          handle: '.drag-handle'
+        },
+        predefined_slots: [
+          { x: 0, y: 0, w: 6, h: 4, id: 'widget-1', content: 'Module 1' },
+          { x: 6, y: 0, w: 6, h: 4, id: 'widget-2', content: 'Module 2' }
+        ],
+        template_type: 'gridstack',
+        is_default: true
+      },
+      {
+        id: 'fallback-hub',
+        name: 'Information Hub',
+        description: 'Three-module layout with main focus and supporting content',
+        max_modules: 3,
+        gridstack_config: {
+          cellHeight: 80,
+          verticalMargin: 10,
+          horizontalMargin: 10,
+          column: 12,
+          animate: true,
+          float: false,
+          disableDrag: false,
+          disableResize: false,
+          handle: '.drag-handle'
+        },
+        predefined_slots: [
+          { x: 0, y: 0, w: 8, h: 4, id: 'widget-1', content: 'Main Module' },
+          { x: 8, y: 0, w: 4, h: 2, id: 'widget-2', content: 'Module 2' },
+          { x: 8, y: 2, w: 4, h: 2, id: 'widget-3', content: 'Module 3' }
+        ],
+        template_type: 'gridstack',
+        is_default: true
+      }
+    ];
+  }
 
   // Initialize on mount
   onMount(async () => {
@@ -67,8 +169,7 @@
     checkMobileDevice();
     window.addEventListener('resize', checkMobileDevice);
     
-    await loadLayoutTemplates();
-    await loadUserDigests();
+    // Layout templates and user digests will be loaded by $effect when user is available
     
     // Check if we're coming from NIS with a pre-selected module
     // First check sessionStorage (Phase 2 enhanced flow)
@@ -118,30 +219,109 @@
   async function loadLayoutTemplates() {
     try {
       isLoading = true;
+      console.log('Loading layout templates...');
+      
+      // User should be available when this function is called from $effect
+      if (!userData.isValid) {
+        console.error('No user available when loading templates');
+        layoutTemplates = getFallbackTemplates();
+        return;
+      }
+      
       const response = await fetchLayoutTemplates();
+      console.log('Layout templates response:', response);
+      
       if (response.success) {
-        layoutTemplates = response.data;
+        // Check if response.data is an object with a data property or an array
+        let templates = [];
+        if (response.data && Array.isArray(response.data.data)) {
+          templates = response.data.data;
+        } else if (response.data && Array.isArray(response.data)) {
+          templates = response.data;
+        } else if (response.data && response.data.length !== undefined) {
+          templates = response.data;
+        }
+        
+        console.log(`Loaded ${templates.length} layout templates from API`);
+        
+        // If no templates found, use fallback templates
+        if (templates.length === 0) {
+          console.log('No templates from API, using fallback templates');
+          layoutTemplates = getFallbackTemplates();
+        } else {
+          layoutTemplates = templates;
+        }
       } else {
-        error = 'Failed to load layout templates';
+        console.error('Layout templates error:', response.error);
+        // Always use fallback templates if API fails
+        console.log('API failed, using fallback templates');
+        layoutTemplates = getFallbackTemplates();
+        
+        // Only show error if it's not a simple "no templates" case
+        if (response.error && !response.error.includes('No layout templates found')) {
+          error = `Failed to load layout templates: ${response.error || 'Unknown error'}`;
+        }
       }
     } catch (err) {
-      error = err.message || 'Failed to load layout templates';
+      console.error('Layout templates exception:', err);
+      // Always use fallback templates on exception
+      console.log('Exception occurred, using fallback templates');
+      layoutTemplates = getFallbackTemplates();
+      
+      // Only show error for actual network/server errors
+      if (err.message && !err.message.includes('No layout templates found')) {
+        error = `Error loading layout templates: ${err.message || 'Unknown error'}`;
+      }
     } finally {
       isLoading = false;
+      console.log(`Final template count: ${layoutTemplates.length}`);
     }
   }
 
   // Load user's existing digests
   async function loadUserDigests() {
-    if (!session?.user?.id) return;
+    if (!userData.isValid || isLoadingUserDigests) return;
+    
+    isLoadingUserDigests = true;
+    userDigestsRetryCount++;
     
     try {
-      const response = await fetchUserDigests(session.user.id, 'draft');
+      console.log('[DEBUG] Loading user digests for user:', userData.debugInfo);
+      
+      const wpUserId = userData.wpUserId;
+      if (!wpUserId) {
+        console.error('[ERROR] No WordPress user ID found for user:', userData.debugInfo);
+        userDigests = [];
+        return;
+      }
+
+      console.log('[DEBUG] Using WordPress user ID:', wpUserId);
+      const response = await fetchUserDigests(wpUserId, 'draft');
+      
       if (response.success) {
         userDigests = response.data || [];
+        console.log('[SUCCESS] Loaded user digests:', userDigests.length);
+        // Reset retry count on success
+        userDigestsRetryCount = 0;
+      } else {
+        console.error('[ERROR] Failed to load user digests:', response.error);
+        userDigests = []; // Set empty array on failure
+        
+        // If we've reached max retries, stop trying
+        if (userDigestsRetryCount >= maxRetries) {
+          console.error(`Max retries (${maxRetries}) reached for loading user digests. Stopping attempts.`);
+        }
       }
     } catch (err) {
-      console.warn('Failed to load user digests:', err);
+      console.error('[ERROR] Exception loading user digests:', err);
+      userDigests = []; // Set empty array on exception
+      
+      // If we've reached max retries, stop trying
+      if (userDigestsRetryCount >= maxRetries) {
+        console.error(`Max retries (${maxRetries}) reached for loading user digests. Stopping attempts.`);
+      }
+    } finally {
+      isLoadingUserDigests = false;
     }
   }
 
@@ -175,13 +355,27 @@
 
   // Handle layout selection
   async function selectLayout(layout) {
+    if (!userData.isValid) {
+      console.error('[ERROR] No valid user found');
+      return;
+    }
+
+    isLoading = true;
+    selectedLayout = layout;
+    
     try {
-      isLoading = true;
-      selectedLayout = layout;
+      console.log('[DEBUG] Creating digest with layout:', layout.id, 'for user:', userData.debugInfo);
       
-      // Create draft digest with selected layout
-      const response = await createDraftDigest(session?.user?.id, layout.id);
+      const wpUserId = userData.wpUserId;
+      if (!wpUserId) {
+        console.error('[ERROR] No WordPress user ID found for user:', userData.debugInfo);
+        return;
+      }
+      
+      const response = await createDraftDigest(wpUserId, layout.id);
+      
       if (response.success) {
+        console.log('[SUCCESS] Created draft digest:', response.data);
         currentDigest = { 
           id: response.data.digest_id, 
           layout_template_id: layout.id,
@@ -202,10 +396,10 @@
           }
         }
       } else {
-        error = 'Failed to create digest';
+        console.error('[ERROR] Failed to create draft digest:', response.error);
       }
     } catch (err) {
-      error = err.message || 'Failed to create digest';
+      console.error('[ERROR] Exception creating draft digest:', err);
     } finally {
       isLoading = false;
     }

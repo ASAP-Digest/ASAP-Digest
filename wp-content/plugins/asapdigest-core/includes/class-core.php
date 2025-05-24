@@ -457,6 +457,12 @@ final class ASAP_Digest_Core {
         
         // Add CORS headers filter if needed
         // add_filter('rest_pre_serve_request', [$this, 'add_cors_headers'], 15);
+        
+        // Add admin action to manually create templates
+        add_action('wp_ajax_asap_create_templates', [$this, 'ajax_create_templates']);
+        
+        // Add admin menu for testing
+        add_action('admin_menu', [$this, 'add_test_admin_menu']);
     }
 
     /**
@@ -835,6 +841,52 @@ final class ASAP_Digest_Core {
      */
     public function check_admin_permission($request) {
         return current_user_can('manage_options');
+    }
+
+    /**
+     * AJAX handler to manually create default templates
+     */
+    public function ajax_create_templates() {
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        // Check nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'asap_create_templates')) {
+            wp_die('Invalid nonce');
+        }
+
+        try {
+            // Get the template CPT instance and force create templates
+            $template_cpt = new \ASAPDigest\CPT\ASAP_Digest_Template_CPT();
+            $template_cpt->force_create_default_templates();
+            
+            wp_send_json_success('Default templates created successfully!');
+        } catch (\Exception $e) {
+            wp_send_json_error('Error creating templates: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Add test admin menu
+     */
+    public function add_test_admin_menu() {
+        add_submenu_page(
+            'tools.php',
+            'ASAP Template Test',
+            'ASAP Template Test',
+            'manage_options',
+            'asap-template-test',
+            [$this, 'render_test_admin_page']
+        );
+    }
+
+    /**
+     * Render test admin page
+     */
+    public function render_test_admin_page() {
+        include ASAP_DIGEST_PLUGIN_DIR . 'test-templates.php';
     }
 }
 
