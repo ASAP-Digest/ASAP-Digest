@@ -3,35 +3,59 @@ description:
 globs: 
 alwaysApply: true
 ---
-# ASAP Digest Stack v1.1
+# ASAP Digest Stack v1.2
 
-1.  **Core TechnologPackage Manager)
-    *   `Tailwind 4` (CSSage governed by `golden-ratiootocol.mdc`)
-    *   `SvelteKit 2` (Application Framework)
-    *   `Svelte 5` (UI Compileradcn-svelte for Svelteves/Library - Integration go.mdc`)
-    *   `Better Auth` (Authentication Library)
-        *   Configuration: MUST follow `better-auth-config.mdc`
-        *   Route Handling: MUST follow `better-auth-route-handling.mdc`
-    *   `Lucide` Icons (via `$lib/utils/lucide-compat.js` - Usage governed by `icon-management.mdc`)
-    *   `JavaScript + JSDocs` (NO `.ts` files for application logic)
+This document outlines the high-level technologies and architectural patterns used in the ASAP Digest project.
 
-2.  **Core Protocols & Guides:**
-    *   **Visual Styling & Primitives:** MUST follow `golden-ratio-design-system-protocol.mdc`
-    *   **Svelte/Tailwind/Shadcn Integration:** MUST follow `sk2-scns5-t4-int.mdc`
-    *   **Icon Management:** MUST follow `icon-management.mdc`
-    *   **Functions:** MUST follow `new-function-protocol.mdc`
-    *   **Files:** MUST follow `new-file-protocol.mdc`
-    *   **Directories:** MUST follow `new-directory-protocol.mdc`
-    *   **JSDoc Typing:** MUST follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`
-    *   **State Management:** MUST follow `server-memory-rules.mdc` and related WSMP/Task protocols.
+## 1. Core Technologies
 
-3.  **Development Environment:**
-    *   SvelteKit Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
-    *   WordPress Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
+*   **SvelteKit 2:** Primary frontend framework for the user-facing application and admin interfaces.
+*   **Svelte 5:** UI component framework.
+*   **Tailwind CSS 4:** Utility-first CSS framework.
+*   **Gridstack.js:** For dynamic grid layouts, especially in digest creation.
+*   **Chart.js:** For data visualization in admin dashboards.
+*   **Better Auth:** Authentication library.
+    *   Configuration: MUST follow `better-auth-config.mdc`
+    *   Route Handling: MUST follow `better-auth-route-handling.mdc`
+*   **Lucide Icons:** Via `$lib/utils/lucide-compat.js` - Usage governed by `icon-management.mdc`.
+*   **JavaScript + JSDocs:** NO `.ts` files for application logic.
+*   **WordPress:** Core CMS and backend platform.
+    *   **PHP:** Primary backend language.
+    *   **WordPress REST API:** For communication between SvelteKit and WordPress.
+    *   **WP Cron:** For scheduled background tasks (e.g., content crawling).
+*   **MySQL:** Database used by WordPress.
+*   **GraphQL:** An additional API layer for complex data queries between SvelteKit and WordPress, particularly for the New Items Selector.
+*   **AI Providers (OpenAI, Hugging Face, Future: Anthropic):** For various AI-powered content enhancements.
 
-4.  **Enforcement:**
-    *   Visual rules enforced by `strict-visual-enforcement-protocol.mdc`.
-    *   Code formatting/linting enforced by tools defined in `tooling-setup-guide.mdc`.
+## 2. Architectural Patterns & Principles
+
+*   **Single Page Application (SPA+SSR):** SvelteKit facilitates an SPA-like experience but uses SSR for multipages.
+*   **RESTful APIs:** Core pattern for client-server communication.
+*   **GraphQL APIs:** For flexible and efficient data fetching for specific frontend needs.
+*   **Model-View-Controller (MVC) / Component-Based Architecture:** Used in both frontend (Svelte components) and backend (WordPress plugin structure).
+*   **Local-First (Emerging):** We are adopting Local-First principles, starting with client-side storage (`localStorage`) for enhanced offline capabilities and user data ownership.
+    *   **(Future/Planned) Local-First Sync Engine:** To enable robust data synchronization across devices and offline work (e.g., exploring options like RxDB, ElectricSQL, or building a custom solution around a CRDT library).
+    *   **(Future/Planned) CRDTs (Conflict-free Replicated Data Types):** To manage data consistency in a distributed, multi-client environment when a full sync engine is implemented (e.g., using libraries like Yjs or Automerge).
+*   **Modular Design:** The plugin is designed with distinct modules for core functions, AI, content ingestion, etc., promoting separation of concerns.
+*   **Event-Driven (Partial):** WordPress hooks system enables event-driven patterns for extending functionality. WP Cron for time-based events.
+
+## 3. Core Protocols & Guides (Unchanged from v1.1 - listed for completeness)
+*   **Visual Styling & Primitives:** MUST follow `golden-ratio-design-system-protocol.mdc`
+*   **Svelte/Tailwind/Shadcn Integration:** MUST follow `sk2-scns5-t4-int.mdc`
+*   **Icon Management:** MUST follow `icon-management.mdc`
+*   **Functions:** MUST follow `new-function-protocol.mdc`
+*   **Files:** MUST follow `new-file-protocol.mdc`
+*   **Directories:** MUST follow `new-directory-protocol.mdc`
+*   **JSDoc Typing:** MUST follow `jsdoc-complex-parameter-typing-protocol.mdc` and `local-variable-type-safety-protocol.mdc`
+*   **State Management:** MUST follow `server-memory-rules.mdc` and related WSMP/Task protocols.
+
+## 4. Development Environment (Unchanged from v1.1 - listed for completeness)
+*   SvelteKit Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public/app`
+*   WordPress Root: `/Volumes/Macintosh HD/Users/vsmith/Local Sites/asap-digest/app/public`
+
+## 5. Enforcement (Unchanged from v1.1 - listed for completeness)
+*   Visual rules enforced by `strict-visual-enforcement-protocol.mdc`.
+*   Code formatting/linting enforced by tools defined in `tooling-setup-guide.mdc`.
 
 **IMPORTANT:**
 *   DO NOT CHANGE the core technology stack without explicit approval and protocol updates.

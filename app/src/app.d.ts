@@ -14,6 +14,7 @@ declare global {
 		sessionToken?: string;
 		updatedAt?: string; // Timestamp of last update from ba_users (ISO 8601 format)
 		wp_user_id?: number; // WordPress user ID for API calls
+		wpUserId?: number; // Normalized WordPress user ID (same as wp_user_id)
 		metadata?: {
 			wp_user_id?: number;
 			roles?: string[];
@@ -173,6 +174,7 @@ declare global {
 			metadata?: Record<string, any>;
 			updatedAt?: string;
 			wp_user_id?: number; // WordPress user ID for API calls
+			wpUserId?: number; // Normalized WordPress user ID (same as wp_user_id)
 		}
 	}
 

@@ -282,8 +282,11 @@ async function getUserByIdFn(userId) {
  * @returns {Promise<Session|null>} Session object or null if not found/expired
  */
 async function getSessionByTokenFn(sessionToken) {
-    logConfig(`Adapter: getSessionByToken called for token: ${sessionToken ? 'present' : 'missing'}`);
-    if (!sessionToken) return null;
+    logConfig(`Adapter: getSessionByToken called for token: ${sessionToken ? `present (${sessionToken.substring(0, 8)}...)` : 'missing'}`);
+    if (!sessionToken) {
+        logConfig('Adapter: getSessionByToken returning null - no token provided');
+        return null;
+    }
     let connection;
     try {
         connection = await pool.getConnection();
@@ -599,6 +602,12 @@ const adapter = {
     createAccount: createAccountFn
 };
 
+// Debug: Log adapter methods to verify they're properly defined
+logConfig('Adapter methods defined:', 'info');
+Object.keys(adapter).forEach(key => {
+    logConfig(`  - ${key}: ${typeof adapter[key]}`, 'info');
+});
+
 // --- Hook Functions Definition ---
 // These hooks are kept for potential future use but are currently empty
 // as the legacy WP sync logic they contained has been removed.
@@ -689,19 +698,61 @@ function isBetterAuth(obj) {
 }
 
 /**
- * Enhanced Better Auth instance with type assertion for compatibility
- * Type assertion needed as direct typing fails due to structure differences
+ * Custom session manager that uses our adapter
+ */
+const customSessionManager = {
+    async getSession(request) {
+        logConfig('CustomSessionManager: getSession called', 'info');
+        
+        // Extract session token from cookies
+        const cookieHeader = request.headers.get('cookie');
+        logConfig(`CustomSessionManager: Cookie header: ${cookieHeader}`, 'debug');
+        
+        const sessionToken = cookieHeader?.match(/better_auth_session=([^;]+)/)?.[1];
+        logConfig(`CustomSessionManager: Extracted token: ${sessionToken ? `present (${sessionToken.substring(0, 8)}...)` : 'missing'}`, 'debug');
+        
+        if (!sessionToken) {
+            logConfig('CustomSessionManager: No session token found', 'debug');
+            return null;
+        }
+        
+        // Use our adapter to get the session
+        const session = await getSessionByTokenFn(sessionToken);
+        logConfig(`CustomSessionManager: Session result: ${session ? `found (userId: ${session.userId})` : 'not found'}`, 'debug');
+        
+        return session;
+    },
+    
+    async createSession(userId, expiresAt) {
+        logConfig(`CustomSessionManager: createSession called for user ${userId}`, 'info');
+        return await createSessionFn(userId, undefined, expiresAt);
+    },
+    
+    async refreshSession(sessionToken) {
+        logConfig(`CustomSessionManager: refreshSession called`, 'info');
+        // For now, just return the existing session
+        return await getSessionByTokenFn(sessionToken);
+    },
+    
+    async deleteSession(sessionToken) {
+        logConfig(`CustomSessionManager: deleteSession called`, 'info');
+        await deleteSessionFn(sessionToken);
+        return true;
+    }
+};
+
+/**
+ * Enhanced Better Auth instance with custom session manager
  * @type {import('$lib/types/better-auth').BetterAuth}
  */
 const auth = /** @type {import('$lib/types/better-auth').BetterAuth} */ (
-    isBetterAuth(authResult) ? authResult : {
+    isBetterAuth(authResult) ? {
+        ...authResult,
+        sessionManager: customSessionManager, // Override with our custom session manager
+        adapter: adapter
+    } : {
         // Fallback to avoid runtime errors if the structure is unexpected
-        sessionManager: {
-            getSession: async () => null,
-            createSession: async () => { throw new Error('Auth not properly initialized'); },
-            refreshSession: async () => null,
-            deleteSession: async () => false
-        },
+        sessionManager: customSessionManager,
         adapter: adapter,
         options: {
             secret: BETTER_AUTH_SECRET,
@@ -710,6 +761,10 @@ const auth = /** @type {import('$lib/types/better-auth').BetterAuth} */ (
         handler: async (request) => new Response('Auth system not properly initialized', { status: 500 })
     }
 );
+
+// Verify our custom session manager is properly attached
+logConfig(`Auth instance has custom sessionManager: ${auth.sessionManager === customSessionManager}`, 'info');
+logConfig(`Auth instance sessionManager type: ${typeof auth.sessionManager}`, 'info');
 
 // --- Exports ---
 export {

@@ -14,7 +14,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Input } from '$lib/components/ui/input';
   import { Button } from '$lib/components/ui/button';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   /** @type {import('./$types').PageData} */
   const { data } = $props();
@@ -28,15 +28,15 @@
   
   // Initialize user form with helper data
   let userForm = $state({
-    id: userData.id,
-    email: userData.email,
-    displayName: userData.displayName,
-    avatarUrl: userData.avatarUrl,
-    gravatarUrl: userData.gravatarUrl || createGravatarUrl(userData.email),
-    preferences: userData.preferences || {
+    id: untrack(() => userData.id),
+    email: untrack(() => userData.email),
+    displayName: untrack(() => userData.displayName),
+    avatarUrl: untrack(() => userData.avatarUrl),
+    gravatarUrl: untrack(() => userData.gravatarUrl || createGravatarUrl(userData.email)),
+    preferences: untrack(() => userData.preferences || {
       avatarSource: 'synced'
-    },
-    roles: userData.roles || []
+    }),
+    roles: untrack(() => userData.roles || [])
   });
   
   // Original user data for comparison/reference
@@ -174,18 +174,18 @@
   let isSaving = $state(false); // Track form submission status
   
   // Initialize avatar settings from user data
-  if (userData.preferences?.avatar?.type) {
+  if (untrack(() => userData.preferences?.avatar?.type)) {
     // Custom avatar preference
-    avatarType = userData.preferences.avatar.type;
-    avatarUrl = userData.preferences.avatar.url || '';
-  } else if (userData.avatarUrl) {
+    avatarType = untrack(() => userData.preferences.avatar.type);
+    avatarUrl = untrack(() => userData.preferences.avatar.url || '');
+  } else if (untrack(() => userData.avatarUrl)) {
     // Synced avatar (default)
     avatarType = 'synced';
-    avatarUrl = userData.avatarUrl;
+    avatarUrl = untrack(() => userData.avatarUrl);
       } else {
     // Gravatar fallback
         avatarType = 'gravatar';
-    avatarUrl = createGravatarUrl(userData.email);
+    avatarUrl = untrack(() => createGravatarUrl(userData.email));
   }
   
   // Initialize form fields

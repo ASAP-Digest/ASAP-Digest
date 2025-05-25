@@ -309,17 +309,14 @@ export async function POST({ request }) {
         const { sessionToken, expiresAt } = sessionData;
         log(`Created Better Auth session token: ${sessionToken.substring(0, 6)}... for user ${targetSkUserId}`, 'info');
 
-        // Set session cookie
-        const cookieName = process.env.SESSION_COOKIE_NAME || 'asap_sk_session'; // Use env var or default
+        // Set session cookie - use consistent name with Better Auth
+        const cookieName = 'better_auth_session'; // Match auth.js sessionCookieName
         const cookieOptions = [
             `Path=/`,
             `Expires=${expiresAt.toUTCString()}`,
             `HttpOnly`,
             `SameSite=Lax`, // Use Lax for standard browser navigation
-            // Secure flag should be added based on environment (e.g., in production)
-            // This might be handled by SvelteKit adapter depending on config.
-            // process.env.NODE_ENV === 'production' ? 'Secure' : ''
-            'Secure' // <-- Always add Secure since we use HTTPS locally
+            'Secure' // Always add Secure since we use HTTPS locally
         ].filter(Boolean).join('; ');
 
         headers.append('Set-Cookie', `${cookieName}=${sessionToken}; ${cookieOptions}`);

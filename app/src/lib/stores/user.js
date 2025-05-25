@@ -335,7 +335,9 @@ export function getUserData(user) {
     
     // WordPress Integration
     get wpUserId() { 
-      return user.wp_user_id || 
+      return user.wpUserId || 
+             user.wp_user_id || 
+             user.metadata?.wpUserId ||
              user.metadata?.wp_user_id || 
              (typeof user.metadata?.wp_sync?.wp_user_id === 'number' ? user.metadata.wp_sync.wp_user_id : null);
     },
@@ -545,6 +547,7 @@ export function getUserData(user) {
         preferences: this.preferences,
         stats: this.stats,
         wpUserId: this.wpUserId,
+        wp_user_id: this.wpUserId, // Include both for compatibility
         syncStatus: this.syncStatus,
         updatedAt: this.updatedAt,
         metadata: this.metadata

@@ -27,7 +27,7 @@
 		"src/**/*.ts",
 		"src/**/*.svelte",
 		"src/**/*.d.ts"
-	],
+, "static/+layout.js"	],
 	"exclude": [
 		"node_modules/**",
 		".svelte-kit/[!ambient.d.ts]**"

@@ -147,7 +147,7 @@
   </div>
 
   <!-- Enhanced User Info Display -->
-  <div class="mb-4 p-4 bg-muted/30 rounded-lg">
+    <div class="mb-4 p-4 bg-muted/30 rounded-lg">
     <h3 class="font-semibold mb-2">User Authentication Status</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
       <div>

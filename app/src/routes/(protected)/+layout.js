@@ -23,7 +23,25 @@ export async function load(event) {
   try {
     console.log(`[Protected Layout] Starting auth check for: ${event.url.pathname}`);
     
+    // PRIORITY 1: Use server-provided user data if available (from +layout.server.js)
     let userToUse = event.data?.user;
+    
+    // If we have server data, use it immediately and update stores
+    if (userToUse && userToUse.id) {
+      console.log(`[Protected Layout] Using server-provided user data: ${userToUse.email}, wp_user_id: ${userToUse.wp_user_id}`);
+      
+      if (browser) {
+        // Update auth stores with server data
+        authStore.set(userToUse);
+        console.log(`[Protected Layout] Updated auth store with server user data`);
+      }
+      
+      return {
+        user: userToUse,
+        usingLocalAuth: false,
+        sourceData: 'server-layout'
+      };
+    }
 
     if (browser && userToUse) {
       // Use getUserData helper to normalize and complete user data
@@ -211,6 +229,38 @@ export async function load(event) {
     // For safety, don't expose error details in production
     if (err instanceof redirect) {
       throw err;
+    }
+    
+    // Check if we have any cached auth data before redirecting
+    if (browser) {
+      try {
+        const cachedAuth = authStore.get();
+        if (cachedAuth && cachedAuth.id) {
+          console.log('[Protected Layout] Found cached auth during error, using it');
+          return {
+            user: cachedAuth,
+            usingLocalAuth: true,
+            sourceData: 'error-recovery-cache'
+          };
+        }
+        
+        // Try localStorage as last resort
+        const localAuth = localStorage.getItem('asap_digest_auth');
+        if (localAuth) {
+          const parsedAuth = JSON.parse(localAuth);
+          if (parsedAuth && parsedAuth.id) {
+            console.log('[Protected Layout] Found localStorage auth during error, using it');
+            authStore.set(parsedAuth);
+            return {
+              user: parsedAuth,
+              usingLocalAuth: true,
+              sourceData: 'error-recovery-localStorage'
+            };
+          }
+        }
+      } catch (recoveryError) {
+        console.warn('[Protected Layout] Error during auth recovery:', recoveryError);
+      }
     }
     
     // Instead of throwing a generic 500 error, redirect to login

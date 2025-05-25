@@ -49,9 +49,12 @@ async function getBetterAuthToken() {
   // Method 3: Try to get from auth store (local authentication)
   try {
     const authData = authStore.get();
+    console.log('[Digest Builder API] Auth store data:', authData);
     if (authData && authData.sessionToken) {
       console.log('[Digest Builder API] Found session token from auth store');
       return authData.sessionToken;
+    } else {
+      console.log('[Digest Builder API] No session token in auth store, authData keys:', authData ? Object.keys(authData) : 'null');
     }
   } catch (error) {
     console.warn('[Digest Builder API] Failed to get session token from auth store:', error);
@@ -193,7 +196,6 @@ export async function createDraftDigest(userId, layoutTemplateId) {
       headers: headers,
       credentials: 'include',
       body: JSON.stringify({
-        user_id: userId,
         layout_template_id: layoutTemplateId,
         status: 'draft'
       })
@@ -302,14 +304,15 @@ export async function fetchDigest(digestId) {
 
 /**
  * Fetch user's digests
- * @param {number} userId - WordPress user ID
+ * @param {number} userId - WordPress user ID (optional, will use authenticated user)
  * @param {string} [status='draft'] - Digest status filter (draft, published, etc.)
  * @returns {Promise<ApiResponse>} Response object
  */
 export async function fetchUserDigests(userId, status = 'draft') {
   try {
     const headers = await getApiHeaders();
-    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/user/${userId}?status=${status}`, {
+    // Use the current user endpoint that doesn't require user ID in URL
+    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/user-digests?status=${status}`, {
       method: 'GET',
       headers: headers,
       credentials: 'include'

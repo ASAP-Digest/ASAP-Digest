@@ -341,7 +341,7 @@
         </p>
       </div>
     </div>
-    
+
     <!-- User Info and Pre-selected Module -->
     <div class="flex items-center gap-4 text-sm">
       <div class="flex items-center gap-2">
@@ -372,7 +372,7 @@
     <div class="space-y-6">
       <!-- Create New Digest Option -->
       <Card class="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50" onclick={chooseNewDigest}>
-        <CardHeader>
+          <CardHeader>
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
               <Icon icon={Plus} size={24} class="text-primary" />
@@ -382,12 +382,12 @@
               <p class="text-muted-foreground">Start a fresh digest with this content</p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+          </CardHeader>
+          <CardContent>
           <p class="text-sm text-muted-foreground">
             Choose a layout template and build a new digest around your selected content.
             Perfect for creating focused, themed collections.
-          </p>
+        </p>
         </CardContent>
       </Card>
 
@@ -409,15 +409,15 @@
                       </div>
                       <div>
                         <h4 class="font-medium">{digest.title || `Draft Digest ${digest.id}`}</h4>
-                        <p class="text-sm text-muted-foreground">
+                  <p class="text-sm text-muted-foreground">
                           {digest.module_count || 0} modules • Last updated {new Date(digest.updated_at).toLocaleDateString()}
                         </p>
-                      </div>
-                    </div>
+              </div>
+      </div>
                     <Badge variant="outline">Draft</Badge>
-                  </div>
-                </CardContent>
-              </Card>
+        </div>
+      </CardContent>
+    </Card>
             {/each}
           </div>
         </div>
@@ -455,8 +455,8 @@
                   </div>
                 {/if}
               </div>
-            </CardHeader>
-            <CardContent>
+              </CardHeader>
+              <CardContent>
               <!-- Layout Preview -->
               <div class="aspect-video bg-muted rounded-lg mb-3 flex items-center justify-center">
                 <div class="w-full h-full flex items-center justify-center">
@@ -465,8 +465,8 @@
               </div>
               
               <p class="text-sm text-muted-foreground">{layout.description}</p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
         {/each}
       </div>
 
@@ -477,8 +477,8 @@
             Selected: <strong>{selectedLayout.name}</strong>
           {:else}
             Select a layout to continue
-          {/if}
-        </div>
+      {/if}
+    </div>
         
         <div class="flex gap-3">
           <Button variant="outline" onclick={goBack}>

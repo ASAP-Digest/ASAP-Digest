@@ -47,6 +47,12 @@ export const GET = async (event) => {
     // Include session info if available in locals
     if (event.locals?.session) {
         response.session = event.locals.session;
+    } else if (sessionToken && user) {
+        // If we have a session token but no session in locals, create session object
+        response.session = {
+            sessionToken: sessionToken,
+            userId: user.id
+        };
     }
     
     console.log('[API /session] GET request received. Cookie present:', !!sessionToken);

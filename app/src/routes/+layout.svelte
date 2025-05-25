@@ -85,6 +85,9 @@
   // let isAuthRoute = false; // TEMP: Use non-reactive fallback
   // let isDesignSystemRoute = false; // TEMP: Use non-reactive fallback
 
+  // Get user data helper for cleaner access
+  const userData = $derived(getUserData($page.data.user));
+
   // Store previous user update timestamp and signature to avoid unnecessary toasts
   let previousUserUpdatedAt = $state($page.data.user?.updatedAt);
   let previousUserSignature = $state($page.data.user ? JSON.stringify({
@@ -93,9 +96,6 @@
     avatarUrl: userData.avatarUrl,
     preferences: userData.preferences
   }) : null);
-
-  // Get user data helper for cleaner access
-  const userData = $derived(getUserData($page.data.user));
 
   // Log user data from page store on mount AND whenever it changes
   $effect(() => {

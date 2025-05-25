@@ -165,7 +165,29 @@ export async function load({ data, fetch, depends }) {
       
       if (wpData && wpData.success && wpData.user) {
         log('[+layout.js] WordPress auto-login successful!', 'info');
-        const normalizedUser = normalizeUser(wpData.user);
+        
+        // CRITICAL FIX: Ensure wp_user_id is preserved from WordPress response
+        console.log('[+layout.js] Raw WordPress user data:', wpData.user);
+        
+        // Extract wp_user_id from various possible locations in the WordPress response
+        const wpUserId = wpData.user.wp_user_id || 
+                         wpData.user.wpUserId || 
+                         wpData.user.id || 
+                         (wpData.user.metadata && wpData.user.metadata.wp_user_id) ||
+                         null;
+        
+        console.log('[+layout.js] Extracted wp_user_id:', wpUserId);
+        
+        // Ensure the user object has wp_user_id before normalization
+        const userWithWpId = {
+          ...wpData.user,
+          wp_user_id: wpUserId,
+          wpUserId: wpUserId
+        };
+        
+        const normalizedUser = normalizeUser(userWithWpId);
+        console.log('[+layout.js] Normalized user with wp_user_id:', normalizedUser.wp_user_id);
+        
         userStore.set(normalizedUser);
         authStore.set(normalizedUser);
         

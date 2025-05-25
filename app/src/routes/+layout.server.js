@@ -62,14 +62,36 @@ function convertSessionForLocals(authSession) {
  */
 export async function load(event) {
     try {
+        // PRIORITY 1: Check if hooks have already set user data
+        if (event.locals.user) {
+            log('[Layout.server] User already set by hooks, using existing data', 'info');
+            log(`[Layout.server] User from hooks: ${event.locals.user.email} (ID: ${event.locals.user.id})`, 'info');
+            return {
+                user: event.locals.user
+            };
+        }
+        
+        // PRIORITY 2: Fall back to Better Auth session manager if hooks didn't set user
+        log('[Layout.server] No user from hooks, trying Better Auth session manager', 'debug');
+        
         // Apply local-variable-type-safety-protocol - validate auth object structure
         if (!hasSessionManager(auth)) {
             log('[Layout.server] Auth object missing sessionManager', 'error');
             return { user: null };
         }
         
+        // Debug: Check what cookies are available
+        const cookieHeader = event.request.headers.get('cookie');
+        log(`[Layout.server] Cookie header: ${cookieHeader}`, 'debug');
+        
+        // Extract session token manually to compare with hooks
+        const sessionToken = cookieHeader?.match(/better_auth_session=([^;]+)/)?.[1];
+        log(`[Layout.server] Extracted session token: ${sessionToken ? `present (${sessionToken.substring(0, 8)}...)` : 'missing'}`, 'debug');
+        
         // Try to get session from request
+        log('[Layout.server] Calling Better Auth sessionManager.getSession...', 'debug');
         const authSession = await auth.sessionManager.getSession(event.request);
+        log(`[Layout.server] Better Auth session result: ${authSession ? `found (userId: ${authSession.userId})` : 'not found'}`, 'debug');
         
         if (authSession) {
             // Validate adapter exists before using it

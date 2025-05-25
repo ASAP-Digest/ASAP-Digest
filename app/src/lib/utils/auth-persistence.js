@@ -188,11 +188,14 @@ function createAuthStore() {
       const responseData = await response.json();
       if (responseData.authenticated && typeof responseData.user === 'object' && responseData.user !== null && typeof responseData.user.id === 'string') {
         const serverUser = /** @type {AuthData} */ (responseData.user);
+        // Extract session token if available
+        const sessionToken = responseData.session?.sessionToken || null;
         svelteUpdate(current => {
           const currentAuthData = (current && typeof current === 'object' && current.id) ? /** @type {AuthData} */ (current) : null;
           const updated = /** @type {AuthData} */ ({
             ...(currentAuthData || {}),
             ...serverUser,
+            sessionToken: sessionToken, // Add session token to auth data
             lastSynced: now,
             version: LOCAL_AUTH_VERSION
           });
@@ -339,6 +342,18 @@ function createAuthStore() {
             if (newWpUserIdNormalizedIsMissing && currentWpUserIdNormalizedExistsAndIsValid) {
               mergedUser.wpUserId = currentAuthData.wpUserId;
               console.log(`[Auth Store SET] Preserved wpUserId: ${currentAuthData.wpUserId}`);
+            }
+            
+            // CRITICAL FIX: Ensure wpUserId is set from wp_user_id if available and wpUserId is missing
+            if ((!mergedUser.wpUserId || mergedUser.wpUserId === null) && mergedUser.wp_user_id) {
+              mergedUser.wpUserId = mergedUser.wp_user_id;
+              console.log(`[Auth Store SET] CRITICAL FIX - Set wpUserId from wp_user_id: ${mergedUser.wp_user_id}`);
+            }
+            
+            // Also ensure wp_user_id is set from wpUserId if available (bidirectional sync)
+            if ((!mergedUser.wp_user_id || mergedUser.wp_user_id === null) && mergedUser.wpUserId) {
+              mergedUser.wp_user_id = mergedUser.wpUserId;
+              console.log(`[Auth Store SET] CRITICAL FIX - Set wp_user_id from wpUserId: ${mergedUser.wpUserId}`);
             }
 
             // Preserve metadata if missing in new data but exists in current

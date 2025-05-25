@@ -210,7 +210,9 @@ export async function POST(event) {
 								email: wpUserData.email,
 								displayName: wpUserData.displayName || wpUserData.username,
 								avatarUrl: wpUserData.avatarUrl || '',
-								roles: wpUserData.roles || []
+								roles: wpUserData.roles || [],
+								wp_user_id: wpUserData.wpUserId, // CRITICAL FIX: Include WordPress user ID
+								wpUserId: wpUserData.wpUserId    // Also include normalized version
 							}
 						});
 					} else {

@@ -139,10 +139,6 @@ class REST_Digest_Builder extends REST_Base {
             'callback'            => [ $this, 'create_draft_digest' ],
             'permission_callback' => [ $this, 'get_items_permissions_check' ], // Implement appropriate permission checks
             'args'                => [
-                'user_id' => [
-                    'validate_callback' => function( $param, $request, $key ) { return is_numeric( $param ); },
-                    'required' => true,
-                ],
                 'layout_template_id' => [
                     'validate_callback' => function( $param, $request, $key ) { return is_string( $param ) && ! empty( $param ); },
                     'required' => true,
@@ -231,6 +227,19 @@ class REST_Digest_Builder extends REST_Base {
                     'validate_callback' => function( $param, $request, $key ) { return is_numeric( $param ); },
                     'required' => true,
                 ],
+                // Optional query args for filtering (e.g., status=draft/published)
+                'status' => [
+                    'validate_callback' => function( $param, $request, $key ) { return in_array( $param, ['draft', 'published', 'archived'] ); },
+                ],
+            ],
+        ] );
+
+        // Add route for current user's digests (no user_id required)
+        register_rest_route( $this->namespace, '/' . $this->rest_base . '/user-digests', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'get_current_users_digests' ],
+            'permission_callback' => [ $this, 'get_items_permissions_check' ], // Implement appropriate permission checks
+            'args'                => [
                 // Optional query args for filtering (e.g., status=draft/published)
                 'status' => [
                     'validate_callback' => function( $param, $request, $key ) { return in_array( $param, ['draft', 'published', 'archived'] ); },
@@ -401,15 +410,20 @@ class REST_Digest_Builder extends REST_Base {
      * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
      */
     public function create_draft_digest( $request ) {
+        // Get authenticated user ID
+        $user_id = $this->get_authenticated_user_id($request);
+        if (!$user_id) {
+            return new WP_Error('asap_digest_auth_required', 'Authentication required.', ['status' => 401]);
+        }
+
         // Extract data from request
-        $user_id = (int) $request['user_id'];
         $layout_template_id = sanitize_text_field( $request['layout_template_id'] );
 
         // Validate input data
-        if ( empty( $user_id ) || empty( $layout_template_id ) ) {
+        if ( empty( $layout_template_id ) ) {
             return new WP_Error(
                 'asap_digest_error', // Error code
-                __( 'User ID and Layout Template ID are required.', 'asap-digest-core' ), // Error message
+                __( 'Layout Template ID is required.', 'asap-digest-core' ), // Error message
                 [ 'status' => 400 ] // HTTP status code
             );
         }
@@ -683,6 +697,33 @@ class REST_Digest_Builder extends REST_Base {
      * @param WP_REST_Request $request The REST API request. Expected parameters:
      *     @type int $user_id The ID of the user whose digests to retrieve. (Required, from URL)
      *     @type string $status Optional. Filter digests by status (e.g., 'draft', 'published', 'archived').
+     *
+     * @return WP_REST_Response|WP_Error WP_REST_Response on success (with list of digests),
+     *     WP_Error on failure (e.g., permissions).
+     *
+     * @created 05.23.25 | 06:23 PM PDT
+     */
+    public function get_current_users_digests( $request ) {
+        // Get authenticated user ID
+        $wp_user_id = $this->get_authenticated_user_id($request);
+        if (!$wp_user_id) {
+            return new WP_Error('asap_digest_auth_required', 'Authentication required.', ['status' => 401]);
+        }
+
+        // Use the existing get_users_digests logic but with the authenticated user ID
+        $request->set_param('user_id', $wp_user_id);
+        return $this->get_users_digests($request);
+    }
+
+    /**
+     * Handles fetching all digests for a specific user.
+     *
+     * This endpoint fetches all digests for a given user ID, with optional status filtering.
+     * Users can only access their own digests unless they have admin capabilities.
+     *
+     * @param WP_REST_Request $request The REST API request. Expected parameters:
+     *     @type int $user_id The ID of the user whose digests to fetch. (Required, from URL)
+     *     @type string $status Optional status filter ('draft', 'published', 'archived'). (Optional, from query)
      *
      * @return WP_REST_Response|WP_Error WP_REST_Response on success (with list of digests),
      *     WP_Error on failure (e.g., permissions).
