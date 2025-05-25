@@ -103,7 +103,7 @@ export function getAvatarUrl(user) {
       url: user.avatarUrl || 'none',
       email: user.email || 'none',
       hasPreferences: false
-    });
+  });
   }
   
   // PRIORITY 1: Always check for WordPress/auth synced avatar

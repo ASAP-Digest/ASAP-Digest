@@ -40,15 +40,15 @@ function normalizeUser(inputUser) {
   if (!inputUser) {
     // Return empty user object with default values to satisfy the User type
     return {
-      id: '',
-      email: '', // Always provide a string value for email (empty string if not available)
-      displayName: '',
-      avatarUrl: '',
-      roles: [],
-      metadata: {},
-      plan: { name: 'Free' }, // Must be an object with name property to match UserPlan type
-      updatedAt: new Date().toISOString()
-    };
+    id: '',
+    email: '', // Always provide a string value for email (empty string if not available)
+    displayName: '',
+    avatarUrl: '',
+    roles: [],
+    metadata: {},
+    plan: { name: 'Free' }, // Must be an object with name property to match UserPlan type
+    updatedAt: new Date().toISOString()
+  };
   }
   
   // Log the input to diagnose issues

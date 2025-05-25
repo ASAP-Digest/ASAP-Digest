@@ -565,8 +565,8 @@ class REST_Digest_Builder extends REST_Base {
              return new WP_Error( 'no_data_to_update', 'No valid placement data provided for update.', ['status' => 400] );
         }
 
-        // Get current user ID for ownership validation
-        $current_user_id = get_current_user_id();
+        // Get current user ID for ownership validation using enhanced authentication
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
@@ -607,8 +607,8 @@ class REST_Digest_Builder extends REST_Base {
         $digest_id = (int) $request['digest_id'];
         $placement_id = (int) $request['placement_id'];
 
-        // Get current user ID for ownership validation
-        $current_user_id = get_current_user_id();
+        // Get current user ID for ownership validation using enhanced authentication
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
@@ -648,8 +648,8 @@ class REST_Digest_Builder extends REST_Base {
     public function get_digest( $request ) {
         $digest_id = (int) $request['digest_id'];
 
-        // Get current user ID for ownership validation
-        $current_user_id = get_current_user_id();
+        // Get current user ID for ownership validation using enhanced authentication
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
@@ -741,8 +741,8 @@ class REST_Digest_Builder extends REST_Base {
     public function publish_digest( $request ) {
          $digest_id = (int) $request['digest_id'];
 
-        // Get current user ID for ownership validation
-        $current_user_id = get_current_user_id();
+        // Get current user ID for ownership validation using enhanced authentication
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }
@@ -781,8 +781,8 @@ class REST_Digest_Builder extends REST_Base {
     public function delete_digest( $request ) {
          $digest_id = (int) $request['digest_id'];
 
-        // Get current user ID for ownership validation
-        $current_user_id = get_current_user_id();
+        // Get current user ID for ownership validation using enhanced authentication
+        $current_user_id = $this->get_authenticated_user_id($request);
         if ( ! $current_user_id ) {
              return new WP_Error( 'asap_digest_auth_required', 'Authentication required.', ['status' => 401] );
         }

@@ -489,7 +489,7 @@
   let userValue = $state(null);
   let userData = $state(null);
   const unsubscribe = userStore.subscribe(value => { 
-    userValue = value;
+    userValue = value; 
     userData = value ? getUserData(value) : null;
     // Remove these console.log statements
     // console.log('[ADMIN-ROLES DEBUG] User value updated:', userValue);

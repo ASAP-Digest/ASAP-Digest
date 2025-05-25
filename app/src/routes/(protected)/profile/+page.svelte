@@ -19,6 +19,10 @@
   /** @type {import('./$types').PageData} */
   const { data } = $props();
 
+  // Debug logging
+  console.log('[Profile Page] Component loaded with data:', data);
+  console.log('[Profile Page] User data:', data?.user);
+
   // Get user data helper for cleaner access
   const userData = $derived(getUserData(data.user));
   
@@ -187,6 +191,21 @@
   // Initialize form fields
   let full_name = $state('');
   let username = $state('');
+  let loading = $state(false); // Add missing loading state
+  
+  /**
+   * Handle avatar type change
+   * @param {string} newType - The new avatar type
+   */
+  function handleAvatarTypeChange(newType) {
+    avatarType = newType;
+    if (newType === 'gravatar') {
+      avatarUrl = createGravatarUrl(userData.email);
+    } else if (newType === 'synced') {
+      avatarUrl = userData.avatarUrl;
+    }
+    // For custom, avatarUrl will be set by the input field
+  }
 
   $effect(() => {
     if (data && data.user) {
@@ -296,75 +315,16 @@
   }
 </script>
 
-<!-- The outermost div with grid-stack-item is already added by a previous edit -->
-<!-- Remove the inner container wrapper and make sections direct grid-stack-items -->
+<!-- Remove the duplicate/conflicting grid-stack layout -->
 
-<!-- Profile Header - Treat as Gridstack item -->
-<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
-  <div class="grid-stack-item-content">
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold">Profile</h1>
-      <p class="text-muted-foreground">Manage your profile information</p>
-    </header>
-  </div>
-        </div>
-        
-<!-- Profile Form Section - Treat as Gridstack item -->
-<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
-  <div class="grid-stack-item-content">
-    <Card class="max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Update Profile</CardTitle>
-        <CardDescription>Update your account's profile information.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div class="grid w-full items-center gap-4">
-          <div class="flex flex-col space-y-1.5">
-            <Label for="email">Email</Label>
-            <Input id="email" type="email" value={$page.data.session?.user.email} disabled />
-          </div>
-          <div class="flex flex-col space-y-1.5">
-            <Label for="fullName">Full Name</Label>
-            <Input id="fullName" placeholder="Your full name" bind:value={full_name} />
-          </div>
-          <div class="flex flex-col space-y-1.5">
-            <Label for="username">Username</Label>
-            <Input id="username" placeholder="Your username" bind:value={username} />
-        </div>
-      </div>
-    </CardContent>
-      <CardFooter class="flex justify-between">
-        <Button on:click={updateProfile} disabled={loading}>
-          {#if loading}
-            Loading...
-          {:else}
-            Update profile
-          {/if}
-        </Button>
-      </CardFooter>
-  </Card>
-  </div>
-</div>
-
-<!-- Logout Section - Treat as Gridstack item -->
-<div class="grid-stack-item" data-gs-no-resize="true" data-gs-no-move="true" data-gs-auto-position="true" data-gs-width="12" data-gs-height="auto">
-  <div class="grid-stack-item-content">
-    <div class="mt-8 max-w-md mx-auto text-right">
-      <Button variant="outline" on:click={signOut}>Sign Out</Button>
+{#if !data?.user}
+  <div class="flex items-center justify-center min-h-screen">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <p>Loading profile...</p>
     </div>
   </div>
-</div>
-
-<style>
-  .avatar-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: hsl(var(--muted));
-  }
-</style>
-
+{:else}
 <div class="max-w-4xl mx-auto">
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
     <!-- User header -->
@@ -614,3 +574,4 @@
     </button>
   </div>
 </div> 
+{/if} 

@@ -24,6 +24,9 @@
   // Access user data reactively from the passed data prop
   let user = $derived(data?.user || null);
   
+  // Get user data helper for cleaner access - MOVED UP to fix initialization error
+  const userData = $derived(getUserData(user));
+  
   // State for loading indicator (remove direct use of useSession here)
   let isLoading = $state(false); // Manage loading state locally if needed
 
@@ -155,9 +158,6 @@
   async function handleLogout() {
     // ... existing code ...
   }
-
-  // Get user data helper for cleaner access
-  const userData = $derived(getUserData(user));
 </script>
 
 {#if user}

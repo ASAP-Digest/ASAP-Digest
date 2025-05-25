@@ -5,7 +5,7 @@
   import Icon from '$lib/components/ui/icon/icon.svelte';
   import { FileText, BarChart2, BookmarkIcon, Calendar, Clock, Activity } from '$lib/utils/lucide-compat.js';
   import { getUserData } from '$lib/stores/user.js';
-
+  
   // Access the streamed data from the page store
   const dashboardData = $derived($page.data.streamed?.dashboardData);
   

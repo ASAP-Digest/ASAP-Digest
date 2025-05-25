@@ -7,7 +7,6 @@
     fetchDigest,
     fetchUserDigests
   } from '$lib/api/digest-builder.js';
-  import { useSession } from '$lib/auth-client.js';
   import Button from '$lib/components/ui/button/button.svelte';
   import Card from '$lib/components/ui/card/card.svelte';
   import CardContent from '$lib/components/ui/card/card-content.svelte';
@@ -15,11 +14,11 @@
   import CardTitle from '$lib/components/ui/card/card-title.svelte';
   import { getUserData } from '$lib/stores/user.js';
 
-  // Get user session
-  const { data: session } = useSession();
+  /** @type {import('./$types').PageData} */
+  const { data } = $props();
 
   // Get user data helper for cleaner access
-  const userData = $derived(getUserData(session?.user));
+  const userData = $derived(getUserData(data.user));
 
   let testResults = $state([]);
   let isRunning = $state(false);
@@ -40,12 +39,30 @@
     testResults = [];
 
     try {
+      // Enhanced Debug: Log all user data
+      console.log('[Test] Raw data.user:', data.user);
+      console.log('[Test] getUserData result:', userData);
+      console.log('[Test] userData.debugInfo:', userData.debugInfo);
+      
+      // Add user data as first test result
+      addResult('User Data Analysis', true, {
+        rawUser: data.user,
+        processedUser: userData.toJSON(),
+        debugInfo: userData.debugInfo,
+        wpUserId: userData.wpUserId,
+        isValid: userData.isValid,
+        isComplete: userData.isComplete
+      });
+      
       // Test 1: Fetch Layout Templates
       addResult('Fetching layout templates...', null, null);
       try {
+        console.log('[Test] About to call fetchLayoutTemplates...');
         const layoutResponse = await fetchLayoutTemplates();
+        console.log('[Test] Layout response:', layoutResponse);
         addResult('Fetch Layout Templates', true, layoutResponse);
       } catch (err) {
+        console.error('[Test] Layout fetch error:', err);
         addResult('Fetch Layout Templates', false, null, err.message);
       }
 
@@ -95,7 +112,7 @@
           addResult('Create Draft Digest', false, null, err.message);
         }
       } else {
-        addResult('User Authentication', false, null, 'User not authenticated');
+        addResult('User Authentication', false, null, `User not authenticated - wpUserId: ${userData.wpUserId}, email: ${userData.email}`);
       }
 
     } catch (err) {
@@ -129,17 +146,32 @@
     </div>
   </div>
 
-  {#if userData.wpUserId}
-    <div class="mb-4 p-4 bg-muted/30 rounded-lg">
-      <p class="text-sm">
-        <strong>User:</strong> {userData.email || userData.id}
-      </p>
+  <!-- Enhanced User Info Display -->
+  <div class="mb-4 p-4 bg-muted/30 rounded-lg">
+    <h3 class="font-semibold mb-2">User Authentication Status</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div>
+        <p><strong>Email:</strong> {userData.email || 'Not available'}</p>
+        <p><strong>Display Name:</strong> {userData.displayName || 'Not available'}</p>
+        <p><strong>WP User ID:</strong> {userData.wpUserId || 'Not available'}</p>
+      </div>
+      <div>
+        <p><strong>Is Valid:</strong> {userData.isValid ? '✅' : '❌'}</p>
+        <p><strong>Is Complete:</strong> {userData.isComplete ? '✅' : '❌'}</p>
+        <p><strong>Sync Status:</strong> {userData.syncStatus}</p>
+      </div>
     </div>
-  {:else}
+  </div>
+
+  {#if !userData.wpUserId}
     <div class="mb-4 p-4 bg-destructive/10 rounded-lg">
       <p class="text-sm text-destructive">
-        <strong>Warning:</strong> User not authenticated. Some tests may fail.
+        <strong>Warning:</strong> User not authenticated or missing WordPress User ID. Some tests may fail.
       </p>
+      <details class="mt-2">
+        <summary class="cursor-pointer text-sm font-medium">View Debug Info</summary>
+        <pre class="mt-2 p-3 bg-muted rounded text-xs overflow-auto">{JSON.stringify(userData.debugInfo, null, 2)}</pre>
+      </details>
     </div>
   {/if}
 
@@ -191,15 +223,16 @@
   }
   
   .test-result.error {
-    border-left: 4px solid hsl(var(--destructive));
+    border-left: 4px solid hsl(var(--destructive, 0 84% 60%));
   }
   
   .test-result.info {
-    border-left: 4px solid hsl(var(--primary));
+    border-left: 4px solid hsl(var(--primary, 221 83% 53%));
   }
   
   .error-message {
-    color: hsl(var(--destructive));
+    color: hsl(var(--destructive, 0 84% 60%));
+    font-family: monospace;
     font-size: 0.875rem;
   }
   

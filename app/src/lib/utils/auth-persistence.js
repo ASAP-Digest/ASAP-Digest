@@ -40,6 +40,14 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
  * @property {number} [lastSynced] - Timestamp of last server sync
  * @property {number} [version] - Schema version
  * @property {string[]} [roles] - Deprecated: prefer metadata.roles, but handle for backward compatibility if necessary
+ * @property {string} [sessionToken] - Better Auth session token for API authentication
+ * @property {number} [wp_user_id] - WordPress user ID for API calls
+ * @property {number} [wpUserId] - WordPress user ID (normalized version)
+ * @property {string} [betterAuthId] - Better Auth user ID (may be same as id)
+ * @property {string} [username] - Username
+ * @property {string} [name] - User name
+ * @property {string} [syncStatus] - Sync status with WordPress
+ * @property {string} [updatedAt] - Last update timestamp (ISO string)
  */
 
 /**
@@ -315,6 +323,30 @@ function createAuthStore() {
             if (newPlanIsMissing && currentPlanExistsAndIsValid) {
               mergedUser.plan = currentAuthData.plan;
               console.log(`[Auth Store SET] Preserved plan: ${JSON.stringify(currentAuthData.plan)}`);
+            }
+
+            // Preserve WordPress user ID if missing in new data but exists in current
+            const newWpUserIdIsMissing = !Object.prototype.hasOwnProperty.call(newAuthData, 'wp_user_id') || newAuthData.wp_user_id === undefined || newAuthData.wp_user_id === null;
+            const currentWpUserIdExistsAndIsValid = Object.prototype.hasOwnProperty.call(currentAuthData, 'wp_user_id') && currentAuthData.wp_user_id !== undefined && currentAuthData.wp_user_id !== null;
+            if (newWpUserIdIsMissing && currentWpUserIdExistsAndIsValid) {
+              mergedUser.wp_user_id = currentAuthData.wp_user_id;
+              console.log(`[Auth Store SET] Preserved wp_user_id: ${currentAuthData.wp_user_id}`);
+            }
+
+            // Also preserve wpUserId (normalized version) if missing
+            const newWpUserIdNormalizedIsMissing = !Object.prototype.hasOwnProperty.call(newAuthData, 'wpUserId') || newAuthData.wpUserId === undefined || newAuthData.wpUserId === null;
+            const currentWpUserIdNormalizedExistsAndIsValid = Object.prototype.hasOwnProperty.call(currentAuthData, 'wpUserId') && currentAuthData.wpUserId !== undefined && currentAuthData.wpUserId !== null;
+            if (newWpUserIdNormalizedIsMissing && currentWpUserIdNormalizedExistsAndIsValid) {
+              mergedUser.wpUserId = currentAuthData.wpUserId;
+              console.log(`[Auth Store SET] Preserved wpUserId: ${currentAuthData.wpUserId}`);
+            }
+
+            // Preserve metadata if missing in new data but exists in current
+            const newMetadataIsMissing = !Object.prototype.hasOwnProperty.call(newAuthData, 'metadata') || newAuthData.metadata === undefined || Object.keys(newAuthData.metadata || {}).length === 0;
+            const currentMetadataExistsAndIsValid = Object.prototype.hasOwnProperty.call(currentAuthData, 'metadata') && currentAuthData.metadata !== undefined && Object.keys(currentAuthData.metadata || {}).length > 0;
+            if (newMetadataIsMissing && currentMetadataExistsAndIsValid) {
+              mergedUser.metadata = { ...currentAuthData.metadata, ...(newAuthData.metadata || {}) };
+              console.log(`[Auth Store SET] Preserved/merged metadata: ${JSON.stringify(mergedUser.metadata)}`);
             }
             valueToSet = mergedUser;
           } else {
