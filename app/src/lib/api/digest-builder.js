@@ -1,11 +1,30 @@
 /**
  * Digest Builder API
  * Handles all API calls for the new digest creation flow
+ * Now uses GraphQL as the primary interface, with REST fallbacks for operations not yet implemented in GraphQL
+ * 
+ * MIGRATION NOTE (December 2024):
+ * This file was updated to use GraphQL instead of REST API proxy routes to align with the original
+ * architecture vision specified in asap-digest-stack.mdc. The proxy pattern has been repurposed
+ * into a reusable utility at $lib/utils/api-proxy.js for legitimate use cases like webhook
+ * forwarding and external API integrations.
  */
 
 import { getApiUrl } from '$lib/utils/api-config.js';
 import { browser } from '$app/environment';
 import { authStore } from '$lib/utils/auth-persistence.js';
+
+// Import GraphQL implementations
+import {
+  fetchLayoutTemplates as fetchLayoutTemplatesGraphQL,
+  createDraftDigest as createDraftDigestGraphQL,
+  fetchUserDigests as fetchUserDigestsGraphQL,
+  fetchDigest as fetchDigestGraphQL,
+  updateDigestStatus as updateDigestStatusGraphQL,
+  addModuleToDigest as addModuleToDigestGraphQL,
+  removeModuleFromDigest as removeModuleFromDigestGraphQL,
+  saveDigestLayout as saveDigestLayoutGraphQL
+} from './digest-builder-graphql.js';
 
 const API_BASE = getApiUrl();
 
@@ -172,43 +191,8 @@ async function getApiHeaders() {
  * @returns {Promise<ApiResponse>} Response with layout templates data
  */
 export async function fetchLayoutTemplates() {
-  try {
-    // Use SvelteKit API proxy instead of direct WordPress calls
-    const url = `/api/wp-proxy/digest-builder/layouts`;
-    const headers = await getApiHeaders();
-    
-    console.log('[Digest Builder API] Fetching layout templates...');
-    console.log('[Digest Builder API] URL:', url);
-    console.log('[Digest Builder API] Headers:', headers);
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: headers,
-      credentials: 'include'
-    });
-
-    console.log('[Digest Builder API] Response status:', response.status);
-    console.log('[Digest Builder API] Response ok:', response.ok);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Digest Builder API] Error response:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('[Digest Builder API] Success data:', data);
-    return {
-      success: true,
-      data: data
-    };
-  } catch (error) {
-    console.error('[Digest Builder API] Error fetching layout templates:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+  console.log('[Digest Builder API] Using GraphQL implementation for fetchLayoutTemplates');
+  return await fetchLayoutTemplatesGraphQL();
 }
 
 /**
@@ -218,69 +202,8 @@ export async function fetchLayoutTemplates() {
  * @returns {Promise<ApiResponse>} Response object
  */
 export async function createDraftDigest(userId, layoutTemplateId) {
-  try {
-    console.log('[Digest Builder API] Creating draft digest...');
-    console.log('[Digest Builder API] userId:', userId);
-    console.log('[Digest Builder API] layoutTemplateId:', layoutTemplateId);
-    
-    const headers = await getApiHeaders();
-    console.log('[Digest Builder API] Request headers:', headers);
-    
-    const requestBody = {
-      layout_template_id: layoutTemplateId,
-      status: 'draft'
-    };
-    console.log('[Digest Builder API] Request body:', requestBody);
-    
-    // Use SvelteKit API proxy instead of direct WordPress calls
-    const url = `/api/wp-proxy/digest-builder/create-draft`;
-    console.log('[Digest Builder API] Request URL:', url);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: headers,
-      credentials: 'include',
-      body: JSON.stringify(requestBody)
-    });
-
-    console.log('[Digest Builder API] Response status:', response.status);
-    console.log('[Digest Builder API] Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Digest Builder API] Error response text:', errorText);
-      
-      let errorData = {};
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        console.warn('[Digest Builder API] Could not parse error response as JSON');
-      }
-      
-      // Provide specific error messages for common issues
-      if (response.status === 401) {
-        throw new Error('Authentication required. Please log in to WordPress first.');
-      } else if (response.status === 403) {
-        throw new Error('Permission denied. You may not have the required capabilities.');
-      } else if (response.status === 404) {
-        throw new Error('API endpoint not found. Please check if the plugin is activated.');
-      } else {
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}, body: ${errorText}`);
-      }
-    }
-
-    const data = await response.json();
-    return {
-      success: true,
-      data: data
-    };
-  } catch (error) {
-    console.error('Error creating draft digest:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+  console.log('[Digest Builder API] Using GraphQL implementation for createDraftDigest');
+  return await createDraftDigestGraphQL(userId, layoutTemplateId);
 }
 
 /**
@@ -339,30 +262,8 @@ export async function addModuleToDigest(digestId, moduleData, gridPosition) {
  * @returns {Promise<ApiResponse>} Response object
  */
 export async function fetchDigest(digestId) {
-  try {
-    const headers = await getApiHeaders();
-    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/${digestId}`, {
-      method: 'GET',
-      headers: headers,
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return {
-      success: true,
-      data: data
-    };
-  } catch (error) {
-    console.error('Error fetching digest:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+  console.log('[Digest Builder API] Using GraphQL implementation for fetchDigest');
+  return await fetchDigestGraphQL(digestId);
 }
 
 /**
@@ -372,31 +273,8 @@ export async function fetchDigest(digestId) {
  * @returns {Promise<ApiResponse>} Response object
  */
 export async function fetchUserDigests(userId, status = 'draft') {
-  try {
-    const headers = await getApiHeaders();
-    // Use SvelteKit API proxy instead of direct WordPress calls
-    const response = await fetch(`/api/wp-proxy/digest-builder/user-digests?status=${status}`, {
-      method: 'GET',
-      headers: headers,
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return {
-      success: true,
-      data: data
-    };
-  } catch (error) {
-    console.error('Error fetching user digests:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-  }
+  console.log('[Digest Builder API] Using GraphQL implementation for fetchUserDigests');
+  return await fetchUserDigestsGraphQL(userId, status);
 }
 
 /**
