@@ -121,13 +121,22 @@ class REST_Digest_Builder extends REST_Base {
      * @return int|false WordPress user ID if authenticated, false otherwise
      */
     private function get_authenticated_user_id($request) {
-        // First try WordPress session authentication
-        if (is_user_logged_in()) {
-            return get_current_user_id();
+        // First try WordPress REST API authentication (works with nonce and cookies)
+        $current_user = wp_get_current_user();
+        if ($current_user && $current_user->ID > 0) {
+            error_log("ASAP_AUTH_DEBUG: Found WordPress user via wp_get_current_user: " . $current_user->ID);
+            return $current_user->ID;
         }
         
-        // If WordPress session auth fails, try Better Auth token authentication
-        return $this->authenticate_with_better_auth($request);
+        // If WordPress auth fails, try Better Auth token authentication
+        $ba_user_id = $this->authenticate_with_better_auth($request);
+        if ($ba_user_id) {
+            error_log("ASAP_AUTH_DEBUG: Found user via Better Auth: " . $ba_user_id);
+            return $ba_user_id;
+        }
+        
+        error_log("ASAP_AUTH_DEBUG: No authentication found");
+        return false;
     }
 
     /**

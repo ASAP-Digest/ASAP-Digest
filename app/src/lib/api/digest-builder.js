@@ -17,36 +17,11 @@ async function getBetterAuthToken() {
   if (!browser) return null;
   
   console.log('[Digest Builder API] Attempting to get session token...');
+  console.log('[Digest Builder API] Available cookies:', document.cookie);
+  console.log('[Digest Builder API] Current URL:', window.location.href);
+  console.log('[Digest Builder API] Cookie domain:', window.location.hostname);
   
-  // Method 1: Try to get from cookies (if accessible)
-  const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'better_auth_session') {
-      console.log('[Digest Builder API] Found session token in cookies');
-      return value;
-    }
-  }
-  
-  // Method 2: Try to get from session endpoint
-  try {
-    const response = await fetch('/api/auth/session', {
-      method: 'GET',
-      credentials: 'include'
-    });
-    
-    if (response.ok) {
-      const sessionData = await response.json();
-      if (sessionData && sessionData.session && sessionData.session.sessionToken) {
-        console.log('[Digest Builder API] Found session token from session endpoint');
-        return sessionData.session.sessionToken;
-      }
-    }
-  } catch (error) {
-    console.warn('[Digest Builder API] Failed to fetch session token from endpoint:', error);
-  }
-  
-  // Method 3: Try to get from auth store (local authentication)
+  // Method 1: Try to get from auth store first (most reliable for cross-domain)
   try {
     const authData = authStore.get();
     console.log('[Digest Builder API] Auth store data:', authData);
@@ -60,22 +35,76 @@ async function getBetterAuthToken() {
     console.warn('[Digest Builder API] Failed to get session token from auth store:', error);
   }
   
-  // Method 4: Try WordPress session check endpoint
+  // Method 2: Try WordPress session check endpoint to get/create session token
   try {
     const response = await fetch('/api/auth/check-wp-session', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const wpSessionData = await response.json();
+      console.log('[Digest Builder API] WordPress session check response:', wpSessionData);
+      if (wpSessionData && wpSessionData.sessionToken) {
+        console.log('[Digest Builder API] Found session token from WordPress session check');
+        
+        // Store the session token in auth store for future use
+        try {
+          const currentAuthData = authStore.get();
+          if (currentAuthData) {
+            authStore.set({
+              ...currentAuthData,
+              sessionToken: wpSessionData.sessionToken
+            });
+            console.log('[Digest Builder API] Stored session token in auth store');
+          }
+        } catch (storeError) {
+          console.warn('[Digest Builder API] Failed to store session token in auth store:', storeError);
+        }
+        
+        return wpSessionData.sessionToken;
+      }
+    } else {
+      console.log('[Digest Builder API] WordPress session check failed with status:', response.status);
+    }
+  } catch (error) {
+    console.warn('[Digest Builder API] Failed to check WordPress session:', error);
+  }
+  
+  // Method 3: Try to get from cookies (if accessible)
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'better_auth_session') {
+      console.log('[Digest Builder API] Found session token in cookies');
+      return value;
+    }
+  }
+  
+  // Method 4: Try to get from session endpoint
+  try {
+    const response = await fetch('/api/auth/session', {
       method: 'GET',
       credentials: 'include'
     });
     
     if (response.ok) {
-      const wpSessionData = await response.json();
-      if (wpSessionData && wpSessionData.sessionToken) {
-        console.log('[Digest Builder API] Found session token from WordPress session check');
-        return wpSessionData.sessionToken;
+      const sessionData = await response.json();
+      console.log('[Digest Builder API] Session endpoint response:', sessionData);
+      if (sessionData && sessionData.session && sessionData.session.sessionToken) {
+        console.log('[Digest Builder API] Found session token from session endpoint');
+        return sessionData.session.sessionToken;
+      } else {
+        console.log('[Digest Builder API] No session token in session endpoint response');
       }
+    } else {
+      console.log('[Digest Builder API] Session endpoint failed with status:', response.status);
     }
   } catch (error) {
-    console.warn('[Digest Builder API] Failed to check WordPress session:', error);
+    console.warn('[Digest Builder API] Failed to fetch session token from endpoint:', error);
   }
   
   console.warn('[Digest Builder API] No session token found via any method');
@@ -144,13 +173,13 @@ async function getApiHeaders() {
  */
 export async function fetchLayoutTemplates() {
   try {
-    const url = `${API_BASE}/wp-json/asap/v1/digest-builder/layouts`;
+    // Use SvelteKit API proxy instead of direct WordPress calls
+    const url = `/api/wp-proxy/digest-builder/layouts`;
     const headers = await getApiHeaders();
     
     console.log('[Digest Builder API] Fetching layout templates...');
     console.log('[Digest Builder API] URL:', url);
     console.log('[Digest Builder API] Headers:', headers);
-    console.log('[Digest Builder API] API_BASE:', API_BASE);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -190,20 +219,54 @@ export async function fetchLayoutTemplates() {
  */
 export async function createDraftDigest(userId, layoutTemplateId) {
   try {
+    console.log('[Digest Builder API] Creating draft digest...');
+    console.log('[Digest Builder API] userId:', userId);
+    console.log('[Digest Builder API] layoutTemplateId:', layoutTemplateId);
+    
     const headers = await getApiHeaders();
-    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/create-draft`, {
+    console.log('[Digest Builder API] Request headers:', headers);
+    
+    const requestBody = {
+      layout_template_id: layoutTemplateId,
+      status: 'draft'
+    };
+    console.log('[Digest Builder API] Request body:', requestBody);
+    
+    // Use SvelteKit API proxy instead of direct WordPress calls
+    const url = `/api/wp-proxy/digest-builder/create-draft`;
+    console.log('[Digest Builder API] Request URL:', url);
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: headers,
       credentials: 'include',
-      body: JSON.stringify({
-        layout_template_id: layoutTemplateId,
-        status: 'draft'
-      })
+      body: JSON.stringify(requestBody)
     });
 
+    console.log('[Digest Builder API] Response status:', response.status);
+    console.log('[Digest Builder API] Response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[Digest Builder API] Error response text:', errorText);
+      
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        console.warn('[Digest Builder API] Could not parse error response as JSON');
+      }
+      
+      // Provide specific error messages for common issues
+      if (response.status === 401) {
+        throw new Error('Authentication required. Please log in to WordPress first.');
+      } else if (response.status === 403) {
+        throw new Error('Permission denied. You may not have the required capabilities.');
+      } else if (response.status === 404) {
+        throw new Error('API endpoint not found. Please check if the plugin is activated.');
+      } else {
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
     }
 
     const data = await response.json();
@@ -311,8 +374,8 @@ export async function fetchDigest(digestId) {
 export async function fetchUserDigests(userId, status = 'draft') {
   try {
     const headers = await getApiHeaders();
-    // Use the current user endpoint that doesn't require user ID in URL
-    const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/user-digests?status=${status}`, {
+    // Use SvelteKit API proxy instead of direct WordPress calls
+    const response = await fetch(`/api/wp-proxy/digest-builder/user-digests?status=${status}`, {
       method: 'GET',
       headers: headers,
       credentials: 'include'
@@ -346,7 +409,7 @@ export async function updateDigestStatus(digestId, status) {
   try {
     const headers = await getApiHeaders();
     const response = await fetch(`${API_BASE}/wp-json/asap/v1/digest-builder/${digestId}/status`, {
-      method: 'PUT',
+        method: 'PUT',
       headers: headers,
       credentials: 'include',
       body: JSON.stringify({
@@ -428,8 +491,8 @@ export async function saveDigestLayout(digestId, layoutData) {
     }
 
     const data = await response.json();
-    return {
-      success: true,
+  return {
+    success: true,
       data: data
     };
   } catch (error) {

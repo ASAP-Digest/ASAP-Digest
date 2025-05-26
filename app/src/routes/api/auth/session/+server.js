@@ -53,12 +53,18 @@ export const GET = async (event) => {
             sessionToken: sessionToken,
             userId: user.id
         };
+    } else if (sessionToken) {
+        // Even if no user in locals, include session token if available
+        response.session = {
+            sessionToken: sessionToken
+        };
     }
     
     console.log('[API /session] GET request received. Cookie present:', !!sessionToken);
     console.log('[API /session] User authenticated:', response.authenticated);
     console.log('[API /session] event.locals keys:', Object.keys(event.locals || {}));
     console.log('[API /session] User data:', user ? { id: user.id, email: user.email } : 'null');
+    console.log('[API /session] Session token length:', sessionToken ? sessionToken.length : 0);
     
     // Add debug info in dev mode
     if (process.env.NODE_ENV !== 'production') {

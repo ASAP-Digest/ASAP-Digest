@@ -54,17 +54,26 @@
   console.log('[Digest Create] Component loaded with data:', data);
   console.log('[Digest Create] User data:', userData);
 
+  // Track if we've attempted to load data to prevent infinite retries
+  let hasAttemptedLayoutLoad = $state(false);
+  let hasAttemptedUserDigestsLoad = $state(false);
+  let layoutLoadError = $state(false);
+  let userDigestsLoadError = $state(false);
+
   // Reactive effect to load data when user becomes available
   $effect(() => {
     const user = authStore.get();
     currentUser = user;
     
     if (user?.id && userData.isValid) {
-      // Load layout templates and user digests
-      if (layoutTemplates.length === 0) {
+      // Load layout templates (only once)
+      if (layoutTemplates.length === 0 && !hasAttemptedLayoutLoad && !layoutLoadError) {
+        hasAttemptedLayoutLoad = true;
         loadLayoutTemplates();
       }
-      if (userDigests.length === 0) {
+      // Load user digests (only once)
+      if (userDigests.length === 0 && !hasAttemptedUserDigestsLoad && !userDigestsLoadError && !isLoadingUserDigests) {
+        hasAttemptedUserDigestsLoad = true;
         loadUserDigests();
       }
     }
@@ -85,11 +94,11 @@
       }
     }
     
-    // If no pre-selected module, redirect to main digest page
+    // If no pre-selected module, allow manual digest creation
     if (!preSelectedModule) {
-      console.log('[Digest Create] No pre-selected module, redirecting to digest page');
-      goto('/digest');
-      return;
+      console.log('[Digest Create] No pre-selected module, allowing manual digest creation');
+      // Set current step to layout selection for manual creation
+      currentStep = 'layout-selection';
     }
   });
 
@@ -184,10 +193,12 @@
       } else {
         console.log('API failed, using fallback templates');
         layoutTemplates = getFallbackTemplates();
+        layoutLoadError = true;
       }
     } catch (err) {
       console.error('Layout templates exception:', err);
       layoutTemplates = getFallbackTemplates();
+      layoutLoadError = true;
     }
   }
 
@@ -204,6 +215,7 @@
       if (!wpUserId) {
         console.error('[ERROR] No WordPress user ID found');
         userDigests = [];
+        userDigestsLoadError = true;
         return;
       }
 
@@ -215,10 +227,12 @@
       } else {
         console.error('[ERROR] Failed to load user digests:', response.error);
         userDigests = [];
+        userDigestsLoadError = true;
       }
     } catch (err) {
       console.error('[ERROR] Exception loading user digests:', err);
       userDigests = [];
+      userDigestsLoadError = true;
     } finally {
       isLoadingUserDigests = false;
       isLoading = false;
@@ -265,8 +279,8 @@
 
   // Handle layout selection and create new digest
   async function selectLayout(layout) {
-    if (!userData.isValid || !preSelectedModule) {
-      console.error('[ERROR] No valid user or pre-selected module found');
+    if (!userData.isValid) {
+      console.error('[ERROR] No valid user found');
       return;
     }
 
@@ -287,10 +301,17 @@
       if (response.success) {
         console.log('[SUCCESS] Created draft digest:', response.data);
         
-        // Navigate to the digest builder with the pre-selected module
+        // Navigate to the digest builder
         const digestId = response.data.digest_id;
-        const moduleParam = encodeURIComponent(JSON.stringify(preSelectedModule));
-        goto(`/digest/builder?layout=${layout.id}&digest=${digestId}&preselected=${moduleParam}`);
+        let builderUrl = `/digest/builder?layout=${layout.id}&digest=${digestId}`;
+        
+        // Add pre-selected module if available
+        if (preSelectedModule) {
+          const moduleParam = encodeURIComponent(JSON.stringify(preSelectedModule));
+          builderUrl += `&preselected=${moduleParam}`;
+        }
+        
+        goto(builderUrl);
       } else {
         console.error('[ERROR] Failed to create draft digest:', response.error);
         error = 'Failed to create digest';
@@ -305,7 +326,7 @@
 
   // Navigate back
   function goBack() {
-    if (currentStep === 'layout-selection') {
+    if (currentStep === 'layout-selection' && preSelectedModule) {
       currentStep = 'destination-choice';
     } else {
       goto('/digest');
@@ -326,17 +347,19 @@
       </Button>
       <div>
         <h1 class="text-3xl font-bold">
-          {#if currentStep === 'destination-choice'}
+          {#if currentStep === 'destination-choice' && preSelectedModule}
             Add Content to Digest
           {:else}
             Choose Digest Layout
           {/if}
         </h1>
         <p class="text-muted-foreground">
-          {#if currentStep === 'destination-choice'}
+          {#if currentStep === 'destination-choice' && preSelectedModule}
             Where would you like to add this content?
-          {:else}
+          {:else if preSelectedModule}
             Select a layout template for your new digest
+          {:else}
+            Create a new digest by selecting a layout template
           {/if}
         </p>
       </div>
@@ -367,8 +390,8 @@
       <p class="text-destructive mb-4">{error}</p>
       <Button onclick={() => window.location.reload()}>Try Again</Button>
     </div>
-  {:else if currentStep === 'destination-choice'}
-    <!-- Destination Choice Step -->
+  {:else if currentStep === 'destination-choice' && preSelectedModule}
+    <!-- Destination Choice Step (only shown when there's a pre-selected module) -->
     <div class="space-y-6">
       <!-- Create New Digest Option -->
       <Card class="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50" onclick={chooseNewDigest}>
@@ -421,13 +444,32 @@
             {/each}
           </div>
         </div>
-      {:else if !isLoadingUserDigests}
+      {:else if !isLoadingUserDigests && !userDigestsLoadError}
         <Card class="border-dashed">
           <CardContent class="p-8 text-center">
             <Icon icon={BookOpen} size={48} class="mx-auto mb-4 text-muted-foreground" />
             <h3 class="text-lg font-semibold mb-2">No Existing Digests</h3>
             <p class="text-muted-foreground mb-4">You don't have any draft digests yet.</p>
             <Button onclick={chooseNewDigest}>Create Your First Digest</Button>
+          </CardContent>
+        </Card>
+      {:else if userDigestsLoadError}
+        <Card class="border-dashed border-destructive/50">
+          <CardContent class="p-8 text-center">
+            <Icon icon={BookOpen} size={48} class="mx-auto mb-4 text-destructive" />
+            <h3 class="text-lg font-semibold mb-2 text-destructive">Failed to Load Digests</h3>
+            <p class="text-muted-foreground mb-4">Unable to load your existing digests. You can still create a new digest.</p>
+            <div class="flex gap-2 justify-center">
+                             <Button variant="outline" onclick={() => { 
+                 userDigestsLoadError = false; 
+                 hasAttemptedUserDigestsLoad = false; 
+                 userDigests = []; 
+                 loadUserDigests(); 
+               }}>
+                 Try Again
+               </Button>
+              <Button onclick={chooseNewDigest}>Create New Digest</Button>
+            </div>
           </CardContent>
         </Card>
       {/if}

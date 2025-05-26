@@ -675,18 +675,16 @@ function asap_check_wp_session($request) {
 
         // ---> ADDED: Create session if one doesn't exist <---
         if (empty($sessionToken)) {
-            error_log('[ASAP Digest Check Session] No existing session found for BA User ID: ' . $ba_user_id . '. Attempting to create one. [TEMP DISABLED FOR DEBUG]'); // Modified Log
-            // --- TEMP DISABLED FOR DEBUG VDS-2025-04-16 ---
-            // $newSessionToken = asap_create_ba_session($ba_user_id);
-            // if ($newSessionToken) {
-            //     $sessionToken = $newSessionToken;
-            //     error_log('[ASAP Digest Check Session] Successfully created and assigned new session token.');
-            // } else {
-            //     error_log('[ASAP Digest Check Session] Failed to create new session token.');
-            //     // Optionally return an error here, or proceed without a token
-            //     // For now, proceed and let the client handle the lack of token
-            // }
-            // --- END TEMP DISABLED ---
+            error_log('[ASAP Digest Check Session] No existing session found for BA User ID: ' . $ba_user_id . '. Attempting to create one.');
+            $newSessionToken = asap_create_ba_session($ba_user_id);
+            if ($newSessionToken) {
+                $sessionToken = $newSessionToken;
+                error_log('[ASAP Digest Check Session] Successfully created and assigned new session token.');
+            } else {
+                error_log('[ASAP Digest Check Session] Failed to create new session token.');
+                // Optionally return an error here, or proceed without a token
+                // For now, proceed and let the client handle the lack of token
+            }
         }
         // ---> END ADDED SECTION <---
         

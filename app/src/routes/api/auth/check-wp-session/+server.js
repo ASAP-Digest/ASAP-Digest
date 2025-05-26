@@ -205,6 +205,7 @@ export async function POST(event) {
 						
 						return json({
 							success: true,
+							sessionToken: session.token, // Include session token for digest-builder.js
 							user: {
 								id: session.userId,
 								email: wpUserData.email,

@@ -163,20 +163,26 @@
       // Check for existing session more thoroughly
       if ($page.data.user || session?.data?.user) {
         log('[Layout V6] Active Better Auth session found. Auto-login flow stopped.', 'info');
+        log('[Layout V6] Page data user:', $page.data.user ? 'present' : 'null');
+        log('[Layout V6] Session data user:', session?.data?.user ? 'present' : 'null');
         return;
       }
       
       // Also check if we've already successfully auto-logged in this session
-      if (sessionStorage.getItem('auto_login_success') === 'true') {
+      const autoLoginSuccess = sessionStorage.getItem('auto_login_success');
+      if (autoLoginSuccess === 'true') {
         log('[Layout V6] Auto-login already completed this session. Skipping.', 'info');
         return;
       }
+      log('[Layout V6] Auto-login success flag:', autoLoginSuccess);
       
       // Check if user manually logged out - don't auto-login in that case
-      if (sessionStorage.getItem('manual_logout') === 'true') {
+      const manualLogout = sessionStorage.getItem('manual_logout');
+      if (manualLogout === 'true') {
         log('[Layout V6] User manually logged out. Skipping auto-login.', 'info');
         return;
       }
+      log('[Layout V6] Manual logout flag:', manualLogout);
     
       log('[Layout V6] No active Better Auth session. Triggering server-to-server check...', 'info');
       
