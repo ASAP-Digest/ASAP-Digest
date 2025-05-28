@@ -15,23 +15,19 @@
  */
 
 if (!defined('ABSPATH')) {
-    error_log('ASAP_CORE_DEBUG: ABSPATH not defined, exiting early in asapdigest-core.php');
     exit;
 }
-error_log('ASAP_CORE_DEBUG: START of asapdigest-core.php');
 
 // Define constants
 define('ASAP_DIGEST_SCHEMA_VERSION', '1.0.2');
 define('ASAP_DIGEST_VERSION', '3.0.0');
 define('ASAP_DIGEST_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ASAP_DIGEST_PLUGIN_URL', plugin_dir_url(__FILE__));
-error_log('ASAP_CORE_DEBUG: Constants defined');
 
 // Define a temporary sync secret for development server-to-server communication
 if (!defined('BETTER_AUTH_SECRET')) {
     define('BETTER_AUTH_SECRET', 'development-sync-secret-v6');
 }
-error_log('ASAP_CORE_DEBUG: BETTER_AUTH_SECRET defined/checked');
 
 // Load Content Processing Pipeline
 require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/content-processing/bootstrap.php';
@@ -40,26 +36,35 @@ require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/content-processing/bootstrap.php
 require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/ajax/bootstrap.php';
 
 // Include Better Auth configuration
-error_log('ASAP_CORE_DEBUG: Before require_once better-auth-config.php');
-require_once(ASAP_DIGEST_PLUGIN_DIR . 'better-auth-config.php');
-error_log('ASAP_CORE_DEBUG: After require_once better-auth-config.php');
+require_once ASAP_DIGEST_PLUGIN_DIR . 'better-auth-config.php';
 
 // Include the API Base Controller FIRST
-error_log('ASAP_CORE_DEBUG: Before require_once includes/api/class-rest-base.php');
-require_once(ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-base.php');
-error_log('ASAP_CORE_DEBUG: After require_once includes/api/class-rest-base.php');
+require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/api/class-rest-base.php';
 
 // Include the Activator class
 require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-activator.php';
 
+// Include Custom Table Manager and CPT Interceptor
+require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-custom-table-manager.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-cpt-interceptor.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-graphql-resolvers.php';
+
+// Load admin classes (per wordpress-class-organization protocol)
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin-ui.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin-modules-list-table.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-admin-digests-list-table.php';
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-custom-table-admin.php';
+
 // Register activation/deactivation hooks
-register_activation_hook(__FILE__, ['ASAPDigest\\Core\\ASAP_Digest_Activator', 'activate']);
-register_deactivation_hook(__FILE__, ['ASAPDigest\\Core\\ASAP_Digest_Activator', 'deactivate']);
+register_activation_hook(__FILE__, ['\ASAPDigest\Core\ASAP_Digest_Activator', 'activate']);
+register_deactivation_hook(__FILE__, ['\ASAPDigest\Core\ASAP_Digest_Activator', 'deactivate']);
 
 // --- Ensure all core classes are loaded before admin classes (per wordpress-hook-protocol) ---
-error_log('ASAP_CORE_DEBUG: Before require_once includes/class-core.php');
 require_once ASAP_DIGEST_PLUGIN_DIR . 'includes/class-core.php';
-error_log('ASAP_CORE_DEBUG: After require_once includes/class-core.php');
+
+// Include Central Command class BEFORE instantiation (per wordpress-class-organization protocol)
+require_once ASAP_DIGEST_PLUGIN_DIR . 'admin/class-central-command.php';
 
 /**
  * Initialize ASAP Digest Core plugin.
@@ -68,11 +73,27 @@ error_log('ASAP_CORE_DEBUG: After require_once includes/class-core.php');
  * @return ASAPDigest\Core\ASAP_Digest_Core The main plugin instance.
  */
 function asap_digest_core() {
-    return ASAPDigest\Core\ASAP_Digest_Core::get_instance();
+    return \ASAPDigest\Core\ASAP_Digest_Core::get_instance();
 }
 
 // Initialize the plugin
 asap_digest_core();
+
+// Initialize CPT Interceptor to redirect CPT operations to custom tables
+add_action('init', function() {
+    new \ASAPDigest\Core\CPT_Interceptor();
+}, 5);
+
+// Initialize GraphQL Resolvers for custom tables
+add_action('init', function() {
+    // Only initialize if WPGraphQL is active
+    if (class_exists('WPGraphQL')) {
+        new \ASAPDigest\Core\GraphQL_Resolvers();
+    }
+}, 10);
+
+// Note: Custom_Table_Admin is instantiated by Central Command when needed
+// This prevents duplicate instantiation and follows single responsibility principle
 
 // Legacy non-namespaced function for backward compatibility
 // This can be gradually phased out
@@ -93,7 +114,7 @@ add_action('plugins_loaded', 'asap_init_core', 5);
  */
 function asap_cleanup_on_deactivation() {
     // Delegate to the Activator class
-    ASAPDigest\Core\ASAP_Digest_Activator::deactivate();
+    \ASAPDigest\Core\ASAP_Digest_Activator::deactivate();
 }
 
 /**
@@ -125,57 +146,66 @@ load_plugin_textdomain('adc', false, dirname(plugin_basename(__FILE__)) . '/lang
 // All admin menu and submenu registration is centralized here.
 // Callback functions are defined below or required before registration.
 
-// Create a single shared instance for menu callbacks
+// Register the menu with admin_menu (single location, per protocol)
+add_action('admin_menu', function() {
+    // Create Central Command instance only when needed (in admin context)
 if (!isset($GLOBALS['asap_digest_central_command'])) {
     $core_instance = \ASAPDigest\Core\ASAP_Digest_Core::get_instance();
     $GLOBALS['asap_digest_central_command'] = new \ASAPDigest\Core\ASAP_Digest_Central_Command($core_instance);
 }
-$asap_digest_central_command = $GLOBALS['asap_digest_central_command'];
-
-// Register the menu with admin_menu (single location, per protocol)
-add_action('admin_menu', [$asap_digest_central_command, 'register_menus'], 30);
+    $GLOBALS['asap_digest_central_command']->register_menus();
+}, 30);
 
 /**
- * Add necessary CORS headers for WPGraphQL OPTIONS preflight requests.
- * Checks if the request origin is whitelisted and adds required headers.
+ * Fallback CORS headers for WPGraphQL when default handling is insufficient.
+ * Runs after WPGraphQL's default CORS handling to supplement missing headers.
  * Environment-aware for SvelteKit frontend origins.
  *
- * @param array $headers Existing headers potentially set by WPGraphQL or other filters.
+ * @param array $headers Existing headers set by WPGraphQL and other filters.
  * @return array Modified headers array.
  */
 function asap_filter_graphql_cors_headers( $headers ) {
-    // Handle both OPTIONS preflight and actual GraphQL requests
-
-    // Determine allowed origin based on environment
-    $allowed_origin = '';
+    // Determine allowed origins based on environment
+    $allowed_origins = [];
     $current_env = wp_get_environment_type(); // development, staging, production, local
 
     if ( $current_env === 'development' || $current_env === 'local' ) {
-        $allowed_origin = 'https://localhost:5173';
+        // Allow multiple development origins
+        $allowed_origins = [
+            'https://localhost:5173',
+            'http://localhost:5173',
+            'https://127.0.0.1:5173',
+            'http://127.0.0.1:5173'
+        ];
     } elseif ( $current_env === 'production' ) {
-        $allowed_origin = 'https://app.asapdigest.com';
+        $allowed_origins = ['https://app.asapdigest.com'];
     } // Add 'staging' environment if needed later
 
     // Get the origin of the request
     $request_origin = isset( $_SERVER['HTTP_ORIGIN'] ) ? trim( rtrim( $_SERVER['HTTP_ORIGIN'], '/' ) ) : ''; // Trim trailing slash
 
-    // If the request origin matches our allowed origin for the environment...
-    if ( ! empty( $request_origin ) && $request_origin === $allowed_origin ) {
+    // Check if the request origin is in our allowed origins list
+    if ( ! empty( $request_origin ) && in_array( $request_origin, $allowed_origins ) ) {
 
-        // Set the necessary CORS headers, potentially overriding WPGraphQL defaults if needed
-        $headers['Access-Control-Allow-Origin'] = $allowed_origin; // Explicitly set allowed origin
-        $headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS';
-        $headers['Access-Control-Allow-Credentials'] = 'true';
-        // Ensure Allow-Headers includes what the request asked for (Content-Type) and others potentially needed
-        $headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-WPGraphQL-Login-Token, X-WPGraphQL-Login-Refresh-Token, X-Better-Auth-Signature';
-        // Optional: Add Max-Age
-        // $headers['Access-Control-Max-Age'] = '600';
-
-        error_log('[ASAP CORS Filter V3] Added CORS headers for GraphQL OPTIONS request from whitelisted origin: ' . $request_origin);
+        // Check if WPGraphQL has already set Access-Control-Allow-Origin
+        if ( isset( $headers['Access-Control-Allow-Origin'] ) ) {
+            // WPGraphQL has already handled CORS - don't interfere, just log
+            error_log('[ASAP CORS Fallback] WPGraphQL already set CORS headers for origin: ' . $request_origin . '. Not interfering.');
+            // Don't add any headers to prevent duplicates
+        } else {
+            // WPGraphQL didn't handle this origin, we need to step in
+            error_log('[ASAP CORS Fallback] WPGraphQL did not handle origin: ' . $request_origin . '. Adding fallback CORS headers.');
+            
+            $headers['Access-Control-Allow-Origin'] = $request_origin;
+            $headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS';
+            $headers['Access-Control-Allow-Credentials'] = 'true';
+            $headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, X-WPGraphQL-Login-Token, X-WPGraphQL-Login-Refresh-Token, X-Better-Auth-Signature';
+            $headers['Access-Control-Max-Age'] = '600';
+        }
 
     } else {
-         // Log why we didn't add headers if debugging is needed
-         // error_log('[ASAP CORS Filter V3] Skipped adding CORS headers. Request Origin: \'' . $request_origin . '\' | Allowed Origin: \'' . $allowed_origin . '\'');
+         // Log why we didn't add headers for debugging
+         error_log('[ASAP CORS Fallback] Skipped - origin not in allowed list. Request Origin: \'' . $request_origin . '\' | Allowed Origins: ' . implode(', ', $allowed_origins) . ' (Environment: ' . $current_env . ')');
     }
 
     // Always return the headers array (potentially modified or original)
@@ -189,5 +219,9 @@ function asap_filter_graphql_cors_headers( $headers ) {
  * Environment-aware for SvelteKit frontend origins.
  */
 // add_action( 'send_headers', 'asap_add_graphql_cors_headers_on_send' );
-// Hook the CORS function to the GraphQL headers filter
-add_filter('graphql_response_headers_to_send', 'asap_filter_graphql_cors_headers', 10, 1);
+// TEMPORARILY DISABLED: GraphQL CORS filter to prevent duplicate headers
+// The duplicate CORS headers issue needs to be resolved by configuring WPGraphQL properly
+// rather than adding our own CORS handling on top of it.
+// 
+// TODO: Re-enable this after WPGraphQL CORS configuration is properly set up
+// add_filter('graphql_response_headers_to_send', 'asap_filter_graphql_cors_headers', 15, 1);

@@ -8,13 +8,13 @@
 
 namespace ASAPDigest\Core;
 
+use ASAPDigest\Core\ErrorLogger;
 use WP_Error;
 use function add_action;
 use function check_ajax_referer;
 use function current_user_can;
 use function wp_send_json_error;
 use function wp_send_json_success;
-use ASAPDigest\Core\ErrorLogger;
 
 if (!defined('ABSPATH')) {
     exit;

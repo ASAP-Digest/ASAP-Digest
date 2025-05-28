@@ -659,16 +659,14 @@
             aria-haspopup="true"
           >
             <div class="h-8 w-8 overflow-hidden rounded-full bg-[hsl(var(--muted)/0.2)]">
-              <!-- Consistent avatar handling for hydration -->
-              {#key userData.updatedAt || 'initial-render'}
-                <img
-                  class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
-                  src={userData.avatarUrl || '/images/default-avatar.svg'}
-                  alt={userData.displayName}
-                  loading="lazy"
-                    onerror={handleImageError} 
-                  />
-                {/key}
+              <!-- Fix hydration mismatch by ensuring consistent rendering -->
+              <img
+                class="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                src={$page.data.user ? (userData.avatarUrl || '/images/default-avatar.svg') : '/images/default-avatar.svg'}
+                alt={$page.data.user ? (userData.displayName || 'User') : 'Guest'}
+                loading="lazy"
+                onerror={handleImageError} 
+              />
             </div>
           </button>
           

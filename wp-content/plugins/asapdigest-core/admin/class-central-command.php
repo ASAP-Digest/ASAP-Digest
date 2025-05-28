@@ -168,24 +168,24 @@ class ASAP_Digest_Central_Command {
             [$this, 'render_dashboard']
         );
         
-        // Digests submenu
+        // Digests submenu (custom table admin)
         add_submenu_page(
             'asap-central-command',
             __('Digests', 'asapdigest-core'),
             __('Digests', 'asapdigest-core'),
-            'edit_posts', // Capability to edit posts of this type
-            'edit.php?post_type=asap_digest',
-            '' // No rendering function needed; WordPress handles the CPT list table
+            'edit_posts',
+            'asap-digests',
+            [$this, 'render_digests_page']
         );
 
-        // Modules submenu
+        // Modules submenu (custom table admin)
         add_submenu_page(
             'asap-central-command',
             __('Modules', 'asapdigest-core'),
             __('Modules', 'asapdigest-core'),
-            'edit_posts', // Capability to edit posts of this type
-            'edit.php?post_type=asap_module',
-            '' // No rendering function needed
+            'edit_posts',
+            'asap-modules',
+            [$this, 'render_modules_page']
         );
 
         // Templates submenu
@@ -929,5 +929,31 @@ class ASAP_Digest_Central_Command {
         } else {
             echo '<div class="wrap"><h1>Service Costs</h1><p>The service costs table does not exist. This feature will be available after the next phase of implementation.</p></div>';
         }
+    }
+    
+    /**
+     * Render modules admin page using custom table
+     */
+    public function render_modules_page() {
+        // Get or create custom table admin instance
+        static $custom_admin = null;
+        if (!$custom_admin) {
+            $custom_admin = new \ASAPDigest\Admin\Custom_Table_Admin();
+        }
+        
+        $custom_admin->render_modules_page();
+    }
+    
+    /**
+     * Render digests admin page using custom table
+     */
+    public function render_digests_page() {
+        // Get or create custom table admin instance
+        static $custom_admin = null;
+        if (!$custom_admin) {
+            $custom_admin = new \ASAPDigest\Admin\Custom_Table_Admin();
+        }
+        
+        $custom_admin->render_digests_page();
     }
 } 

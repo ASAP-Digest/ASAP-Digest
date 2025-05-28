@@ -23,9 +23,25 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
 
 /**
  * @typedef {Object} AuthDataMetadata
- * @property {string[]} [roles]
+ * @property {string[]} [roles] - User roles array
  * @property {Object} [preferences] - User preferences (can be nested in metadata)
- * // Add other potential metadata fields here
+ * @property {string} [nickname] - WordPress nickname/username
+ * @property {string} [username] - Alternative username field
+ * @property {string} [user_login] - WordPress user_login field
+ * @property {string} [wpUsername] - WordPress username from sync
+ * @property {number} [wp_user_id] - WordPress user ID
+ * @property {string} [description] - User description/bio
+ * @property {string} [firstName] - User first name
+ * @property {string} [first_name] - Alternative first name field
+ * @property {string} [lastName] - User last name
+ * @property {string} [last_name] - Alternative last name field
+ * @property {string} [registered] - Registration date
+ * @property {string} [locale] - User locale
+ * @property {string} [syncStatus] - Sync status with WordPress
+ * @property {string} [lastSynced] - Last sync timestamp
+ * @property {Object} [wp_sync] - WordPress sync metadata
+ * @property {number} [wp_sync.wp_user_id] - WordPress user ID in sync object
+ * @property {string} [wp_sync.synced_at] - Sync timestamp
  */
 
 /**
@@ -66,17 +82,27 @@ export function syncUserStores(authDataValue, forceUpdate = false) {
     let userToSetInRoot = null;
 
     if (authDataValue && typeof authDataValue === 'object' && typeof authDataValue.id === 'string') {
-      // Use the comprehensive getUserData helper to process the auth data
+      // Use getUserData() to process the auth data - this is the CANONICAL authority
       const userDataHelper = getUserData(authDataValue);
-      // Convert to JSON format for the store
+      // Convert to JSON format for the store - this ensures username is properly extracted
       userToSetInRoot = userDataHelper.toJSON();
       
       // Ensure updatedAt is set for sync tracking
       if (userToSetInRoot && !userToSetInRoot.updatedAt) {
         userToSetInRoot.updatedAt = typeof authDataValue.lastSynced === 'number' 
-          ? new Date(authDataValue.lastSynced).toISOString() 
-          : new Date().toISOString();
+          ? new Date(authDataValue.lastSynced) 
+          : new Date();
       }
+      
+      // Log the canonical username extraction for debugging
+      console.log(`[Auth Store] getUserData extracted username: "${userDataHelper.username}" from sources:`, {
+        direct: authDataValue.username || 'null',
+        name: authDataValue.name || 'null', 
+        nickname: authDataValue.metadata?.nickname || 'null',
+        metaUsername: authDataValue.metadata?.username || 'null',
+        userLogin: authDataValue.metadata?.user_login || 'null',
+        wpUsername: authDataValue.metadata?.wpUsername || 'null'
+      });
     } else if (authDataValue === null) {
       userToSetInRoot = null;
     }
@@ -205,10 +231,26 @@ function createAuthStore() {
         return true;
       } else {
         console.log('[Auth Store] syncWithServer: Server response indicates no authentication. Response:', JSON.stringify(responseData));
-        // Don't immediately clear if we just had a successful auto-login
+        
+        // Be more conservative about clearing user data
         const autoLoginSuccess = sessionStorage.getItem('auto_login_success');
-        if (currentUser && autoLoginSuccess === 'true') {
-          console.log('[Auth Store] syncWithServer: Preserving user data due to recent auto-login success');
+        const hasSessionToken = responseData.session?.sessionToken;
+        
+        // Don't clear user data if:
+        // 1. We just had a successful auto-login, OR
+        // 2. We have a session token (even if user is null), OR  
+        // 3. The user was recently updated (within last 10 minutes)
+        const userUpdatedAt = currentUser?.updatedAt || currentUser?.lastSynced;
+        const timeSinceUpdate = userUpdatedAt ? now - new Date(userUpdatedAt).getTime() : Infinity;
+        const recentlyUpdated = timeSinceUpdate < 600000; // 10 minutes
+        
+        if (currentUser && (autoLoginSuccess === 'true' || hasSessionToken || recentlyUpdated)) {
+          console.log('[Auth Store] syncWithServer: Preserving user data. Reasons:', {
+            autoLoginSuccess: autoLoginSuccess === 'true',
+            hasSessionToken: !!hasSessionToken,
+            recentlyUpdated,
+            timeSinceUpdate
+          });
           return true; // Don't clear the user data
         } else if (currentUser) {
           console.log('[Auth Store] syncWithServer: Clearing user data due to failed authentication');
@@ -533,14 +575,14 @@ export async function requireAuth(redirectTo = '/login') {
 
 /**
  * Normalize a user object from any source to ensure consistent properties
- * Uses the comprehensive getUserData helper for consistent processing
+ * Uses the standalone user data helper for consistent processing
  * @param {Object} inputUser - Raw user object
  * @returns {Object} Normalized user object
  */
 function normalizeUserData(inputUser) {
   if (!inputUser) return null;
   
-  // Use the comprehensive getUserData helper for normalization
+  // Use the standalone user data helper for normalization
   const userDataHelper = getUserData(inputUser);
   const normalizedData = userDataHelper.toJSON();
   

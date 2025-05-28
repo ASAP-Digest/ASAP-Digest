@@ -107,7 +107,7 @@ export async function checkWordPressSession(retries = 3) {
 
 // Initialize Better Auth client with secure cookie configuration
 export const auth = createAuthClient({
-    baseURL: dev ? 'https://asapdigest.local/api/auth' : 'https://asapdigest.com/api/auth',
+    baseURL: dev ? 'https://localhost:5173/api/auth' : 'https://asapdigest.com/api/auth',
     onRequest: async (/** @type {RequestConfig} */ config) => {
         // Add CSRF token to mutating requests
         if (config.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method.toUpperCase())) {

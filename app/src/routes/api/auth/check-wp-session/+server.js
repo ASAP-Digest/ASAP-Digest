@@ -209,11 +209,15 @@ export async function POST(event) {
 							user: {
 								id: session.userId,
 								email: wpUserData.email,
+								username: wpUserData.username, // FIX: Include WordPress username
 								displayName: wpUserData.displayName || wpUserData.username,
+								firstName: wpUserData.firstName || null,
+								lastName: wpUserData.lastName || null,
 								avatarUrl: wpUserData.avatarUrl || '',
-								roles: wpUserData.roles || [],
+								roles: wpUserData.metadata?.roles || wpUserData.roles || [], // FIX: Get roles from metadata first
 								wp_user_id: wpUserData.wpUserId, // CRITICAL FIX: Include WordPress user ID
-								wpUserId: wpUserData.wpUserId    // Also include normalized version
+								wpUserId: wpUserData.wpUserId,    // Also include normalized version
+								metadata: wpUserData.metadata || {} // FIX: Include full metadata
 							}
 						});
 					} else {
