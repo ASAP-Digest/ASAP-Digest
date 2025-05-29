@@ -276,3 +276,6 @@ wp-content/plugins/asapdigest-core/ADMIN_UI_FIX_SUMMARY.md
 wp-content/plugins/asapdigest-core/ADMIN_UI_INTEGRATION_SUMMARY.md
 wp-content/plugins/asapdigest-core/CLASS_IMPORT_FIXES_SUMMARY.md
 md-docs/GRAPHQL_SCHEMA.md
+md-docs/ASAP_DIGEST_CORE_BUSINESS_OBJECTS.md
+md-docs/LOCAL_FIRST_IMPLEMENTATION_PLAN.md
+md-docs/LOCAL_FIRST_MIGRATION_SUMMARY.md

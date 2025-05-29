@@ -7,6 +7,7 @@
 
 import { redirect } from '@sveltejs/kit';
 import { log } from '$lib/utils/log';
+import { getUserData } from '$lib/stores/user.js';
 
 /**
  * Server-side load function for protected routes
@@ -33,23 +34,18 @@ export async function load({ locals, url }) {
     console.log('[Protected Layout Server] wp_user_id from user:', locals.user.wp_user_id);
     console.log('[Protected Layout Server] wp_user_id from metadata:', locals.user.metadata?.wp_user_id);
     
-    // Extract wp_user_id with fallback logic
-    const wpUserId = locals.user.wp_user_id || 
-                     locals.user.metadata?.wp_user_id || 
-                     (typeof locals.user.metadata?.wp_sync?.wp_user_id === 'number' ? locals.user.metadata.wp_sync.wp_user_id : null);
+    // Use getUserData to properly compute all fields including avatarUrl
+    const userDataHelper = getUserData(locals.user);
+    const processedUser = userDataHelper.toJSON();
     
-    console.log('[Protected Layout Server] Final wp_user_id:', wpUserId);
+    console.log('[Protected Layout Server] Processed user with getUserData:', {
+        id: processedUser.id,
+        email: processedUser.email,
+        avatarUrl: processedUser.avatarUrl,
+        wpUserId: processedUser.wpUserId
+    });
     
     return {
-        user: {
-            id: locals.user.id,
-            email: locals.user.email,
-            displayName: locals.user.displayName || locals.user.email.split('@')[0],
-            roles: locals.user.roles || ['subscriber'],
-            avatarUrl: locals.user.avatarUrl,
-            wp_user_id: wpUserId, // Use extracted wp_user_id with fallback
-            metadata: locals.user.metadata || {},
-            updatedAt: locals.user.updatedAt || new Date().toISOString()
-        }
+        user: processedUser
     };
 } 

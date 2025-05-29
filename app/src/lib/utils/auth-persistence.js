@@ -89,9 +89,9 @@ export function syncUserStores(authDataValue, forceUpdate = false) {
       
       // Ensure updatedAt is set for sync tracking
       if (userToSetInRoot && !userToSetInRoot.updatedAt) {
-        userToSetInRoot.updatedAt = typeof authDataValue.lastSynced === 'number' 
-          ? new Date(authDataValue.lastSynced) 
-          : new Date();
+        userToSetInRoot.updatedAt = /** @type {any} */ (typeof authDataValue.lastSynced === 'number' 
+          ? new Date(authDataValue.lastSynced).toISOString() 
+          : new Date().toISOString());
       }
       
       // Log the canonical username extraction for debugging
